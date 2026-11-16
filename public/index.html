@@ -3617,7 +3617,7 @@ function palette() {
     { t: 'Eylem', n: 'Sprint oluştur', run: () => sprintForm() },
     { t: 'Eylem', n: 'Özel alan ekle', run: () => fieldForm() },
     { t: 'Eylem', n: 'Otomasyon kuralı ekle', run: () => ruleForm() },
-    { t: 'Eylem', n: 'HTML dosyasına kaydet', run: () => saveToFile(false) },
+    { t: 'Eylem', n: 'Şimdi kaydet', run: () => flushSync().then(() => toast('Kaydedildi')) },
     { t: 'Eylem', n: 'Veriyi dışa aktar', run: () => $('#btnExport').click() },
     { t: 'Eylem', n: 'Başka kopyayla birleştir', run: () => $('#mergeIn').click() },
     ...DB.projects.map(p => ({ t: 'Proje', n: `${p.key} — ${p.name}`, run: () => { DB.ui.project = p.id; save(); boot(); } })),
