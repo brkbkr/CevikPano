@@ -10,7 +10,7 @@ Jira benzeri çevik proje yönetimi. Arayüz ve tüm metinler **Türkçe**; kull
   `poll()` her 4 sn'de `/api/changes` ile başkalarının değişikliklerini çeker.
 - `DB` içindeki her **dizi** bir tabloya (`server/db.js` → `TABLES`), dizi olmayan üst düzey
   anahtarlar `settings` tablosuna, `ui`/`board`/`open` kişisel `user_prefs`'e gider.
-  Yeni bir dizi eklenirse önce `misc_records`'a düşer; kalıcıysa `schema.sql`'e tablo ve `TABLES`'a kayıt ekle.
+  Yeni bir dizi eklenirse önce `misc_records`'a düşer; kalıcıysa yeni bir geçiş dosyasıyla tablo ve `TABLES`'a kayıt ekle.
 - Kullanıcı parolaları yalnızca sunucuda (bcrypt). İstemciye `pw`/`salt`/`password_hash` gönderilmez,
   istemciden gelirse silinir. Yetki kontrolleri `server/store.js` → `applyUser` / `applyChanges` içinde.
 - Şema `server/migrations/NNN_ad.sql` dosyalarında; her biri bir kez, sırayla, kendi işleminde uygulanır
