@@ -13,15 +13,19 @@ Jira benzeri çevik proje yönetimi. Arayüz ve tüm metinler **Türkçe**; kull
   Yeni bir dizi eklenirse önce `misc_records`'a düşer; kalıcıysa `schema.sql`'e tablo ve `TABLES`'a kayıt ekle.
 - Kullanıcı parolaları yalnızca sunucuda (bcrypt). İstemciye `pw`/`salt`/`password_hash` gönderilmez,
   istemciden gelirse silinir. Yetki kontrolleri `server/store.js` → `applyUser` / `applyChanges` içinde.
-- Şema `server/schema.sql` her açılışta çalışır: yalnızca `CREATE ... IF NOT EXISTS` / geriye dönük
-  uyumlu değişiklikler yaz. Sütun eklerken `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` kullan.
+- Şema `server/migrations/NNN_ad.sql` dosyalarında; her biri bir kez, sırayla, kendi işleminde uygulanır
+  (`schema_migrations`). Var olan bir geçiş dosyasını DEĞİŞTİRME — yeni numaralı dosya ekle.
+- Yetki ve bütünlük kuralları sunucuda (`store.js`: `ADMIN_ONLY`, süre kaydı sahipliği, iş anahtarı,
+  harcanan süre, silmede bağlı kayıtlar). İstemcideki kontroller yalnızca kullanıcı deneyimi içindir.
+- Ön yüzde kullanıcıdan gelen her metni `esc()` ile bas; renkleri `safeColor()` ile.
 - `legacy/` SharePoint sürümüdür; değiştirme.
 
 ## Komutlar
 - Geliştirme: `DATABASE_URL=postgres://postgres:postgres@localhost:5432/pano_dev ADMIN_PASSWORD=admin12345 npm run dev`
 - Test: `TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/pano_test npm test` (test DB'yi sıfırlar)
 - Yerel PostgreSQL: `service postgresql start`
-- Ön yüz değişikliğinden sonra Playwright ile tarayıcıda dene (giriş, pano, iş oluşturma, ikinci kullanıcıyla canlı güncelleme).
+- Tarayıcı regresyonu: temiz DB + `node scripts/seed-demo.mjs http://localhost:3100 test/fixtures/demo.json` + `node test/e2e/regresyon.cjs`
+  (sunucu `ADMIN_PASSWORD=admin12345 DEFAULT_USER_PASSWORD=Baslangic123 PORT=3100` ile).
 
 ## Canlı ortam
 Render.com Blueprint (`render.yaml`): `cevikpano` web servisi (Docker) + `cevikpano-db` PostgreSQL.

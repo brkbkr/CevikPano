@@ -102,7 +102,7 @@ export function authRoutes(app, pool) {
     if (!t) throw new HttpError(404, 'Kullanıcı bulunamadı.');
     if (t.role === 'super' && me.role !== 'super') throw new HttpError(403, 'Süper yöneticinin parolasını yalnızca süper yönetici sıfırlayabilir.');
     const pw = req.body?.password ? String(req.body.password) : DEFAULT_USER_PASSWORD();
-    if (pw.length < 4) throw new HttpError(400, 'Parola en az 4 karakter olmalı.');
+    if (pw.length < 8) throw new HttpError(400, 'Parola en az 8 karakter olmalı.');
     await pool.query('UPDATE users SET password_hash=$2, must_change=true, updated_at=now() WHERE id=$1',
       [t.id, await bcrypt.hash(pw, 10)]);
     if (t.id !== me.id) await pool.query('DELETE FROM sessions WHERE user_id=$1', [t.id]);
@@ -122,5 +122,8 @@ export function meOf(u) {
 
 export function requireUser(req, _res, next) {
   if (!req.user) return next(new HttpError(401, 'Oturum açmanız gerekiyor.'));
+  /* İlk girişte parola değiştirilmeden hiçbir veriye erişilemez. */
+  if (req.user.must_change && !req.path.startsWith('/api/auth/'))
+    return next(new HttpError(403, 'Devam etmek için önce parolanızı değiştirmelisiniz.'));
   next();
 }

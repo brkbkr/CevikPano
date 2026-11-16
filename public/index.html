@@ -515,6 +515,7 @@ body{font-size:13.5px;letter-spacing:-.006em;font-feature-settings:"cv11","ss01"
 .tb-online .onl .av{box-shadow:0 0 0 2px var(--surface)}
 .iconbtn{position:relative;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:var(--ink2);
   border:1px solid var(--line);background:var(--surface);font-size:16px;transition:background .12s,border-color .12s,color .12s}
+.iconbtn.sm{width:30px;height:30px;font-size:13px;border-radius:8px}
 .iconbtn:hover{background:var(--surface2);color:var(--ink);border-color:var(--line2)}
 .badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;
   background:var(--risk);color:#fff;font-size:10.5px;font-weight:700;display:grid;place-items:center;
@@ -667,6 +668,8 @@ label.field{font-size:11px;text-transform:none;letter-spacing:0;color:var(--ink2
   .scrim{padding:0}
   .modal{border-radius:0;min-height:100%;border:none}
   .m-l{padding:16px}
+  .m-b{grid-template-columns:minmax(0,1fr)!important}
+  .m-l,.m-r{min-width:0;overflow-wrap:anywhere}
   .form-2{grid-template-columns:1fr}
   .act-w{width:auto}
 }
@@ -738,7 +741,7 @@ label.field{font-size:11px;text-transform:none;letter-spacing:0;color:var(--ink2
         <button data-v="admin">Ayarlar</button>
         <button data-v="system">Sistem</button>
         <button data-v="__proj">Proje ▾</button>
-        <button data-v="__data">Veri ▾</button>
+        <button data-v="__data">Hesap ▾</button>
       </div>
       <div class="toolrow" id="toolrow"></div>
     </header>
@@ -839,6 +842,15 @@ function scheduleSync(delay = 400) {
   syncT = setTimeout(flushSync, delay);
 }
 
+/* Devam eden ve bekleyen tüm değişiklikler gidene kadar kaydet. */
+async function flushAll() {
+  for (let k = 0; k < 5; k++) {
+    await flushSync();
+    if (syncing) { await syncing; continue; }
+    if (!SNAP || !diffSnap(SNAP, snapOf(DB)).length) return;
+  }
+}
+
 async function flushSync() {
   clearTimeout(syncT); clearTimeout(retryT);
   if (!SNAP || !DB || !ME) return;
@@ -847,6 +859,9 @@ async function flushSync() {
     const now = snapOf(DB);
     let ch = diffSnap(SNAP, now);
     if (typeof canEdit === 'function' && !canEdit()) ch = ch.filter(x => x.c === '_prefs');
+    else if (typeof isAdmin === 'function' && !isAdmin())
+      ch = ch.filter(x => !['statuses', 'fields', 'rules', '_settings'].includes(x.c) && !(x.c === 'projects' && x.op === 'del')
+        && !(x.c === 'users' && x.id !== ME.id));
     if (!ch.length) { SNAP = now; setSync('ok'); return; }
     setSync('saving');
     try {
@@ -877,7 +892,7 @@ async function flushSync() {
 }
 
 /* ---- başkalarının değişikliklerini çek ---- */
-let pollT = null, RERENDER = false, OPEN_ISSUE = null, ONLINE = [], UNREAD = 0;
+let pollT = null, RERENDER = false, OPEN_ISSUE = null, ONLINE = [], UNREAD = 0, MODAL_STALE = false;
 function startPolling() {
   clearInterval(pollT);
   pollT = setInterval(poll, 4000);
@@ -913,8 +928,15 @@ function applyRemote(items) {
     if (cur.rec[it.c]?.get(it.id) !== m.get(it.id)) continue;   // bende kaydedilmemiş değişiklik var
     if (m.get(it.id) === j) continue;
     const idx = arr.findIndex(x => x && String(x.id) === it.id);
-    if (j === undefined) { if (idx >= 0) arr.splice(idx, 1); m.delete(it.id); }
-    else { if (idx >= 0) arr[idx] = it.data; else arr.push(it.data); m.set(it.id, j); }
+    if (j === undefined) {
+      if (idx >= 0) arr.splice(idx, 1); m.delete(it.id);
+      if (it.c === 'issues' && it.id === OPEN_ISSUE) { closeModal(); toast('Açık olan iş başka bir kullanıcı tarafından silindi'); }
+    } else {
+      if (idx >= 0) { const o = arr[idx]; for (const k of Object.keys(o)) delete o[k]; Object.assign(o, it.data); }
+      else arr.push(it.data);
+      m.set(it.id, j);
+    }
+    if (OPEN_ISSUE && (it.id === OPEN_ISSUE || it.data?.issueId === OPEN_ISSUE)) MODAL_STALE = true;
     if (it.c === 'users' && it.id === ME.id && it.data) { ME.role = it.data.role; ME.mustChange = it.data.mustChange; }
     changed = true;
   }
@@ -923,6 +945,9 @@ function applyRemote(items) {
 
 /* Açık bir pencere, sürükleme ya da yazılan bir alan varken ekranı yenileme. */
 function tryRerender() {
+  const typing = document.activeElement && (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) || document.activeElement.isContentEditable);
+  /* Açık iş penceresi başkası tarafından değiştirildiyse, yazı yazılmıyorsa tazele. */
+  if (MODAL_STALE && OPEN_ISSUE && !typing && issue(OPEN_ISSUE)) { MODAL_STALE = false; try { openIssue(OPEN_ISSUE); } catch (e) { } }
   const busy = document.getElementById('scrim')?.classList.contains('on')
     || (typeof DRAG !== 'undefined' && DRAG)
     || (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)
@@ -937,7 +962,12 @@ async function reloadState() {
   catch (e) { if (e.status === 401) sessionLost(); }
 }
 
+let LOST = null;
 function sessionLost() {
+  if (SNAP && DB && ME) {
+    const ch = diffSnap(SNAP, snapOf(DB));
+    if (ch.length) LOST = { user: ME.id, changes: ch };
+  }
   ME = null; SNAP = null; clearInterval(pollT);
   closeModal && closeModal();
   showLogin('Oturumunuz sona erdi, lütfen tekrar giriş yapın.');
@@ -1148,7 +1178,7 @@ const KEY = 'pano-db-v2';
 const $  = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const uid = p => p + '_' + Math.random().toString(36).slice(2, 9);
-const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 /* ---- tarih yardımcıları (hepsi yerel, ISO 'YYYY-MM-DD') ---- */
 const iso  = d => { const t = new Date(d); t.setMinutes(t.getMinutes() - t.getTimezoneOffset()); return t.toISOString().slice(0, 10); };
@@ -1381,7 +1411,8 @@ function save() {
 /* ---- seçiciler ---- */
 const P     = () => DB.projects.find(p => p.id === DB.ui.project);
 const stats = () => DB.statuses.filter(s => s.projectId === DB.ui.project).sort((a, b) => a.ord - b.ord);
-const stat  = id => DB.statuses.find(s => s.id === id);
+const stat  = id => DB.statuses.find(s => s.id === id)
+  || { id, projectId: null, name: '(silinmiş durum)', cat: 'todo', ord: 999, missing: true };
 const user  = id => DB.users.find(u => u.id === id);
 const issue = id => DB.issues.find(i => i.id === id);
 const sprint= id => DB.sprints.find(s => s.id === id);
@@ -1865,7 +1896,7 @@ function renderTimesheet() {
       ${tsAllMode() ? `<span class="chip lbl">${esc(projName(i.projectId))}</span>` : ''}
       <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" data-open="${i.id}">${esc(i.summary)}</span>
       <span class="k">${fmtD(w.date)}</span><b class="num">${fmtDur(w.hours)}</b>
-      <button class="btn sm danger" data-delwl="${w.id}">Sil</button></div>`; }).join('') || '<div class="empty">Bu hafta kayıt yok</div>'}
+      ${canEdit() && (w.userId === CU().id || isAdmin()) ? `<button class="btn sm danger" data-delwl="${w.id}">Sil</button>` : ''}</div>`; }).join('') || '<div class="empty">Bu hafta kayıt yok</div>'}
   </div>`;
 
   return table + list;
@@ -2189,6 +2220,7 @@ function openIssue(id) {
     DB.ui.editCmt = null; save(); openIssue(i.id);
   });
   $$('[data-cdel]').forEach(b => b.onclick = () => {
+    if (!confirm('Yorum silinsin mi?')) return;
     DB.comments = DB.comments.filter(x => x.id !== b.dataset.cdel); save(); openIssue(i.id); });
   const ac = $('#addCmt'); if (ac) ac.onclick = () => {
     const v = $('#newCmt').value.trim(); if (!v) return;
@@ -2305,12 +2337,17 @@ function projectMenu() {
       ${p.id === DB.ui.project ? '<span class="chip cat-done">seçili</span>' : ''}</div>`).join('')}</div>`, 'narrow');
 }
 function dataMenu() {
-  openModal(`<div class="m-h"><b>Veri</b><button class="x" data-close>×</button></div>
+  openModal(`<div class="m-h"><b>Hesap ve veri</b><button class="x" data-close>×</button></div>
     <div style="padding:16px 18px;display:flex;flex-direction:column;gap:8px">
-      <button class="btn pri" data-act="savefile">⤓ HTML dosyasına kaydet</button>
-      <button class="btn" data-act="export">↧ JSON olarak dışa aktar</button>
-      <button class="btn" data-act="merge">⇄ Başka kopyayla birleştir</button>
-      ${isAdmin() ? '<button class="btn" data-act="import">↥ JSON içe aktar</button>' : ''}
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">${avat(CU().id, 1)}
+        <div><b>${esc(CU().name)}</b><div style="font-size:12px;color:var(--ink3)">${esc(ROLES[CU().role]?.[0] || '')} · ${esc(ME?.username || '')}</div></div></div>
+      <div class="fnote" style="font-size:12px">${{ ok: 'Tüm değişiklikler kaydedildi', pending: 'Kaydediliyor…', saving: 'Kaydediliyor…', error: 'Bağlantı sorunu — tekrar denenecek' }[SYNC_STATE]}</div>
+      <button class="btn" data-act="savefile">✓ Şimdi kaydet</button>
+      <button class="btn" data-act="pw">🔑 Parolamı değiştir</button>
+      <button class="btn" data-act="theme">◐ Açık / koyu tema</button>
+      <button class="btn" data-act="export">↧ Veriyi dışa aktar (JSON)</button>
+      ${isAdmin() ? '<button class="btn" data-act="merge">⇄ Dosyadan birleştir</button><button class="btn" data-act="import">↥ İçe aktar (tüm veriyi değiştirir)</button>' : ''}
+      <button class="btn danger" data-act="logout">Çıkış yap</button>
     </div>`, 'narrow');
 }
 
@@ -2334,6 +2371,7 @@ function render() {
   if (DB.ui.view === 'roadmap' && !MOD('epic')) DB.ui.view = 'board';
   if ((DB.ui.view === 'admin' || DB.ui.view === 'system') && !isAdmin()) DB.ui.view = 'board';
   const v = VIEWS[DB.ui.view] || VIEWS.board;
+  if (location.hash.slice(1) !== DB.ui.view) try { history.replaceState(null, '', '#' + DB.ui.view); } catch (_) { }
   $('#crumb').textContent = `${P().key} · ${v.c}`;
   $('#title').textContent = v.t;
   $('#toolrow').innerHTML = v.tb();
@@ -2343,8 +2381,12 @@ function render() {
   const _u = CU(), _r = ROLES[_u.role || 'admin'];
   $('#whoami').innerHTML = `${avat(_u.id, 1)}
     <span class="nm"><b>${esc(_u.name)}</b><span style="${isSuper() ? 'color:var(--risk);font-weight:700' : ''}">${_r ? _r[0] : ''}</span></span>
+    <button class="iconbtn sm" id="btnMyPw" title="Parolamı değiştir" aria-label="Parolamı değiştir">🔑</button>
     <button class="btn sm" id="btnLogout" title="Oturumu kapat">Çıkış</button>`;
   $('#btnLogout').onclick = () => logout();
+  $('#btnMyPw').onclick = () => changePwForm(false);
+  $('#btnMerge').style.display = isAdmin() ? '' : 'none';
+  $('#btnImport').style.display = isAdmin() ? '' : 'none';
   renderFileBar();
   $$('.nav a, #vtabs button').forEach(a => a.classList.toggle('on', a.dataset.v === DB.ui.view));
   wireToolbar();
@@ -2436,7 +2478,10 @@ function wire() {
       closeModal(); save(); render(); return; }
     const ac2 = t.closest('[data-act]');
     if (ac2) { closeModal();
-      if (ac2.dataset.act === 'savefile') return saveToFile(false);
+      if (ac2.dataset.act === 'savefile') { closeModal(); return flushSync().then(() => toast(SYNC_STATE === 'ok' ? 'Kaydedildi' : 'Kaydedilemedi, tekrar denenecek')); }
+      if (ac2.dataset.act === 'pw') { closeModal(); return changePwForm(false); }
+      if (ac2.dataset.act === 'theme') { closeModal(); return cycleTheme(); }
+      if (ac2.dataset.act === 'logout') return logout();
       if (ac2.dataset.act === 'merge') return $('#mergeIn').click();
       const b2 = $({ export: '#btnExport', import: '#btnImport' }[ac2.dataset.act]);
       if (b2) b2.click(); return; }
@@ -2462,12 +2507,14 @@ function wire() {
     }
     const del = t.closest('[data-delwl]');
     if (del) { const w = DB.worklogs.find(x => x.id === del.dataset.delwl); const i = issue(w.issueId);
+      if (w.userId !== CU().id && !isAdmin()) return toast('Başkasının süre kaydını yalnızca yönetici silebilir');
+      if (!confirm(`${user(w.userId)?.name || ''} · ${fmtD(w.date)} · ${fmtDur(w.hours)} süre kaydı silinsin mi?`)) return;
       i.spent = Math.max(0, (i.spent || 0) - w.hours);
       if (!w.adj || w.adj === 'auto') i.remainingEst = remaining(i) + w.hours;
       DB.worklogs = DB.worklogs.filter(x => x.id !== w.id);
       save(); render(); if ($('#scrim').classList.contains('on')) openIssue(i.id); return; }
     const di = t.closest('[data-del]');
-    if (di) { if (!confirm('Bu iş ve tüm kayıtları silinsin mi?')) return;
+    if (di) { if (!confirm('Bu iş; yorumları, süre kayıtları ve geçmişiyle birlikte silinsin mi?\n\nYönetici gerekirse Sistem › Çöp kutusu’ndan geri yükleyebilir.')) return;
       const id = di.dataset.del;
       DB.issues = DB.issues.filter(x => x.id !== id);
       DB.worklogs = DB.worklogs.filter(x => x.issueId !== id);
@@ -2488,7 +2535,7 @@ function wire() {
 
   addEventListener('keydown', e => {
     if (e.key === 'Escape') closeModal();
-    if (e.key === 'c' && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName) && !e.target.isContentEditable
+    if (e.key === 'c' && !e.ctrlKey && !e.metaKey && canEdit() && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName) && !e.target.isContentEditable
         && !$('#scrim').classList.contains('on')) { e.preventDefault(); newIssueForm(); }
   });
   wireKeys();
@@ -2560,7 +2607,7 @@ function wire() {
       if (!data || !Array.isArray(data.issues)) return toast('Dosya okunamadı — geçerli bir Pano JSON’u seçin');
       toast('İçe aktarılıyor…');
       try {
-        await flushSync();
+        await flushAll();
         const st = await API.post('/api/import', { data });
         await reloadState();
         toast(`İçe aktarıldı: ${st.issues || 0} iş, ${st.worklogs || 0} süre kaydı, ${st.newUsers || 0} yeni kullanıcı` +
@@ -2594,8 +2641,8 @@ function boot() {
   if (location.hash.slice(1) in VIEWS) DB.ui.view = location.hash.slice(1);
   if (DB.cfg) { H_PER_DAY = DB.cfg.h || 8; D_PER_WEEK = DB.cfg.d || 5; }
   DB.issues.forEach(i => { if (i.remainingEst == null) i.remainingEst = Math.max(0, (i.estimate || 0) - (i.spent || 0)); });
-  $('#projSel').innerHTML = DB.projects.map(p =>
-    `<option value="${p.id}" ${p.id === DB.ui.project ? 'selected' : ''}>${p.key} — ${esc(p.name)}</option>`).join('');
+  $('#projSel').innerHTML = DB.projects.filter(p => canSeeProject(p) || p.id === DB.ui.project).map(p =>
+    `<option value="${p.id}" ${p.id === DB.ui.project ? 'selected' : ''}>${esc(p.name)}${p.archived ? ' (arşiv)' : ''}</option>`).join('');
   if (location.hash.slice(1) in VIEWS) DB.ui.view = location.hash.slice(1);
   render();
 }
@@ -3125,6 +3172,7 @@ function wireAdmin() {
   $$('[data-delst]').forEach(b => b.onclick = () => {
     const id = b.dataset.delst, used = issuesOf().filter(i => i.statusId === id);
     const other = stats().filter(s => s.id !== id);
+    if (!other.length) return toast('Projenin son durumu silinemez');
     if (used.length && !confirm(`${used.length} iş "${stat(id).name}" durumunda. Hepsi "${other[0].name}" durumuna taşınsın mı?`)) return;
     used.forEach(i => i.statusId = other[0].id);
     DB.statuses = DB.statuses.filter(s => s.id !== id);
@@ -3662,13 +3710,13 @@ function wireKeys() {
     const open = $('#scrim').classList.contains('on');
     if (GKEY) { GKEY = false;
       const map = { b: 'board', l: 'backlog', r: 'roadmap', t: 'timesheet', p: 'reports', a: 'search', s: 'admin', e: 'effort', h: 'home', j: 'projects', z: 'plan' };
-      if (map[e.key]) { e.preventDefault(); DB.ui.view = map[e.key]; save(); render(); }
+      if (map[e.key]) { e.preventDefault(); location.hash = map[e.key]; }
       return;
     }
     if (open) return;
     if (e.key === 'g') { GKEY = true; setTimeout(() => GKEY = false, 1200); return; }
     if (e.key === '?') { e.preventDefault(); return shortcutHelp(); }
-    if (e.key === 'w') { e.preventDefault(); return logWorkForm(); }
+    if (e.key === 'w' && canEdit()) { e.preventDefault(); return logWorkForm(); }
     if (e.key === '/') { e.preventDefault();
       const b = $('#q') || $('#pql');
       if (b) b.focus(); else { DB.ui.view = 'search'; save(); render(); $('#pql')?.focus(); } }
@@ -3891,7 +3939,7 @@ function showLogs(title, chip, logs, addCtx) {
         <span class="k" style="color:var(--ink3);width:64px">${issue(w.issueId)?.key || '—'}</span>
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(w.comment || issue(w.issueId)?.summary || '')}</span>
         <b class="num">${efFmt(w.hours)}</b>
-        ${canEdit() ? `<button class="btn sm danger" data-delwl="${w.id}">Sil</button>` : ''}</div>`).join('')}
+        ${canEdit() && (w.userId === CU().id || isAdmin()) ? `<button class="btn sm danger" data-delwl="${w.id}">Sil</button>` : ''}</div>`).join('')}
     </div>
     ${addCtx && canEdit() ? `<div class="m-f"><button class="btn" data-close>Kapat</button>
       <button class="btn pri" id="dl_add">+ Süre ekle</button></div>` : ''}`);
@@ -3994,7 +4042,7 @@ function ensureAccounts() {
     if (!u.role) u.role = k === 0 ? 'admin' : (k === DB.users.length - 1 ? 'viewer' : 'member');
     if (u.active === undefined) u.active = true;
   });
-  if (!DB.users.some(u => u.role === 'admin' && u.active)) DB.users[0].role = 'admin';
+  if (!DB.users.some(u => (u.role === 'admin' || u.role === 'super') && u.active) && DB.users[0]) DB.users[0].role = 'admin';
 }
 
 /* ---- oturum ---- */
@@ -4060,7 +4108,7 @@ function changePwForm(forced) {
 }
 
 async function logout() {
-  try { await flushSync(); } catch (e) { }
+  try { await flushAll(); } catch (e) { }
   try { await API.post('/api/auth/logout'); } catch (e) { }
   location.reload();
 }
@@ -4078,12 +4126,13 @@ function usersPanel() {
       <td class="who"><div style="display:flex;align-items:center;gap:8px">${avat(u.id)}
         <input class="inp" data-user="${u.id}" value="${esc(u.name)}" style="max-width:170px"></div></td>
       <td><input class="inp k" data-uname="${u.id}" value="${esc(u.username || '')}" style="max-width:120px"></td>
-      <td><select class="inp" data-urole="${u.id}" style="width:auto" ${u.id === CU().id ? 'disabled title="Kendi rolünüzü değiştiremezsiniz"' : ''}>
-        ${Object.entries(ROLES).filter(([v]) => v !== 'super' || isSuper()).map(([v, [l]]) =>
+      <td><select class="inp" data-urole="${u.id}" style="width:auto" ${u.id === CU().id ? 'disabled title="Kendi rolünüzü değiştiremezsiniz"'
+          : (u.role === 'super' && !isSuper()) ? 'disabled title="Süper yöneticiyi yalnızca süper yönetici değiştirebilir"' : ''}>
+        ${Object.entries(ROLES).filter(([v]) => v !== 'super' || isSuper() || u.role === 'super').map(([v, [l]]) =>
           `<option value="${v}" ${u.role === v ? 'selected' : ''}>${l}</option>`).join('')}</select></td>
       <td><input class="inp num" data-cap="${u.id}" value="${capOf(u)}" style="width:60px" title="Haftalık saat"></td>
       <td>${u.mustChange ? '<span class="chip cat-inprogress">varsayılan</span>' : '<span class="chip lbl">özel</span>'}
-        <button class="btn sm" data-pwreset="${u.id}">Sıfırla</button></td>
+        <button class="btn sm" data-pwreset="${u.id}" ${u.role === 'super' && !isSuper() ? 'disabled' : ''}>Sıfırla</button></td>
       <td><label style="display:flex;align-items:center;gap:5px;justify-content:center">
         <input type="checkbox" data-uactive="${u.id}" ${u.active ? 'checked' : ''} ${u.id === CU().id ? 'disabled' : ''}></label></td>
       <td><button class="btn sm danger" data-deluser="${u.id}" ${u.id === CU().id || (u.system && !isSuper()) ? 'disabled' : ''}>Sil</button></td>
@@ -4109,7 +4158,7 @@ function newUserForm() {
       <div class="form-2">
         <div class="form-row"><label class="field">Kullanıcı adı</label><input class="inp k" id="nu_u"></div>
         <div class="form-row"><label class="field">Rol</label><select class="inp" id="nu_r">
-          ${Object.entries(ROLES).map(([v, [l]]) => `<option value="${v}" ${v === 'member' ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+          ${Object.entries(ROLES).filter(([v]) => v !== 'super' || isSuper()).map(([v, [l]]) => `<option value="${v}" ${v === 'member' ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="form-row"><label class="field">Başlangıç parolası</label><input class="inp" id="nu_p" value="${esc(DEFAULT_PW)}"></div>
         <div class="form-row"><label class="field">Haftalık kapasite (saat)</label><input class="inp" id="nu_c" value="30"></div>
       </div>
@@ -4123,6 +4172,8 @@ function newUserForm() {
     const n = $('#nu_n').value.trim(), un = $('#nu_u').value.trim().toLowerCase();
     if (!n || !un) return $('#nu_err').textContent = 'Ad ve kullanıcı adı gerekli.';
     if (DB.users.some(u => u.username?.toLowerCase() === un)) return $('#nu_err').textContent = 'Bu kullanıcı adı kullanılıyor.';
+    if (!/^[a-z0-9._-]{2,40}$/.test(un)) return $('#nu_err').textContent = 'Kullanıcı adı: küçük harf, rakam, nokta, tire (2-40).';
+    if ($('#nu_p').value && $('#nu_p').value.length < 8) return $('#nu_err').textContent = 'Başlangıç parolası en az 8 karakter olmalı.';
     const colors = ['#1F6F5C', '#6B4FBB', '#C0392B', '#B45309', '#3E7BC4', '#2B7A78', '#8E44AD'];
     const nid = uid('u'), npw = $('#nu_p').value;
     DB.users.push({ id: nid, name: n, username: un, role: $('#nu_r').value,
@@ -4131,7 +4182,7 @@ function newUserForm() {
       active: true, mustChange: true });
     closeModal(); save(); render();
     (async () => {
-      await flushSync();
+      await flushAll();
       if (npw && npw !== DEFAULT_PW) {
         try { await API.post('/api/users/' + nid + '/password', { password: npw }); }
         catch (e) { return toast('Kullanıcı eklendi ama parola ayarlanamadı: ' + e.message); }
@@ -4151,19 +4202,19 @@ function wireUsers() {
   $$('[data-urole]').forEach(el => el.onchange = () => {
     const u = user(el.dataset.urole), prev = u.role;
     u.role = el.value;
-    if (!DB.users.some(x => x.role === 'admin' && x.active)) { u.role = prev; toast('En az bir aktif yönetici kalmalı'); }
+    if (!DB.users.some(x => (x.role === 'admin' || x.role === 'super') && x.active)) { u.role = prev; toast('En az bir aktif yönetici kalmalı'); }
     save(); render();
   });
   $$('[data-uactive]').forEach(c => c.onchange = () => {
     const u = user(c.dataset.uactive); u.active = c.checked;
-    if (!DB.users.some(x => x.role === 'admin' && x.active)) { u.active = true; toast('En az bir aktif yönetici kalmalı'); }
+    if (!DB.users.some(x => (x.role === 'admin' || x.role === 'super') && x.active)) { u.active = true; toast('En az bir aktif yönetici kalmalı'); }
     save(); render();
   });
   $$('[data-pwreset]').forEach(b => b.onclick = () => {
     const u = user(b.dataset.pwreset);
     if (!confirm(`${u.name} kullanıcısının parolası "${DEFAULT_PW}" olarak sıfırlansın mı?`)) return;
     (async () => {
-      try { await flushSync(); await API.post('/api/users/' + u.id + '/password', {}); }
+      try { await flushAll(); await API.post('/api/users/' + u.id + '/password', {}); }
       catch (e) { return toast('Parola sıfırlanamadı: ' + e.message); }
       u.mustChange = true; SNAP.rec.users?.set(u.id, cj(u)); render(); toast('Parola sıfırlandı');
     })();
@@ -5290,6 +5341,7 @@ function worklogForm(opts = {}) {
     const note = $('#w_c').value.trim();
     const err = m => $('#w_err').textContent = m;
     if (!h) return err('Geçerli bir süre girin, örn. 3h 30m');
+    if ($('#w_d') && !/^\d{4}-\d{2}-\d{2}$/.test($('#w_d').value)) return err('Tarih seçin');
     if (!note) return err('Not zorunludur — yapılan işi kısaca yazın.');
     const i = issue($('#w_i').value);
     if (!i) return err('İş seçilmedi');
@@ -5860,8 +5912,47 @@ async function loadSystem() {
   } catch (e) { el.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
 }
 
+function forcedPasswordScreen() {
+  document.body.classList.add('locked');
+  $('#login').style.display = 'flex';
+  $('#login').innerHTML = `
+    <form class="loginbox" id="fpForm">
+      <div class="lg-brand"><div><b>Parolanızı belirleyin</b><span>Merhaba ${esc(ME.name || ME.username)}, ilk girişiniz</span></div></div>
+      <p style="margin:0 0 14px;color:var(--ink2);font-size:13px">Devam etmek için size verilen başlangıç parolası yerine
+        kendi parolanızı belirleyin. En az 8 karakter.</p>
+      <label class="field">Yeni parola</label>
+      <input class="inp" id="fp_a" type="password" autocomplete="new-password">
+      <label class="field" style="margin-top:10px">Yeni parola (tekrar)</label>
+      <input class="inp" id="fp_b" type="password" autocomplete="new-password">
+      <div id="fp_err" class="lg-err"></div>
+      <button class="btn pri" type="submit" style="width:100%;margin-top:12px;padding:9px">Kaydet ve devam et</button>
+      <button class="btn" type="button" id="fp_out" style="width:100%;margin-top:8px;justify-content:center">Çıkış yap</button>
+    </form>`;
+  $('#fp_a').focus();
+  $('#fp_out').onclick = () => logout();
+  $('#fpForm').onsubmit = async e => {
+    e.preventDefault();
+    const a = $('#fp_a').value, b = $('#fp_b').value, err = m => $('#fp_err').textContent = m;
+    if (a.length < 8) return err('Parola en az 8 karakter olmalı.');
+    if (a !== b) return err('Parolalar eşleşmiyor.');
+    try { await API.post('/api/auth/password', { newPassword: a }); }
+    catch (x) { return err(x.message); }
+    ME.mustChange = false;
+    toast('Parolanız kaydedildi');
+    enterApp(true, true);
+  };
+}
+
 let WIRED = false;
 async function enterApp(useHash, fromLogin) {
+  if (ME.mustChange) return forcedPasswordScreen();
+  if (LOST) {
+    const L = LOST; LOST = null;
+    if (L.user === ME.id) {
+      try { await API.post('/api/sync', { changes: L.changes }); toast('Oturum kapanmadan önceki değişiklikleriniz kaydedildi'); }
+      catch (e) { toast('Önceki değişiklikler kaydedilemedi: ' + e.message); }
+    }
+  }
   try { DB = await load(); }
   catch (e) { return showLogin(e.status === 401 ? '' : 'Sunucuya bağlanılamadı: ' + e.message); }
   if (!WIRED) { wire(); wireTopbar(); WIRED = true; }
@@ -5875,7 +5966,6 @@ async function enterApp(useHash, fromLogin) {
   save();
   renderFileBar();
   startPolling(); poll();
-  if (ME.mustChange) changePwForm(true);
 }
 
 (async () => {

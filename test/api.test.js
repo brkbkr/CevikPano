@@ -138,6 +138,7 @@ t('yetki: izleyici veri değiştiremez ama kendi ekran tercihini kaydedebilir', 
   await a.sync([{ c: 'users', id: 'u_viewer', op: 'put', data: { username: 'izci', name: 'İzci', role: 'viewer', active: true } }]);
   const v = client();
   await v.login('izci', 'Start12345');
+  await v.req('POST', '/api/auth/password', { newPassword: 'IzciYeni12345' });
   const r = await v.sync([
     { c: 'issues', id: 'i_v', op: 'put', data: { projectId: 'p1', summary: 'yasak' } },
     { c: '_prefs', id: 'ui', op: 'put', data: { view: 'board' } },
@@ -270,6 +271,7 @@ t('bildirim: atama, yorum ve @bahsetme', async () => {
   await a.sync([{ c: 'issues', id: 'i_n', op: 'put', data: { projectId: 'p1', key: 'GEN-80', summary: 'Bildirim', assignee: 'u_n', reporter: 'u_admin' } }]);
   await a.sync([{ c: 'comments', id: 'c_n', op: 'put', data: { issueId: 'i_n', userId: 'u_admin', body: 'Bakar mısın @nur' } }]);
   const n = client(); await n.login('nur', 'Start12345');
+  await n.req('POST', '/api/auth/password', { newPassword: 'NurYeni12345' });
   const r = (await n.req('GET', '/api/notifications')).json;
   assert.equal(r.unread, 2);
   assert.deepEqual(r.items.map(x => x.kind).sort(), ['assigned', 'mention']);
@@ -281,7 +283,79 @@ t('bildirim: atama, yorum ve @bahsetme', async () => {
 });
 
 t('yönetici araçları üyeye kapalı', async () => {
-  const n = client(); await n.login('nur', 'Start12345');
+  const n = client(); await n.login('nur', 'NurYeni12345');
   for (const p of ['/api/backups', '/api/trash', '/api/activity']) assert.equal((await n.req('GET', p)).status, 403);
   assert.equal((await n.req('POST', '/api/import', { data: {} })).status, 403);
+});
+
+/* ---------------- QA bulguları ---------------- */
+
+t('zorunlu parola değişimi sunucuda uygulanır', async () => {
+  const a = client(); await a.login('admin', 'test-admin-pw');
+  await a.sync([{ c: 'users', id: 'u_mc', op: 'put', data: { username: 'mc', name: 'MC', role: 'member', active: true } }]);
+  const m = client(); await m.login('mc', 'Start12345');
+  assert.equal((await m.state()).status, 403);
+  assert.equal((await m.sync([])).status, 403);
+  assert.equal((await m.req('GET', '/api/auth/me')).status, 200);
+  await m.req('POST', '/api/auth/password', { newPassword: 'McYeni12345' });
+  assert.equal((await m.state()).status, 200);
+});
+
+t('yetki: üye proje yapılandırmasını ve başkasının süre kaydını değiştiremez', async () => {
+  const a = client(); await a.login('admin', 'test-admin-pw');
+  await a.sync([
+    { c: 'projects', id: 'p_y', op: 'put', data: { key: 'YT', name: 'Yetki', counter: 0 } },
+    { c: 'issues', id: 'i_y', op: 'put', data: { projectId: 'p_y', key: 'YT-1', summary: 'y' } },
+    { c: 'worklogs', id: 'w_adm', op: 'put', data: { issueId: 'i_y', userId: 'u_admin', date: '2026-02-02', hours: 3 } },
+  ]);
+  const m = client(); await m.login('mc', 'McYeni12345');
+  let r = await m.sync([
+    { c: 'projects', id: 'p_y', op: 'del' },
+    { c: 'statuses', id: 'st_x', op: 'put', data: { projectId: 'p_y', name: 'X', cat: 'todo' } },
+    { c: '_settings', id: 'cfg', op: 'put', data: { h: 1 } },
+    { c: 'worklogs', id: 'w_adm', op: 'del' },
+    { c: 'worklogs', id: 'w_fake', op: 'put', data: { issueId: 'i_y', userId: 'u_admin', date: '2026-02-02', hours: 1 } },
+  ]);
+  assert.equal(r.json.applied, 0);
+  assert.equal(r.json.rejected.length, 5);
+  r = await m.sync([
+    { c: 'worklogs', id: 'w_mc', op: 'put', data: { issueId: 'i_y', userId: 'u_mc', date: '2026-02-02', hours: 2 } },
+    { c: 'issues', id: 'i_y2', op: 'put', data: { projectId: 'p_y', key: 'YT-2', summary: 'üye açtı' } },
+  ]);
+  assert.equal(r.json.rejected.length, 0);
+});
+
+t('harcanan süre sunucuda süre kayıtlarından hesaplanır', async () => {
+  const a = client(); await a.login('admin', 'test-admin-pw');
+  /* İstemci eski spent değeriyle işi gönderse bile sonuç doğru kalır. */
+  await a.sync([{ c: 'issues', id: 'i_y', op: 'put', data: { projectId: 'p_y', key: 'YT-1', summary: 'y', spent: 999, estimate: 10 } }]);
+  const d = (await pool.query(`SELECT data FROM issues WHERE id='i_y'`)).rows[0].data;
+  assert.equal(d.spent, 5);   // 3 (admin) + 2 (mc)
+});
+
+t('iş silinince bağlı kayıtlar çöp kutusuna gider, alt işlerin bağı kopar', async () => {
+  const a = client(); await a.login('admin', 'test-admin-pw');
+  await a.sync([
+    { c: 'issues', id: 'i_sub', op: 'put', data: { projectId: 'p_y', key: 'YT-3', summary: 'alt', parentId: 'i_y' } },
+    { c: 'links', id: 'l_y', op: 'put', data: { from: 'i_y', to: 'i_sub', type: 'blocks' } },
+    { c: 'history', id: 'h_y', op: 'put', data: { issueId: 'i_y', field: 'Durum' } },
+  ]);
+  await a.sync([{ c: 'issues', id: 'i_y', op: 'del' }]);
+  for (const t of ['worklogs', 'history', 'links']) {
+    const n = (await pool.query(`SELECT count(*) n FROM ${t} WHERE ${t === 'links' ? "from_issue='i_y'" : "issue_id='i_y'"}`)).rows[0].n;
+    assert.equal(n, '0', t);
+  }
+  assert.equal((await pool.query(`SELECT parent_id FROM issues WHERE id='i_sub'`)).rows[0].parent_id, null);
+  const trash = (await a.req('GET', '/api/trash')).json.find(x => x.record_id === 'i_y');
+  assert.ok(Number(trash.batch_size) >= 5);
+  await a.req('POST', `/api/trash/${trash.id}/restore`, {});
+  assert.equal((await pool.query(`SELECT count(*) n FROM worklogs WHERE issue_id='i_y'`)).rows[0].n, '2');
+});
+
+t('kullanıcı görünüm alanları doğrulanır (XSS)', async () => {
+  const m = client(); await m.login('mc', 'McYeni12345');
+  const r = await m.sync([{ c: 'users', id: 'u_mc', op: 'put', data: { username: 'mc', name: 'MC', ini: '<img src=x>', color: 'red;x' } }]);
+  assert.equal(r.json.rejected.length, 1);
+  const r2 = await m.sync([{ c: 'issues', id: 'i_x', op: 'put', data: { projectId: 'p_y', key: '<b>-1', summary: 's' } }]);
+  assert.equal(r2.json.rejected.length, 1);
 });

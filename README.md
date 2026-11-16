@@ -11,16 +11,24 @@ Bu sürümde:
 - **Gerçek giriş sistemi** var: parolalar sunucuda bcrypt ile saklanıyor, oturum çerezi httpOnly.
 - **Aynı anda çalışma** destekleniyor: her kayıtta yalnızca değişen kayıtlar gönderiliyor,
   başka kullanıcıların değişiklikleri birkaç saniyede bir ekrana geliyor. Check-in/check-out yok.
-- Ön yüz, mevcut uygulamanın arayüzünün aynısı (`public/index.html`).
+- **Veri güvenliği:** aynı kayıtta alan düzeyinde birleştirme, çöp kutusu, günlük otomatik yedek,
+  içe aktarma ve geri yükleme öncesi otomatik yedek, kayıt doğrulama, değişiklik günlüğü.
+- **Bildirimler:** iş atandığında, işine yorum yapıldığında, `@kullanıcıadı` ile bahsedildiğinde.
+  Kimin çevrim içi olduğu ve aynı işe kimin baktığı görünür.
+- **Yeni arayüz:** modern tasarım, koyu tema, mobil uyum.
+
+Ürün analizi ve yol haritası: [docs/URUN.md](docs/URUN.md)
 
 ## Klasörler
 
 | Yol | İçerik |
 |---|---|
-| `server/` | Arka uç: `app.js` (API yolları), `auth.js` (giriş/oturum/parola), `store.js` (veri okuma-yazma, yetki), `schema.sql` (veritabanı şeması) |
+| `server/` | Arka uç: `app.js` (API yolları), `auth.js` (giriş/oturum/parola), `store.js` (veri okuma-yazma, yetki, birleştirme), `backup.js` (yedek, içe aktarma, çöp kutusu, etkinlik), `notify.js` (bildirimler), `validate.js` (kayıt doğrulama) |
+| `server/migrations/` | Sürümlü veritabanı şeması (`001_init.sql`, `002_robust.sql` ...), açılışta sırayla uygulanır |
 | `public/index.html` | Ön yüz (tek dosya) |
 | `legacy/` | SharePoint'te çalışan orijinal sürüm (referans için) |
-| `test/` | API testleri |
+| `test/` | API testleri (`api.test.js`), tarayıcı regresyon testi (`e2e/regresyon.cjs`), demo veri (`fixtures/demo.json`) |
+| `scripts/seed-demo.mjs` | Demo ya da eski JSON veriyi API üzerinden yükler |
 | `render.yaml` | Render.com'a tek tıkla kurulum tanımı |
 | `Dockerfile` | Herhangi bir sunucuda çalıştırmak için imaj |
 
@@ -78,6 +86,8 @@ HTTPS için önüne Caddy ya da Nginx koyun.
 npm install
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/pano_dev ADMIN_PASSWORD=admin12345 npm run dev
 TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/pano_test npm test   # test veritabanını sıfırlar
+node scripts/seed-demo.mjs http://localhost:3000 test/fixtures/demo.json admin admin12345   # demo veri
+node test/e2e/regresyon.cjs   # tarayıcı testi (temiz veritabanı + demo veri ister, bkz. dosya başı)
 ```
 
 ## Veritabanı yapısı
@@ -85,7 +95,16 @@ TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/pano_test npm test
 Her kayıt türünün kendi tablosu var: `users`, `projects`, `statuses`, `sprints`, `issues`,
 `worklogs`, `comments`, `history`, `transitions`, `links`, `fields`, `rules`, `filters`,
 ayrıca `settings` (genel ayarlar), `user_prefs` (kişisel ekran tercihleri), `sessions` (oturumlar),
-`changes` (değişiklik günlüğü — canlı güncelleme ve denetim için).
+`changes` (değişiklik günlüğü — canlı güncelleme ve denetim için), `deleted_records` (çöp kutusu),
+`snapshots` (yedekler), `notifications` (bildirimler), `schema_migrations` (uygulanan şema sürümleri).
+
+Bütünlük kuralları:
+- Bir projede aynı iş anahtarı (PANO-12) iki kez olamaz (benzersiz indeks); çakışmada sunucu yeni numara verir.
+- İşin harcanan süresi sunucuda süre kayıtlarının toplamından hesaplanır.
+- İş silinince yorumları, süre kayıtları, geçmişi ve bağlantıları aynı işlemde çöp kutusuna taşınır;
+  geri yüklenince hepsi birlikte döner.
+- İki kişi aynı işin farklı alanlarını aynı anda değiştirirse ikisinin değişikliği de korunur
+  (istemci değişiklikten önceki hâli `base` olarak gönderir, sunucu üç yönlü birleştirir).
 
 Kaydın tamamı `data` (jsonb) sütununda; ilişki ve sorgu için gereken alanlar
 (`project_id`, `status_id`, `assignee_id`, `sprint_id`, `issue_id`, `user_id`, `work_date` ...)
@@ -113,6 +132,11 @@ GROUP BY u.name ORDER BY saat DESC;
 | `GET /api/changes?since=N` | N'den sonra değişen kayıtlar |
 | `POST /api/sync` | `{changes:[{c, id, op:'put'|'del', data}]}` değişiklikleri yaz |
 | `GET /api/export` | (yönetici) tam JSON yedeği |
+| `POST /api/import` | (yönetici) `{data}` tüm veriyi değiştirir; önce otomatik yedek alır, hesapları silmez |
+| `GET/POST /api/backups`, `GET /api/backups/:id`, `POST /api/backups/:id/restore` | (yönetici) yedekler |
+| `GET /api/trash`, `POST /api/trash/:id/restore` | (yönetici) çöp kutusu |
+| `GET /api/activity` | (yönetici) son değişiklikler |
+| `GET /api/notifications`, `POST /api/notifications/read` | bildirimler |
 | `GET /healthz` | Sağlık kontrolü |
 
 Değişiklik yapan tüm isteklerde `x-pano: 1` başlığı zorunlu (CSRF koruması).
@@ -123,5 +147,5 @@ Değişiklik yapan tüm isteklerde `x-pano: 1` başlığı zorunlu (CSRF korumas
 |---|---|
 | Süper yönetici | Her şey (ilk `admin` kullanıcısı bu roldedir) |
 | Yönetici | Kullanıcı ekler/siler, parola sıfırlar, rol verir, içe aktarır |
-| Üye | İş oluşturur, düzenler, süre kaydeder; yalnızca kendi profilini değiştirir |
+| Üye | İş ve proje oluşturur/düzenler, kendi süresini kaydeder; durum, alan, otomasyon ve genel ayarları değiştiremez, proje silemez, başkasının süre kaydına dokunamaz |
 | İzleyici | Yalnızca görüntüler |
