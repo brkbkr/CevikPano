@@ -3,6 +3,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { authRoutes, requireUser, meOf } from './auth.js';
 import { readState, readChanges, applyChanges, HttpError } from './store.js';
+import { listNotifications, unreadCount, markRead } from './notify.js';
+import { createSnapshot, listSnapshots, getSnapshot, replaceAll, listTrash, restoreTrash, activity } from './backup.js';
+import { isAdminRole } from './util.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(here, '..', 'public');
@@ -55,11 +58,53 @@ export function createApp(pool) {
     res.json({ ...st, me: meOf(req.user) });
   });
 
+  /* Kim çevrim içi: son 30 sn'de değişiklik soran kullanıcılar (bellekte tutulur). */
+  const presence = new Map();
+  const online = () => {
+    const now = Date.now(), out = [];
+    for (const [id, p] of presence) { if (now - p.at < 30e3) out.push({ id, view: p.view, issue: p.issue }); else presence.delete(id); }
+    return out;
+  };
+
   app.get('/api/changes', requireUser, async (req, res) => {
     const since = Math.max(0, Number(req.query.since) || 0);
+    presence.set(req.user.id, { at: Date.now(), view: String(req.query.view || '').slice(0, 30),
+      issue: String(req.query.issue || '').slice(0, 200) });
     res.setHeader('Cache-Control', 'no-store');
-    res.json(await readChanges(pool, since));
+    res.json({ ...(await readChanges(pool, since)), unread: await unreadCount(pool, req.user.id), online: online() });
   });
+
+  app.get('/api/notifications', requireUser, async (req, res) => {
+    res.json({ items: await listNotifications(pool, req.user.id), unread: await unreadCount(pool, req.user.id) });
+  });
+  app.post('/api/notifications/read', requireUser, async (req, res) => {
+    await markRead(pool, req.user.id, req.body?.ids === 'all' ? 'all' : req.body?.ids);
+    res.json({ unread: await unreadCount(pool, req.user.id) });
+  });
+
+  /* ---- yönetici araçları ---- */
+  const requireAdmin = (req, _res, next) => next(isAdminRole(req.user?.role) ? undefined : new HttpError(403, 'Yalnızca yöneticiler'));
+
+  app.post('/api/import', requireUser, requireAdmin, async (req, res) => {
+    res.json(await replaceAll(pool, req.user, req.body?.data, 'import'));
+  });
+  app.get('/api/backups', requireUser, requireAdmin, async (_req, res) => res.json(await listSnapshots(pool)));
+  app.post('/api/backups', requireUser, requireAdmin, async (req, res) => {
+    res.json(await createSnapshot(pool, 'manual', req.user.id, String(req.body?.label || 'Elle alınan yedek').slice(0, 200)));
+  });
+  app.get('/api/backups/:id', requireUser, requireAdmin, async (req, res) => {
+    const s = await getSnapshot(pool, req.params.id);
+    res.setHeader('Content-Disposition', `attachment; filename="pano-yedek-${req.params.id}-${new Date(s.created_at).toISOString().slice(0, 10)}.json"`);
+    res.json(s.data);
+  });
+  app.post('/api/backups/:id/restore', requireUser, requireAdmin, async (req, res) => {
+    const s = await getSnapshot(pool, req.params.id);
+    res.json(await replaceAll(pool, req.user, s.data, 'restore'));
+  });
+  app.get('/api/trash', requireUser, requireAdmin, async (_req, res) => res.json(await listTrash(pool)));
+  app.post('/api/trash/:id/restore', requireUser, requireAdmin, async (req, res) => res.json(await restoreTrash(pool, req.user, req.params.id)));
+  app.get('/api/activity', requireUser, requireAdmin, async (req, res) =>
+    res.json(await activity(pool, Math.min(500, Number(req.query.limit) || 200))));
 
   app.post('/api/sync', requireUser, async (req, res) => {
     res.json(await applyChanges(pool, req.user, req.body?.changes));
@@ -67,8 +112,9 @@ export function createApp(pool) {
 
   /* Tam yedek (yönetici). Parola özetleri dahil edilmez. */
   app.get('/api/export', requireUser, async (req, res) => {
-    if (!['admin', 'super'].includes(req.user.role)) throw new HttpError(403, 'Yalnızca yöneticiler');
+    if (!isAdminRole(req.user.role)) throw new HttpError(403, 'Yalnızca yöneticiler');
     const { data } = await readState(pool, req.user);
+    for (const k of ['ui', 'board', 'open']) delete data[k];
     res.setHeader('Content-Disposition', `attachment; filename="pano-yedek-${new Date().toISOString().slice(0, 10)}.json"`);
     res.json(data);
   });

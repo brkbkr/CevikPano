@@ -1,14 +1,15 @@
 import bcrypt from 'bcryptjs';
+import { randomUUID } from 'node:crypto';
 import { TABLES, PREF_KEYS, IGNORED_KEYS, tx } from './db.js';
+import { HttpError, cj, same, merge3, isAdminRole } from './util.js';
+import { validate } from './validate.js';
+import { notifyForIssue, notifyForComment } from './notify.js';
 
-export class HttpError extends Error {
-  constructor(status, message) { super(message); this.status = status; }
-}
+export { HttpError };
 
 export const DEFAULT_USER_PASSWORD = () => process.env.DEFAULT_USER_PASSWORD || 'Pano2026!';
 const SECRET_USER_KEYS = ['pw', 'salt', 'mustChange', 'password', 'password_hash', 'passwordHash'];
 const USER_COLS = ['id', 'username', 'name', 'role', 'active', 'system'];
-const isAdminRole = r => r === 'admin' || r === 'super';
 const ROLES = ['super', 'admin', 'member', 'viewer'];
 
 /* ---- kullanıcıyı istemciye gönderilecek biçime çevir (parola özeti yok) ---- */
@@ -20,22 +21,30 @@ export function publicUser(row) {
   };
 }
 
-/* ---- tüm durumu oku (tek tutarlı anlık görüntü) ---- */
+const maxSeq = async db => Number((await db.query('SELECT coalesce(max(seq),0) AS s FROM changes')).rows[0].s);
+
+/* ---- tüm veri (yedek / dışa aktarma için; kişisel tercihler hariç) ---- */
+export async function readAll(db) {
+  const data = {};
+  data.users = (await db.query('SELECT * FROM users ORDER BY ord')).rows.map(publicUser);
+  for (const [col, table] of Object.entries(TABLES)) {
+    data[col] = (await db.query(`SELECT data FROM ${table} ORDER BY ord`)).rows.map(r => r.data);
+  }
+  for (const r of (await db.query('SELECT collection, data FROM misc_records ORDER BY ord')).rows) {
+    (data[r.collection] ||= []).push(r.data);
+  }
+  for (const r of (await db.query('SELECT key, value FROM settings')).rows) data[r.key] = r.value;
+  return data;
+}
+
+/* ---- oturum açan kullanıcı için tüm durum (tek tutarlı anlık görüntü) ---- */
 export async function readState(pool, me) {
   return tx(pool, async c => {
     await c.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
-    const seq = Number((await c.query('SELECT coalesce(max(seq),0) AS s FROM changes')).rows[0].s);
-    const data = {};
-    data.users = (await c.query('SELECT * FROM users ORDER BY ord')).rows.map(publicUser);
-    for (const [col, table] of Object.entries(TABLES)) {
-      data[col] = (await c.query(`SELECT data FROM ${table} ORDER BY ord`)).rows.map(r => r.data);
-    }
-    for (const r of (await c.query('SELECT collection, data FROM misc_records ORDER BY ord')).rows) {
-      (data[r.collection] ||= []).push(r.data);
-    }
-    for (const r of (await c.query('SELECT key, value FROM settings')).rows) data[r.key] = r.value;
+    const seq = await maxSeq(c);
+    const data = await readAll(c);
     const pr = (await c.query('SELECT data FROM user_prefs WHERE user_id=$1', [me.id])).rows[0];
-    for (const k of PREF_KEYS) if (pr?.data?.[k] !== undefined) data[k] = pr.data[k];
+    for (const k of PREF_KEYS) if (pr?.data?.[k] !== undefined && pr.data[k] !== null) data[k] = pr.data[k];
     return { seq, data };
   });
 }
@@ -45,10 +54,11 @@ export async function readChanges(pool, since) {
   const { rows } = await pool.query(
     `SELECT DISTINCT ON (collection, record_id) seq, collection, record_id, op
        FROM changes WHERE seq > $1 ORDER BY collection, record_id, seq DESC`, [since]);
-  const max = Number((await pool.query('SELECT coalesce(max(seq),0) AS s FROM changes')).rows[0].s);
+  const max = await maxSeq(pool);
   const items = [];
   for (const r of rows) {
     const it = { c: r.collection, id: r.record_id, op: r.op, seq: Number(r.seq) };
+    if (r.collection === '_reload') { items.push(it); continue; }
     if (r.op === 'put') {
       const d = await readOne(pool, r.collection, r.record_id);
       if (d === undefined) it.op = 'del'; else it.data = d;
@@ -56,6 +66,8 @@ export async function readChanges(pool, since) {
     items.push(it);
   }
   items.sort((a, b) => a.seq - b.seq);
+  /* Toplu değişiklik (geri yükleme / içe aktarma) olduysa istemci her şeyi yeniden yüklesin. */
+  if (items.some(i => i.c === '_reload')) return { seq: max, reload: true, items: [] };
   return { seq: max, items };
 }
 
@@ -69,29 +81,35 @@ async function readOne(db, c, id) {
   return (await db.query('SELECT data FROM misc_records WHERE collection=$1 AND id=$2', [c, id])).rows[0]?.data;
 }
 
-const logChange = (c, collection, id, op, uid) =>
-  c.query('INSERT INTO changes (collection, record_id, op, user_id) VALUES ($1,$2,$3,$4)', [collection, id, op, uid]);
+export const logChange = (c, collection, id, op, uid, batch) =>
+  c.query('INSERT INTO changes (collection, record_id, op, user_id, batch_id) VALUES ($1,$2,$3,$4,$5)',
+    [collection, id, op, uid, batch || null]);
 
 /* ---- istemciden gelen değişiklikleri uygula ----
-   changes: [{ c: 'issues', id: 'i_x', op: 'put'|'del', data: {...} }]
+   changes: [{ c: 'issues', id: 'i_x', op: 'put'|'del', data: {...}, base: {...} }]
+   base: istemcinin değişiklikten önce gördüğü hâl. Veritabanındaki kayıt bu arada
+   başkası tarafından değiştirildiyse alan düzeyinde birleştirilir.
    c === '_settings' → genel ayar (id = anahtar), c === '_prefs' → kişisel tercih.
-   Yetkisiz ya da geçersiz değişiklikler atlanır ve `rejected` içinde döner. */
+   Yetkisiz ya da geçersiz değişiklikler atlanır ve `rejected` içinde döner;
+   sunucunun değiştirdiği kayıtlar (birleştirme, iş anahtarı) `adjusted` içinde döner. */
 export async function applyChanges(pool, me, changes) {
   if (!Array.isArray(changes)) throw new HttpError(400, 'changes dizi olmalı');
   if (changes.length > 5000) throw new HttpError(413, 'Tek seferde en fazla 5000 değişiklik gönderilebilir');
-  const rejected = [];
+  const rejected = [], adjusted = [];
   let applied = 0;
   const canEdit = me.role !== 'viewer';
+  const batch = randomUUID();
+  const ctx = { me, batch, adjusted };
 
   await tx(pool, async c => {
     for (const ch of changes) {
       const reject = reason => rejected.push({ c: ch?.c, id: ch?.id, reason });
       if (!ch || typeof ch.c !== 'string' || typeof ch.id !== 'string' || !ch.id || ch.id.length > 200
-          || ch.c.length > 60 || !['put', 'del'].includes(ch.op)) { reject('geçersiz'); continue; }
+          || ch.c.length > 60 || !/^[\w$-]+$/.test(ch.c) || !['put', 'del'].includes(ch.op)) { reject('geçersiz'); continue; }
       if (ch.op === 'put' && ch.data === undefined) { reject('veri yok'); continue; }
       if (ch.op === 'put' && !['_prefs', '_settings'].includes(ch.c)
           && (ch.data === null || typeof ch.data !== 'object' || Array.isArray(ch.data))) { reject('veri nesne olmalı'); continue; }
-      if (IGNORED_KEYS.includes(ch.c)) continue;
+      if (IGNORED_KEYS.includes(ch.c) || ch.c === '_reload') continue;
 
       if (ch.c === '_prefs') {                       // herkes kendi tercihini yazar
         if (!PREF_KEYS.includes(ch.id)) { reject('geçersiz tercih'); continue; }
@@ -105,15 +123,15 @@ export async function applyChanges(pool, me, changes) {
 
       await c.query('SAVEPOINT ch');
       try {
-        const changed = ch.c === 'users' ? await applyUser(c, me, ch)
-          : ch.c === '_settings' ? await applySetting(c, me, ch)
-          : await applyRecord(c, me, ch);
-        if (changed) { await logChange(c, ch.c, ch.id, ch.op, me.id); applied++; }
+        const changed = ch.c === 'users' ? await applyUser(c, ctx, ch)
+          : ch.c === '_settings' ? await applySetting(c, ctx, ch)
+          : await applyRecord(c, ctx, ch);
+        if (changed) { await logChange(c, ch.c, ch.id, ch.op, me.id, batch); applied++; }
         await c.query('RELEASE SAVEPOINT ch');
       } catch (e) {
         await c.query('ROLLBACK TO SAVEPOINT ch');
         if (e instanceof HttpError) reject(e.message);
-        else if (e.code === '23505') reject('benzersizlik ihlali (ör. kullanıcı adı kullanılıyor)');
+        else if (e.code === '23505') reject(/username/.test(e.constraint || '') ? 'Bu kullanıcı adı kullanılıyor' : 'Bu kayıt zaten var (benzersizlik ihlali)');
         else throw e;
       }
     }
@@ -121,46 +139,111 @@ export async function applyChanges(pool, me, changes) {
       `SELECT count(*) AS n FROM users WHERE active AND role IN ('admin','super')`)).rows[0].n);
     if (admins < 1) throw new HttpError(409, 'En az bir aktif yönetici kalmalı');
   });
-  const seq = Number((await pool.query('SELECT coalesce(max(seq),0) AS s FROM changes')).rows[0].s);
-  return { applied, rejected, seq };
+  return { applied, rejected, adjusted, seq: await maxSeq(pool) };
 }
 
-async function applyRecord(c, me, ch) {
+async function applyRecord(c, ctx, ch) {
+  const { me, batch } = ctx;
   const table = TABLES[ch.c];
+  const sel = table
+    ? await c.query(`SELECT data FROM ${table} WHERE id=$1 FOR UPDATE`, [ch.id])
+    : await c.query('SELECT data FROM misc_records WHERE collection=$1 AND id=$2 FOR UPDATE', [ch.c, ch.id]);
+  const cur = sel.rows[0]?.data;
+
   if (ch.op === 'del') {
-    const r = table
-      ? await c.query(`DELETE FROM ${table} WHERE id=$1`, [ch.id])
-      : await c.query('DELETE FROM misc_records WHERE collection=$1 AND id=$2', [ch.c, ch.id]);
-    return r.rowCount > 0;
+    if (!cur) return false;
+    await c.query(`INSERT INTO deleted_records (collection, record_id, data, batch_id, deleted_by)
+      VALUES ($1,$2,$3::jsonb,$4,$5)`, [ch.c, ch.id, JSON.stringify(cur), batch, me.id]);
+    if (table) await c.query(`DELETE FROM ${table} WHERE id=$1`, [ch.id]);
+    else await c.query('DELETE FROM misc_records WHERE collection=$1 AND id=$2', [ch.c, ch.id]);
+    return true;
   }
-  const data = { id: ch.id, ...ch.data };
+
+  let data = { id: ch.id, ...ch.data };
+  data.id = ch.id;
+  let adjusted = false;
+  if (cur && ch.base && typeof ch.base === 'object' && !same(cur, ch.base)) {
+    data = merge3(ch.base, data, cur);              // başkası bu arada değiştirmiş
+    adjusted = true;
+  }
+  if (ch.c === 'projects' && cur) {                 // iş sayacı geri gitmesin
+    const n = Math.max(Number(cur.counter) || 0, Number(data.counter) || 0);
+    if (n !== data.counter) { data.counter = n; adjusted = true; }
+  }
+  validate(ch.c, data);
+  if (ch.c === 'issues' && await ensureIssueKey(c, ctx, data, cur)) adjusted = true;
+  if (cur && same(cur, data)) { if (adjusted) ctx.adjusted.push({ c: ch.c, id: ch.id }); return false; }
+
   const json = JSON.stringify(data);
-  const r = table
-    ? await c.query(
-      `INSERT INTO ${table} AS t (id, data, updated_by) VALUES ($1, $2::jsonb, $3)
-       ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, version = t.version + 1,
-         updated_at = now(), updated_by = EXCLUDED.updated_by
-       WHERE t.data IS DISTINCT FROM EXCLUDED.data`, [ch.id, json, me.id])
-    : await c.query(
-      `INSERT INTO misc_records AS t (collection, id, data, updated_by) VALUES ($1, $2, $3::jsonb, $4)
-       ON CONFLICT (collection, id) DO UPDATE SET data = EXCLUDED.data, version = t.version + 1,
-         updated_at = now(), updated_by = EXCLUDED.updated_by
-       WHERE t.data IS DISTINCT FROM EXCLUDED.data`, [ch.c, ch.id, json, me.id]);
-  return r.rowCount > 0;
+  if (table) await c.query(
+    `INSERT INTO ${table} AS t (id, data, updated_by) VALUES ($1, $2::jsonb, $3)
+     ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, version = t.version + 1,
+       updated_at = now(), updated_by = EXCLUDED.updated_by`, [ch.id, json, me.id]);
+  else await c.query(
+    `INSERT INTO misc_records AS t (collection, id, data, updated_by) VALUES ($1, $2, $3::jsonb, $4)
+     ON CONFLICT (collection, id) DO UPDATE SET data = EXCLUDED.data, version = t.version + 1,
+       updated_at = now(), updated_by = EXCLUDED.updated_by`, [ch.c, ch.id, json, me.id]);
+  if (adjusted) ctx.adjusted.push({ c: ch.c, id: ch.id });
+
+  if (ch.c === 'issues') await notifyForIssue(c, me, data, cur);
+  if (ch.c === 'comments' && !cur) await notifyForComment(c, me, data);
+  return true;
 }
 
-async function applySetting(c, me, ch) {
+/* İş anahtarı (PANO-12) projede benzersiz olmalı. İki kişi aynı anda iş açarsa
+   ikisi de aynı numarayı üretir; sonra gelene sunucu bir sonraki numarayı verir. */
+async function ensureIssueKey(c, ctx, data, cur) {
+  const pid = data.projectId;
+  if (!pid || (cur && cur.key === data.key && cur.projectId === pid)) return false;
+  const proj = (await c.query('SELECT data FROM projects WHERE id=$1 FOR UPDATE', [pid])).rows[0]?.data;
+  const num = k => { const m = /-(\d+)$/.exec(k || ''); return m ? Number(m[1]) : 0; };
+  let changed = false;
+  if (data.key) {
+    const clash = await c.query('SELECT 1 FROM issues WHERE project_id=$1 AND issue_key=$2 AND id<>$3 LIMIT 1',
+      [pid, data.key, data.id]);
+    if (clash.rowCount) {
+      const max = Number((await c.query(
+        `SELECT coalesce(max((substring(issue_key from '-(\\d+)$'))::int),0) AS m FROM issues WHERE project_id=$1`,
+        [pid])).rows[0].m);
+      const n = Math.max(max, Number(proj?.counter) || 0) + 1;
+      const prefix = proj?.key || data.key.replace(/-\d+$/, '') || 'IS';
+      data.key = `${prefix}-${n}`;
+      changed = true;
+    }
+  }
+  /* Proje sayacını en büyük numaraya çek. */
+  if (proj && num(data.key) > (Number(proj.counter) || 0)) {
+    const np = { ...proj, counter: num(data.key) };
+    await c.query(`UPDATE projects SET data=$2::jsonb, version=version+1, updated_at=now() WHERE id=$1`,
+      [pid, JSON.stringify(np)]);
+    await logChange(c, 'projects', pid, 'put', ctx.me.id, ctx.batch);
+    if (changed) ctx.adjusted.push({ c: 'projects', id: pid });
+  }
+  return changed;
+}
+
+async function applySetting(c, ctx, ch) {
+  const { me } = ctx;
   if (PREF_KEYS.includes(ch.id) || IGNORED_KEYS.includes(ch.id) || ch.id === 'users' || TABLES[ch.id])
     throw new HttpError(400, 'geçersiz ayar anahtarı');
+  const cur = (await c.query('SELECT value FROM settings WHERE key=$1 FOR UPDATE', [ch.id])).rows[0]?.value;
   if (ch.op === 'del') return (await c.query('DELETE FROM settings WHERE key=$1', [ch.id])).rowCount > 0;
-  const r = await c.query(
+  let val = ch.data;
+  if (cur !== undefined && ch.base !== undefined && !same(cur, ch.base)
+      && val && typeof val === 'object' && !Array.isArray(val) && cur && typeof cur === 'object' && !Array.isArray(cur)) {
+    val = merge3(ch.base, val, cur);
+    ctx.adjusted.push({ c: '_settings', id: ch.id });
+  }
+  if (cur !== undefined && same(cur, val)) return false;
+  await c.query(
     `INSERT INTO settings AS s (key, value, updated_by) VALUES ($1, $2::jsonb, $3)
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by
-     WHERE s.value IS DISTINCT FROM EXCLUDED.value`, [ch.id, JSON.stringify(ch.data), me.id]);
-  return r.rowCount > 0;
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
+    [ch.id, JSON.stringify(val), me.id]);
+  return true;
 }
 
-async function applyUser(c, me, ch) {
+async function applyUser(c, ctx, ch) {
+  const { me, batch } = ctx;
   const meAdmin = isAdminRole(me.role), meSuper = me.role === 'super';
   const cur = (await c.query('SELECT * FROM users WHERE id=$1 FOR UPDATE', [ch.id])).rows[0];
 
@@ -169,6 +252,8 @@ async function applyUser(c, me, ch) {
     if (!meAdmin) throw new HttpError(403, 'Kullanıcı silmek için yönetici olmalısınız');
     if (cur.id === me.id) throw new HttpError(400, 'Kendi hesabınızı silemezsiniz');
     if ((cur.system || cur.role === 'super') && !meSuper) throw new HttpError(403, 'Bu kullanıcıyı yalnızca süper yönetici silebilir');
+    await c.query(`INSERT INTO deleted_records (collection, record_id, data, batch_id, deleted_by)
+      VALUES ('users',$1,$2::jsonb,$3,$4)`, [cur.id, JSON.stringify(publicUser(cur)), batch, me.id]);
     await c.query('DELETE FROM users WHERE id=$1', [ch.id]);
     return true;
   }
@@ -176,6 +261,8 @@ async function applyUser(c, me, ch) {
   const d = { ...ch.data };
   for (const k of SECRET_USER_KEYS) delete d[k];
   const username = String(d.username || cur?.username || '').trim().toLowerCase();
+  if (username && !/^[a-z0-9._-]{2,40}$/.test(username))
+    throw new HttpError(400, 'Kullanıcı adı 2-40 karakter; yalnızca küçük harf, rakam, nokta, tire');
   const name = String(d.name ?? cur?.name ?? '').slice(0, 200);
   let role = ROLES.includes(d.role) ? d.role : (cur?.role || 'member');
   const active = d.active === undefined ? (cur?.active ?? true) : !!d.active;
@@ -203,7 +290,7 @@ async function applyUser(c, me, ch) {
   }
   if (cur.role === 'super' && !meSuper) throw new HttpError(403, 'Süper yöneticiyi yalnızca süper yönetici değiştirebilir');
   if (role === 'super' && !meSuper) role = cur.role;
-  if (cur.id === me.id) { role = cur.role; }                 // kendi rolünü/aktifliğini değiştiremez
+  if (cur.id === me.id) role = cur.role;                    // kendi rolünü/aktifliğini değiştiremez
   const act = cur.id === me.id ? true : active;
   if (!username) throw new HttpError(400, 'Kullanıcı adı gerekli');
   const r = await c.query(
@@ -226,7 +313,7 @@ export async function bootstrap(pool, log = console.log) {
     await pool.query(
       `INSERT INTO users (id, username, name, role, active, password_hash, must_change, system, data)
        VALUES ('u_admin', $1, 'Yönetici', 'super', true, $2, $3, true, $4::jsonb)`,
-      [username, hash, generated, JSON.stringify({ ini: 'YN', color: '#14161A', capacity: 30 })]);
+      [username, hash, generated, JSON.stringify({ ini: 'YN', color: '#4F46E5', capacity: 30 })]);
     log(`[kurulum] Yönetici oluşturuldu: kullanıcı adı "${username}"` +
       (generated ? `, geçici parola: ${password} (ilk girişte değiştirilecek)` : ' (parola ADMIN_PASSWORD değişkeninden)'));
   } else if (process.env.ADMIN_RESET_PASSWORD === 'true' && password) {
@@ -259,3 +346,5 @@ export function randomPassword() {
   const b = new Uint32Array(14); crypto.getRandomValues(b);
   return Array.from(b, x => a[x % a.length]).join('');
 }
+
+export { cj };

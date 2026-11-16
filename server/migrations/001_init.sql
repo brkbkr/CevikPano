@@ -1,5 +1,4 @@
--- CevikPano veritabanı şeması (PostgreSQL 13+)
--- Her uygulama açılışında çalışır; tekrar çalıştırılması güvenlidir.
+-- 001: CevikPano temel şeması (PostgreSQL 13+)
 --
 -- Tasarım:
 --   * Her kayıt türü kendi tablosunda durur. Kaydın tamamı `data` (jsonb)

@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'node:crypto';
-import { HttpError, DEFAULT_USER_PASSWORD } from './store.js';
+import { DEFAULT_USER_PASSWORD } from './store.js';
+import { HttpError } from './util.js';
 
 export const COOKIE = 'pano_sid';
 const SESSION_DAYS = Number(process.env.SESSION_DAYS || 30);

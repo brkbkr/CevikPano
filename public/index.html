@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ÇevikPano</title>
+<meta name="theme-color" content="#4F46E5">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%234F46E5'/%3E%3Cpath d='M9 10h4v12H9zM15 10h4v8h-4zM21 10h3v5h-3z' fill='white'/%3E%3C/svg%3E">
 <style>
 :root{
   --ink:#14161A; --ink2:#4A4F58; --ink3:#858B95;
@@ -46,7 +51,7 @@ button{cursor:pointer;background:none;border:none}
 .filebar{margin-top:auto;padding:10px 10px 6px;border-top:1px solid var(--line);
   display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .filebar .btn{display:flex;align-items:center;gap:6px;justify-content:center}
-.fstate{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:#8FBFAE}
+.fstate{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:var(--done)}
 .fstate.dirty{background:#F0B429;box-shadow:0 0 0 3px rgba(240,180,41,.25)}
 .fnote{width:100%;font-size:10.5px;color:var(--ink3);line-height:1.3}
 .rail-foot{margin-top:0;padding:10px;border-top:1px solid var(--line);display:flex;gap:6px;flex-wrap:wrap}
@@ -72,8 +77,8 @@ button{cursor:pointer;background:none;border:none}
 .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn.pri:hover{background:var(--accent-d);border-color:var(--accent-d)}
 .btn.sm{padding:4px 8px;font-size:12px}
-.btn.danger{color:var(--risk);border-color:#E8C9C6}
-.btn.danger:hover{background:#FDF2F1}
+.btn.danger{color:var(--risk);border-color:var(--risk-line)}
+.btn.danger:hover{background:var(--risk-bg)}
 .inp{border:1px solid var(--line2);background:var(--surface);padding:6px 9px;border-radius:var(--r);width:100%}
 .inp:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 select.inp{padding:6px 6px}
@@ -94,11 +99,11 @@ label.field{display:block;font-family:var(--mono);font-size:10px;text-transform:
 .av.lg{width:30px;height:30px;font-size:11.5px}
 .chip{display:inline-flex;align-items:center;gap:4px;padding:1px 6px;border-radius:3px;
   font-size:10.5px;font-weight:600;border:1px solid transparent;white-space:nowrap}
-.cat-todo{background:#EEF0F2;color:var(--todo);border-color:#DFE3E7}
-.cat-inprogress{background:#FDF3E3;color:var(--prog);border-color:#F2E0C0}
-.cat-done{background:#E7F5EC;color:var(--done);border-color:#C9E7D4}
+.cat-todo{background:var(--todo-bg);color:var(--todo);border-color:var(--todo-line)}
+.cat-inprogress{background:var(--prog-bg);color:var(--prog);border-color:var(--prog-line)}
+.cat-done{background:var(--done-bg);color:var(--done);border-color:var(--done-line)}
 .lbl{background:var(--surface2);border-color:var(--line);color:var(--ink2);font-weight:500}
-.pt{background:#EEF0F2;color:var(--ink2);border-color:#DFE3E7;font-family:var(--mono);font-size:10.5px}
+.pt{background:var(--todo-bg);color:var(--ink2);border-color:var(--todo-line);font-family:var(--mono);font-size:10.5px}
 
 /* type & priority glyphs */
 .ti{width:15px;height:15px;border-radius:3px;display:inline-grid;place-items:center;font-size:9.5px;
@@ -129,8 +134,8 @@ label.field{display:block;font-family:var(--mono);font-size:10px;text-transform:
 .card .meta .k{color:var(--ink3)}
 .card .c-plan{display:flex;align-items:center;gap:6px;margin:0 0 6px;font-family:var(--mono);font-size:10.5px;
   color:var(--ink2);padding:3px 6px;border-radius:4px;background:var(--surface2);border:1px solid var(--line)}
-.card .c-plan.late{background:#FDF2F1;border-color:#E8C9C6;color:var(--risk)}
-.card .c-plan.done{background:#E7F5EC;border-color:#C9E7D4;color:var(--done)}
+.card .c-plan.late{background:var(--risk-bg);border-color:var(--risk-line);color:var(--risk)}
+.card .c-plan.done{background:var(--done-bg);border-color:var(--done-line);color:var(--done)}
 .card .c-plan.future{color:var(--ink3)}
 .card .c-dates{flex:1}
 .card .c-days{color:var(--ink3);font-weight:600}
@@ -141,7 +146,7 @@ label.field{display:block;font-family:var(--mono);font-size:10px;text-transform:
   font-size:10.5px;color:var(--ink3);margin-bottom:3px}
 .card .c-est-l b{color:var(--ink2);font-size:11px}
 .card .c-est-r.bad{color:var(--risk);font-weight:600}
-.card .bar{height:3px;background:#EDEDE7;border-radius:2px;margin:0;overflow:hidden}
+.card .bar{height:3px;background:var(--track);border-radius:2px;margin:0;overflow:hidden}
 .card .bar i{display:block;height:100%;background:var(--accent)}
 .epic-tag{display:inline-block;padding:1px 5px;border-radius:3px;font-size:10px;font-weight:600;
   color:#fff;background:#6B4FBB;margin-bottom:6px}
@@ -156,7 +161,7 @@ label.field{display:block;font-family:var(--mono);font-size:10px;text-transform:
 .qa-hint{flex:1;font-size:10px;color:var(--ink3);line-height:1.2}
 .cbox{width:15px;height:15px;border:1.5px solid var(--line2);border-radius:4px;flex-shrink:0;
   display:grid;place-items:center;font-size:10px;color:#fff;background:var(--surface)}
-.cbox:hover{border-color:var(--done);background:#E7F5EC}
+.cbox:hover{border-color:var(--done);background:var(--done-bg)}
 .cbox.on{background:var(--done);border-color:var(--done)}
 .card.is-done .sum{text-decoration:line-through;color:var(--ink3)}
 .card.is-done{opacity:.75}
@@ -166,7 +171,7 @@ label.field{display:block;font-family:var(--mono);font-size:10px;text-transform:
 .donehead:hover{border-color:var(--ink3)}
 .donehead b{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink3)}
 .c-subs{display:flex;align-items:center;gap:7px;font-size:10.5px;color:var(--ink3);margin-bottom:5px;cursor:pointer}
-.c-subbar{flex:1;height:4px;background:#EDEDE7;border-radius:2px;overflow:hidden}
+.c-subbar{flex:1;height:4px;background:var(--track);border-radius:2px;overflow:hidden}
 .c-subbar i{display:block;height:100%;background:var(--done)}
 .subsum{display:flex;gap:14px;font-size:11.5px;color:var(--ink3);padding:6px 0}
 .subsum b{color:var(--ink2);font-size:12px}
@@ -216,9 +221,9 @@ label.field{display:block;font-family:var(--mono);font-size:10px;text-transform:
 .sb-h b{font-size:13.5px}
 .sb-h .goal{color:var(--ink3);font-size:12px;font-style:italic}
 .sb-h .dates{font-family:var(--mono);font-size:10.5px;color:var(--ink3)}
-.pill{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:10px;background:#EEF0F2;color:var(--ink2)}
-.pill.todo{background:#EEF0F2;color:var(--todo)} .pill.prog{background:#FDF3E3;color:var(--prog)}
-.pill.done{background:#E7F5EC;color:var(--done)}
+.pill{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:10px;background:var(--todo-bg);color:var(--ink2)}
+.pill.todo{background:var(--todo-bg);color:var(--todo)} .pill.prog{background:var(--prog-bg);color:var(--prog)}
+.pill.done{background:var(--done-bg);color:var(--done)}
 .row{display:flex;align-items:center;gap:9px;padding:7px 12px;border-bottom:1px solid var(--line);cursor:grab}
 .row:last-child{border-bottom:none}
 .row:hover{background:var(--surface2)}
@@ -266,7 +271,7 @@ label.field{display:block;font-family:var(--mono);font-size:10px;text-transform:
 .cell{width:100%;height:46px;display:grid;place-items:center;font-family:var(--mono);
   font-size:12px;font-variant-numeric:tabular-nums;color:var(--ink2);border-radius:3px}
 .cell:hover{outline:2px solid var(--accent);outline-offset:-2px}
-.cell.z{color:#C9C9C2}
+.cell.z{color:var(--line2)}
 .ts tfoot td{background:var(--surface2);font-family:var(--mono);font-size:12px;font-weight:700;
   padding:8px 4px;border-top:1px solid var(--line2)}
 .ts .tot{background:var(--surface2);font-weight:700}
@@ -303,7 +308,7 @@ label.field{display:block;font-family:var(--mono);font-size:10px;text-transform:
 .desc{color:var(--ink2);white-space:pre-wrap;font-size:13px}
 .kv{display:grid;grid-template-columns:88px 1fr;gap:7px 8px;align-items:center;font-size:12.5px}
 .kv .lb{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3)}
-.timebar{height:7px;border-radius:4px;background:#EDEDE7;overflow:hidden;display:flex;margin:6px 0 5px}
+.timebar{height:7px;border-radius:4px;background:var(--track);overflow:hidden;display:flex;margin:6px 0 5px}
 .timebar i{display:block;height:100%}
 .timebar i.sp{background:var(--accent)} .timebar i.rm{background:#C7CBD1}
 .tlegend{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--ink3)}
@@ -332,7 +337,7 @@ label.field{display:block;font-family:var(--mono);font-size:10px;text-transform:
 .hw i{display:block;width:100%;background:#C7CBD1;border-radius:3px 3px 0 0;min-height:2px}
 .hw em{font-family:var(--mono);font-size:9px;color:var(--ink3);font-style:normal}
 .today-box{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-.row-late{background:#FDF6F5}
+.row-late{background:var(--risk-bg)}
 .projgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:10px;margin-bottom:4px}
 .projgrid.wide{grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}
 .projcard{text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:9px;
@@ -340,7 +345,7 @@ label.field{display:block;font-family:var(--mono);font-size:10px;text-transform:
 .projcard:hover{border-color:var(--ink3)}
 .pc-h{display:flex;align-items:center;gap:7px;margin-bottom:9px}
 .pc-h b{font-size:13.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pc-bar{height:4px;background:#EDEDE7;border-radius:2px;overflow:hidden;margin-bottom:9px}
+.pc-bar{height:4px;background:var(--track);border-radius:2px;overflow:hidden;margin-bottom:9px}
 .pc-bar i{display:block;height:100%;background:var(--done)}
 .pc-m{display:flex;align-items:center;gap:11px;font-size:11.5px;color:var(--ink3);flex-wrap:wrap}
 .pc-m b{color:var(--ink);font-size:12.5px}
@@ -363,8 +368,8 @@ body.locked .app{filter:blur(3px);pointer-events:none}
 .lg-brand span{font-family:var(--mono);font-size:10px;color:var(--ink3);
   text-transform:uppercase;letter-spacing:.1em}
 .lg-err{color:var(--risk);font-size:12px;min-height:16px;margin-top:8px}
-.lg-note{margin-top:16px;padding:9px 11px;background:#FDF8EC;border:1px solid #F0E2C2;
-  border-radius:6px;font-size:11.5px;color:#7A5A18;line-height:1.5}
+.lg-note{margin-top:16px;padding:9px 11px;background:var(--warn-bg);border:1px solid var(--warn-line);
+  border-radius:6px;font-size:11.5px;color:var(--warn-ink);line-height:1.5}
 .lg-hint{margin-top:8px;font-size:11.5px;color:var(--ink3);line-height:1.7}
 .lg-hint code,.lg-note code{font-family:var(--mono);font-size:11px;background:var(--surface2);
   padding:1px 4px;border-radius:3px;border:1px solid var(--line)}
@@ -391,12 +396,287 @@ body.locked .app{filter:blur(3px);pointer-events:none}
   .modal{max-width:100%}
   .scrim{padding:10px}
 }
+
+/* ==========================================================================
+   ÇevikPano tasarım dili v2 — sade, modern, açık + koyu tema
+   Bu katman yukarıdaki temel stillerin üzerine yazar.
+   ========================================================================== */
+:root{
+  --paper:#F6F7F9; --surface:#FFFFFF; --surface2:#F3F4F7; --surface3:#ECEEF2;
+  --line:#E6E8EC; --line2:#D5D9E0;
+  --ink:#0F172A; --ink2:#475569; --ink3:#8590A2;
+  --accent:#4F46E5; --accent-d:#4338CA; --accent-soft:#EEF0FF; --accent-ink:#FFFFFF;
+  --todo:#64748B; --prog:#C2610C; --done:#059669; --risk:#DC2626;
+  --todo-bg:#F1F5F9; --todo-line:#E2E8F0;
+  --prog-bg:#FFF4E5; --prog-line:#FCE1BD;
+  --done-bg:#E8F8F1; --done-line:#BDEBD6;
+  --risk-bg:#FEF1F1; --risk-line:#F9CFCF;
+  --warn-bg:#FFF8E6; --warn-line:#F5E1A8; --warn-ink:#7A5300;
+  --track:#E9ECF1;
+  --sans:"Inter",ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --r:8px; --r-lg:12px;
+  --shadow-sm:0 1px 2px rgba(15,23,42,.05);
+  --shadow:0 1px 2px rgba(15,23,42,.04),0 6px 16px -4px rgba(15,23,42,.08);
+  --shadow-lg:0 24px 48px -12px rgba(15,23,42,.25),0 2px 6px rgba(15,23,42,.06);
+  --ring:0 0 0 3px rgba(79,70,229,.18);
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --paper:#0B0D12; --surface:#12151C; --surface2:#171B24; --surface3:#1E232E;
+  --line:#232836; --line2:#303748;
+  --ink:#E7E9EE; --ink2:#A7AFBF; --ink3:#6F788B;
+  --accent:#7C83FF; --accent-d:#A3A8FF; --accent-soft:rgba(124,131,255,.14); --accent-ink:#0B0D12;
+  --todo:#94A3B8; --prog:#F0A040; --done:#34D399; --risk:#F87171;
+  --todo-bg:rgba(148,163,184,.12); --todo-line:rgba(148,163,184,.22);
+  --prog-bg:rgba(240,160,64,.12); --prog-line:rgba(240,160,64,.25);
+  --done-bg:rgba(52,211,153,.12); --done-line:rgba(52,211,153,.25);
+  --risk-bg:rgba(248,113,113,.12); --risk-line:rgba(248,113,113,.28);
+  --warn-bg:rgba(240,190,60,.10); --warn-line:rgba(240,190,60,.25); --warn-ink:#F0C870;
+  --track:#262C3A;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 20px -6px rgba(0,0,0,.5);
+  --shadow-lg:0 24px 60px -12px rgba(0,0,0,.7);
+  --ring:0 0 0 3px rgba(124,131,255,.28);
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0B0D12; --surface:#12151C; --surface2:#171B24; --surface3:#1E232E;
+    --line:#232836; --line2:#303748;
+    --ink:#E7E9EE; --ink2:#A7AFBF; --ink3:#6F788B;
+    --accent:#7C83FF; --accent-d:#A3A8FF; --accent-soft:rgba(124,131,255,.14); --accent-ink:#0B0D12;
+    --todo:#94A3B8; --prog:#F0A040; --done:#34D399; --risk:#F87171;
+    --todo-bg:rgba(148,163,184,.12); --todo-line:rgba(148,163,184,.22);
+    --prog-bg:rgba(240,160,64,.12); --prog-line:rgba(240,160,64,.25);
+    --done-bg:rgba(52,211,153,.12); --done-line:rgba(52,211,153,.25);
+    --risk-bg:rgba(248,113,113,.12); --risk-line:rgba(248,113,113,.28);
+    --warn-bg:rgba(240,190,60,.10); --warn-line:rgba(240,190,60,.25); --warn-ink:#F0C870;
+    --track:#262C3A;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 20px -6px rgba(0,0,0,.5);
+    --shadow-lg:0 24px 60px -12px rgba(0,0,0,.7);
+    --ring:0 0 0 3px rgba(124,131,255,.28);
+    color-scheme:dark;
+  }
+}
+
+body{font-size:13.5px;letter-spacing:-.006em;font-feature-settings:"cv11","ss01","ss03";background:var(--paper)}
+::selection{background:var(--accent-soft)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+*{scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:10px;border:3px solid transparent;background-clip:content-box}
+
+/* küçük başlıklar: mono yerine sade, aralıklı sans */
+.navgroup,.crumb,label.field,.sec,.col-h .nm,.kv .lb,.ts th,.rm th,.stat div span,.lg-brand span,.whoami .nm span{
+  font-family:var(--sans);letter-spacing:.04em;font-weight:600}
+.k{font-family:var(--mono);font-size:11px;letter-spacing:0}
+
+/* ---------- kabuk ---------- */
+.app{grid-template-columns:240px 1fr}
+.rail{background:var(--surface);border-right:1px solid var(--line);padding-bottom:4px}
+.brand{padding:18px 18px 14px;border-bottom:none;align-items:center;gap:10px}
+.brand::before{content:"";width:26px;height:26px;border-radius:8px;flex-shrink:0;
+  background:conic-gradient(from 200deg,#6366F1,#8B5CF6,#06B6D4,#6366F1);
+  box-shadow:inset 0 0 0 5px rgba(255,255,255,.0),0 2px 8px rgba(99,102,241,.35);
+  -webkit-mask:radial-gradient(circle at 50% 50%,transparent 4px,#000 4.5px);mask:radial-gradient(circle at 50% 50%,transparent 4px,#000 4.5px)}
+.brand b{font-size:15.5px;font-weight:700;letter-spacing:-.02em}
+.brand span{font-family:var(--sans);font-size:10px;font-weight:600;letter-spacing:.06em;color:var(--ink3)}
+.projsel{padding:4px 12px 8px}
+.projsel select{padding:8px 10px;border-radius:10px;background:var(--surface2);border:1px solid var(--line);font-weight:600}
+.navgroup{padding:14px 20px 6px;font-size:10.5px;margin-top:0}
+.nav a{padding:7px 10px;margin:1px 10px;border-radius:8px;color:var(--ink2);font-weight:500;transition:background .12s,color .12s}
+.nav a .g{width:18px;font-size:14px;opacity:.7}
+.nav a:hover{background:var(--surface2)}
+.nav a.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.nav a.on .g{opacity:1}
+.online{padding:0 0 4px}
+.onl-row{display:flex;gap:4px;padding:2px 20px 6px;flex-wrap:wrap}
+.onl{position:relative;display:inline-flex}
+.onl::after{content:"";position:absolute;right:-1px;bottom:-1px;width:8px;height:8px;border-radius:50%;
+  background:#22C55E;box-shadow:0 0 0 2px var(--surface)}
+.onl-more{font-size:11px;color:var(--ink3);align-self:center}
+.whoami{margin:auto 10px 0;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--surface2)}
+.filebar{border-top:none;padding:8px 14px 2px;margin-top:0}
+.rail-foot{border-top:1px solid var(--line);margin-top:8px;padding:8px 10px}
+.rail-foot button{font-size:11.5px;padding:5px 7px;border-radius:6px}
+
+.main{background:var(--paper)}
+.topbar{background:color-mix(in srgb,var(--surface) 82%,transparent);backdrop-filter:saturate(1.6) blur(10px);
+  -webkit-backdrop-filter:saturate(1.6) blur(10px);border-bottom:1px solid var(--line);padding:14px 24px 0;position:relative;z-index:5}
+.tb-head{display:flex;align-items:flex-start;gap:16px}
+.tb-title{flex:1;min-width:0}
+.topbar h1{font-size:21px;font-weight:700;letter-spacing:-.028em}
+.crumb{font-size:10.5px;color:var(--ink3);margin-bottom:2px}
+.tb-actions{display:flex;align-items:center;gap:6px;padding-top:2px}
+.tb-online{display:flex;margin-right:6px}
+.tb-online .onl{margin-left:-6px}
+.tb-online .onl .av{box-shadow:0 0 0 2px var(--surface)}
+.iconbtn{position:relative;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:var(--ink2);
+  border:1px solid var(--line);background:var(--surface);font-size:16px;transition:background .12s,border-color .12s,color .12s}
+.iconbtn:hover{background:var(--surface2);color:var(--ink);border-color:var(--line2)}
+.badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;
+  background:var(--risk);color:#fff;font-size:10.5px;font-weight:700;display:grid;place-items:center;
+  box-shadow:0 0 0 2px var(--surface)}
+.badge[hidden]{display:none}
+.toolrow{padding:12px 0 12px;gap:8px}
+.content{padding:20px 24px 48px}
+
+/* ---------- kontroller ---------- */
+.btn{border:1px solid var(--line2);background:var(--surface);padding:7px 12px;border-radius:9px;font-weight:550;
+  box-shadow:var(--shadow-sm);transition:background .12s,border-color .12s,box-shadow .12s,transform .06s;
+  display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--ink)}
+.btn:hover{background:var(--surface2);border-color:var(--line2)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.btn.pri{background:var(--accent);border-color:transparent;color:var(--accent-ink);
+  box-shadow:0 1px 2px rgba(15,23,42,.1),inset 0 1px 0 rgba(255,255,255,.15)}
+.btn.pri:hover{background:var(--accent-d);border-color:transparent}
+.btn.sm{padding:4px 9px;font-size:12px;border-radius:7px}
+.btn.danger{color:var(--risk);border-color:var(--risk-line);background:var(--surface)}
+.btn.danger:hover{background:var(--risk-bg)}
+.inp{border:1px solid var(--line2);background:var(--surface);padding:7px 10px;border-radius:9px;transition:border-color .12s,box-shadow .12s}
+.inp:hover{border-color:color-mix(in srgb,var(--line2) 60%,var(--ink3))}
+.inp:focus{border-color:var(--accent);box-shadow:var(--ring)}
+.search::before{left:10px;top:7px}
+.search .inp{padding-left:30px}
+.seg{border-radius:9px;background:var(--surface2);border:1px solid var(--line);padding:2px;gap:2px}
+.seg button{border:none!important;border-radius:7px;padding:5px 11px;font-weight:550}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm)}
+label.field{font-size:11px;text-transform:none;letter-spacing:0;color:var(--ink2);margin-bottom:5px}
+
+/* ---------- avatar, etiket ---------- */
+.av{width:24px;height:24px;font-family:var(--sans);font-size:9.5px;font-weight:700;letter-spacing:0}
+.av.lg{width:32px;height:32px;font-size:12px}
+.chip{border-radius:6px;padding:2px 7px;font-size:11px;font-weight:600}
+.pill{font-family:var(--sans);font-weight:600;border-radius:999px;padding:2px 8px}
+.ti{border-radius:4px}
+
+/* ---------- pano ---------- */
+.board{gap:14px}
+.col{background:var(--surface2);border:1px solid var(--line);border-radius:14px;width:296px}
+.col.over{border-color:var(--accent);background:var(--accent-soft);box-shadow:var(--ring)}
+.col-h{border-bottom:none;padding:12px 12px 6px}
+.col-h .nm{font-size:11px;color:var(--ink2)}
+.col-h .ct{font-family:var(--sans);font-weight:600;background:var(--surface3);color:var(--ink2);padding:1px 7px;border-radius:999px;font-size:11px}
+.col-b{padding:6px 8px 10px;gap:8px}
+.card{border-radius:11px;padding:11px 12px;border:1px solid var(--line);box-shadow:var(--shadow-sm);
+  transition:box-shadow .15s,transform .15s,border-color .15s}
+.card:hover{border-color:var(--line2);box-shadow:var(--shadow);transform:translateY(-1px)}
+.card .sum{font-weight:550;font-size:13.2px;line-height:1.4}
+.card .c-plan{border-radius:7px;background:var(--surface2);border-color:var(--line)}
+.card .bar{height:4px;border-radius:4px}
+.qa-btn{border-radius:7px;width:24px;height:24px}
+.qadd{border-radius:11px;box-shadow:var(--shadow)}
+.cbox{border-radius:5px}
+.donehead{border-radius:9px}
+
+/* ---------- liste / backlog ---------- */
+.sprintbox,.rmwrap,.tswrap,.wl-list,.panel,.projcard,.hero,.daygrid,.untimed{border-radius:14px;border-color:var(--line);box-shadow:var(--shadow-sm)}
+.sprintbox.active{border-left:3px solid var(--accent)}
+.row{padding:9px 14px}
+.row:hover{background:var(--surface2)}
+.panel{padding:18px 20px}
+.panel h3{font-size:15px;font-weight:650;letter-spacing:-.01em}
+.stat div b{font-family:var(--sans);font-weight:700;font-size:24px;letter-spacing:-.03em}
+.ts th,.rm th{background:var(--surface2);font-size:10.5px}
+.ts.list td{text-align:left;padding:10px 8px}
+.ts.list td.who{padding-left:12px}
+.projcard{transition:box-shadow .15s,transform .15s}
+.projcard:hover{box-shadow:var(--shadow);transform:translateY(-1px);border-color:var(--line2)}
+.hero{background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 10%,var(--surface)),var(--surface) 60%);padding:22px 24px}
+.hero h2{font-size:23px;font-weight:700}
+.hw i{background:var(--line2)}
+.today-box{border-color:var(--accent);box-shadow:var(--ring)}
+
+/* ---------- pencere ---------- */
+.scrim{background:rgba(15,23,42,.45);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);padding:36px 20px}
+.scrim.on{animation:fadeIn .14s ease-out}
+.scrim.on .modal{animation:popIn .16s ease-out}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes popIn{from{opacity:0;transform:translateY(6px) scale(.985)}to{opacity:1;transform:none}}
+.modal{border-radius:16px;box-shadow:var(--shadow-lg);border:1px solid var(--line)}
+.m-h{background:var(--surface);padding:14px 18px}
+.m-l{padding:20px 22px}
+.m-r{background:var(--surface2)}
+.m-l h2{font-size:20px;font-weight:700;letter-spacing:-.025em}
+.m-f{background:var(--surface2);padding:12px 18px}
+.sec{font-size:10.5px;border-bottom-color:var(--line)}
+.tabs button.on,.vtabs button.on{border-bottom-color:var(--accent)}
+.watch{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink2);
+  background:var(--done-bg);border:1px solid var(--done-line);border-radius:999px;padding:2px 9px 2px 3px}
+.watch .av{width:18px;height:18px;font-size:8px}
+
+/* ---------- bildirim paneli ---------- */
+.pop{position:fixed;top:62px;right:20px;width:380px;max-width:calc(100vw - 24px);max-height:min(560px,calc(100vh - 90px));
+  display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  box-shadow:var(--shadow-lg);z-index:60;overflow:hidden;animation:popIn .14s ease-out}
+.pop-h{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line)}
+.pop-h b{font-size:14px}
+.pop-b{overflow:auto}
+.notif{display:flex;gap:10px;width:100%;text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);align-items:flex-start}
+.notif:hover{background:var(--surface2)}
+.notif.unread{background:color-mix(in srgb,var(--accent-soft) 70%,transparent)}
+.notif.unread .nt>span:first-child::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;
+  background:var(--accent);margin-right:6px;vertical-align:1px}
+.nt{display:flex;flex-direction:column;gap:2px;min-width:0;font-size:12.5px;flex:1}
+.ni{color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nx{color:var(--ink3);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nw{color:var(--ink3);font-size:11px}
+
+/* ---------- etkinlik ---------- */
+.act{display:flex;flex-direction:column}
+.act-r{display:flex;align-items:baseline;gap:8px;padding:8px 2px;border-bottom:1px solid var(--line);font-size:12.5px;flex-wrap:wrap}
+.act-w{width:84px;color:var(--ink3);font-size:11.5px;flex-shrink:0}
+.act-op{font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--todo-bg);color:var(--todo)}
+.act-op.del{background:var(--risk-bg);color:var(--risk)}
+.act-c{color:var(--ink3)}
+.act-t{color:var(--ink2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+
+/* ---------- giriş ---------- */
+#login{background:
+  radial-gradient(1200px 600px at 10% -10%,color-mix(in srgb,var(--accent) 22%,transparent),transparent 60%),
+  radial-gradient(900px 500px at 110% 110%,color-mix(in srgb,#06B6D4 18%,transparent),transparent 60%),var(--paper)}
+.loginbox{border-radius:20px;padding:32px 30px 26px;max-width:380px;box-shadow:var(--shadow-lg);border:1px solid var(--line)}
+.lg-brand{border-bottom:none;margin-bottom:22px;padding-bottom:0;display:flex;align-items:center;gap:12px}
+.lg-brand::before{content:"";width:40px;height:40px;border-radius:12px;flex-shrink:0;
+  background:conic-gradient(from 200deg,#6366F1,#8B5CF6,#06B6D4,#6366F1);
+  -webkit-mask:radial-gradient(circle,transparent 6px,#000 6.5px);mask:radial-gradient(circle,transparent 6px,#000 6.5px)}
+.lg-brand b{font-size:22px;font-weight:750}
+.lg-brand span{font-size:11px;text-transform:none;letter-spacing:0}
+.loginbox .inp{padding:10px 12px}
+.loginbox .btn.pri{justify-content:center;padding:10px!important;font-size:14px}
+.toast{border-radius:12px;padding:10px 16px;box-shadow:var(--shadow-lg);background:var(--ink);color:var(--paper);font-weight:500}
+
+/* ---------- mobil ---------- */
+@media (max-width:900px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .main{min-width:0}
+  .topbar{padding:12px 14px 0}
+  .topbar h1{font-size:18px}
+  .content{padding:14px 14px 48px}
+  .vtabs{margin:10px -14px 0;padding:0 14px}
+  .tb-online{display:none}
+  .iconbtn{width:34px;height:34px}
+  .pop{top:56px;right:12px}
+  .col{width:84vw}
+  .toolrow{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+  .toolrow::-webkit-scrollbar{display:none}
+  .toolrow>*{flex-shrink:0}
+  .scrim{padding:0}
+  .modal{border-radius:0;min-height:100%;border:none}
+  .m-l{padding:16px}
+  .form-2{grid-template-columns:1fr}
+  .act-w{width:auto}
+}
+@media (prefers-reduced-motion:reduce){.card:hover,.projcard:hover{transform:none}}
 </style>
 </head>
 <body>
 <div class="app">
   <aside class="rail">
-    <div class="brand"><b>Pano</b><span>çevik</span></div>
+    <div class="brand"><b>ÇevikPano</b></div>
     <div class="projsel"><select id="projSel" class="inp"></select></div>
     <nav class="nav" style="margin-top:6px">
       <a href="#home" data-v="home"><span class="g">⌂</span>Ana menü</a>
@@ -419,7 +699,9 @@ body.locked .app{filter:blur(3px);pointer-events:none}
     <nav class="nav">
       <a href="#projects"  data-v="projects"><span class="g">▦</span>Projeler</a>
       <a href="#admin"     data-v="admin"><span class="g">⚙</span>Proje ayarları</a>
+      <a href="#system"    data-v="system"><span class="g">⛁</span>Sistem</a>
     </nav>
+    <div class="online" id="online"></div>
     <div class="whoami" id="whoami"></div>
     <div class="filebar" id="fileBar"></div>
     <div class="rail-foot">
@@ -432,8 +714,16 @@ body.locked .app{filter:blur(3px);pointer-events:none}
 
   <main class="main">
     <header class="topbar">
-      <div class="crumb" id="crumb">—</div>
-      <h1 id="title">—</h1>
+      <div class="tb-head">
+        <div class="tb-title"><div class="crumb" id="crumb">—</div><h1 id="title">—</h1></div>
+        <div class="tb-actions">
+          <div class="tb-online" id="tbOnline"></div>
+          <button class="iconbtn" id="btnTheme" title="Tema (açık / koyu)" aria-label="Tema değiştir"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button>
+          <button class="iconbtn" id="btnBell" title="Bildirimler" aria-label="Bildirimler">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+            <span class="badge" id="bellBadge" hidden>0</span></button>
+        </div>
+      </div>
       <div class="vtabs" id="vtabs">
         <button data-v="home">Ana menü</button>
         <button data-v="board">Pano</button>
@@ -446,6 +736,7 @@ body.locked .app{filter:blur(3px);pointer-events:none}
         <button data-v="search">Arama</button>
         <button data-v="projects">Projeler</button>
         <button data-v="admin">Ayarlar</button>
+        <button data-v="system">Sistem</button>
         <button data-v="__proj">Proje ▾</button>
         <button data-v="__data">Veri ▾</button>
       </div>
@@ -520,13 +811,14 @@ function diffSnap(a, b) {
   const out = [];
   for (const k of new Set([...Object.keys(a.rec), ...Object.keys(b.rec)])) {
     const A = a.rec[k] || new Map(), B = b.rec[k] || new Map();
-    for (const [id, j] of B) if (A.get(id) !== j) out.push({ c: k, id, op: 'put', data: JSON.parse(j) });
+    for (const [id, j] of B) if (A.get(id) !== j)
+      out.push({ c: k, id, op: 'put', data: JSON.parse(j), base: A.has(id) ? JSON.parse(A.get(id)) : undefined });
     for (const id of A.keys()) if (!B.has(id)) out.push({ c: k, id, op: 'del' });
   }
   for (const k of new Set([...Object.keys(a.set), ...Object.keys(b.set)])) {
     if (a.set[k] === b.set[k]) continue;
     out.push(b.set[k] === undefined ? { c: '_settings', id: k, op: 'del' }
-      : { c: '_settings', id: k, op: 'put', data: JSON.parse(b.set[k]) });
+      : { c: '_settings', id: k, op: 'put', data: JSON.parse(b.set[k]), base: a.set[k] === undefined ? undefined : JSON.parse(a.set[k]) });
   }
   for (const k of PREF_KEYS)
     if (a.pref[k] !== b.pref[k] && b.pref[k] !== undefined) out.push({ c: '_prefs', id: k, op: 'put', data: JSON.parse(b.pref[k]) });
@@ -558,12 +850,15 @@ async function flushSync() {
     if (!ch.length) { SNAP = now; setSync('ok'); return; }
     setSync('saving');
     try {
-      const rejected = [];
+      const rejected = [], adjusted = [];
       for (let i = 0; i < ch.length; i += 1000) {
         const r = await API.post('/api/sync', { changes: ch.slice(i, i + 1000) });
         rejected.push(...(r.rejected || []));
+        adjusted.push(...(r.adjusted || []));
       }
       SNAP = now; SYNC_AT = Date.now(); setSync('ok');
+      /* Sunucu bir kaydı birleştirdi ya da iş numarasını değiştirdi: güncel hâli hemen al. */
+      if (adjusted.length) setTimeout(poll, 30);
       if (rejected.length) {
         toast('Kaydedilemeyen değişiklik: ' + (rejected[0].reason || 'yetki yok') + (rejected.length > 1 ? ` (+${rejected.length - 1})` : ''));
         await reloadState();
@@ -582,7 +877,7 @@ async function flushSync() {
 }
 
 /* ---- başkalarının değişikliklerini çek ---- */
-let pollT = null, RERENDER = false;
+let pollT = null, RERENDER = false, OPEN_ISSUE = null, ONLINE = [], UNREAD = 0;
 function startPolling() {
   clearInterval(pollT);
   pollT = setInterval(poll, 4000);
@@ -592,9 +887,13 @@ async function poll() {
   if (!ME || !SNAP || document.hidden) return;
   if (RERENDER) tryRerender();
   try {
-    const r = await API.get('/api/changes?since=' + SEQ);
+    const r = await API.get('/api/changes?since=' + SEQ + '&view=' + encodeURIComponent(DB?.ui?.view || '')
+      + '&issue=' + encodeURIComponent(OPEN_ISSUE || ''));
+    if (r.reload) { SEQ = r.seq || SEQ; toast('Veri yönetici tarafından yenilendi'); return reloadState(); }
     if (r.items?.length) applyRemote(r.items);
     SEQ = Math.max(SEQ, r.seq || 0);
+    setUnread(r.unread || 0);
+    setOnline(r.online || []);
   } catch (e) { if (e.status === 401) sessionLost(); }
 }
 
@@ -634,7 +933,7 @@ function tryRerender() {
 }
 
 async function reloadState() {
-  try { DB = await load(); ensureSchema(); ensureAccounts(); render(); }
+  try { DB = await load(); ensureSchema(); ensureAccounts(); startApp(false); }
   catch (e) { if (e.status === 401) sessionLost(); }
 }
 
@@ -1116,8 +1415,9 @@ const PRI  = { 1: ['⇈', 'Kritik'], 2: ['↑', 'Yüksek'], 3: ['=', 'Orta'], 4:
 const tIcon = t => { const x = TYPE[t] || ['?', t, t, '#7B8794'];
   return `<span class="ti" style="background:${x[3] || '#7B8794'}" title="${esc(x[2])}">${esc(x[0])}</span>`; };
 const pIcon = p => `<span class="pr p${p}" title="${PRI[p][1]}">${PRI[p][0]}</span>`;
+const safeColor = c => /^#[0-9a-f]{3,8}$/i.test(String(c || '')) ? c : '#64748B';
 const avat  = (id, lg) => { const u = user(id); return u
-  ? `<span class="av ${lg ? 'lg' : ''}" style="background:${u.color}" title="${esc(u.name)}">${u.ini}</span>`
+  ? `<span class="av ${lg ? 'lg' : ''}" style="background:${safeColor(u.color)}" title="${esc(u.name)}">${esc(u.ini || '?')}</span>`
   : `<span class="av ${lg ? 'lg' : ''}" style="background:#C7CBD1" title="Atanmamış">—</span>`; };
 
 function toast(msg) {
@@ -1547,7 +1847,7 @@ function renderTimesheet() {
       <td colspan="8" style="padding:6px 10px;text-align:left">
         ${tsUsers().map(u => { const h = wl.filter(w => w.userId === u.id).reduce((a, w) => a + w.hours, 0);
           const r = capOf(u) ? h / capOf(u) : 0;
-          return `<span class="chip" style="margin-right:6px;background:${r > 1.05 ? '#FDF2F1' : r < .6 ? '#EEF0F2' : '#E7F5EC'};
+          return `<span class="chip" style="margin-right:6px;background:${r > 1.05 ? 'var(--risk-bg)' : r < .6 ? 'var(--todo-bg)' : 'var(--done-bg)'};
             color:${r > 1.05 ? 'var(--risk)' : r < .6 ? 'var(--todo)' : 'var(--done)'}">
             ${u.ini} ${h.toFixed(0)}/${capOf(u)}h</span>`; }).join('')}
       </td></tr>` : ''}
@@ -1669,7 +1969,7 @@ function renderReports() {
       <div class="sub">${fmtD(days[0])} – ${fmtD(days[6])} haftası</div>
       ${perUser.map(p => `<div style="display:flex;align-items:center;gap:9px;margin-bottom:7px">
         ${avat(p.u.id)}<span style="width:104px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.u.name)}</span>
-        <span style="flex:1;height:9px;background:#EDEDE7;border-radius:5px;overflow:hidden">
+        <span style="flex:1;height:9px;background:var(--track);border-radius:5px;overflow:hidden">
           <i style="display:block;height:100%;width:${p.h / maxH * 100}%;background:${p.u.color}"></i></span>
         <b class="num" style="width:52px;text-align:right;font-size:12px">${fmtDur(p.h)}</b></div>`).join('')}
       <div style="margin-top:10px;padding-top:9px;border-top:1px solid var(--line);display:flex;justify-content:space-between">
@@ -1707,7 +2007,7 @@ function renderReports() {
       <div class="sec" style="margin-top:6px">DURUM DAĞILIMI</div>
       ${byStatus.map(b => `<div style="display:flex;align-items:center;gap:9px;margin-bottom:6px">
         <span style="width:104px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(b.s.name)}</span>
-        <span style="flex:1;height:9px;background:#EDEDE7;border-radius:5px;overflow:hidden">
+        <span style="flex:1;height:9px;background:var(--track);border-radius:5px;overflow:hidden">
           <i style="display:block;height:100%;width:${b.n / tot * 100}%;background:var(--${b.s.cat === 'done' ? 'done' : b.s.cat === 'todo' ? 'todo' : 'prog'})"></i></span>
         <b class="num" style="width:26px;text-align:right;font-size:12px">${b.n}</b></div>`).join('')}
     </section>
@@ -1723,7 +2023,7 @@ function openModal(html, cls = '') {
   s.classList.add('on');
   const f = s.querySelector('input,textarea,select'); if (f) setTimeout(() => f.focus(), 30);
 }
-function closeModal() { $('#scrim').classList.remove('on'); $('#scrim').innerHTML = ''; }
+function closeModal() { $('#scrim').classList.remove('on'); $('#scrim').innerHTML = ''; OPEN_ISSUE = null; if (RERENDER) setTimeout(tryRerender, 0); }
 
 /* ---- durum değişimi tek kapıdan ---- */
 function setStatus(i, sid) {
@@ -1741,6 +2041,7 @@ function setStatus(i, sid) {
 let TAB = 'comments';
 function openIssue(id) {
   const i = issue(id); if (!i) return;
+  OPEN_ISSUE = id;
   const s = stat(i.statusId);
   const kids = DB.issues.filter(x => x.parentId === i.id || (i.type === 'epic' && x.epicId === i.id));
   const cm = DB.comments.filter(c => c.issueId === i.id).sort((a, b) => a.at - b.at);
@@ -1755,6 +2056,7 @@ function openIssue(id) {
     <div class="m-h">
       ${tIcon(i.type)}<span class="k">${i.key}</span>
       <span class="chip cat-${s.cat}">${esc(s.name)}</span>
+      <span id="watchers"></span>
       <button class="btn sm" id="logHere">Süre kaydet</button>
       <button class="x" data-close>×</button>
     </div>
@@ -1829,7 +2131,7 @@ function openIssue(id) {
           <i class="rm" style="width:${(rem / tot * 100).toFixed(1)}%"></i>
         </div>
         <div class="tlegend"><span>${fmtDur(i.spent)} harcandı</span><span>${fmtDur(rem)} kaldı</span></div>
-        ${i.spent + rem > i.estimate && i.estimate ? `<div class="chip" style="background:#FDF2F1;color:var(--risk);margin-top:6px">Tahmin aşımı: +${fmtDur(i.spent + rem - i.estimate)}</div>` : ''}
+        ${i.spent + rem > i.estimate && i.estimate ? `<div class="chip" style="background:var(--risk-bg);color:var(--risk);margin-top:6px">Tahmin aşımı: +${fmtDur(i.spent + rem - i.estimate)}</div>` : ''}
         <div class="kv" style="margin-top:10px">
           <span class="lb">Tahmin</span><input class="inp" data-f="estimate" value="${fmtDur(i.estimate)}" placeholder="3d 4h">
           <span class="lb">Kalan</span><input class="inp" data-f="remainingEst" value="${fmtDur(rem)}" placeholder="0h"
@@ -2024,12 +2326,13 @@ const VIEWS = {
   effort:    { t: 'Efor raporu',       c: 'Takip',             r: renderEffort,    tb: toolbarEffort },
   search:    { t: 'Arama',             c: 'Sorgu',             r: renderSearch,    tb: toolbarSearch },
   admin:     { t: 'Proje ayarları',    c: 'Yönetim',           r: renderAdmin,     tb: toolbarAdmin },
+  system:    { t: 'Sistem',            c: 'Yönetim',           r: renderSystem,    tb: toolbarSystem },
   reports:   { t: 'Raporlar',          c: 'Takip',             r: renderReports,   tb: () => `<span style="color:var(--ink3);font-size:12px">Zaman çizelgesindeki hafta seçimi buradaki hesapları da belirler.</span>` },
 };
 
 function render() {
   if (DB.ui.view === 'roadmap' && !MOD('epic')) DB.ui.view = 'board';
-  if (DB.ui.view === 'admin' && !isAdmin()) DB.ui.view = 'board';
+  if ((DB.ui.view === 'admin' || DB.ui.view === 'system') && !isAdmin()) DB.ui.view = 'board';
   const v = VIEWS[DB.ui.view] || VIEWS.board;
   $('#crumb').textContent = `${P().key} · ${v.c}`;
   $('#title').textContent = v.t;
@@ -2049,7 +2352,7 @@ function render() {
 
 /* Kapalı modüllerin ekranlarını menüden kaldırır */
 function syncNav() {
-  const hidden = { roadmap: !MOD('epic'), admin: !isAdmin() };
+  const hidden = { roadmap: !MOD('epic'), admin: !isAdmin(), system: !isAdmin() };
   $$('.nav a, #vtabs button').forEach(el => {
     if (hidden[el.dataset.v]) el.style.display = 'none';
     else if (VIEWS[el.dataset.v]) el.style.display = '';
@@ -2226,6 +2529,7 @@ function wire() {
 
   /* ---- veri taşıma ---- */
   $('#btnExport').onclick = () => {
+    if (isAdmin()) { location.href = '/api/export'; return toast('Yedek indiriliyor'); }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(DB, null, 2)], { type: 'application/json' }));
     a.download = `pano-${TODAY}.json`; a.click(); URL.revokeObjectURL(a.href);
@@ -2249,10 +2553,20 @@ function wire() {
     $('#fileIn').click();
   };
   $('#fileIn').onchange = e => {
-    const f = e.target.files[0]; if (!f) return;
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
     const r = new FileReader();
-    r.onload = () => { try { DB = JSON.parse(r.result); save(); boot(); toast('Veri içe aktarıldı'); }
-      catch (err) { toast('Dosya okunamadı — geçerli bir Pano JSON’u seçin'); } };
+    r.onload = async () => {
+      const data = extractData(String(r.result));
+      if (!data || !Array.isArray(data.issues)) return toast('Dosya okunamadı — geçerli bir Pano JSON’u seçin');
+      toast('İçe aktarılıyor…');
+      try {
+        await flushSync();
+        const st = await API.post('/api/import', { data });
+        await reloadState();
+        toast(`İçe aktarıldı: ${st.issues || 0} iş, ${st.worklogs || 0} süre kaydı, ${st.newUsers || 0} yeni kullanıcı` +
+          (st.fixedKeys ? ` · ${st.fixedKeys} çift iş numarası düzeltildi` : '') + ' · önceki hâlin yedeği alındı');
+      } catch (err) { toast('İçe aktarılamadı: ' + err.message); }
+    };
     r.readAsText(f);
   };
 
@@ -2509,7 +2823,7 @@ function renderSearch() {
 
   const cols = DB.fields.filter(f => f.onList);
   return `
-    ${err ? `<div class="panel" style="border-color:#E8C9C6;background:#FDF2F1;color:var(--risk);margin-bottom:12px">
+    ${err ? `<div class="panel" style="border-color:var(--risk-line);background:var(--risk-bg);color:var(--risk);margin-bottom:12px">
         <b>Sorgu hatası</b> — ${esc(err)}</div>` : ''}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
       ${SAMPLES.map(([n, s]) => `<button class="btn sm" data-q="${esc(s)}">${esc(n)}</button>`).join('')}
@@ -3204,7 +3518,7 @@ function capacityPanel() {
       kalan iş <b class="num">${fmtDur(rows.reduce((a, r) => a + r.load, 0))}</b></div>
     ${rows.map(r => `<div style="display:flex;align-items:center;gap:9px;margin-bottom:8px">
       ${avat(r.u.id)}<span style="width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.u.name)}</span>
-      <span style="flex:1;height:11px;background:#EDEDE7;border-radius:6px;position:relative;overflow:hidden">
+      <span style="flex:1;height:11px;background:var(--track);border-radius:6px;position:relative;overflow:hidden">
         <i style="display:block;height:100%;width:${Math.min(100, r.r / maxR * 100)}%;background:${r.r > 1 ? 'var(--risk)' : r.r > .85 ? '#B45309' : 'var(--accent)'}"></i>
         <i style="position:absolute;top:0;bottom:0;left:${Math.min(100, 1 / maxR * 100)}%;width:1px;background:var(--ink2)"></i>
       </span>
@@ -3343,7 +3657,7 @@ function wireKeys() {
   addEventListener('keydown', e => {
     const typing = /INPUT|TEXTAREA|SELECT/.test(e.target.tagName) || e.target.isContentEditable;
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); return palette(); }
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') { e.preventDefault(); return saveToFile(false); }
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') { e.preventDefault(); flushSync().then(() => toast(SYNC_STATE === 'ok' ? 'Kaydedildi' : 'Kaydedilemedi, tekrar denenecek')); return; }
     if (typing) return;
     const open = $('#scrim').classList.contains('on');
     if (GKEY) { GKEY = false;
@@ -3693,7 +4007,7 @@ function showLogin(msg) {
   $('#login').style.display = 'flex';
   $('#login').innerHTML = `
     <form class="loginbox" id="lgForm">
-      <div class="lg-brand"><b>Pano</b><span>çevik proje yönetimi</span></div>
+      <div class="lg-brand"><div><b>ÇevikPano</b><span>Çevik proje yönetimi</span></div></div>
       <label class="field">Kullanıcı adı</label>
       <input class="inp" id="lg_u" autocomplete="username" autocapitalize="off" spellcheck="false">
       <label class="field" style="margin-top:10px">Parola</label>
@@ -3969,7 +4283,7 @@ function homeRow(i, tag) {
     <span class="chip lbl">${esc(projName(i.projectId))}</span>
     ${tIcon(i.type)}<span class="k" style="color:var(--ink3);width:64px">${i.key}</span>
     <span class="sum" data-open="${i.id}">${esc(i.summary)}</span>${pIcon(i.priority)}
-    ${sc === 'late' ? `<span class="chip" style="background:#FDF2F1;color:var(--risk)">
+    ${sc === 'late' ? `<span class="chip" style="background:var(--risk-bg);color:var(--risk)">
         ${workdaysBetween(i.due, TODAY)} gün gecikme</span>`
       : sc === 'due' ? '<span class="chip cat-inprogress">bugün bitiyor</span>'
       : i.due ? `<span class="k" style="color:var(--ink3)">${fmtD(i.due)}</span>` : ''}
@@ -4579,7 +4893,7 @@ function planRow(i) {
     <span class="lb">Bitiş</span><input class="inp" type="date" data-f="due" value="${i.due || ''}" min="${i.start || ''}">
     <span class="lb">Planlanan</span><span style="font-size:12px">
       ${bad ? '<span style="color:var(--risk)">Bitiş, başlangıçtan önce olamaz</span>'
-        : n ? `<b class="num">${n}</b> iş günü ${planState(i) === 'late' ? '<span class="chip" style="background:#FDF2F1;color:var(--risk)">gecikmiş</span>' : ''}`
+        : n ? `<b class="num">${n}</b> iş günü ${planState(i) === 'late' ? '<span class="chip" style="background:var(--risk-bg);color:var(--risk)">gecikmiş</span>' : ''}`
         : '<span style="color:var(--ink3)">tarih girilmedi</span>'}</span>`;
 }
 
@@ -5198,7 +5512,7 @@ function monthlySummary() {
       <td class="num">${efFmt(r.bill)}</td>
       <td class="num" style="color:var(--ink3)">${efFmt(r.nobill)}</td>
       <td class="num"><b>${efFmt(r.h)}</b></td>
-      <td><span style="display:inline-block;width:52px;height:7px;background:#EDEDE7;border-radius:4px;overflow:hidden;vertical-align:-1px">
+      <td><span style="display:inline-block;width:52px;height:7px;background:var(--track);border-radius:4px;overflow:hidden;vertical-align:-1px">
         <i style="display:block;height:100%;width:${r.h / s.total * 100}%;background:var(--accent)"></i></span>
         <span class="k" style="color:var(--ink3)"> ${Math.round(r.h / s.total * 100)}%</span></td>
     </tr>`).join('')}</tbody></table>`;
@@ -5354,8 +5668,8 @@ function mergeDialog(inc, name) {
         ${r.skip.issues ? `<div class="sec">Dokunulmayacak</div>
           ${line('iş (seninki daha yeni ya da aynı)', r.skip.issues, 'lbl')}` : ''}`
       : '<div class="empty">Bu dosyada yeni bir şey yok — her şey zaten sende var.</div>'}
-      <div style="margin-top:14px;padding:9px 11px;background:#FDF8EC;border:1px solid #F0E2C2;
-        border-radius:6px;font-size:11.5px;color:#7A5A18;line-height:1.5">
+      <div style="margin-top:14px;padding:9px 11px;background:var(--warn-bg);border:1px solid var(--warn-line);
+        border-radius:6px;font-size:11.5px;color:var(--warn-ink);line-height:1.5">
         Birleştirme <b>hiçbir kaydı silmez</b>. Karşı tarafta silinmiş bir iş sende duruyorsa kalır.
         Aynı işi ikiniz de değiştirdiyse <b>son değiştirilen</b> kazanır.
       </div>
@@ -5371,11 +5685,186 @@ function mergeDialog(inc, name) {
 }
 
 
+
+/* ============================================================
+   BİLDİRİMLER • ÇEVRİM İÇİ • TEMA • SİSTEM
+   ============================================================ */
+function setUnread(n) {
+  UNREAD = n;
+  const b = document.getElementById('bellBadge');
+  if (b) { b.hidden = !n; b.textContent = n > 99 ? '99+' : n; }
+  document.title = (n ? `(${n}) ` : '') + 'ÇevikPano';
+}
+
+function setOnline(list) {
+  const others = list.filter(o => o.id !== ME?.id && user(o.id));
+  const key = others.map(o => o.id + o.issue).join();
+  if (key === setOnline.k) return; setOnline.k = key;
+  ONLINE = others;
+  const html = others.slice(0, 6).map(o => `<span class="onl" title="${esc(user(o.id).name)} çevrim içi${o.view && VIEWS[o.view] ? ' · ' + VIEWS[o.view].t : ''}">${avat(o.id)}</span>`).join('')
+    + (others.length > 6 ? `<span class="onl-more">+${others.length - 6}</span>` : '');
+  const t = document.getElementById('tbOnline'); if (t) t.innerHTML = html;
+  const r = document.getElementById('online');
+  if (r) r.innerHTML = others.length ? `<div class="navgroup">Çevrim içi · ${others.length}</div><div class="onl-row">${html}</div>` : '';
+  /* Açık iş penceresinde aynı işe bakanlar */
+  const w = document.getElementById('watchers');
+  if (w && OPEN_ISSUE) {
+    const here = others.filter(o => o.issue === OPEN_ISSUE);
+    w.innerHTML = here.length ? `<span class="watch">${here.map(o => avat(o.id)).join('')}
+      ${here.map(o => esc(user(o.id).name)).join(', ')} de bu işe bakıyor</span>` : '';
+  }
+}
+
+const NK = {
+  assigned: n => `<b>${esc(n.actor_name || 'Biri')}</b> sana bir iş atadı`,
+  comment:  n => `<b>${esc(n.actor_name || 'Biri')}</b> yorum yaptı`,
+  mention:  n => `<b>${esc(n.actor_name || 'Biri')}</b> senden bahsetti`,
+  status:   n => `<b>${esc(n.actor_name || 'Biri')}</b> durumu <b>${esc(n.meta?.status || '')}</b> yaptı`,
+};
+function ago(t) {
+  const s = (Date.now() - new Date(t).getTime()) / 1000;
+  if (s < 60) return 'az önce';
+  if (s < 3600) return Math.floor(s / 60) + ' dk önce';
+  if (s < 86400) return Math.floor(s / 3600) + ' sa önce';
+  if (s < 7 * 86400) return Math.floor(s / 86400) + ' gün önce';
+  return new Date(t).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+}
+async function openNotifications() {
+  const pop = document.getElementById('notifPop');
+  if (pop) { pop.remove(); return; }
+  const el = document.createElement('div');
+  el.id = 'notifPop'; el.className = 'pop';
+  el.innerHTML = `<div class="pop-h"><b>Bildirimler</b><button class="btn sm" id="nAll">Tümünü okundu say</button></div>
+    <div class="pop-b"><div class="empty">Yükleniyor…</div></div>`;
+  document.body.appendChild(el);
+  const close = e => { if (!el.contains(e.target) && !e.target.closest('#btnBell')) { el.remove(); document.removeEventListener('mousedown', close); } };
+  setTimeout(() => document.addEventListener('mousedown', close), 0);
+  let data;
+  try { data = await API.get('/api/notifications'); } catch (e) { el.querySelector('.pop-b').innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+  setUnread(data.unread);
+  el.querySelector('.pop-b').innerHTML = data.items.length ? data.items.map(n => `
+    <button class="notif ${n.read_at ? '' : 'unread'}" data-nid="${n.id}" data-iss="${esc(n.issue_id || '')}" data-proj="${esc(n.project_id || '')}">
+      ${n.actor_id && user(n.actor_id) ? avat(n.actor_id) : '<span class="av" style="background:var(--ink3)">•</span>'}
+      <span class="nt"><span>${(NK[n.kind] || NK.comment)(n)}</span>
+        ${n.issue_key ? `<span class="ni"><span class="k">${esc(n.issue_key)}</span> ${esc(n.summary || '')}</span>` : '<span class="ni">Silinmiş iş</span>'}
+        ${n.meta?.excerpt ? `<span class="nx">“${esc(n.meta.excerpt)}”</span>` : ''}
+        <span class="nw">${ago(n.created_at)}</span></span>
+    </button>`).join('') : '<div class="empty">Henüz bildirimin yok. Sana iş atandığında, işlerine yorum yapıldığında ya da @kullanıcıadı ile senden bahsedildiğinde burada görünür.</div>';
+  el.querySelectorAll('.notif').forEach(b => b.onclick = async () => {
+    API.post('/api/notifications/read', { ids: [b.dataset.nid] }).then(r => setUnread(r.unread)).catch(() => {});
+    el.remove();
+    const pid = b.dataset.proj;
+    if (pid && pid !== DB.ui.project && DB.projects.some(p => p.id === pid)) { DB.ui.project = pid; save(); startApp(false); }
+    if (b.dataset.iss && issue(b.dataset.iss)) openIssue(b.dataset.iss); else toast('Bu iş artık yok');
+  });
+  el.querySelector('#nAll').onclick = async () => {
+    const r = await API.post('/api/notifications/read', { ids: 'all' }); setUnread(r.unread);
+    el.querySelectorAll('.notif.unread').forEach(x => x.classList.remove('unread'));
+  };
+}
+
+/* ---- tema ---- */
+function applyTheme(t) {
+  if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t;
+  else delete document.documentElement.dataset.theme;
+}
+function cycleTheme() {
+  const cur = document.documentElement.dataset.theme
+    || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  try { localStorage.setItem('pano-theme', next); } catch (e) { }
+}
+try { applyTheme(localStorage.getItem('pano-theme')); } catch (e) { }
+
+function wireTopbar() {
+  const b = document.getElementById('btnBell'); if (b) b.onclick = openNotifications;
+  const t = document.getElementById('btnTheme'); if (t) t.onclick = cycleTheme;
+  document.addEventListener('focusout', () => { if (RERENDER) setTimeout(tryRerender, 50); });
+}
+
+/* ---- Sistem: yedekler, çöp kutusu, etkinlik (yönetici) ---- */
+let SYS_TAB = 'backups';
+function toolbarSystem() {
+  return `<div class="seg">${[['backups', 'Yedekler'], ['trash', 'Çöp kutusu'], ['activity', 'Etkinlik']].map(([k, l]) =>
+    `<button data-systab="${k}" class="${SYS_TAB === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+    <div class="spacer"></div>
+    ${SYS_TAB === 'backups' ? '<button class="btn pri" id="sysBackup">+ Şimdi yedek al</button>' : ''}`;
+}
+function renderSystem() {
+  setTimeout(loadSystem, 0);
+  return `<div class="panel" id="sysBody"><div class="empty">Yükleniyor…</div></div>`;
+}
+const KIND_TR = { auto: 'Otomatik', manual: 'Elle', 'pre-import': 'İçe aktarma öncesi', 'pre-restore': 'Geri yükleme öncesi' };
+const COL_TR = { issues: 'İş', projects: 'Proje', users: 'Kullanıcı', comments: 'Yorum', worklogs: 'Süre kaydı', sprints: 'Sprint',
+  statuses: 'Durum', fields: 'Özel alan', rules: 'Otomasyon', links: 'Bağlantı', filters: 'Filtre' };
+const fmtSize = b => b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+const fmtWhen = t => new Date(t).toLocaleString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+async function loadSystem() {
+  const el = document.getElementById('sysBody'); if (!el) return;
+  $$('[data-systab]').forEach(b => b.onclick = () => { SYS_TAB = b.dataset.systab; render(); });
+  const nb = document.getElementById('sysBackup');
+  if (nb) nb.onclick = async () => {
+    nb.disabled = true;
+    try { await flushSync(); await API.post('/api/backups', { label: 'Elle alınan yedek' }); toast('Yedek alındı'); loadSystem(); }
+    catch (e) { toast(e.message); } finally { nb.disabled = false; }
+  };
+  try {
+    if (SYS_TAB === 'backups') {
+      const list = await API.get('/api/backups');
+      el.innerHTML = `<h3>Yedekler</h3>
+        <div class="sub">Her gün otomatik yedek alınır (son 14 gün saklanır). İçe aktarma ve geri yüklemeden önce de otomatik yedek alınır.
+        Geri yükleme tüm projeleri, işleri ve kayıtları seçilen ana döndürür; kullanıcı hesapları ve parolalar korunur.</div>
+        ${list.length ? `<div class="tswrap" style="border:none"><table class="ts list"><thead><tr><th class="who">Tarih</th><th>Tür</th>
+          <th>İçerik</th><th>Boyut</th><th>Alan</th><th></th></tr></thead><tbody>
+          ${list.map(b => `<tr><td class="who">${fmtWhen(b.created_at)}</td><td><span class="chip ${b.kind === 'auto' ? 'lbl' : 'cat-inprogress'}">${KIND_TR[b.kind] || b.kind}</span></td>
+            <td>${b.counts.issues ?? 0} iş · ${b.counts.worklogs ?? 0} süre · ${b.counts.users ?? 0} kişi</td>
+            <td class="num">${fmtSize(b.size_bytes)}</td><td>${esc(b.created_by_name || 'Sistem')}</td>
+            <td style="white-space:nowrap;text-align:right"><a class="btn sm" href="/api/backups/${b.id}">İndir</a>
+              <button class="btn sm danger" data-restore="${b.id}">Geri yükle</button></td></tr>`).join('')}
+          </tbody></table></div>` : '<div class="empty">Henüz yedek yok. İlk otomatik yedek sunucu açıldıktan kısa süre sonra alınır.</div>'}`;
+      el.querySelectorAll('[data-restore]').forEach(b => b.onclick = async () => {
+        if (!confirm('Tüm veri bu yedekteki hâline dönecek. Şu anki hâlin yedeği otomatik alınacak. Devam edilsin mi?')) return;
+        b.disabled = true;
+        try { await flushSync(); await API.post(`/api/backups/${b.dataset.restore}/restore`); await reloadState(); toast('Yedek geri yüklendi'); }
+        catch (e) { toast('Geri yüklenemedi: ' + e.message); b.disabled = false; }
+      });
+    } else if (SYS_TAB === 'trash') {
+      const list = await API.get('/api/trash');
+      el.innerHTML = `<h3>Çöp kutusu</h3><div class="sub">Silinen işler, projeler, kullanıcılar ve kayıtlar burada durur.
+        Geri yüklenen bir iş, yorumları ve süre kayıtlarıyla birlikte geri gelir.</div>
+        ${list.length ? `<div class="tswrap" style="border:none"><table class="ts list"><thead><tr><th class="who">Kayıt</th><th>Tür</th>
+          <th>Silen</th><th>Ne zaman</th><th></th></tr></thead><tbody>
+          ${list.map(x => `<tr><td class="who">${x.key ? `<span class="k">${esc(x.key)}</span> ` : ''}${esc((x.title || x.record_id).slice(0, 90))}
+            ${x.batch_size > 1 ? `<span class="chip lbl">+${x.batch_size - 1} bağlı kayıt</span>` : ''}</td>
+            <td>${COL_TR[x.collection] || esc(x.collection)}</td><td>${esc(x.deleted_by_name || '—')}</td><td>${ago(x.deleted_at)}</td>
+            <td style="text-align:right"><button class="btn sm" data-untrash="${x.id}">Geri yükle</button></td></tr>`).join('')}
+          </tbody></table></div>` : '<div class="empty">Çöp kutusu boş.</div>'}`;
+      el.querySelectorAll('[data-untrash]').forEach(b => b.onclick = async () => {
+        b.disabled = true;
+        try { const r = await API.post(`/api/trash/${b.dataset.untrash}/restore`); toast(r.restored + ' kayıt geri yüklendi'); await poll(); loadSystem(); }
+        catch (e) { toast(e.message); b.disabled = false; }
+      });
+    } else {
+      const list = await API.get('/api/activity?limit=300');
+      el.innerHTML = `<h3>Etkinlik</h3><div class="sub">Kim, ne zaman, neyi değiştirdi — son 300 değişiklik.</div>
+        ${list.length ? `<div class="act">${list.map(a => `<div class="act-r">
+          <span class="act-w">${ago(a.at)}</span>
+          <span class="act-op ${a.op}">${a.op === 'del' ? 'sildi' : 'güncelledi'}</span>
+          <b>${esc(a.user_name || 'Sistem')}</b>
+          <span class="act-c">${COL_TR[a.collection] || esc(a.collection)}</span>
+          <span class="act-t">${a.key ? `<span class="k">${esc(a.key)}</span> ` : ''}${esc((a.title || '').slice(0, 90))}</span></div>`).join('')}</div>`
+          : '<div class="empty">Henüz etkinlik yok.</div>'}`;
+    }
+  } catch (e) { el.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+
 let WIRED = false;
 async function enterApp(useHash, fromLogin) {
   try { DB = await load(); }
   catch (e) { return showLogin(e.status === 401 ? '' : 'Sunucuya bağlanılamadı: ' + e.message); }
-  if (!WIRED) { wire(); WIRED = true; }
+  if (!WIRED) { wire(); wireTopbar(); WIRED = true; }
   SESSION = ME.id;
   ensureSchema(); ensureAccounts();
   $('#login').style.display = 'none';
@@ -5385,7 +5874,7 @@ async function enterApp(useHash, fromLogin) {
   startApp(false);
   save();
   renderFileBar();
-  startPolling();
+  startPolling(); poll();
   if (ME.mustChange) changePwForm(true);
 }
 
