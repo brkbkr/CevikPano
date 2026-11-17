@@ -1,0 +1,50 @@
+# Kendi sunucunda (Oracle Cloud, Hetzner, DigitalOcean ...) tek komutla çalıştırma.
+# Değerler .env dosyasından gelir (scripts/oracle-kurulum.sh üretir). Elle:
+#   cp .env.example .env  →  düzenle  →  docker compose up -d --build
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cevikpano
+      POSTGRES_USER: cevikpano
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD gerekli}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cevikpano -d cevikpano"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://cevikpano:${POSTGRES_PASSWORD}@db:5432/cevikpano
+      PGSSL: disable
+      PORT: "3000"
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD gerekli}
+      DEFAULT_USER_PASSWORD: ${DEFAULT_USER_PASSWORD:?DEFAULT_USER_PASSWORD gerekli}
+
+  # HTTPS: Caddy, DOMAIN için Let's Encrypt sertifikasını kendisi alır ve yeniler.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [app]
+    command: caddy reverse-proxy --from ${DOMAIN:?DOMAIN gerekli} --to app:3000
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:

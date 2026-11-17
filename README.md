@@ -68,17 +68,39 @@ Bu sürümde:
 | `SESSION_DAYS` | Oturum süresi (gün, varsayılan 30) |
 | `PORT` | Dinlenen port (varsayılan 3000) |
 
-## Kendi sunucunuzda (VPS) çalıştırma
+## Kendi sunucunuzda çalıştırma (Oracle Cloud Always Free — önerilen)
 
-```bash
-docker run -d --name pano-db -e POSTGRES_PASSWORD=gizli -v pano-db:/var/lib/postgresql/data postgres:16
-docker build -t cevikpano .
-docker run -d --name pano --link pano-db -p 80:3000 \
-  -e DATABASE_URL=postgres://postgres:gizli@pano-db:5432/postgres \
-  -e ADMIN_PASSWORD='GüçlüBirParola' cevikpano
-```
+Oracle'ın süresiz ücretsiz ARM sunucusu (4 çekirdek / 24 GB RAM'e kadar) bu uygulama için fazlasıyla yeterli.
 
-HTTPS için önüne Caddy ya da Nginx koyun.
+1. https://www.oracle.com/cloud/free/ → hesap açın (kart yalnızca doğrulama içindir, ücret alınmaz).
+   **Ana bölge (home region) sonradan değiştirilemez**; Frankfurt ya da Amsterdam iyi seçim.
+2. *Compute → Instances → Create instance*:
+   - Image: **Ubuntu 24.04** (ya da 22.04)
+   - Shape: **Ampere → VM.Standard.A1.Flex**, 2 OCPU / 12 GB (Always Free sınırı içinde)
+   - *Add SSH keys → Generate a key pair* → **iki anahtarı da indirin**
+   - "Out of capacity" hatası alırsanız başka *Availability Domain* seçin ya da birkaç saat sonra tekrar deneyin.
+3. Sunucunun sayfasında *Subnet → Default Security List → Add Ingress Rules*:
+   Source CIDR `0.0.0.0/0`, TCP, Destination port **80**; aynısını **443** için ekleyin.
+4. Sunucuya bağlanın (Windows'ta PowerShell):
+   ```
+   ssh -i indirilen-anahtar.key ubuntu@SUNUCU_IP
+   ```
+5. Tek komutla kurun:
+   ```
+   curl -fsSL https://raw.githubusercontent.com/brkbkr/CevikPano/main/scripts/oracle-kurulum.sh | sudo bash
+   ```
+   Betik yönetici parolasını sorar; sonunda site adresini (`https://<ip>.sslip.io`) yazar.
+   Kendi alan adınız varsa DNS'te A kaydını sunucu IP'sine yönlendirip `sudo DOMAIN=pano.firmaniz.com bash` ile çalıştırın.
+
+Betik Docker'ı kurar, PostgreSQL + uygulama + HTTPS'i (Caddy, Let's Encrypt) `docker-compose.yml` ile başlatır,
+80/443 portlarını açar ve her gece veritabanı yedeği alır (`/opt/cevikpano/yedekler`, son 14 gün).
+Güncellemek için aynı komutu tekrar çalıştırın; veriler ve parolalar korunur.
+
+> Oracle, Always Free hesaplarda uzun süre neredeyse hiç kullanılmayan sunucuları geri alabiliyor.
+> Hesabı "Pay As You Go"ya yükseltmek (Always Free kaynaklar yine ücretsiz kalır) bu riski kaldırır.
+
+Başka bir Ubuntu sunucuda (Hetzner, DigitalOcean ...) da aynı betik çalışır. Elle kurmak için:
+`cp .env.example .env` → düzenleyin → `docker compose up -d --build`.
 
 ## Geliştirme
 
