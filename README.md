@@ -32,7 +32,7 @@ Bu sürümde:
 | `render.yaml` | Render.com'a tek tıkla kurulum tanımı |
 | `Dockerfile` | Herhangi bir sunucuda çalıştırmak için imaj |
 
-## Canlıya alma (Render.com — önerilen)
+## Canlıya alma: Render.com (hızlı deneme)
 
 1. https://render.com adresinde hesap açın (GitHub ile giriş yapmak en kolayı).
 2. **New → Blueprint** seçin, `brkbkr/CevikPano` deposunu bağlayın.
