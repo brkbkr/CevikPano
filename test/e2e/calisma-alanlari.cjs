@@ -142,6 +142,9 @@ const WSA = `Alan A ${RUN} ${XSS}`;                       // 60 karakterin altı
     && document.querySelector('[data-mvto="ws1"]').getAttribute('aria-checked') === 'true'));
   await A.click(`[data-mvto="${wsA}"]`); await A.click('#wsm_ok'); await sleep(300);
   ok('project moved locally', await A.evaluate(id => DB.projects.find(p => p.id === 'p2').workspaceId === id, wsA));
+  /* 22b: yeni alan üyeli (yalnız listedekiler görür): M Üye, V İzleyici olarak eklenir. */
+  await A.evaluate(([id, M, V]) => { const w = DB.workspaces.find(x => x.id === id);
+    w.members = [...(w.members || []), { userId: M, role: 'member' }, { userId: V, role: 'viewer' }]; save(); }, [wsA, M, V]);
   await flush(A);
   const tMove = await waitFor(Mb, id => wsOf(DB.projects.find(p => p.id === 'p2')) === id && visibleWs().some(w => w.id === id), wsA, 8000);
   ok('member sees the move within poll interval', tMove >= 0, tMove + ' ms');
@@ -151,8 +154,9 @@ const WSA = `Alan A ${RUN} ${XSS}`;                       // 60 karakterin altı
   ok('member: tree lists projects under their workspace', await Mb.evaluate(() => { const o = [...document.querySelectorAll('#nvp-ws1 [data-proj]')].map(x => x.dataset.proj);
     return o.includes('p1') && !o.includes('p2'); }));
   await Mb.click(`#wsTree [data-wstog="${wsA}"]`); await sleep(200);
-  ok('member: opening the workspace row shows its projects', await Mb.evaluate(id => document.querySelector(`#wsTree [data-wstog="${id}"]`).getAttribute('aria-expanded') === 'true'
-    && [...document.querySelectorAll('#nvp-' + id + ' [data-proj]')].map(o => o.dataset.proj).join() === 'p2', wsA));
+  /* 22b: alan adı alan sayfasını açar; üyeli alanda üye alanın tüm projelerini görür (p2 + yöneticinin yeni projesi) */
+  ok('member: opening the workspace row shows its page and projects', await Mb.evaluate(([id, np]) => document.querySelector(`#wsTree [data-wstog="${id}"]`).getAttribute('aria-expanded') === 'true'
+    && DB.ui.view === 'workspace' && [...document.querySelectorAll('#nvp-' + id + ' [data-proj]')].map(o => o.dataset.proj).sort().join() === ['p2', np].sort().join(), [wsA, np.id]));
   await Mb.click(`#nvp-${wsA} [data-proj="p2"]`); await sleep(300);
   ok('member: picking a project in another workspace switches workspace', await Mb.evaluate(id => DB.ui.workspace === id && DB.ui.project === 'p2'
     && document.querySelector('#wsTree [data-proj="p2"]')?.getAttribute('aria-current') === 'page', wsA));
@@ -176,23 +180,25 @@ const WSA = `Alan A ${RUN} ${XSS}`;                       // 60 karakterin altı
   ok('home: workspace chip filters list', hf2.pressed === 'true' && hf2.ui && hf2.rows === 2 && hf2.open === 2, JSON.stringify(hf2));
   await flush(Mb); await Mb.reload(); await sleep(2200);
   ok('home: workspace filter kept after reload', await Mb.evaluate(id => DB.ui.homeWs === id && document.querySelector(`[data-hmws="${id}"]`)?.getAttribute('aria-pressed') === 'true', wsA));
-  await Mb.evaluate(pid => { DB.ui.homeProj = pid; render(); }, np.id); await sleep(200);
+  await Mb.evaluate(pid => { DB.ui.homeProj = pid; render(); }, 'p1'); await sleep(200);
   ok('home: project of another workspace resets to Tümü', await Mb.evaluate(() => DB.ui.homeProj === '' || DB.ui.homeProj === undefined));
   await Mb.evaluate(() => { DB.ui.homeWs = 'yok_boyle_alan'; render(); }); await sleep(200);
   ok('home: unknown saved workspace → Tümü', await Mb.evaluate(() => DB.ui.homeWs === '' && document.querySelector('[data-hmws=""]').getAttribute('aria-pressed') === 'true'));
 
-  // 8) üye kendi alanını açar; Genel'in menüsünü görmez, silme yok
+  // 8) 22b: üye alan açamaz (giriş yok, sunucu 403); yönetici alanı açar ve sahibini üye seçer → üye kendi alanını yönetir
   await view(Mb, 'projects');
-  await Mb.click('#wsNewBtn'); await sleep(200);
-  await Mb.fill('#wsf_n', 'Üye Alanı ' + RUN); await Mb.press('#wsf_n', 'Enter'); await sleep(300);
-  const wsM = await Mb.evaluate(name => DB.workspaces.find(w => w.name === name)?.id, 'Üye Alanı ' + RUN);
-  ok('member creates workspace (selected, visible before server echo)', wsM && await Mb.evaluate(id => DB.ui.workspace === id && visibleWs().some(w => w.id === id), wsM));
-  await view(Mb, 'projects');
-  const mm = await Mb.evaluate(id => ({ own: !!document.querySelector(`[data-wsgrp="${id}"] [data-wsedit]`), genel: !!document.querySelector('[data-wsgrp="ws1"] .ws-gh [data-wsmore]'),
-    del: document.querySelectorAll('[data-wsdel]').length, move: document.querySelectorAll('[data-movproj]').length > 0 }), wsM);
-  ok('member: manages own workspace only, no delete', mm.own && !mm.genel && mm.del === 0 && mm.move, JSON.stringify(mm));
-  await flush(Mb);
-  ok('server: member workspace createdBy = member', (await srv(Mb, 'workspaces', wsM))?.createdBy === M);
+  ok('member: #projects → workspace page, no new workspace entry', await Mb.evaluate(() => DB.ui.view === 'workspace' && !document.querySelector('#wsNewBtn, [data-wsnew]')));
+  const mRej = await Mb.evaluate(async R => (await API.post('/api/sync', { changes: [{ c: 'workspaces', id: 'ws_m' + R, op: 'put', data: { name: 'Üye denemesi ' + R } }] })).rejected?.[0]?.reason, RUN);
+  ok('server rejects member workspace', mRej === 'Çalışma alanını yalnızca yönetici açabilir', mRej);
+  const wsM = 'ws_um' + RUN;
+  await A.evaluate(async ([id, R, M]) => { await API.post('/api/sync', { changes: [{ c: 'workspaces', id, op: 'put', data: { name: 'Üye Alanı ' + R, color: '#7C3AED', ownerId: M,
+    members: [{ userId: M, role: 'admin' }] } }] }); await reloadState(); }, [wsM, RUN, M]);
+  ok('member sees workspace owned by them (poll)', await waitFor(Mb, id => visibleWs().some(w => w.id === id), wsM, 8000) >= 0);
+  const mm = await Mb.evaluate(id => { openWsPage(id); const own = !!document.querySelector(`[data-wspage="${id}"] [data-wsedit]`);
+    openWsPage('ws1'); const genel = !!document.querySelector('[data-wspage="ws1"] [data-wsedit]');
+    return { own, genel, del: document.querySelectorAll('[data-wsdel]').length }; }, wsM);
+  ok('member: manages own workspace only, no delete', mm.own && !mm.genel && mm.del === 0, JSON.stringify(mm));
+  ok('server: owner = member, opener = admin', await (async () => { const w = await srv(Mb, 'workspaces', wsM); return w?.ownerId === M && w?.createdBy === 'u_admin'; })());
 
   // 9) arşivle → seçicilerde yok, "göster" ile görünür, geri al; veri silinmez
   await view(A, 'projects');
@@ -245,15 +251,15 @@ const WSA = `Alan A ${RUN} ${XSS}`;                       // 60 karakterin altı
     add: document.querySelectorAll('[data-wsnewproj]').length }));
   ok('viewer: no create / move controls', !vm.nw && vm.man && !vp.btn && vp.more === 0 && vp.add === 0, JSON.stringify([vm, vp]));
   const vRej = await Vb.evaluate(async () => (await API.post('/api/sync', { changes: [{ c: 'workspaces', id: 'ws_izl', op: 'put', data: { id: 'ws_izl', name: 'İzleyici alanı' } }] })).rejected?.[0]?.reason);
-  ok('server rejects viewer workspace', vRej === 'salt okunur kullanıcı', vRej);
+  ok('server rejects viewer workspace', vRej === 'Çalışma alanını yalnızca yönetici açabilir', vRej);
 
-  // 12) hiçbir projede üye değil (b): üye → "Çalışma alanı oluştur"; izleyici → yalnız metin
+  // 12) hiçbir projede üye değil (b): üye ve izleyici → yalnız "yöneticine başvur" metni (22b: alanı yalnız yönetici açar)
   const Nb = await mk('noproj'); await login(Nb, 'wsn' + RUN, 'Baslangic123', 'WsProj12345!');
   await view(Nb, 'board');
   const nb = await Nb.evaluate(() => ({ h: document.querySelector('[data-wsempty="b"] h3')?.textContent, btn: !!document.querySelector('[data-wsempty="b"] [data-wsnew]'),
-    sel: document.querySelector('#wsTree .nv-nows')?.textContent === 'Henüz çalışma alanı yok' && !!document.querySelector('#wsTree [data-wsnew]'),
+    sel: document.querySelector('#wsTree .nv-nows')?.textContent === 'Henüz çalışma alanı yok' && !document.querySelector('[data-wsnew]'), ask: !!document.querySelector('[data-wsempty="b"] [data-wsask]'),
     crumb: document.getElementById('crumb').textContent }));
-  ok('no-project member: empty state (b) with create button', nb.h === 'Henüz bir projeye eklenmedin' && nb.btn && nb.sel, JSON.stringify(nb));
+  ok('no-project member: empty state (b) without create button, ask admin', nb.h === 'Henüz bir projeye eklenmedin' && !nb.btn && nb.sel && nb.ask, JSON.stringify(nb));
   await Nb.press('body', 'w'); await sleep(250);
   ok('w shortcut without project does not crash', await Nb.evaluate(() => document.getElementById('scrim').classList.contains('on')));
   await Nb.evaluate(() => closeModal());
@@ -262,7 +268,7 @@ const WSA = `Alan A ${RUN} ${XSS}`;                       // 60 karakterin altı
   await view(NVb, 'board');
   const nvb = await NVb.evaluate(() => ({ h: document.querySelector('[data-wsempty="b"] h3')?.textContent, btn: !!document.querySelector('[data-wsempty] button'),
     p: document.querySelector('[data-wsempty="b"] p')?.textContent }));
-  ok('no-project viewer: (b) without button', nvb.h === 'Henüz bir projeye eklenmedin' && !nvb.btn && /Yöneticinden seni bir projeye eklemesini iste/.test(nvb.p), JSON.stringify(nvb));
+  ok('no-project viewer: (b) without button', nvb.h === 'Henüz bir projeye eklenmedin' && !nvb.btn && /Yöneticine başvur/.test(nvb.p), JSON.stringify(nvb));
 
   // 13) seçim kişisel ve kalıcı
   await A.evaluate(id => pickWs(id), wsA); await sleep(300); await flush(A);
@@ -286,7 +292,8 @@ const WSA = `Alan A ${RUN} ${XSS}`;                       // 60 karakterin altı
       l: r.left, r: r.right, sw: document.documentElement.scrollWidth }; });
   ok('mobile "Proje ▾": drawer open, focus on current project, rows ≥44px inside viewport', sh.open && sh.f && sh.cur >= 44 && sh.rows >= 44 && sh.l >= 0 && sh.r <= 375 && sh.sw <= 376, JSON.stringify(sh));
   if (!await Mo.$('#wsTree [data-wstog="ws1"]')) { await Mo.click('#wsTree [data-wsother]'); await sleep(200); }
-  if (await Mo.evaluate(() => document.querySelector('#wsTree [data-wstog="ws1"]').getAttribute('aria-expanded') !== 'true')) { await Mo.click('#wsTree [data-wstog="ws1"]'); await sleep(200); }
+  /* 22b: alan adına dokunmak alan sayfasını açar (çekmece kapanır); ağacı burada doğrudan aç */
+  if (await Mo.evaluate(() => document.querySelector('#wsTree [data-wstog="ws1"]').getAttribute('aria-expanded') !== 'true')) { await Mo.evaluate(() => { wsOpenSet('ws1', true); renderRail(); }); await sleep(200); }
   await Mo.screenshot({ path: SS + 'mobile.png' });
   await Mo.click('#nvp-ws1 [data-proj]'); await sleep(400);
   ok('mobile drawer: picking a project of another workspace switches and closes', await Mo.evaluate(() => DB.ui.workspace === 'ws1' && DB.ui.view === 'board'
