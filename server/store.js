@@ -348,11 +348,12 @@ async function checkProjectType(c, me, id, data, cur) {
     throw new HttpError(409, 'Önce aktif sprinti tamamlayın');
 }
 
-/* Pano türündeki projede sprint başlatılamaz (aktif olan ya da projesi değişen aktif sprint). */
+/* Türü açıkça Pano (type === 'board') olan projede sprint başlatılamaz (aktif olan ya da projesi değişen
+   aktif sprint). Türsüz (eski) projelere uygulanmaz: eski veri / demo yüklemesindeki aktif sprintler düşmesin. */
 async function checkSprintStart(c, data, cur) {
   if (data.state !== 'active' || (cur?.state === 'active' && cur?.projectId === data.projectId)) return;
   const p = (await c.query('SELECT data FROM projects WHERE id=$1 FOR SHARE', [data.projectId])).rows[0]?.data;
-  if (p && projType(p, await sprintOn(c)) === 'board') throw new HttpError(400, 'Pano türündeki projede sprint başlatılamaz');
+  if (p?.type === 'board') throw new HttpError(400, 'Pano türündeki projede sprint başlatılamaz');
 }
 
 const colStats = async (c, pid) => {

@@ -1558,12 +1558,22 @@ describe('proje türü ve kolonlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
     ok(await M.sync([P('pk_ag', { type: 'board', members: ['u_admin', 'u_k_m'] })]));
   });
 
-  test('Pano türündeki projede sprint başlatılamaz (türsüz + genel sprint kapalı dahil); Agile\'da başlar', async () => {
+  test('türü açıkça Pano olan projede sprint başlatılamaz; türsüz (genel sprint kapalı) projede ve Agile\'da başlar', async () => {
+    assert.equal((await pool.query(`SELECT value FROM settings WHERE key='cfg'`)).rows[0]?.value?.modules?.sprint, false);
     const r = await M.sync([{ c: 'sprints', id: 'sp_k3', op: 'put', data: { projectId: 'pk_ag', name: 'S3', state: 'active' } },
       { c: 'sprints', id: 'sp_k4', op: 'put', data: { projectId: 'pk_bos', name: 'S4', state: 'active' } },
       { c: 'sprints', id: 'sp_k5', op: 'put', data: { projectId: 'pk_ag', name: 'S5', state: 'future' } }]);
-    assert.deepEqual(reasons(r), Array(2).fill('Pano türündeki projede sprint başlatılamaz'));
+    assert.deepEqual(reasons(r), ['Pano türündeki projede sprint başlatılamaz']);
+    assert.equal((await row('projects', 'pk_ag')).type, 'board');
+    assert.equal(await row('sprints', 'sp_k3'), undefined);
+    assert.equal((await row('sprints', 'sp_k4')).state, 'active');        // türsüz eski proje: kural yok
     assert.equal((await row('sprints', 'sp_k5')).state, 'future');
+    /* future → active geçişi de Pano'da ret */
+    assert.deepEqual(reasons(await A.sync([{ c: 'sprints', id: 'sp_k5', op: 'put', data: { projectId: 'pk_ag', name: 'S5', state: 'active' } }])),
+      ['Pano türündeki projede sprint başlatılamaz']);
+    assert.deepEqual(reasons(await A.sync([{ c: 'sprints', id: 'sp_k7', op: 'put', data: { projectId: 'pk_tb', name: 'S7', state: 'active' } }])),
+      ['Pano türündeki projede sprint başlatılamaz']);
+    ok(await M.sync([{ c: 'sprints', id: 'sp_k4', op: 'put', data: { projectId: 'pk_bos', name: 'S4', state: 'closed' } }]));
     ok(await A.sync([{ c: 'sprints', id: 'sp_k6', op: 'put', data: { projectId: 'pk_ta', name: 'S6', state: 'active' } }]));
   });
 
