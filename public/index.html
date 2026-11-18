@@ -8625,10 +8625,8 @@ function ensureProjects() {
    docs/tasarim/benim-islerim: kişiye atanmış açık işler tarih gruplarında. "Bugün" her çizimde
    yeniden hesaplanır (TODAY sayfa açılışında sabittir); hafta çizelgedeki seçili haftadan bağımsızdır. */
 function toolbarHome() {
-  return `${canEdit() ? `<button class="btn pri" id="hNewIssue">+ İş oluştur</button>
-    <button class="btn" id="hLogWork">+ Süre kaydet</button>
-    <button class="btn" id="hNewProject">+ Yeni proje</button>` : ''}
-    <div class="spacer"></div>
+  /* İş oluşturma proje ekranlarında, yeni proje çalışma alanında, süre kaydı kartlarda ("Süre gir"); kısayollar c / w çalışır. */
+  return `<div class="spacer"></div>
     <span style="font-size:12px;color:var(--ink3)">${new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })}</span>`;
 }
 
@@ -10645,10 +10643,8 @@ function deleteProject(pid) {
 }
 
 function wireProjects() {
-  const nb = $('#pNew') || $('#hNewProject');
-  $$('#pNew,#hNewProject').forEach(b => b.onclick = () => newProjectForm());
-  const hi = $('#hNewIssue'); if (hi) hi.onclick = () => newIssueForm();
-  const hw = $('#hLogWork'); if (hw) hw.onclick = () => logWorkForm();
+  const nb = $('#pNew');
+  $$('#pNew').forEach(b => b.onclick = () => newProjectForm());
   $$('[data-goproj]').forEach(b => b.onclick = () => {
     DB.ui.project = b.dataset.goproj;
     DB.ui.view = 'board'; DB.board.q = ''; DB.board.filterUser = ''; DB.board.filterType = '';

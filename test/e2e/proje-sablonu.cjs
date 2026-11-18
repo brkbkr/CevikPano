@@ -196,9 +196,9 @@ const TALEP = [['Yeni', 'todo'], ['İnceleniyor', 'inprogress'], ['Talep edenden
 
   // 10) Üye: Benim işlerim → Talep; yenilemede ve 2. oturumda eksiksiz
   const Mb = await mk('member'); await login(Mb, 'psm' + RUN, 'Baslangic123', 'SabUye12345!');
-  await view(Mb, 'home');
-  await Mb.click('#hNewProject'); await sleep(200);
-  ok('üye: Benim işlerim girişi aynı galeriyi açar', await Mb.evaluate(() => document.querySelectorAll('.ps-card').length === 7));
+  await view(Mb, 'projects');
+  await Mb.click('#pNew'); await sleep(200);
+  ok('üye: Projeler girişi aynı galeriyi açar (Benim işlerim düğmesi kalktı)', await Mb.evaluate(() => document.querySelectorAll('.ps-card').length === 7));
   await pick(Mb, 'yolharitasi'); await Mb.click('#ps_next'); await sleep(120);
   ok('üye + yol haritası + epik kapalı: bilgi var, kutular yok', await Mb.evaluate(() => /Yöneticinizden epikleri açmasını isteyin/.test(document.getElementById('np_einfo')?.textContent || '')
     && !document.getElementById('np_epic') && !document.getElementById('np_def')));
