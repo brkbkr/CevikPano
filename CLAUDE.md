@@ -24,7 +24,7 @@ Jira benzeri çevik proje yönetimi. Arayüz ve tüm metinler **Türkçe**; kull
 - Geliştirme: `DATABASE_URL=postgres://postgres:postgres@localhost:5432/pano_dev ADMIN_PASSWORD=admin12345 npm run dev`
 - Test: `TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/pano_test npm test` (test DB'yi sıfırlar)
 - Yerel PostgreSQL: `service postgresql start`
-- Tarayıcı regresyonu: temiz DB + `node scripts/seed-demo.mjs http://localhost:3100 test/fixtures/demo.json` + `node test/e2e/regresyon.cjs`
+- Tarayıcı regresyonu: temiz DB + `node scripts/seed-demo.mjs http://localhost:3100 test/fixtures/demo.json` + `DATABASE_URL=… node scripts/apply-sql.mjs server/migrations/005_musteri_cari.sql` (demo Müşteri alanını cariye çevirir) + `node test/e2e/regresyon.cjs` (tüm takımlar: `.github/workflows/test.yml`)
   (sunucu `ADMIN_PASSWORD=admin12345 DEFAULT_USER_PASSWORD=Baslangic123 PORT=3100` ile).
 
 ## Çalışma süreci ve roller
