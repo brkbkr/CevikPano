@@ -51,11 +51,6 @@ button{cursor:pointer;background:none;border:none}
 .projsel select{width:100%;padding:7px 8px;border:1px solid var(--line2);border-radius:var(--r);background:var(--surface2)}
 .navgroup{padding:8px 8px 4px;font-family:var(--mono);font-size:10px;text-transform:uppercase;
   letter-spacing:.09em;color:var(--ink3);margin-top:6px}
-.nav a{display:flex;align-items:center;gap:9px;padding:7px 12px;margin:1px 8px;border-radius:var(--r);
-  color:var(--ink2);text-decoration:none;font-weight:500}
-.nav a:hover{background:var(--surface2);color:var(--ink)}
-.nav a.on{background:var(--accent-soft);color:var(--accent-d);font-weight:600}
-.nav a .g{width:16px;text-align:center;font-size:13px;opacity:.85}
 .filebar{margin-top:auto;padding:10px 10px 6px;border-top:1px solid var(--line);
   display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .filebar .btn{display:flex;align-items:center;gap:6px;justify-content:center}
@@ -482,11 +477,6 @@ body{font-size:13.5px;letter-spacing:-.006em;font-feature-settings:"cv11","ss01"
 .projsel{padding:4px 12px 8px}
 .projsel select{padding:8px 10px;border-radius:10px;background:var(--surface2);border:1px solid var(--line);font-weight:600}
 .navgroup{padding:14px 20px 6px;font-size:10.5px;margin-top:0}
-.nav a{padding:7px 10px;margin:1px 10px;border-radius:8px;color:var(--ink2);font-weight:500;transition:background .12s,color .12s}
-.nav a .g{width:18px;font-size:14px;opacity:.7}
-.nav a:hover{background:var(--surface2)}
-.nav a.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
-.nav a.on .g{opacity:1}
 .online{padding:0 0 4px}
 .onl-row{display:flex;gap:4px;padding:2px 20px 6px;flex-wrap:wrap}
 .onl{position:relative;display:inline-flex}
@@ -798,11 +788,6 @@ body{background:var(--paper)}
 .projsel select{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#fff}
 .projsel select option{color:#0B1B33}
 .navgroup{color:var(--rail-ink2)}
-.nav a{color:var(--rail-ink)}
-.nav a .g{opacity:.75}
-.nav a:hover{background:var(--rail-hover);color:#fff}
-.nav a.on{background:var(--rail-on);color:var(--rail-on-ink);box-shadow:inset 3px 0 0 #60A5FA}
-.nav a.on .g{color:#93C5FD}
 .fnote{color:var(--rail-ink2)}
 .filebar .fnote:first-child{color:var(--rail-ink)}
 .online .navgroup{color:var(--rail-ink2)}
@@ -925,12 +910,6 @@ body{background:var(--paper)}
 .brand b{color:var(--ink)}
 .projsel select{background:var(--rail-field);border:1px solid var(--rail-line);color:var(--ink)}
 .navgroup{color:var(--rail-ink2)}
-.nav a{color:var(--rail-ink);gap:11px;padding:8px 10px}
-.nav a svg.g{width:18px;height:18px;flex-shrink:0;fill:none;stroke:var(--rail-icon);stroke-width:1.8;
-  stroke-linecap:round;stroke-linejoin:round;opacity:1}
-.nav a:hover{background:var(--rail-hover);color:var(--ink)}
-.nav a.on{background:var(--rail-on);color:var(--rail-on-ink);box-shadow:inset 3px 0 0 var(--rail-bar);font-weight:600}
-.nav a.on svg.g{stroke:var(--rail-bar)}
 .fnote{color:var(--ink3)}
 .filebar .fnote:first-child{color:var(--ink2)}
 .online .navgroup{color:var(--rail-ink2)}
@@ -1265,27 +1244,6 @@ button.c-av::after{content:"";position:absolute;inset:-6px}
 .ws-badge.none{background:var(--surface3);color:var(--meta)}
 .ws-badge.none svg.i{width:14px;height:14px}
 
-/* sol menü: iki katlı seçici */
-.ws-switch{margin:4px 12px 10px;border-radius:12px;background:var(--rail-field);border:1px solid var(--rail-line);position:relative}
-.ws-cur{display:flex;align-items:center;gap:9px;width:100%;min-height:48px;padding:7px 6px 7px 9px;border:0;background:none;border-radius:11px 11px 0 0;text-align:left;color:var(--ink);cursor:pointer}
-.ws-cur:hover{background:var(--rail-hover)}
-.ws-cur[aria-expanded="true"]{background:var(--surface);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 40%,transparent)}
-.ws-cur .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
-.ws-cur .lb{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--rail-ink2)}
-.ws-cur .nm{font-size:13px;font-weight:650;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
-.ws-cur > svg.i{width:16px;height:16px;color:var(--meta)}
-.ws-proj{display:flex;align-items:center;gap:8px;height:40px;padding:0 6px 0 13px;border-top:1px solid var(--rail-line);position:relative;color:var(--ink);margin:0}
-.ws-proj > svg.i{width:16px;height:16px;color:var(--rail-icon)}
-.ws-proj select{appearance:none;-webkit-appearance:none;flex:1;min-width:0;width:auto;height:32px;border:0;background:none;padding:0 18px 0 0;font-size:13px;font-weight:600;
-  color:var(--ink);text-overflow:ellipsis;cursor:pointer;box-shadow:none}
-.ws-proj select:focus{outline:none}
-.ws-proj:focus-within{box-shadow:inset 0 0 0 2px var(--accent);border-radius:0 0 11px 11px}
-.ws-proj select option{color:#0B1B33}
-.ws-proj .chev{position:absolute;right:8px;pointer-events:none;width:15px;height:15px;color:var(--meta)}
-.ws-proj select:disabled{color:var(--meta);font-weight:500;cursor:default}
-.ws-menu{position:absolute;left:0;right:0;top:48px;z-index:30;background:var(--surface);border:1px solid var(--line);
-  border-radius:12px;box-shadow:var(--shadow-lg);padding:6px;max-height:min(420px,70vh);overflow:auto}
-.ws-menu-h{padding:6px 8px 6px 10px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta)}
 .ws-mi{display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:6px 10px;border:0;background:none;border-radius:8px;text-align:left;font-size:13px;color:var(--ink);cursor:pointer}
 .ws-mi:hover,.ws-mi:focus-visible{background:var(--surface2)}
 .ws-mi .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:550}
@@ -1419,18 +1377,6 @@ button.c-av::after{content:"";position:absolute;inset:-6px}
 .ws-hf .ws-row.r2{padding:6px;margin-left:-6px;border-radius:12px;background:color-mix(in srgb,var(--surface3) 55%,transparent)}
 .hm-pf.ws{padding-left:6px}
 
-/* dar ekran "Proje seç" penceresi */
-.ws-sheet .ws-b{padding:12px}
-.ws-sheet .ws-switch{margin:0 0 12px}
-.ws-sheet .ws-cur{min-height:52px;border-radius:11px}
-.ws-sheet .ws-list{margin:-6px 0 12px;padding:6px;border:1px solid var(--line);border-radius:12px}
-.ws-prow{display:flex;align-items:center;gap:10px;width:100%;min-height:48px;padding:0 12px;border:0;border-radius:10px;background:none;text-align:left;font-size:14px;font-weight:550;color:var(--ink);cursor:pointer}
-.ws-prow:hover{background:var(--surface2)}
-.ws-prow .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ws-prow[aria-current="true"]{background:var(--accent-soft);color:var(--accent-d);font-weight:700}
-.ws-prow svg.i{width:18px;height:18px;color:var(--accent)}
-.ws-sheet .ws-foot{border-top:1px solid var(--line);padding:8px 12px 12px}
-.ws-sheet .ws-foot .btn{width:100%;height:44px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
 
 @media (max-width:640px){
   .ws-more{width:40px;height:40px}
@@ -1905,6 +1851,106 @@ button.cu-prj:hover{background:var(--surface2)}
 .nv-scrim{position:fixed;inset:0;z-index:69;background:var(--nv-scrim)}
 .nv-scrim[hidden]{display:none}
 
+/* ---- dilim A2: sol menü ağacı, açılır menüler, kenar çubuğunu özelleştir ---- */
+:root{ --nv-guide:#E5EAF2; --nv-sec-ink:#64748B; --nv-fixed-bg:#F6F9FD; --nv-fixed-ink:#64748B; --nv-check-off:#94A3B8; }
+:root[data-theme="dark"]{ --nv-guide:#1B2842; --nv-sec-ink:#8494AE; --nv-fixed-bg:#101A2E; --nv-fixed-ink:#8494AE; --nv-check-off:#5F6F8C; }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --nv-guide:#1B2842; --nv-sec-ink:#8494AE; --nv-fixed-bg:#101A2E; --nv-fixed-ink:#8494AE; --nv-check-off:#5F6F8C; }
+}
+.nv-rail{display:flex;flex-direction:column;gap:2px;padding:0 10px}
+.nv-list{display:flex;flex-direction:column;gap:1px;margin:0}
+.nv-tree{display:flex;flex-direction:column;gap:1px;list-style:none;margin:0;padding:0}
+.nv-tree li,.nv-projs li{list-style:none}
+.nv-tree[hidden],.nv-projs[hidden]{display:none}
+.nv-sub{margin-left:8px}
+.nv-item{display:flex;align-items:center;gap:11px;width:100%;min-height:36px;padding:7px 10px;margin:0;border:0;border-radius:10px;background:none;font-size:13.2px;font-weight:500;
+  color:var(--rail-ink);text-decoration:none;text-align:left;cursor:pointer;font-family:inherit}
+.nv-item > svg.i{width:18px;height:18px;color:var(--rail-icon)}
+.nv-item > .tx{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nv-item > .end{width:16px;height:16px;color:var(--meta)}
+.nv-item:hover{background:var(--rail-hover);color:var(--ink)}
+.nv-item[aria-current="page"]{background:var(--rail-on);color:var(--rail-on-ink);box-shadow:inset 3px 0 0 var(--rail-bar);font-weight:600}
+.nv-item[aria-expanded="true"]{background:var(--rail-hover)}
+.nv-hr{height:1px;background:var(--rail-line);margin:8px 6px}
+.nv-sech{display:flex;align-items:center;gap:2px;min-height:36px;padding:0 2px 0 10px;margin-top:2px;border-radius:10px}
+.nv-sech .l{flex:1;display:flex;align-items:center;gap:11px;font-size:13.2px;font-weight:650;color:var(--ink);min-width:0}
+.nv-sech .l svg.i{width:18px;height:18px;color:var(--rail-icon)}
+.nv-ib{position:relative;width:30px;height:30px;border-radius:8px;border:0;background:none;display:grid;place-items:center;color:var(--ink2);padding:0;flex-shrink:0;cursor:pointer}
+.nv-ib::before{content:"";position:absolute;inset:-3px}
+.nv-ib:hover,.nv-ib[aria-expanded="true"]{background:var(--surface3);color:var(--ink)}
+.nv-ib svg.i{width:17px;height:17px}
+.nv-ws{display:flex;align-items:center;gap:9px;width:100%;min-height:36px;padding:6px 8px 6px 12px;border:0;border-radius:10px;background:none;text-align:left;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;font-family:inherit}
+.nv-ws:hover{background:var(--rail-hover)}
+.nv-ws .tx{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nv-ws .chev{width:16px;height:16px;color:var(--meta);transition:transform .15s}
+.nv-ws[aria-expanded="false"] .chev{transform:rotate(-90deg)}
+.nv-projs{position:relative;display:flex;flex-direction:column;gap:1px;margin:1px 0 4px 21px;padding:0 0 0 8px;list-style:none}
+.nv-projs::before{content:"";position:absolute;left:0;top:2px;bottom:2px;width:1px;background:var(--nv-guide)}
+.nv-proj{display:flex;align-items:center;gap:9px;min-height:34px;padding:6px 8px;border-radius:9px;font-size:13px;font-weight:500;color:var(--rail-ink);text-decoration:none;position:relative}
+.nv-proj:hover{background:var(--rail-hover);color:var(--ink)}
+.nv-proj > svg.i{width:16px;height:16px;color:var(--rail-icon)}
+.nv-proj .tx{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nv-proj .k{font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--meta)}
+.nv-proj[aria-current="page"]{background:var(--rail-on);color:var(--rail-on-ink);font-weight:650;box-shadow:inset 3px 0 0 var(--rail-bar)}
+.nv-proj[aria-current="page"] .k{color:var(--rail-on-ink)}
+.nv-proj.is-last{font-weight:650;color:var(--ink)}
+.nv-proj.all{color:var(--nv-sec-ink);font-weight:550}
+.nv-proj.all > svg.i{color:var(--nv-sec-ink)}
+.nv-empty{padding:7px 8px;font-size:12.5px;color:var(--meta)}
+.nv-nows{padding:4px 12px 6px}
+.nv-other{color:var(--nv-sec-ink);font-weight:550;padding-left:12px}
+.nv-add,.nv-add > svg.i{color:var(--accent-d)!important;font-weight:600}
+.nv-more:empty{display:none}
+.nv-more{padding:4px 10px 10px}
+.nv-item:focus-visible,.nv-ws:focus-visible,.nv-proj:focus-visible,.nv-ib:focus-visible,.nv-grip:focus-visible,.nv-chk:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+/* açılır menüler */
+.nv-pop{position:fixed;z-index:80;min-width:240px;max-width:min(320px,calc(100vw - 16px));max-height:min(440px,80vh);overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);padding:6px}
+.nv-pop-h{padding:8px 10px 6px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta)}
+.nv-mi .two{flex:1;min-width:0;line-height:1.3;display:flex;flex-direction:column}
+.nv-mi .two .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nv-mi .two small{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--meta);margin-top:1px;min-width:0}
+.nv-mi .two small .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.nv-mi .two small .k{font-family:var(--mono)}
+.nv-mi[aria-current="true"]{background:var(--accent-soft)}
+.nv-mi:disabled{color:var(--meta);cursor:not-allowed;background:none}
+.nv-mi:disabled > svg.i{color:var(--meta)}
+.ws-badge.sm{width:16px;height:16px;border-radius:5px;font-size:9px}
+/* kenar çubuğunu özelleştir */
+.modal.nv-dlg{max-width:600px;overflow:visible}
+.nv-dlg .m-h b{flex:1;font-size:17px;font-weight:750;letter-spacing:-.02em}
+.nv-czb{padding:14px 22px 16px}
+.nv-czb > p{margin:0 0 16px;font-size:13px;line-height:1.55;color:var(--ink2);max-width:520px}
+.nv-czb > p b{color:var(--ink)}
+.nv-cz-h{display:flex;align-items:baseline;gap:8px;margin:0 0 8px;font-size:13px;font-weight:700}
+.nv-cz-h span{font-weight:500;font-size:12px;color:var(--meta)}
+.nv-cz{display:flex;flex-direction:column;gap:4px;list-style:none;margin:0;padding:0}
+.nv-cz-r{position:relative;display:grid;grid-template-columns:32px 36px 22px minmax(0,1fr) auto 36px;align-items:center;gap:0 6px;min-height:46px;padding:4px 6px 4px 2px;
+  border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.nv-cz-r:hover:not(.fixed){border-color:var(--line2)}
+.nv-cz-r.fixed{background:var(--nv-fixed-bg);border-style:dashed}
+.nv-grip{width:32px;height:36px;border:0;background:none;padding:0;display:grid;place-items:center;color:var(--meta);cursor:grab;border-radius:8px}
+.nv-grip:hover{background:var(--surface2);color:var(--ink)}
+.nv-grip svg.i{width:18px;height:18px}
+.nv-chk{width:36px;height:36px;display:grid;place-items:center;border-radius:8px;cursor:pointer}
+.nv-chk i{width:18px;height:18px;border-radius:5px;border:1.6px solid var(--line2);background:var(--surface);display:grid;place-items:center;color:#fff}
+.nv-chk i svg.i{width:13px;height:13px;stroke-width:2.6;opacity:0}
+.nv-chk[aria-checked="true"] i{background:var(--accent);border-color:var(--accent);color:var(--accent-ink,#fff)}
+.nv-chk[aria-checked="true"] i svg.i{opacity:1}
+.nv-chk[aria-disabled="true"]{cursor:default}
+.nv-chk[aria-disabled="true"] i{background:var(--nv-check-off);border-color:var(--nv-check-off);color:var(--surface)}
+.nv-cz-r > svg.i{width:18px;height:18px;color:var(--rail-icon)}
+.nv-cz-r.fixed > svg.i{color:var(--nv-fixed-ink)}
+.nv-cz-r .nm{font-size:13.5px;font-weight:550;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nv-cz-r.fixed .nm,.nv-cz-r.off .nm{color:var(--ink2)}
+.nv-cz-r .hint{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--meta);white-space:nowrap}
+.nv-cz-r .hint svg.i{width:13px;height:13px}
+.nv-cz-r .nv-ib{width:36px;height:36px}
+.nv-cz-r .nv-ib::before{display:none}
+.nv-czpop{position:absolute;right:44px;top:-6px;min-width:200px;z-index:5}
+.nv-dlg .m-f{display:flex;align-items:center;gap:8px;padding:12px 22px;border-top:1px solid var(--line);background:var(--surface2);border-radius:0 0 16px 16px}
+.nv-dlg .m-f .spacer{flex:1}
+.nv-dlg .m-f .btn{display:inline-flex;align-items:center;gap:6px}
+
 @media (max-width:900px){
   .tb-head{align-items:center;gap:8px}
   .tb-logo{display:none}
@@ -1928,8 +1974,21 @@ button.cu-prj:hover{background:var(--surface2)}
   .rail{display:flex;position:fixed;z-index:70;top:0;bottom:0;left:0;width:min(300px,86vw);box-shadow:var(--shadow-lg);
     transform:translateX(-102%);visibility:hidden;transition:transform .2s ease,visibility .2s}
   body.nav-open .rail{transform:none;visibility:visible}
-  .rail .nav a{min-height:44px}
-  .rail .ws-cur,.rail .ws-proj{min-height:44px}
+  .rail .nv-item,.rail .nv-ws,.rail .nv-proj,.rail .nv-sech{min-height:44px}
+  .rail .nv-ib{width:44px;height:44px}
+  .rail .nv-ib::before{display:none}
+  .nv-pop .nv-mi{min-height:44px}
+  .nv-dlg .nv-cz-r{grid-template-columns:44px 44px 20px minmax(0,1fr) 44px;min-height:52px;gap:0 4px}
+  .nv-dlg .nv-cz-r .hint{grid-column:4;grid-row:2;margin:-8px 0 6px}
+  .nv-dlg .nv-cz-r .hint.lock{grid-column:5;grid-row:1;justify-self:center;margin:0;font-size:0;gap:0}
+  .nv-dlg .nv-cz-r .hint.lock svg.i{width:16px;height:16px}
+  .nv-dlg .nv-grip,.nv-dlg .nv-chk,.nv-dlg .nv-cz-r .nv-ib{width:44px;height:44px}
+  .nv-dlg .nv-cz-r .nv-ib{grid-column:5;grid-row:1}
+  .nv-dlg .nv-czpop{right:0;top:calc(100% - 2px)}
+  .nv-dlg .m-f{flex-wrap:wrap}
+  .nv-dlg .m-f .btn{flex:1 1 0;min-height:44px;justify-content:center}
+  .nv-dlg .m-f #cz_reset{flex:1 1 100%}
+  .nv-dlg .m-f .spacer{display:none}
 }
 /* ==========================================================================
    Kart detayı — iş detayı, yeni iş, süre kaydet, silme onayı (görev 6, 7, 9; docs/tasarim/kart-detay) — id- sınıfları
@@ -2246,23 +2305,10 @@ button.id-pv:hover{background:var(--surface);border-color:var(--line)}
 <div class="app">
   <aside class="rail" id="rail" aria-label="Kenar çubuğu">
     <div class="brand"><img src="/img/icon.svg" alt="" class="brand-ic"><b>ÇevikPano</b></div>
-    <div class="ws-switch" id="wsSwitch">
-      <button type="button" class="ws-cur" id="wsCur" aria-haspopup="menu" aria-expanded="false"></button>
-      <label class="ws-proj"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg><span class="ws-sr">Proje</span><select id="projSel"></select><svg class="i chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></label>
-    </div>
-    <nav class="nav" style="margin-top:6px">
-      <a href="#home" data-v="home"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>Benim işlerim</a>
-    </nav>
-    <div class="navgroup">Yapılandırma</div>
-    <nav class="nav">
-      <a href="#projects"  data-v="projects"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg>Projeler</a>
-      <a href="#customers" data-v="customers"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4M10 10h4M10 14h4M10 18h4"/></svg>Cariler</a>
-      <a href="#admin"     data-v="admin"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>Proje ayarları</a>
-      <a href="#users"     data-v="users"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M21.5 20a6.5 6.5 0 0 0-4-6"/></svg>Kullanıcılar</a>
-      <a href="#system"    data-v="system"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>Sistem</a>
-    </nav>
+    <div class="nv-rail" id="navRoot"></div>
     <div class="online" id="online"></div>
     <div class="filebar" id="fileBar"></div>
+    <div class="nv-more" id="navMore"></div>
     <!-- Veri araçları yalnızca yöneticiler için: Sistem → Veri. Düğmeler gizli, işleyiciler bunlara bağlı. -->
     <div class="rail-foot" hidden>
       <button id="btnExport">Dışa aktar</button>
@@ -2525,9 +2571,8 @@ function tryRerender() {
   const busy = document.getElementById('scrim')?.classList.contains('on')
     || (typeof DRAG !== 'undefined' && DRAG)
     || (typeof QM !== 'undefined' && QM)
-    || document.querySelector('#wsMenu, .ws-pop:not([hidden]), #acctMenu')
-    || (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)
-        && document.activeElement.id !== 'projSel');
+    || document.querySelector('#navPop, .ws-pop:not([hidden]), #acctMenu')
+    || (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName));
   if (busy) return;
   RERENDER = false;
   try { render(); } catch (e) { console.error(e); }
@@ -3153,6 +3198,16 @@ const SVG = {
   key: '<circle cx="7.5" cy="15.5" r="4"/><path d="m10.5 12.5 9-9M16 7l3 3"/>',
   keyboard: '<rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M7 14h10"/>',
   logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+  /* gezinme A2: sol menü ağacı ve kenar çubuğunu özelleştir */
+  home: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
+  recent: '<path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/><path d="M12 7.5V12l3 2"/>',
+  sidebar: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 4v16"/><path d="M5.5 8h1M5.5 11h1"/>',
+  grip: '<circle cx="9" cy="6" r=".9"/><circle cx="15" cy="6" r=".9"/><circle cx="9" cy="12" r=".9"/><circle cx="15" cy="12" r=".9"/><circle cx="9" cy="18" r=".9"/><circle cx="15" cy="18" r=".9"/>',
+  reset: '<path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/>',
+  mvup: '<path d="M12 19V5"/><path d="m5.5 11.5 6.5-6.5 6.5 6.5"/>',
+  mvdn: '<path d="M12 5v14"/><path d="m5.5 12.5 6.5 6.5 6.5-6.5"/>',
+  mvtop: '<path d="M5 3h14"/><path d="m6 13 6-6 6 6"/><path d="M12 7v14"/>',
+  hidden: '<path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3 3.9M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
 };
 const ic = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${SVG[n] || ''}</svg>`;
 const tIcon = t => { const x = TYPE[t] || ['?', t, t, '#7B8794'];
@@ -4909,25 +4964,6 @@ function nextRemaining(i, hours, mode, value) {
 
 const logWorkForm = (issueId, userId, date) => worklogForm({ issueId, date });
 
-/* ---- dar ekranda sol menünün karşılığı: üstte alan seçici, altında o alanın projeleri (#22) ---- */
-function projectMenu(listOpen = false) {
-  const w = wsById(DB.ui.workspace), cur = P();
-  const rows = DB.ui.workspace ? selectableProjects(DB.ui.workspace) : [];
-  if (cur && !rows.includes(cur) && wsOf(cur) === DB.ui.workspace) rows.unshift(cur);
-  openModal(`<div class="m-h"><b id="pm_t">Proje seç</b><button class="x" data-close aria-label="Kapat">×</button></div>
-    <div class="ws-b">
-      <div class="ws-switch"><button type="button" class="ws-cur" id="pm_ws" aria-expanded="${listOpen}" aria-controls="pm_wsl">${w ? wsBadge(w) : `<span class="ws-badge none" aria-hidden="true">${ic('layers')}</span>`}
-        <span class="tx"><span class="lb">Çalışma alanı</span><span class="nm">${w ? esc(w.name) : 'Henüz alan yok'}</span></span>${ic('updown')}</button></div>
-      ${listOpen ? `<div class="ws-list" id="pm_wsl" role="group" aria-label="Çalışma alanları">${visibleWs().map(x => `<button type="button" class="ws-mi" data-wspick="${esc(x.id)}" data-wssheet
-          aria-pressed="${x.id === DB.ui.workspace}">${wsBadge(x)}<span class="nm">${esc(x.name)}</span><span class="n">${selectableProjects(x.id).length}</span></button>`).join('')
-        || '<div class="empty">Görebildiğin bir çalışma alanı yok</div>'}</div>` : ''}
-      ${rows.map(p => `<button type="button" class="ws-prow" data-proj="${esc(p.id)}" ${p === cur ? 'aria-current="true"' : ''}>${ic('folder')}<span class="t">${esc(p.name)}</span>${
-        p.archived ? '<span class="chip lbl">arşiv</span>' : ''}${p === cur ? ic('check') : ''}</button>`).join('')
-        || '<div class="empty">Bu çalışma alanında henüz proje yok</div>'}
-    </div>
-    ${canEdit() ? `<div class="ws-foot"><button type="button" class="btn" data-wsnew>${ic('plus')}Yeni çalışma alanı</button></div>` : ''}`, 'narrow ws-sheet ws-dlg');
-  $('#pm_ws').onclick = () => projectMenu(!listOpen);
-}
 /* ============================ YÖNLENDİRME ============================ */
 /* s: 'proj' → proje sekmesi (yalnız seçili proje varken sekme satırında), 'global' → genel ekran (sekme satırı yok). */
 const VIEWS = {
@@ -4964,19 +5000,18 @@ function render() {
   if (VIEWS[DB.ui.view] && !viewAllowed(DB.ui.view)) DB.ui.view = 'board';
   const v = VIEWS[DB.ui.view] || VIEWS.board;
   if (location.hash.slice(1) !== DB.ui.view) try { history.replaceState(null, '', '#' + DB.ui.view); } catch (_) { }
-  ensureSel(); renderSelectors();
+  ensureSel(); noteRecent();
   const pr = P();
   renderHead(v, pr);
   /* Seçili proje yokken projeye bağlı ekranlar çökmez: boş durum paneli (#22). */
   const noProj = !pr && WS_PROJ_VIEWS.includes(DB.ui.view);
   $('#toolrow').innerHTML = noProj ? '' : v.tb();
   $('#view').innerHTML = noProj ? wsEmptyView() : v.r();
-  syncNav();
+  renderRail();
   renderTabs();
   document.body.classList.toggle('readonly', !canEdit());
   renderAcctBtn();
   renderFileBar();
-  $$('.nav a').forEach(a => a.classList.toggle('on', a.dataset.v === DB.ui.view));
   wireToolbar();
 }
 
@@ -4990,11 +5025,6 @@ function renderHead(v, pr) {
     $('#crumb').textContent = `${pr ? pr.key : wsById(DB.ui.workspace)?.name || 'ÇevikPano'} · ${v.c}`;
     $('#title').textContent = viewTitle(VIEWS[DB.ui.view] ? DB.ui.view : 'board');
   }
-}
-
-/* Sol menüde görünürlük viewAllowed'dan (Planlama/Takip grupları sekmelere taşındı). */
-function syncNav() {
-  $$('.nav a').forEach(el => { if (VIEWS[el.dataset.v]) el.style.display = viewAllowed(el.dataset.v) ? '' : 'none'; });
 }
 
 /* Proje sekmeleri: yalnız proje ekranında ve seçili proje varken. Değişmediyse DOM'a dokunulmaz (odak, kaydırma). */
@@ -5118,13 +5148,16 @@ function wireNav() {
     if ($('#acctMenu') && !e.target.closest?.('#acctMenu, #acctBtn')) acctClose();
   });
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && document.body.classList.contains('nav-open') && !$('#scrim').classList.contains('on') && !$('#wsMenu')) {
+    if (e.key === 'Escape' && document.body.classList.contains('nav-open') && !$('#scrim').classList.contains('on') && !$('#navPop')) {
       e.preventDefault(); navDrawer(false, true);
     }
   });
-  /* Çekmecede bir ekran ya da proje seçilince çekmece kapanır. */
-  $('#rail').addEventListener('click', e => { if (e.target.closest('a[data-v]')) navDrawer(false); });
-  $('#projSel').addEventListener('change', () => navDrawer(false));
+  /* Çekmecede bir ekran ya da proje seçilince çekmece kapanır (alan aç/kapa kapatmaz). */
+  $('#rail').addEventListener('click', e => { if (e.target.closest('a[data-v], [data-proj]')) navDrawer(false); });
+  document.addEventListener('click', navClick);
+  document.addEventListener('mousedown', e => {
+    if ($('#navPop') && !e.target.closest?.('#navPop') && e.target.closest?.('[data-navrecent],[data-navws],[data-navmore]') !== NAVPOP?.btn) navPopClose();
+  });
   addEventListener('resize', () => { if (innerWidth > 900) navDrawer(false); });
 }
 
@@ -5184,7 +5217,6 @@ function wireToolbar() {
 
 /* ============================ OLAYLAR ============================ */
 function wire() {
-  $('#projSel').onchange = e => { if (!e.target.value) return; DB.ui.project = e.target.value; DB.board.q = ''; save(); render(); };
   wireWsSwitch();
   wireNav();
   addEventListener('hashchange', () => {
@@ -5199,7 +5231,7 @@ function wire() {
     if (nv) {
       e.preventDefault();
       const v = nv.dataset.v;
-      if (v === '__proj') return projectMenu();
+      if (v === '__proj') return navToProj();
       if (VIEWS[v]) { DB.ui.view = v; try { history.replaceState(null, '', '#' + v); } catch (_) {} save(); render(); }
       return;
     }
@@ -5211,7 +5243,12 @@ function wire() {
 
     if (t.closest('[data-close]') || t === $('#scrim') || t === $('#scrim2')) return closeModal();
     const pj = t.closest('[data-proj]');
-    if (pj) { DB.ui.project = pj.dataset.proj; DB.board.q = ''; $('#projSel').value = pj.dataset.proj;
+    if (pj) {
+      /* Sol menüden (ağaç / son kullanılanlar): genel ekrandaysa Pano, proje ekranındaysa aynı sekme; alanı açık kalır. */
+      e.preventDefault();
+      const nav = pj.closest('#rail, #navPop');
+      DB.ui.project = pj.dataset.proj; DB.board.q = '';
+      if (nav) { if (VIEWS[DB.ui.view]?.s !== 'proj') DB.ui.view = 'board'; const p = P(); if (p) wsOpenSet(wsOf(p), true); navDrawer(false); }
       closeModal(); save(); render(); return; }
     const ac2 = t.closest('[data-act]');
     if (ac2) { closeModal();
@@ -6361,7 +6398,7 @@ const SHORTCUTS = [
 ];
 function palette() {
   const items = [
-    ...Object.entries(VIEWS).map(([v, o]) => ({ t: 'Git', n: viewTitle(v), run: () => { DB.ui.view = v; save(); render(); } })),
+    ...Object.entries(VIEWS).filter(([v]) => viewAllowed(v)).map(([v, o]) => ({ t: 'Git', n: viewTitle(v), run: () => { DB.ui.view = v; save(); render(); } })),
     { t: 'Eylem', n: 'Yeni iş oluştur', run: () => newIssueForm() },
     { t: 'Eylem', n: 'Süre kaydet', run: () => logWorkForm() },
     { t: 'Eylem', n: 'Yeni proje oluştur', run: () => newProjectForm() },
@@ -7602,7 +7639,7 @@ function ensureSel() {
   if (!DB) return;
   DB.ui ||= {};
   const p = P();
-  if (p && !wsArchived(wsOf(p))) { DB.ui.workspace = wsOf(p); return; }
+  if (p && !wsArchived(wsOf(p)) && (isAdmin() || isMember(p))) { DB.ui.workspace = wsOf(p); return; }
   const vis = visibleWs();
   if (!vis.some(w => w.id === DB.ui.workspace))
     DB.ui.workspace = (vis.find(w => wsFirstProj(w.id)) || vis[0])?.id || null;
@@ -7621,22 +7658,309 @@ function pickWs(id) {
   save(); render();
 }
 
-/* Sol menüdeki iki katlı seçici (alan + #projSel). Değişmediyse DOM'a dokunulmaz (açık seçici kapanmasın). */
-let WS_SEL_KEY = '';
-function renderSelectors() {
-  const w = wsById(DB.ui.workspace), cur = P();
-  const inWs = DB.ui.workspace ? selectableProjects(DB.ui.workspace) : [];
-  const rows = DB.projects.filter(p => p === cur || inWs.includes(p));        // seçili olan görünmese de listede (eski davranış)
-  const opts = rows.length ? rows.map(p => `<option value="${esc(p.id)}" ${p === cur ? 'selected' : ''}>${esc(p.name)}${p.archived ? ' (arşiv)' : ''}</option>`).join('')
-    : '<option value="">Proje yok</option>';
-  const head = `${w ? wsBadge(w) : `<span class="ws-badge none" aria-hidden="true">${ic('layers')}</span>`}
-    <span class="tx"><span class="lb">Çalışma alanı</span><span class="nm">${w ? esc(w.name) : 'Henüz alan yok'}</span></span>${ic('updown')}`;
-  const key = head + '|' + opts + '|' + (cur?.id || '');
-  if (key === WS_SEL_KEY) return;
-  WS_SEL_KEY = key;
-  const b = $('#wsCur'); b.innerHTML = head; b.setAttribute('aria-label', `Çalışma alanı: ${w ? w.name : 'yok'} (değiştir)`);
-  const sel = $('#projSel'); sel.innerHTML = opts; sel.disabled = !rows.length; sel.value = cur?.id || '';
-  $('#projPick').setAttribute('aria-label', `Proje değiştir: ${cur?.name || 'proje yok'}`);
+/* ============================ SOL MENÜ: çalışma alanı ağacı + kenar çubuğunu özelleştir (docs/tasarim/gezinme, dilim A2) ============================
+   Tercihler kişisel (DB.ui → user_prefs, şema yok): nav {order, hidden}, wsOpen {alan: bool}, recentProj [≤5], recentWs [≤4].
+   Gösterimde her kimlik DB'den yeniden aranır (silinen / görünmeyen atlanır). Yetki sunucuda; burası yalnız gezinme. */
+const NAV_ITEMS = {
+  home:      { t: 'Benim işlerim',     ic: 'home',     v: 'home', fixed: true },
+  recent:    { t: 'Son kullanılanlar', ic: 'recent' },
+  ws:        { t: 'Çalışma alanları',  ic: 'layers',   fixed: true },
+  projects:  { t: 'Projeler',          ic: 'folder',   v: 'projects' },
+  customers: { t: 'Cariler',           ic: 'building', v: 'customers' },
+  users:     { t: 'Kullanıcılar',      ic: 'users',    v: 'users' },
+  system:    { t: 'Sistem',            ic: 'system',   v: 'system' },
+};
+/* Sırası değişebilen / gizlenebilen öğeler (varsayılan sıra). Benim işlerim 1., Çalışma alanları 3. sırada sabit. */
+const NAV_MOVABLE = ['recent', 'projects', 'customers', 'users', 'system'];
+const navAvail = k => !NAV_ITEMS[k].v || viewAllowed(NAV_ITEMS[k].v);
+/* Kayıtlı tercih → geçerli sıra + gizliler (bilinmeyen kimlik atılır; sonradan eklenen öğe görünür olarak sona). */
+function navCfg() {
+  const n = DB.ui.nav && typeof DB.ui.nav === 'object' ? DB.ui.nav : {};
+  const ord = (Array.isArray(n.order) ? n.order : []).filter((k, i, a) => NAV_MOVABLE.includes(k) && a.indexOf(k) === i);
+  NAV_MOVABLE.forEach(k => { if (!ord.includes(k)) ord.push(k); });
+  const hidden = (Array.isArray(n.hidden) ? n.hidden : []).filter(k => NAV_MOVABLE.includes(k) && navAvail(k));
+  return { order: ord.filter(navAvail), hidden };
+}
+/* Penceredeki gerçek sıra: Benim işlerim, (1. taşınabilir), Çalışma alanları, (kalanlar). */
+const navFull = order => ['home', order[0], 'ws', ...order.slice(1)].filter(Boolean);
+/* Varsayılansa nav silinir; yetkisi olmadığı için listede görünmeyen öğelerin gizlilik bilgisi korunur. */
+function navSave(order, hidden) {
+  const old = DB.ui.nav && Array.isArray(DB.ui.nav.hidden) ? DB.ui.nav.hidden : [];
+  const h = NAV_MOVABLE.filter(k => hidden.includes(k) || (old.includes(k) && !navAvail(k)));
+  const ord = order.filter(k => NAV_MOVABLE.includes(k));
+  if (ord.join() === NAV_MOVABLE.filter(navAvail).join() && !h.length) delete DB.ui.nav;
+  else DB.ui.nav = { order: ord, hidden: h };
+}
+/* Son kullanılan proje / alan: render'da güncellenir (save çağırmadan; sonraki gönderimle gider). */
+function noteRecent() {
+  const p = P();
+  if (p) {
+    const r = Array.isArray(DB.ui.recentProj) ? DB.ui.recentProj : [];
+    if (r[0] !== p.id) DB.ui.recentProj = [p.id, ...r.filter(id => id !== p.id && DB.projects.some(x => x.id === id))].slice(0, 5);
+  }
+  const w = DB.ui.workspace;
+  if (w && wsById(w)) {
+    const r = Array.isArray(DB.ui.recentWs) ? DB.ui.recentWs : [];
+    if (r[0] !== w) DB.ui.recentWs = [w, ...r.filter(id => id !== w && wsById(id))].slice(0, 4);
+  }
+}
+/* Alan aç/kapa: tanımsızsa yalnız seçili alan açık. Yazarken olmayan alanlar atılır. */
+const wsIsOpen = id => { const o = DB.ui.wsOpen; return o && typeof o === 'object' && Object.hasOwn(o, id) ? !!o[id] : id === DB.ui.workspace; };
+function wsOpenSet(id, on) {
+  const o = {}, cur = DB.ui.wsOpen && typeof DB.ui.wsOpen === 'object' ? DB.ui.wsOpen : {};
+  for (const k of Object.keys(cur)) if (wsById(k)) o[k] = !!cur[k];
+  o[id] = !!on; DB.ui.wsOpen = o;
+}
+/* Ağaçta / son kullanılanlarda açılabilen proje (yönetici üyesi olmadığı projeye de geçebilir: eski davranış). */
+const navProjOk = p => !!p && !p.archived && !wsArchived(wsOf(p)) && (isAdmin() || canSeeProject(p));
+/* Alanın satırları: görünen arşivsiz projeler (+ seçili proje). 5'ten çoksa seçili + son kullanılan + kalan → 3. */
+function wsProjRows(ws) {
+  const cur = P(), rows = selectableProjects(ws).filter(p => !p.archived);
+  if (cur && wsOf(cur) === ws && !rows.includes(cur)) rows.unshift(cur);
+  if (rows.length <= 5) return { rows, n: rows.length, more: false };
+  const rec = Array.isArray(DB.ui.recentProj) ? DB.ui.recentProj : [];
+  const pick = [cur, ...rec.map(id => rows.find(p => p.id === id)), ...rows].filter((p, i, a) => p && rows.includes(p) && a.indexOf(p) === i).slice(0, 3);
+  return { rows: rows.filter(p => pick.includes(p)), n: rows.length, more: true };
+}
+const projIc = p => ic(projType(p) === 'agile' ? 'sprint' : 'board');
+function navProj(p) {
+  const on = p === P(), cur = on && VIEWS[DB.ui.view]?.s === 'proj';
+  return `<li><a href="#${cur ? DB.ui.view : 'board'}" class="nv-proj ${on && !cur ? 'is-last' : ''}" data-proj="${esc(p.id)}" ${cur ? 'aria-current="page"' : ''}>${projIc(p)}<span class="tx">${esc(p.name)}</span><span class="k">${esc(p.key)}</span></a></li>`;
+}
+function navWs(w) {
+  const open = wsIsOpen(w.id), id = esc(w.id);
+  let body = '';
+  if (open) {
+    const r = wsProjRows(w.id);
+    body = r.rows.length ? r.rows.map(navProj).join('') + (r.more ? `<li><a href="#projects" class="nv-proj all" data-wsall="${id}">${ic('grid')}<span class="tx">Tüm projeler (${r.n})</span></a></li>` : '')
+      : '<li class="nv-empty">Henüz proje yok</li>';
+  }
+  return `<li><button type="button" class="nv-ws" data-wstog="${id}" aria-expanded="${open}" aria-controls="nvp-${id}" ${w.id === DB.ui.workspace ? 'aria-current="true"' : ''}>${wsBadge(w)}<span class="tx">${esc(w.name)}</span>${ic('down').replace('class="i"', 'class="i chev"')}</button>
+    <ul class="nv-projs" id="nvp-${id}" ${open ? '' : 'hidden'}>${body}</ul></li>`;
+}
+const RAIL = { key: '', other: false };
+/* Önce seçili alan + son kullanılan en çok 3 alan; kalanı "Diğer çalışma alanları (n)" (geçici aç/kapa).
+   Toplam en çok 4 alan varsa hepsi doğrudan görünür. */
+function navTree() {
+  const vis = visibleWs();
+  if (!vis.length) return `<ul class="nv-tree" id="wsTree" aria-labelledby="nvSec"><li class="nv-empty nv-nows">Henüz çalışma alanı yok</li>${canEdit()
+    ? `<li><button type="button" class="nv-item nv-add" data-wsnew>${ic('plus')}<span class="tx">Yeni çalışma alanı</span></button></li>` : ''}</ul>`;
+  const rec = (Array.isArray(DB.ui.recentWs) ? DB.ui.recentWs : []).filter(id => id !== DB.ui.workspace);
+  const top = new Set([DB.ui.workspace, ...rec].filter(id => vis.some(w => w.id === id)).slice(0, 4));
+  const main = vis.length <= 4 ? vis : vis.filter(w => top.has(w.id)), rest = vis.filter(w => !main.includes(w));
+  if (!rest.length) RAIL.other = false;
+  return `<ul class="nv-tree" id="wsTree" aria-labelledby="nvSec">${main.map(navWs).join('')}${rest.length
+    ? `<li><button type="button" class="nv-item nv-other" data-wsother aria-expanded="${RAIL.other}" aria-controls="nvOther"><span class="tx">Diğer çalışma alanları (${rest.length})</span>${
+      ic(RAIL.other ? 'down' : 'chevr').replace('class="i"', 'class="i end"')}</button>
+      <ul class="nv-tree nv-sub" id="nvOther" ${RAIL.other ? '' : 'hidden'}>${RAIL.other ? rest.map(navWs).join('') : ''}</ul></li>` : ''}</ul>`;
+}
+function navItem(k) {
+  const it = NAV_ITEMS[k];
+  if (k === 'recent') return `<button type="button" class="nv-item" data-navrecent aria-haspopup="menu" aria-expanded="false">${ic(it.ic)}<span class="tx">${it.t}</span>${ic('chevr').replace('class="i"', 'class="i end"')}</button>`;
+  return `<a href="#${it.v}" class="nv-item" data-v="${it.v}" ${DB.ui.view === it.v ? 'aria-current="page"' : ''}>${ic(it.ic)}<span class="tx">${it.t}</span></a>`;
+}
+/* Odak, yeniden çizimde data- anahtarıyla geri yüklenir (4 sn'lik yoklama ağacı bozmasın). */
+const RAIL_KEYS = ['wstog', 'proj', 'wsall', 'v', 'navrecent', 'navws', 'navmore', 'wsnew', 'wsother'];
+function railFocusKey() {
+  const a = document.activeElement; if (!a || !$('#rail').contains(a) || !a.dataset) return null;
+  for (const k of RAIL_KEYS) if (k in a.dataset) return `[data-${k}${a.dataset[k] ? `="${CSS.escape(a.dataset[k])}"` : ''}]`;
+  return null;
+}
+/* Sol menü: değişmediyse DOM'a dokunulmaz. */
+function renderRail() {
+  const root = $('#navRoot'); if (!root) return;
+  const { order, hidden } = navCfg();
+  const first = order[0] && !hidden.includes(order[0]) ? [order[0]] : [], rest = order.slice(1).filter(k => !hidden.includes(k));
+  const html = `<nav class="nav nv-list" aria-label="Ana menü">${navItem('home')}${first.map(navItem).join('')}</nav>
+    <div class="nv-sech"><span class="l" id="nvSec">${ic('layers')}Çalışma alanları</span>${canEdit()
+      ? `<button type="button" class="nv-ib" data-wsnew aria-label="Yeni çalışma alanı" title="Yeni çalışma alanı">${ic('plus')}</button>` : ''}
+      <button type="button" class="nv-ib" data-navws aria-label="Çalışma alanı seçenekleri" title="Çalışma alanı seçenekleri" aria-haspopup="menu" aria-expanded="false">${ic('more')}</button></div>
+    ${navTree()}
+    ${rest.length ? `<div class="nv-hr" role="separator"></div><nav class="nav nv-list" aria-label="Genel ekranlar">${rest.map(navItem).join('')}</nav>` : ''}`;
+  const more = order.some(k => hidden.includes(k))
+    ? `<button type="button" class="nv-item" data-navmore aria-haspopup="menu" aria-expanded="false">${ic('more')}<span class="tx">Daha fazla</span></button>` : '';
+  const key = html + '|' + more;
+  if (key !== RAIL.key) {
+    const f = railFocusKey();
+    RAIL.key = key; root.innerHTML = html; $('#navMore').innerHTML = more;
+    if (f) $('#rail').querySelector(f)?.focus({ preventScroll: true });
+  }
+  $('#projPick')?.setAttribute('aria-label', `Proje değiştir: ${P()?.name || 'proje yok'}`);
+}
+
+/* ---- sol menüden açılan menüler (Son kullanılanlar, ⋯, Daha fazla): tek #navPop, ↑↓ Esc Tab (menuKeys) ---- */
+let NAVPOP = null;
+function navPopClose(focus) {
+  const m = $('#navPop'); if (!m) return;
+  const b = NAVPOP?.btn; NAVPOP = null; m.remove();
+  b?.setAttribute('aria-expanded', 'false');
+  if (focus && b?.isConnected) b.focus();
+  if (RERENDER) setTimeout(tryRerender, 0);
+}
+function navPopOpen(btn, kind) {
+  const same = NAVPOP && NAVPOP.btn === btn && NAVPOP.kind === kind;
+  navPopClose(false); if (same) return btn.focus();
+  let label, body;
+  if (kind === 'recent') {
+    label = 'Son kullanılan projeler';
+    const ps = (Array.isArray(DB.ui.recentProj) ? DB.ui.recentProj : []).map(id => DB.projects.find(p => p.id === id)).filter(navProjOk).slice(0, 5);
+    body = `<div class="nv-pop-h" aria-hidden="true">Son kullanılan projeler</div>${ps.length ? ps.map(p => { const w = wsById(wsOf(p));
+      return `<button type="button" class="nv-mi" role="menuitem" data-proj="${esc(p.id)}" ${p === P() ? 'aria-current="true"' : ''}>${projIc(p)}<span class="two"><span class="nm">${esc(p.name)}</span>
+        <small>${w ? wsBadge(w, 'sm') : ''}<span class="t">${esc(w?.name || '')}</span> · <span class="k">${esc(p.key)}</span></small></span></button>`; }).join('')
+      : '<div class="nv-empty">Henüz bir proje açmadın</div>'}`;
+  } else if (kind === 'ws') {
+    label = 'Çalışma alanı seçenekleri';
+    body = `<button type="button" class="nv-mi" role="menuitem" data-wsmanage>${ic('grid')}Tüm çalışma alanları</button>
+      <button type="button" class="nv-mi" role="menuitem" data-navcz>${ic('sidebar')}Kenar çubuğunu özelleştir</button>`;
+  } else {
+    label = 'Daha fazla';
+    const { order, hidden } = navCfg();
+    body = order.filter(k => hidden.includes(k)).map(k => k === 'recent'
+      ? `<button type="button" class="nv-mi" role="menuitem" data-navrecent>${ic('recent')}Son kullanılanlar</button>`
+      : `<button type="button" class="nv-mi" role="menuitem" data-v="${NAV_ITEMS[k].v}">${ic(NAV_ITEMS[k].ic)}${NAV_ITEMS[k].t}</button>`).join('')
+      + `<div class="nv-mhr" role="separator"></div><button type="button" class="nv-mi" role="menuitem" data-navcz>${ic('sidebar')}Kenar çubuğunu özelleştir</button>`;
+  }
+  document.body.insertAdjacentHTML('beforeend', `<div class="nv-pop" id="navPop" role="menu" aria-label="${label}" data-kind="${kind}">${body}</div>`);
+  const m = $('#navPop'), r = btn.getBoundingClientRect(), side = kind === 'recent' && innerWidth > 900 && !!btn.closest('#rail');
+  const left = side ? r.right + 6 : Math.min(r.left, innerWidth - m.offsetWidth - 8);
+  const top = side ? r.top : kind === 'more' ? r.top - m.offsetHeight - 6 : r.bottom + 4;
+  m.style.left = Math.max(8, left) + 'px';
+  m.style.top = Math.max(8, Math.min(top, innerHeight - m.offsetHeight - 8)) + 'px';
+  NAVPOP = { btn, kind }; btn.setAttribute('aria-expanded', 'true');
+  menuKeys(m, f => navPopClose(f));
+  /* Seçilen öğe menüyü kapatır; eylemi belgedeki ortak işleyiciler yapar ([data-proj], [data-v], [data-wsmanage], [data-navcz]). */
+  m.addEventListener('click', e => {
+    const it = e.target.closest('.nv-mi'); if (!it || it.disabled) return;
+    if ('navrecent' in it.dataset) { e.stopPropagation(); const b = NAVPOP?.btn; navPopClose(false); return b && navPopOpen(b, 'recent'); }
+    navPopClose(false);
+    if ('v' in it.dataset || 'proj' in it.dataset) navDrawer(false);
+  });
+  (m.querySelector('[aria-current="true"]') || m.querySelector('button'))?.focus();
+}
+
+/* Sol menü tıklamaları (olay devri): alan aç/kapa, diğer alanlar, menüler, özelleştirme, "Tüm projeler (n)". */
+function navClick(e) {
+  const t = e.target; if (!(t instanceof Element)) return;
+  const b = t.closest('[data-wstog],[data-wsother],[data-navrecent],[data-navws],[data-navmore],[data-navcz],[data-wsall]'); if (!b) return;
+  const d = b.dataset;
+  if ('wstog' in d) { wsOpenSet(d.wstog, !wsIsOpen(d.wstog)); save(); return renderRail(); }
+  if ('wsother' in d) { RAIL.other = !RAIL.other; return renderRail(); }
+  if ('navrecent' in d) return b.closest('#navPop') ? undefined : navPopOpen(b, 'recent');
+  if ('navws' in d) return navPopOpen(b, 'ws');
+  if ('navmore' in d) return navPopOpen(b, 'more');
+  if ('navcz' in d) { navDrawer(false); return navCustomize(); }
+  if ('wsall' in d) {
+    e.preventDefault(); navDrawer(false);
+    DB.ui.view = 'projects'; save(); render();
+    const g = document.querySelector(`[data-wsgrp="${CSS.escape(d.wsall)}"]`);
+    if (g) { g.tabIndex = -1; g.scrollIntoView({ block: 'start' }); g.focus({ preventScroll: true }); }
+  }
+}
+/* Dar ekranda "Proje ▾": çekmeceyi açar, seçili projeye (alanı kapalıysa açarak) odaklanır. */
+function navToProj() {
+  const p = P();
+  if (p && !wsIsOpen(wsOf(p))) { wsOpenSet(wsOf(p), true); save(); }
+  renderRail();
+  navDrawer(true);
+  const el = document.querySelector('#wsTree .nv-proj[aria-current="page"], #wsTree .nv-proj.is-last')
+    || document.querySelector('#wsTree [data-wstog][aria-current="true"]') || document.querySelector('#wsTree button, #wsTree a');
+  if (el) { el.focus({ preventScroll: true }); el.scrollIntoView({ block: 'nearest' }); }
+}
+
+/* ---- "Kenar çubuğunu özelleştir": taslak kopya üzerinde; Kaydet DB.ui.nav'a yazar, Vazgeç / Esc atar ---- */
+let CZ = null;
+function navCustomize() {
+  navPopClose(false);
+  const c = navCfg();
+  CZ = { order: [...c.order], hidden: new Set(c.hidden), drag: null };
+  openModal(`<div class="m-h"><b id="cz_t">Kenar çubuğunu özelleştir</b><button class="x" data-close aria-label="Kapat">×</button></div>
+    <div class="nv-czb"><p>Seçili öğeler kenar çubuğunda her zaman görünür; seçmediklerin <b>"Daha fazla"</b> menüsünde. Değişiklikler yalnız seni etkiler.</p>
+      <div class="nv-cz-h">Kenar çubuğu öğeleri <span id="cz_n"></span></div>
+      <ul class="nv-cz" id="cz_l" aria-label="Kenar çubuğu öğeleri"></ul>
+      <div class="ws-sr" id="cz_live" role="status" aria-live="polite"></div></div>
+    <div class="m-f"><button type="button" class="btn ghost" id="cz_reset">${ic('reset')}Varsayılana dön</button><span class="spacer"></span>
+      <button type="button" class="btn" data-close>Vazgeç</button><button type="button" class="btn pri" id="cz_ok">Değişiklikleri kaydet</button></div>`, 'narrow nv-dlg');
+  wsDialog('cz_t');
+  czDraw();
+  const box = $('#scrim .modal');
+  box.addEventListener('click', e => {
+    const t = e.target; if (!CZ) return;
+    const ch = t.closest('[data-czchk]'); if (ch) return czToggle(ch.dataset.czchk);
+    const mv = t.closest('[data-czmv]');
+    if (mv) { if (mv.disabled) return; const k = mv.dataset.czk, i = CZ.order.indexOf(k);
+      czPopClose(); return czMove(k, mv.dataset.czmv === 'top' ? 0 : i + (mv.dataset.czmv === 'up' ? -1 : 1), `[data-czmore="${k}"]`); }
+    const mo = t.closest('[data-czmore]'); if (mo) return czPop(mo);
+    if (t.closest('#cz_reset')) {
+      CZ.order = NAV_MOVABLE.filter(navAvail); CZ.hidden = new Set(); czDraw('#cz_reset');
+      $('#cz_live').textContent = 'Varsayılan sıra yüklendi; kalıcı olması için kaydet'; return;
+    }
+    if (t.closest('#cz_ok')) { navSave(CZ.order, [...CZ.hidden]); CZ = null; closeModal(); save(); render(); toast('Kenar çubuğu kaydedildi'); }
+  });
+  box.addEventListener('keydown', e => {
+    if (!CZ) return;
+    const g = e.target.closest?.('[data-czgrip]');
+    if (g && e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      e.preventDefault(); const k = g.dataset.czgrip; return czMove(k, CZ.order.indexOf(k) + (e.key === 'ArrowUp' ? -1 : 1));
+    }
+    const c = e.target.closest?.('[data-czchk]');
+    if (c && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); czToggle(c.dataset.czchk); }
+  });
+  box.addEventListener('mousedown', e => { if ($('#czPop') && !e.target.closest('#czPop, [data-czmore]')) czPopClose(); });
+  /* fareyle sürükle-bırak (sabit satırlar sürüklenmez; bırakılan yer sabit satırsa yanına) */
+  box.addEventListener('dragstart', e => { const r = e.target.closest?.('[data-czrow][draggable="true"]'); if (!r || !CZ) return;
+    CZ.drag = r.dataset.czrow; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', CZ.drag); });
+  box.addEventListener('dragover', e => { if (CZ?.drag && e.target.closest?.('[data-czrow]')) e.preventDefault(); });
+  box.addEventListener('drop', e => { const r = e.target.closest?.('[data-czrow]'); if (!CZ?.drag || !r) return;
+    e.preventDefault(); const k = CZ.drag, tk = r.dataset.czrow; CZ.drag = null;
+    czMove(k, tk === 'home' ? 0 : tk === 'ws' ? 1 : CZ.order.indexOf(tk)); });
+  box.addEventListener('dragend', () => { if (CZ) CZ.drag = null; });
+  box.querySelector('[data-czchk]')?.focus();
+}
+function czDraw(focus) {
+  const full = navFull(CZ.order);
+  $('#cz_n').textContent = `${full.length} öğe · ${full.filter(k => !CZ.hidden.has(k)).length} görünür`;
+  $('#cz_l').innerHTML = full.map((k, i) => {
+    const it = NAV_ITEMS[k], on = !CZ.hidden.has(k);
+    if (it.fixed) return `<li class="nv-cz-r fixed" data-czrow="${k}"><span></span>
+      <span class="nv-chk" role="checkbox" aria-checked="true" aria-disabled="true" aria-label="${it.t} kenar çubuğunda görünsün (sabit)"><i>${ic('check')}</i></span>
+      ${ic(it.ic)}<span class="nm">${it.t}</span><span class="hint lock">${ic('lock')}Sabit</span><span></span></li>`;
+    return `<li class="nv-cz-r ${on ? '' : 'off'}" data-czrow="${k}" draggable="true">
+      <button type="button" class="nv-grip" data-czgrip="${k}" aria-label="${it.t}: sırayı değiştir (Alt+↑/↓), ${i + 1}. sırada">${ic('grip')}</button>
+      <span class="nv-chk" role="checkbox" tabindex="0" data-czchk="${k}" aria-checked="${on}" aria-label="${it.t} kenar çubuğunda görünsün"><i>${ic('check')}</i></span>
+      ${ic(it.ic)}<span class="nm">${it.t}</span>
+      <span class="hint">${on ? '' : ic('hidden') + 'Daha fazla menüsünde'}</span>
+      <button type="button" class="nv-ib" data-czmore="${k}" aria-label="${it.t}: seçenekler" aria-haspopup="menu" aria-expanded="false">${ic('more')}</button></li>`;
+  }).join('');
+  if (focus) $('#scrim .modal')?.querySelector(focus)?.focus();
+}
+function czToggle(k) {
+  if (!NAV_MOVABLE.includes(k)) return;
+  CZ.hidden.has(k) ? CZ.hidden.delete(k) : CZ.hidden.add(k);
+  czDraw(`[data-czchk="${k}"]`);
+}
+function czMove(k, to, focus) {
+  const o = CZ.order, i = o.indexOf(k); to = Math.max(0, Math.min(o.length - 1, to));
+  if (i < 0 || to === i) return;
+  o.splice(i, 1); o.splice(to, 0, k);
+  czDraw(focus || `[data-czgrip="${k}"]`);
+  $('#cz_live').textContent = `${NAV_ITEMS[k].t} ${navFull(o).indexOf(k) + 1}. sıraya taşındı`;
+}
+function czPopClose(focus) {
+  const m = $('#czPop'); if (!m) return;
+  const b = m.parentElement?.querySelector('[data-czmore]'); m.remove();
+  b?.setAttribute('aria-expanded', 'false'); if (focus) b?.focus();
+}
+function czPop(btn) {
+  const open = $('#czPop'), same = open && open.parentElement === btn.parentElement;
+  czPopClose(); if (same) return btn.focus();
+  const k = btn.dataset.czmore, i = CZ.order.indexOf(k), last = CZ.order.length - 1;
+  btn.insertAdjacentHTML('afterend', `<div class="nv-pop nv-czpop" id="czPop" role="menu" aria-label="${NAV_ITEMS[k].t}: taşı">
+    <button type="button" class="nv-mi" role="menuitem" data-czmv="up" data-czk="${k}" ${i === 0 ? 'disabled' : ''}>${ic('mvup')}Yukarı taşı</button>
+    <button type="button" class="nv-mi" role="menuitem" data-czmv="down" data-czk="${k}" ${i === last ? 'disabled' : ''}>${ic('mvdn')}Aşağı taşı</button>
+    <button type="button" class="nv-mi" role="menuitem" data-czmv="top" data-czk="${k}" ${i === 0 ? 'disabled' : ''}>${ic('mvtop')}En üste taşı</button></div>`);
+  btn.setAttribute('aria-expanded', 'true');
+  const m = $('#czPop'); menuKeys(m, f => czPopClose(f));
+  m.querySelector('button:not(:disabled)')?.focus();
 }
 
 /* ---- açılır menüler: ↑↓ Home End ile gezinme, Esc kapatır ve odağı düğmeye verir, Tab kapatır ---- */
@@ -7649,30 +7973,6 @@ function menuKeys(m, close) {
     if (to === undefined || !items.length) return;
     e.preventDefault(); items[(to + items.length) % items.length].focus();
   };
-}
-function wsMenuClose(focus) {
-  const m = $('#wsMenu'); if (!m) return;
-  m.remove(); $('#wsCur').setAttribute('aria-expanded', 'false');
-  if (focus) $('#wsCur').focus();
-  if (RERENDER) setTimeout(tryRerender, 0);
-}
-function wsMenuOpen() {
-  if ($('#wsMenu')) return wsMenuClose(true);
-  const cur = DB.ui.workspace;
-  $('#wsSwitch').insertAdjacentHTML('beforeend', `<div class="ws-menu" id="wsMenu" role="menu" aria-label="Çalışma alanları">
-    <div class="ws-menu-h" aria-hidden="true">Çalışma alanları</div>
-    ${visibleWs().map(w => { const n = selectableProjects(w.id).length;
-      return `<button type="button" class="ws-mi" role="menuitemradio" aria-checked="${w.id === cur}" data-wspick="${esc(w.id)}">${wsBadge(w)}<span class="nm">${esc(w.name)}</span>
-        <span class="n" aria-label="${n} proje">${n}</span>${w.id === cur ? ic('check').replace('class="i"', 'class="i ck"') : '<span class="ph"></span>'}</button>`; }).join('')
-      || '<div class="ws-mi" style="cursor:default;color:var(--meta)">Görebildiğin bir çalışma alanı yok</div>'}
-    <div class="ws-hr" role="separator"></div>
-    ${canEdit() ? `<button type="button" class="ws-mi ws-act" role="menuitem" data-wsnew>${ic('plus')}Yeni çalışma alanı</button>` : ''}
-    <button type="button" class="ws-mi" role="menuitem" data-wsmanage>${ic('grid')}Projeleri ve alanları yönet</button>
-  </div>`);
-  $('#wsCur').setAttribute('aria-expanded', 'true');
-  const m = $('#wsMenu');
-  menuKeys(m, f => wsMenuClose(f));
-  (m.querySelector('[aria-checked="true"]') || m.querySelector('button'))?.focus();
 }
 function wsPopClose(pop, focus) {
   if (!pop || pop.hidden) return;
@@ -7691,10 +7991,7 @@ function wsPopToggle(btn) {
 }
 
 function wireWsSwitch() {
-  $('#wsCur').onclick = () => wsMenuOpen();
-  $('#wsCur').addEventListener('keydown', e => { if (e.key === 'ArrowDown' && !$('#wsMenu')) { e.preventDefault(); wsMenuOpen(); } });
   document.addEventListener('mousedown', e => {
-    if ($('#wsMenu') && !e.target.closest?.('#wsSwitch')) wsMenuClose();
     const open = document.querySelector('.ws-pop:not([hidden])');
     if (open && !open.parentElement.contains(e.target)) wsPopClose(open);
   });
@@ -7714,15 +8011,9 @@ function wsClick(e) {
   const b = t.closest('[data-wsnew],[data-wsnewproj],[data-wsedit],[data-wsarch],[data-wsunarch],[data-wsdel],[data-movproj],[data-ptypedlg],[data-wsarchtog],[data-wspick],[data-wsmanage]');
   if (!b || b.disabled) return;
   const d = b.dataset;
-  if (b.closest('#wsMenu')) wsMenuClose();
-  if ('wspick' in d) {
-    const sheet = 'wssheet' in d;
-    pickWs(d.wspick);
-    if (sheet) projectMenu(); else $('#wsCur').focus();
-    return;
-  }
-  if ('wsmanage' in d) { DB.ui.view = 'projects'; save(); return render(); }
-  if ('wsnew' in d) { closeModal(); return wsForm(); }
+  if ('wspick' in d) return pickWs(d.wspick);
+  if ('wsmanage' in d) { navDrawer(false); DB.ui.view = 'projects'; save(); return render(); }
+  if ('wsnew' in d) { closeModal(); navDrawer(false); return wsForm(); }
   if ('wsnewproj' in d) return newProjectForm({ workspaceId: d.wsnewproj });
   if ('wsedit' in d) return wsForm(d.wsedit);
   if ('wsarch' in d) return wsSetArchived(d.wsarch, true);
