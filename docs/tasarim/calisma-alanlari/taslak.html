@@ -1,0 +1,717 @@
+<!doctype html>
+<html lang="tr" data-theme="light"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Çalışma alanları taslağı (issue #22, 1. dilim)</title>
+<script>if (/theme=dark/.test(location.search)) document.documentElement.dataset.theme = 'dark';</script>
+<style>
+/* ---- uygulamadan kopyalanan token'lar (tasarım dili v3 + sol menü v4 + kart v5 + hm-) ---- */
+:root{
+  --paper:#F3F6FB; --surface:#FFFFFF; --surface2:#F6F9FD; --surface3:#EBF1F9;
+  --line:#E1E8F2; --line2:#CCD7E6;
+  --ink:#0B1B33; --ink2:#43546E; --ink3:#7E8CA3;
+  --accent:#2563EB; --accent-d:#1D4ED8; --accent-soft:#EAF1FE; --accent-ink:#FFFFFF;
+  --btn-grad:linear-gradient(180deg,#3B82F6,#2563EB);
+  --ring:0 0 0 3px rgba(37,99,235,.20);
+  --shadow-sm:0 1px 2px rgba(11,27,51,.05);
+  --shadow:0 1px 2px rgba(11,27,51,.04),0 8px 20px -6px rgba(11,27,51,.10);
+  --shadow-lg:0 30px 60px -15px rgba(11,27,51,.30),0 2px 6px rgba(11,27,51,.06);
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --sans:Inter,system-ui,sans-serif;
+  --risk:#B91C1C; --risk-bg:#FEF2F2; --risk-line:#FECACA;
+  --done:#047857;
+  --rail-bg:#FFFFFF; --rail-ink:#334155; --rail-ink2:#94A3B8; --rail-line:#E5EAF2;
+  --rail-hover:#F3F7FD; --rail-on:#EAF2FF; --rail-on-ink:#1D4ED8; --rail-icon:#3B82F6; --rail-bar:#2563EB; --rail-field:#F3F7FD;
+  --meta:#64748B;
+  /* ---- yeni: çalışma alanları (ws-) ---- */
+  --ws-badge-ink:#FFFFFF;            /* rozet harfi; açık renk seçilirse JS koyu (#0B1B33) seçer */
+  --ws-menu-w:272px;
+  --ws-arch-bg:#F1F4F8;              /* arşivli grup zemini */
+  --ws-info-bg:#EFF5FF; --ws-info-ln:#CFE0FB; --ws-info-ink:#1E3A8A;
+}
+[data-theme="dark"]{
+  --paper:#060B16; --surface:#0C1424; --surface2:#101A2E; --surface3:#16223A;
+  --line:#1B2842; --line2:#273857;
+  --ink:#E6EDF8; --ink2:#A3B2CB; --ink3:#6B7C99;
+  --accent:#60A5FA; --accent-d:#93C5FD; --accent-soft:rgba(96,165,250,.14); --accent-ink:#06101F;
+  --btn-grad:linear-gradient(180deg,#60A5FA,#3B82F6);
+  --ring:0 0 0 3px rgba(96,165,250,.28);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 20px -6px rgba(0,0,0,.55);
+  --shadow-lg:0 30px 60px -15px rgba(0,0,0,.75),0 2px 6px rgba(0,0,0,.4);
+  --risk:#FCA5A5; --risk-bg:rgba(248,113,113,.12); --risk-line:rgba(248,113,113,.32);
+  --done:#34D399;
+  --rail-bg:#0C1424; --rail-ink:#C3CEE0; --rail-ink2:#5F6F8C; --rail-line:#1B2842;
+  --rail-hover:#121D33; --rail-on:rgba(96,165,250,.14); --rail-on-ink:#BFDBFE; --rail-icon:#60A5FA; --rail-bar:#60A5FA; --rail-field:#101A2E;
+  --meta:#8494AE;
+  --ws-arch-bg:#0A1220;
+  --ws-info-bg:rgba(96,165,250,.10); --ws-info-ln:rgba(96,165,250,.28); --ws-info-ink:#BFDBFE;
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:var(--sans);background:var(--paper);color:var(--ink);padding:24px;-webkit-font-smoothing:antialiased;font-size:13px}
+button,input,textarea,select{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box-shadow:var(--ring)}
+svg.i{width:14px;height:14px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.doc-h{font-size:20px;margin:0 0 4px;letter-spacing:-.02em}
+.lead{color:var(--ink2);font-size:13px;margin:0 0 18px;max-width:980px;line-height:1.5}
+.sec-t{font-size:13px;font-weight:700;margin:28px 0 10px;color:var(--ink2)}
+.sec-t small{font-weight:500;color:var(--meta)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ================= uygulama çerçevesi ================= */
+.app{display:grid;grid-template-columns:232px minmax(0,1fr);border:1px solid var(--line);border-radius:16px;overflow:hidden;
+  box-shadow:var(--shadow);background:var(--paper);position:relative}
+.rail{background:var(--rail-bg);border-right:1px solid var(--rail-line);display:flex;flex-direction:column;padding:16px 10px;gap:2px;color:var(--rail-ink);position:relative}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 14px}
+.brand-ic{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#38BDF8 0%,#2563EB 52%,#1E3A8A 100%);box-shadow:0 4px 12px rgba(37,99,235,.35)}
+.brand b{font-size:15.5px;letter-spacing:-.02em;color:var(--ink)}
+.navgroup{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:12px 10px 5px;color:var(--rail-ink2)}
+.nav a{display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:10px;font-size:13.2px;font-weight:500;color:var(--rail-ink);text-decoration:none}
+.nav a svg.i{width:18px;height:18px;color:var(--rail-icon)}
+.nav a.on{background:var(--rail-on);color:var(--rail-on-ink);box-shadow:inset 3px 0 0 var(--rail-bar);font-weight:600}
+.nav a.on svg.i{color:var(--rail-bar)}
+.nav a .n{margin-left:auto;font-family:var(--mono);font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--surface3);color:var(--ink2)}
+.who{margin-top:auto;display:flex;align-items:center;gap:9px;padding:9px;border-radius:12px;font-size:12px;background:var(--surface2);border:1px solid var(--rail-line)}
+.who b{display:block;color:var(--ink)} .who span{font-size:10px;color:var(--meta);font-family:var(--mono);letter-spacing:.06em}
+.main{min-width:0;display:flex;flex-direction:column;
+  background:radial-gradient(900px 420px at 100% -10%,color-mix(in srgb,var(--accent) 7%,transparent),transparent 70%),var(--paper)}
+.topbar{background:color-mix(in srgb,var(--surface) 78%,transparent);border-bottom:1px solid var(--line);padding:14px 20px 12px}
+.tb-head{display:flex;align-items:center;gap:12px}
+.tb-title{flex:1;min-width:0}
+.crumb{font-family:var(--mono);font-size:10.5px;color:var(--meta);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar h1{margin:0;font-size:22px;font-weight:750;letter-spacing:-.025em}
+.tb-actions{display:flex;gap:8px;align-items:center}
+.iconbtn{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:var(--ink2);border:1px solid var(--line);background:var(--surface);padding:0}
+.iconbtn svg.i{width:18px;height:18px}
+.toolrow{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+.toolrow .spacer{flex:1}
+.toolrow .hint{font-size:12px;color:var(--meta)}
+.vtabs{display:none}
+.content{padding:18px 20px 28px;min-width:0}
+.tb-logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#38BDF8 0%,#2563EB 52%,#1E3A8A 100%);flex-shrink:0}
+
+/* ortak denetimler (v3) */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 12px;border-radius:9px;font-size:13px;font-weight:550;
+  border:1px solid var(--line2);background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm);white-space:nowrap}
+.btn:hover{background:var(--surface2)}
+.btn.pri{background:var(--btn-grad);border-color:transparent;color:var(--accent-ink);
+  box-shadow:0 1px 2px rgba(11,27,51,.12),0 4px 12px -2px color-mix(in srgb,var(--accent) 45%,transparent)}
+.btn.ghost{border-color:transparent;background:none;box-shadow:none;color:var(--accent-d)}
+.btn.ghost:hover{background:var(--accent-soft)}
+.btn svg.i{width:16px;height:16px}
+.inp{display:block;width:100%;height:38px;border:1px solid var(--line2);background:var(--surface);padding:0 11px;border-radius:9px;font-size:13.5px}
+textarea.inp{height:auto;padding:9px 11px;resize:vertical;line-height:1.45}
+.inp:focus{outline:none;border-color:var(--accent);box-shadow:var(--ring)}
+.c-av{position:relative;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:9px;flex-shrink:0}
+.memchip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 9px 0 4px;border:1px solid var(--line2);border-radius:999px;background:var(--surface);
+  font-size:12px;color:var(--ink2)}
+.memchip.on{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 50%,transparent);color:var(--accent-d);font-weight:600}
+.memchip svg.i{width:12px;height:12px}
+.chip{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:6px;font-size:11px;font-weight:650;white-space:nowrap;
+  border:1px solid var(--line);background:var(--surface2);color:var(--ink2)}
+.chip svg.i{width:12px;height:12px}
+.chip.cur{background:var(--accent-soft);color:var(--accent-d);border-color:transparent}
+
+/* ================= çalışma alanı rozeti ================= */
+.ws-badge{width:24px;height:24px;border-radius:7px;display:inline-grid;place-items:center;flex-shrink:0;
+  background:var(--ws-c,#64748B);color:var(--ws-badge-ink);font-size:11.5px;font-weight:750;letter-spacing:0;line-height:1;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.ws-badge.sm{width:18px;height:18px;border-radius:5px;font-size:9.5px}
+.ws-badge.lg{width:32px;height:32px;border-radius:9px;font-size:14px}
+.ws-badge.xl{width:44px;height:44px;border-radius:12px;font-size:19px}
+.ws-badge.is-arch{filter:saturate(.35);opacity:.8}
+
+/* ================= sol menü: iki katlı seçici ================= */
+.ws-switch{margin:0 0 10px;border-radius:12px;background:var(--rail-field);border:1px solid var(--rail-line);position:relative}
+.ws-cur{display:flex;align-items:center;gap:9px;width:100%;min-height:48px;padding:7px 6px 7px 9px;border:0;background:none;border-radius:11px 11px 0 0;text-align:left;color:var(--ink)}
+.ws-cur:hover{background:var(--rail-hover)}
+.ws-cur[aria-expanded="true"]{background:var(--surface);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 40%,transparent)}
+.ws-cur .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.ws-cur .lb{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--rail-ink2)}
+.ws-cur .nm{font-size:13px;font-weight:650;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.ws-cur > svg.i{width:16px;height:16px;color:var(--meta)}
+.ws-proj{display:flex;align-items:center;gap:8px;height:40px;padding:0 6px 0 13px;border-top:1px solid var(--rail-line);position:relative;color:var(--ink)}
+.ws-proj > svg.i{width:16px;height:16px;color:var(--rail-icon)}
+.ws-proj select{appearance:none;-webkit-appearance:none;flex:1;min-width:0;height:32px;border:0;background:none;padding:0 18px 0 0;font-size:13px;font-weight:600;
+  border-radius:7px;color:var(--ink);text-overflow:ellipsis}
+.ws-proj .chev{position:absolute;right:8px;pointer-events:none;width:15px;height:15px;color:var(--meta)}
+.ws-proj:has(select:disabled){color:var(--meta)}
+.ws-proj select:disabled{color:var(--meta);font-weight:500}
+
+/* alan menüsü (açılır) */
+.ws-menu{position:absolute;left:0;top:calc(100% - 41px);width:var(--ws-menu-w);z-index:10;background:var(--surface);border:1px solid var(--line);
+  border-radius:12px;box-shadow:var(--shadow-lg);padding:6px}
+.ws-menu-h{display:flex;align-items:center;justify-content:space-between;padding:6px 8px 6px 10px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta)}
+.ws-mi{display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:6px 10px;border:0;background:none;border-radius:8px;text-align:left;font-size:13px;color:var(--ink)}
+.ws-mi:hover,.ws-mi.hl{background:var(--surface2)}
+.ws-mi .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:550}
+.ws-mi .n{font-family:var(--mono);font-size:11px;color:var(--meta)}
+.ws-mi .ck{width:16px;height:16px;color:var(--accent);stroke-width:2.2}
+.ws-mi[aria-checked="true"]{background:var(--accent-soft)}
+.ws-mi[aria-checked="true"] .nm{font-weight:700;color:var(--accent-d)}
+.ws-mi.act{color:var(--accent-d);font-weight:600}
+.ws-mi.act svg.i{width:18px;height:18px;margin:0 3px}
+.ws-mi.sub{color:var(--ink2)} .ws-mi.sub svg.i{width:18px;height:18px;margin:0 3px;color:var(--meta)}
+.ws-hr{height:1px;background:var(--line);margin:6px 4px}
+
+/* ================= Projeler ekranı ================= */
+.ws-grp{margin-bottom:26px}
+.ws-gh{display:flex;align-items:center;gap:12px;padding:0 2px 12px;position:relative}
+.ws-gh .tx{flex:1;min-width:0}
+.ws-gh h2{margin:0;display:flex;align-items:center;gap:8px;font-size:15.5px;font-weight:720;letter-spacing:-.015em;min-width:0}
+.ws-gh h2 span.t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ws-gh .cnt{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink2);background:var(--surface3);padding:2px 8px;border-radius:999px;white-space:nowrap}
+.ws-gh .ds{font-size:12px;color:var(--meta);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ws-gh .acts{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.ws-more{width:36px;height:36px;border-radius:9px;border:1px solid transparent;background:none;display:grid;place-items:center;color:var(--ink2);padding:0}
+.ws-more:hover,.ws-more[aria-expanded="true"]{background:var(--surface);border-color:var(--line2)}
+.ws-more svg.i{width:18px;height:18px}
+.ws-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+
+.ws-pcard{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 14px 12px 16px;box-shadow:var(--shadow-sm);
+  display:flex;flex-direction:column;gap:10px;min-width:0}
+.ws-pcard:hover{border-color:var(--line2);box-shadow:var(--shadow)}
+.ws-pcard.is-cur{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.ws-ph{display:flex;align-items:center;gap:8px;min-width:0}
+.ws-key{font-family:var(--mono);font-size:11px;font-weight:650;color:var(--ink2);background:var(--surface3);border-radius:6px;padding:3px 7px;flex-shrink:0}
+.ws-pname{flex:1;min-width:0;height:32px;border:1px solid transparent;background:none;border-radius:8px;padding:0 6px;margin-left:-6px;
+  font-size:14.5px;font-weight:680;letter-spacing:-.01em;color:var(--ink);text-overflow:ellipsis}
+.ws-pname:hover{border-color:var(--line2)}
+.ws-pname:focus{outline:none;border-color:var(--accent);box-shadow:var(--ring);background:var(--surface)}
+.ws-pstats{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-size:12px;color:var(--ink2)}
+.ws-pstats span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.ws-pstats svg.i{width:13px;height:13px;color:var(--meta)}
+.ws-pstats b{font-family:var(--mono);font-weight:650;color:var(--ink)}
+.ws-plbl{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta)}
+.ws-mems{display:flex;flex-wrap:wrap;gap:5px}
+.ws-pf{display:flex;align-items:center;gap:8px;padding-top:10px;border-top:1px solid var(--line);margin-top:auto}
+.ws-pf .lead2{flex:1;min-width:0;font-size:12px;color:var(--meta);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ws-pf .lead2 b{color:var(--ink2);font-weight:600}
+
+/* açılır işlem menüsü (alan başlığı + proje kartı) */
+.ws-pop{position:absolute;right:0;top:calc(100% + 4px);z-index:12;min-width:250px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);padding:6px}
+.ws-pop .ws-mi svg.i{width:17px;height:17px;color:var(--ink2);margin:0 2px}
+.ws-mi.danger{color:var(--risk)} .ws-pop .ws-mi.danger svg.i{color:var(--risk)}
+.ws-mi:disabled{cursor:not-allowed;color:var(--meta);background:none}
+.ws-pop .ws-mi:disabled svg.i{color:var(--meta)}
+.ws-mi .why{display:block;font-size:11.5px;font-weight:500;color:var(--meta);margin-top:1px;white-space:normal}
+.ws-mi .two{flex:1;min-width:0;line-height:1.3}
+
+/* grupta boş satır */
+.ws-gempty{display:flex;align-items:center;gap:12px;padding:16px 18px;border:1px dashed var(--line2);border-radius:12px;background:var(--surface);color:var(--ink2);font-size:13px}
+.ws-gempty svg.i{width:20px;height:20px;color:var(--accent)}
+.ws-gempty .tx{flex:1;min-width:0}
+
+/* arşiv anahtarı + arşivli grup */
+.ws-archtog{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:0 14px;border:1px dashed var(--line2);border-radius:12px;background:none;color:var(--ink2);font-size:13px;font-weight:550;text-align:left}
+.ws-archtog:hover{background:var(--surface);color:var(--ink)}
+.ws-archtog svg.i{width:18px;height:18px;color:var(--meta)}
+.ws-archtog .n{font-family:var(--mono);font-size:11px;color:var(--meta)}
+.ws-sw{margin-left:auto;width:34px;height:20px;border-radius:999px;background:var(--line2);position:relative;flex-shrink:0}
+.ws-sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--surface);box-shadow:var(--shadow-sm)}
+.ws-archtog[aria-pressed="true"] .ws-sw{background:var(--accent)}
+.ws-archtog[aria-pressed="true"] .ws-sw::after{left:16px;background:#fff}
+.ws-grp.is-arch{background:var(--ws-arch-bg);border:1px solid var(--line);border-radius:14px;padding:14px 14px 14px}
+.ws-grp.is-arch .ws-gh h2 .t{color:var(--ink2)}
+.ws-grp.is-arch .ws-pcard{background:var(--surface2);box-shadow:none}
+
+/* ================= pencereler ================= */
+.ws-dlg{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-lg);overflow:hidden;max-width:500px;width:100%}
+.ws-dlg .m-h{display:flex;align-items:center;gap:10px;padding:14px 12px 14px 18px;border-bottom:1px solid var(--line)}
+.ws-dlg .m-h b{flex:1;font-size:15px;font-weight:700;letter-spacing:-.01em}
+.ws-dlg .m-b{padding:16px 18px 6px}
+.ws-dlg .m-f{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;background:var(--surface2);border-top:1px solid var(--line)}
+.ws-dlg .sub{font-size:12.5px;color:var(--ink2);margin:-4px 0 14px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ws-dlg .sub .ws-key{font-size:10.5px}
+.ws-fld{margin-bottom:16px}
+.ws-fld > label,.ws-fld > .lb{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:6px}
+.ws-fld .opt{font-weight:500;color:var(--meta)}
+.ws-cnt{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--meta)}
+.ws-fld.has-err .inp{border-color:var(--risk);box-shadow:0 0 0 3px color-mix(in srgb,var(--risk) 16%,transparent)}
+.ws-err{display:flex;align-items:flex-start;gap:6px;margin-top:6px;font-size:12px;font-weight:550;color:var(--risk)}
+.ws-err svg.i{width:15px;height:15px;margin-top:1px}
+.ws-prev{display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:16px;border-radius:12px;background:var(--surface2);border:1px solid var(--line)}
+.ws-prev .tx{min-width:0} .ws-prev b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ws-prev .tx span{font-size:11.5px;color:var(--meta)}
+.ws-colors{display:flex;flex-wrap:wrap;gap:8px}
+.ws-sw-c{position:relative;width:36px;height:36px;border-radius:10px;border:0;padding:0;background:var(--ws-c);display:grid;place-items:center;color:#fff}
+.ws-sw-c::after{content:"";position:absolute;inset:-4px;border-radius:13px;border:2px solid transparent}
+.ws-sw-c[aria-checked="true"]::after{border-color:var(--ws-c)}
+.ws-sw-c svg.i{width:18px;height:18px;stroke-width:2.6;opacity:0}
+.ws-sw-c[aria-checked="true"] svg.i{opacity:1}
+.ws-colors + .ws-cname{font-size:11.5px;color:var(--meta);margin-top:7px}
+
+/* taşıma listesi */
+.ws-opts{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.ws-opt{display:flex;align-items:center;gap:11px;width:100%;min-height:48px;padding:7px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);text-align:left;color:var(--ink)}
+.ws-opt:hover{border-color:var(--line2);background:var(--surface2)}
+.ws-opt .tx{flex:1;min-width:0}
+.ws-opt .nm{display:block;font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ws-opt .s{display:block;font-size:11.5px;color:var(--meta)}
+.ws-rad{width:18px;height:18px;border-radius:50%;border:1.6px solid var(--line2);flex-shrink:0;display:grid;place-items:center;background:var(--surface)}
+.ws-opt[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.ws-opt[aria-checked="true"] .ws-rad{border-color:var(--accent);background:var(--accent);box-shadow:inset 0 0 0 3px var(--surface)}
+.ws-opt[aria-disabled="true"]{cursor:not-allowed;background:var(--surface2);color:var(--meta);border-style:dashed}
+.ws-opt[aria-disabled="true"] .nm{color:var(--ink2);font-weight:550}
+.ws-opt[aria-disabled="true"] .ws-rad{background:var(--surface3);border-color:var(--line)}
+.ws-info{display:flex;gap:10px;padding:11px 12px;border-radius:10px;background:var(--ws-info-bg);border:1px solid var(--ws-info-ln);color:var(--ws-info-ink);font-size:12.5px;line-height:1.5}
+.ws-info svg.i{width:17px;height:17px;margin-top:1px}
+.ws-info .k{font-family:var(--mono);font-size:11.5px;font-weight:600}
+.ws-alert{display:flex;gap:10px;padding:11px 12px;border-radius:10px;background:var(--risk-bg);border:1px solid var(--risk-line);color:var(--risk);font-size:12.5px;line-height:1.5}
+.ws-alert svg.i{width:17px;height:17px;margin-top:1px}
+.ws-alert b{color:var(--risk)}
+.ws-alert .tx{color:var(--ink)}
+
+/* ================= boş durumlar ================= */
+.ws-empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:34px 20px 30px;background:var(--surface);border:1px dashed var(--line2);border-radius:14px}
+.ws-empty-ic{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);margin-bottom:12px}
+.ws-empty-ic svg.i{width:24px;height:24px}
+.ws-empty h3{margin:0 0 4px;font-size:15px;font-weight:700;letter-spacing:-.01em}
+.ws-empty p{margin:0 0 16px;font-size:12.5px;color:var(--ink2);max-width:360px;line-height:1.5}
+.ws-empty p:last-child{margin-bottom:0}
+.ws-empty .acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.ws-empty .ctx{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--ink2);background:var(--surface2);border:1px solid var(--line);border-radius:999px;padding:3px 10px 3px 4px;margin-bottom:12px}
+.ws-empty .ctx svg.i{width:12px;height:12px}
+
+/* ================= Benim işlerim: iki katlı süzgeç ================= */
+.ws-hf{display:grid;grid-template-columns:52px minmax(0,1fr);gap:8px 8px;align-items:center;margin-bottom:14px}
+.ws-hf .lbl{font-size:12px;font-weight:600;color:var(--meta)}
+.ws-hf .row{display:flex;gap:6px;flex-wrap:wrap;min-width:0}
+.ws-hf .row.r2{padding:6px;margin-left:-6px;border-radius:12px;background:color-mix(in srgb,var(--surface3) 55%,transparent)}
+.hm-pf{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line2);
+  background:var(--surface);color:var(--ink2);font-size:12.5px;font-weight:550;max-width:100%}
+.hm-pf span.t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hm-pf .n{font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--meta)}
+.hm-pf.on{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 45%,transparent);color:var(--accent-d)}
+.hm-pf.on .n{color:var(--accent-d)}
+.hm-pf.ws{padding-left:6px}
+
+/* ================= mobil "Proje seç" penceresi ================= */
+.ws-sheet{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden;max-width:390px;width:100%;box-shadow:var(--shadow)}
+.ws-sheet .m-h{display:flex;align-items:center;padding:10px 8px 10px 16px;border-bottom:1px solid var(--line)}
+.ws-sheet .m-h b{flex:1;font-size:15px}
+.ws-sheet .body{padding:12px}
+.ws-sheet .ws-switch{margin:0 0 12px}
+.ws-sheet .ws-cur{min-height:52px}
+.ws-prow{display:flex;align-items:center;gap:10px;width:100%;min-height:48px;padding:0 12px;border:0;border-radius:10px;background:none;text-align:left;font-size:14px;font-weight:550;color:var(--ink)}
+.ws-prow:hover{background:var(--surface2)}
+.ws-prow .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ws-prow[aria-current="true"]{background:var(--accent-soft);color:var(--accent-d);font-weight:700}
+.ws-prow svg.i{width:18px;height:18px;color:var(--accent)}
+.ws-sheet .foot{border-top:1px solid var(--line);padding:8px 12px 12px}
+.ws-sheet .foot .btn{width:100%;height:44px}
+
+/* ================= sunum yardımcıları ================= */
+.states{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.panel{background:var(--surface2);border:1px solid var(--line);border-radius:14px;padding:16px;min-width:0}
+.panel.wide{grid-column:1 / -1}
+.panel h2{font-size:13px;font-weight:700;margin:0 0 12px;color:var(--ink2)}
+.panel h2 small{font-weight:500;color:var(--meta)}
+.panel p.note{font-size:12px;color:var(--ink2);margin:12px 0 0;line-height:1.5}
+.panel code{font-family:var(--mono);font-size:11.5px;color:var(--ink)}
+.duo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.railbox{position:relative;overflow-x:visible;overflow-y:clip;width:232px;height:470px;background:var(--rail-bg);border:1px solid var(--rail-line);border-radius:14px;padding:16px 10px;max-width:100%}
+.railbox .nav{opacity:.5}
+.menubox{position:relative;display:flex;justify-content:flex-end;height:214px}
+.menubox .ws-pop{top:44px}
+.legend{margin-top:26px;font-size:12.5px;color:var(--ink2);background:var(--surface);border-radius:14px;padding:14px 18px;border:1px solid var(--line);line-height:1.6}
+.legend b{color:var(--ink)} .legend ol{margin:6px 0 0;padding-left:18px} .legend li{margin:3px 0}
+.legend code{font-family:var(--mono);font-size:11.5px;color:var(--ink)}
+
+/* ================= dar ekran ================= */
+@media (max-width:900px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .app > .rail{display:none}
+  .vtabs{display:flex;gap:2px;margin:10px -14px -12px;padding:0 14px;overflow-x:auto;border-top:1px solid var(--line);scrollbar-width:none}
+  .vtabs::-webkit-scrollbar{display:none}
+  .vtabs button{white-space:nowrap;padding:10px 12px;font-size:12.5px;color:var(--meta);border:0;border-bottom:2px solid transparent;background:none;min-height:40px}
+  .vtabs button.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+  .vtabs .ctx{display:inline-flex;align-items:center;gap:6px;color:var(--ink);font-weight:600}
+  .states,.duo{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:640px){
+  body{padding:0}
+  .doc-h,.lead,.sec-t,.legend,.states{margin-left:12px;margin-right:12px}
+  .doc-h{margin-top:16px}
+  .app{border-radius:0;border-left:0;border-right:0;box-shadow:none}
+  .topbar{padding:12px 14px}
+  .topbar h1{font-size:19px}
+  .tb-actions .iconbtn{width:40px;height:40px}
+  .content{padding:14px 12px 20px}
+  .toolrow .hint{display:none}
+  .toolrow .btn{height:40px;flex:1}
+  .btn{height:40px}
+  .ws-more{width:40px;height:40px}
+  .ws-grid{grid-template-columns:minmax(0,1fr)}
+  .ws-gh{flex-wrap:wrap;gap:10px}
+  .ws-gh .ds{white-space:normal}
+  .ws-gh h2{flex-wrap:wrap;row-gap:4px}
+  .ws-gh h2 span.t{white-space:normal;overflow-wrap:anywhere}
+  .ws-grp.is-arch .ws-gh .acts{width:100%}
+  .ws-grp.is-arch .ws-gh .acts .btn{flex:1}
+  .ws-grp.is-arch{padding:12px 10px}
+  .ws-pop{min-width:0;width:min(280px,calc(100vw - 48px))}
+  .ws-pname{height:40px}
+  .memchip{height:40px}
+  .ws-proj select{height:40px}
+  .iconbtn{width:40px;height:40px}
+  .inp{height:42px;font-size:15px}
+  textarea.inp{height:auto}
+  .ws-sw-c{width:40px;height:40px}
+  .ws-colors{gap:10px}
+  .ws-hf{grid-template-columns:minmax(0,1fr);gap:6px}
+  .ws-hf .lbl{margin-top:4px}
+  .ws-hf .row.r2{margin-left:0}
+  .hm-pf{height:40px;padding:0 14px}
+  .hm-pf.ws{padding-left:8px}
+  .ws-gempty{flex-wrap:wrap}
+  .ws-gempty .btn{width:100%}
+  .panel{padding:14px 12px}
+  .ws-dlg .m-f .btn{flex:1}
+  .ws-dlg .m-b{padding:14px 14px 4px}
+  .ws-dlg .m-f{padding:12px 14px}
+  .railbox{width:100%;height:auto;min-height:440px}
+  .railbox .ws-menu{width:calc(100% - 8px)}
+  .menubox{justify-content:stretch;height:270px}
+  .menubox .ws-pop{left:0;right:0;width:auto}
+  .desk-only{display:none}
+}
+@media (min-width:641px){ .mob-only{display:none} .tb-logo{display:none} }
+@media (min-width:901px){ .tab-only{display:none} }
+</style></head><body>
+
+<h1 class="doc-h">Çalışma alanları — taslak</h1>
+<p class="lead">Issue #22, 1. dilim. Projelerin üstünde bir kat: <b>çalışma alanı → projeler</b>. Sol menüde proje seçicinin üstüne alan seçici gelir (iki katlı tek kutu);
+  Projeler ekranı alan başlıkları altında gruplanır. Alanın kimliği <b>renkli baş harf rozeti + ad</b>; renk tek başına anlam taşımaz, ad her yerde yazılıdır.
+  Örnek: Ayşe Demir (üye) · seçili alan "Bnexify Danışmanlık" · seçili proje "Bordro Hizmetleri".</p>
+
+<!-- ================= 1+2: uygulama görünümü (Projeler ekranı) ================= -->
+<div class="app" id="app">
+  <aside class="rail">
+    <div class="brand"><span class="brand-ic"></span><b>ÇevikPano</b></div>
+    <div id="railSwitch"></div>
+    <div id="railNav"></div>
+    <div class="who"><span class="c-av" style="background:#2563EB;width:30px;height:30px;font-size:11px">AD</span>
+      <div><b>Ayşe Demir</b><span>ÜYE</span></div></div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div class="tb-head">
+        <span class="tb-logo"></span>
+        <div class="tb-title"><div class="crumb">BRD · Yönetim</div><h1>Projeler</h1></div>
+        <div class="tb-actions">
+          <button class="iconbtn" aria-label="Ara veya komut" id="icSearch"></button>
+          <button class="iconbtn" aria-label="Tema değiştir" id="icTheme"></button>
+        </div>
+      </div>
+      <div class="toolrow" id="toolrow"></div>
+      <div class="vtabs"><button class="ctx" id="mctx"></button><button>Benim işlerim</button><button>Pano</button><button>Backlog</button><button class="on">Projeler</button><button>Raporlar</button></div>
+    </header>
+    <div class="content" id="projects"></div>
+  </main>
+</div>
+
+<!-- ================= durumlar ================= -->
+<h2 class="sec-t">Seçici, menüler ve pencereler</h2>
+<div class="states">
+  <div class="panel">
+    <h2>Sol menü: alan menüsü açık <small>· üye / yönetici</small></h2>
+    <div class="railbox" id="railOpen"></div>
+    <p class="note">Rozet + ad tıklanınca liste açılır (<code>role="menu"</code>, öğeler <code>menuitemradio</code>; ↑↓ ile gezinme, Enter seçer, Esc kapatır ve odağı düğmeye geri verir).
+      Alan değişince altındaki proje listesi daralır, alanın ilk projesi açılır. İzleyicide "Yeni çalışma alanı" satırı yoktur.</p>
+  </div>
+  <div class="panel">
+    <h2>Alan başlığı menüsü <small>· dolu alan silinemez</small></h2>
+    <div class="menubox" id="ghMenu"></div>
+    <div class="ws-alert" role="alert" id="srvErr"></div>
+    <p class="note">Silme yalnız yöneticide görünür. Alanda proje varsa (arşivliler dahil) madde devre dışıdır ve nedenini yazar; sunucu yine de reddederse (yarış durumu) aynı metin kırmızı uyarı olarak çıkar.
+      "Genel" için: Arşivle ve Sil devre dışı, "Genel arşivlenemez / silinemez". Başkasının açtığı alanda üye bu menüyü hiç görmez.</p>
+  </div>
+
+  <div class="panel wide">
+    <h2>Pencereler <small>· yeni çalışma alanı (ad çakışması) ve çalışma alanını değiştir</small></h2>
+    <div class="duo">
+      <div id="dlgNew"></div>
+      <div id="dlgMove"></div>
+    </div>
+    <p class="note">Ad: zorunlu, en çok 60 karakter, etkin alanlar arasında büyük/küçük harf duyarsız tekil (tr). Hata yazarken değil "Oluştur"a basınca ve alandan çıkınca gösterilir; alan <code>aria-invalid</code> + <code>aria-describedby</code>.
+      Renk: 8 hazır renk (<code>role="radiogroup"</code>, ok tuşlarıyla), her birinin adı <code>aria-label</code>'da ve altta yazılı. Düzenleme aynı pencere: başlık "Çalışma alanını düzenle", düğme "Kaydet".
+      Taşıma penceresinde arşivli alanlar listede ama seçilemez; şu anki alan işaretli ve "Taşı" düğmesi başka alan seçilene kadar pasif.</p>
+  </div>
+</div>
+
+<h2 class="sec-t">Boş durumlar</h2>
+<div class="states">
+  <div class="panel">
+    <h2>(a) Seçili alanda proje yok <small>· Pano / Backlog / Zaman planı / Raporlar</small></h2>
+    <div id="emptyA"></div>
+    <p class="note">Proje bağlı tüm görünümlerde aynı panel; üst çubuk düğmeleri gizli. İzleyicide düğme yok, metin "Bir yönetici bu alana proje eklediğinde burada görünecek."</p>
+  </div>
+  <div class="panel">
+    <h2>(a) Projeler ekranında boş grup</h2>
+    <div id="emptyGrp"></div>
+    <p class="note" style="margin-bottom:14px">Grup başlığı aynı kalır (<code>0 proje</code>); kartların yerine tek satır kesik çizgili kutu.</p>
+    <h2>Sol menü: proje yokken</h2>
+    <div style="width:232px;max-width:100%" id="railEmpty"></div>
+  </div>
+  <div class="panel">
+    <h2>(b) Hiçbir projede üye değil <small>· üye</small></h2>
+    <div id="emptyB1"></div>
+  </div>
+  <div class="panel">
+    <h2>(b) Hiçbir projede üye değil <small>· izleyici</small></h2>
+    <div id="emptyB2"></div>
+    <p class="note">İzleyicide oluşturma düğmesi hiç çizilmez; sunucu zaten "salt okunur kullanıcı" der.</p>
+  </div>
+</div>
+
+<h2 class="sec-t">Benim işlerim ve arşiv</h2>
+<div class="states">
+  <div class="panel wide">
+    <h2>Benim işlerim süzgeci <small>· üstte alan, altta seçili alanın projeleri</small></h2>
+    <div id="homeFilter"></div>
+    <p class="note">Sayılar açık işlerin. Alan satırında yalnız açık işim olan alanlar; tek alan varsa üst satır hiç çizilmez (bugünkü görünüm aynen kalır). Alan "Tümü" iken proje satırı
+      bütün projeleri gösterir. Proje satırı açık zeminli şeritte durur ki üst satıra bağlı olduğu görülsün. Seçim <code>DB.ui.homeWs</code> + <code>DB.ui.homeProj</code>; "Tüm projeleri göster" ikisini temizler.</p>
+  </div>
+  <div class="panel wide">
+    <h2>Arşivlenmiş çalışma alanları <small>· anahtar açık</small></h2>
+    <div id="archView"></div>
+    <p class="note">Arşivli alan ve projeleri seçicilerde yoktur; yalnız burada görünür. Zemin gri, rozet soluk, başlıkta "Arşivlendi" etiketi (ikon + metin) ve "Arşivden çıkar". Veri silinmez.</p>
+  </div>
+  <div class="panel">
+    <h2>Dar ekran: Proje seç <small>· vtabs'teki bağlam düğmesi açar</small></h2>
+    <div id="sheet"></div>
+    <p class="note">Mobilde sol menü yok; sekme satırının başındaki bağlam düğmesi (rozet + proje adı) bu pencereyi açar. Üstte tam genişlik alan seçici, altında o alanın projeleri (48px satırlar).</p>
+  </div>
+</div>
+
+<div class="legend"><b>Tasarım kararları</b>
+  <ol>
+    <li><b>Tek kutu, iki kat:</b> alan ve proje seçicisi aynı çerçevede, ince çizgiyle ayrılır; üst kat 48px (küçük "Çalışma alanı" etiketi + rozet + ad + yukarı/aşağı ok), alt kat 40px (klasör ikonu + mevcut <code>#projSel</code>). <code>#projSel</code> yerel <code>select</code> olarak kalır, seçenek anlamı değişmez.</li>
+    <li><b>Rozet:</b> 24px, 7px yuvarlak kare, alanın renginde, adın ilk harfi (tr büyük harf). Hazır 8 rengin hepsi beyaz harfle ≥4.5:1. Elle girilmiş açık bir HEX gelirse harf koyu (#0B1B33) seçilir (<code>wsInk(color)</code>). Renk <code>safeColor()</code>'dan geçer.</li>
+    <li><b>Projeler ekranı:</b> grup başlığı kartların dışında (rozet 32px + ad + "N proje" sayısı + açıklama tek satır); sağda "+ Proje" ve ⋯ menüsü. Kartlar 3 sütun (≥290px). Kartın işlemleri (Çalışma alanını değiştir, Arşivle, Projeyi sil) ⋯ menüsünde; altta yalnız "Projeye geç" kalır. Proje adı satır içinde düzenlenebilir (görünmez çerçeveli giriş).</li>
+    <li><b>Kırmızı bütçesi:</b> yalnız "Sil" maddesi, ad çakışma hatası ve "Önce projeleri taşıyın" uyarısı. Bilgi kutusu mavi. Arşiv gri ama metinler ≥4.5:1.</li>
+    <li><b>Mobil (≤640px):</b> seçiciler ve düğmeler tam genişlik, ≥40px; gruplar ve kartlar alt alta; ⋯ menüleri ekrana sığacak kadar daralır; yatay kaydırma yok.</li>
+  </ol>
+</div>
+
+<script>
+const I = {
+  updown:'<path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/>', down:'<path d="m6 9 6 6 6-6"/>',
+  check:'<path d="m5 12.5 4.5 4.5L19 7.5"/>', plus:'<path d="M12 5v14M5 12h14"/>', x:'<path d="M6 6l12 12M18 6 6 18"/>',
+  folder:'<path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/>',
+  folderplus:'<path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/><path d="M12 10.5v6M9 13.5h6"/>',
+  move:'<path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/><path d="M8.5 13.5h7"/><path d="m12.5 10.5 3 3-3 3"/>',
+  more:'<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
+  pencil:'<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+  archive:'<rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V9"/><path d="M10 13h4"/>',
+  unarchive:'<rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V9"/><path d="m9.5 15 2.5-2.5 2.5 2.5M12 12.5V18"/>',
+  trash:'<path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 12.5A1.5 1.5 0 0 0 8.5 21h7a1.5 1.5 0 0 0 1.5-1.5L18 7"/><path d="M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7"/>',
+  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.8v.2"/>', alert:'<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16.2v.3"/>',
+  lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/>',
+  users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.3A6.5 6.5 0 0 1 21.5 20"/>',
+  userplus:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M19 8v6M16 11h6"/>',
+  layers:'<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>', grid:'<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>',
+  issues:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8.5 12 2.5 2.5 4.5-5"/>', circle:'<circle cx="12" cy="12" r="8.5"/>',
+  hour:'<path d="M6.5 3h11M6.5 21h11"/><path d="M7.5 3v2.5a4.5 4.5 0 0 0 9 0V3M7.5 21v-2.5a4.5 4.5 0 0 1 9 0V21"/>',
+  arrow:'<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>', eye:'<path d="M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7z"/><circle cx="12" cy="12" r="3"/>',
+  settings:'<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
+  list:'<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>', board:'<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 7v7M12 7v4M16 7v9"/>',
+  backlog:'<path d="M10 6h11M10 12h11M10 18h11"/><path d="m3 6 1.5 1.5L7 5"/><path d="m3 12 1.5 1.5L7 11"/><path d="M3 18h4"/>',
+  plan:'<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M16 2v4M8 2v4M3 10h18M7 14h5M11 18h6"/>', clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  effort:'<path d="M3.3 19a9 9 0 1 1 17.4 0"/><path d="m12 14 4-4"/>', reports:'<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>', moon:'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+};
+const ic = (n, s = '') => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true" ${s}>${I[n]}</svg>`;
+const $ = s => document.querySelector(s);
+const set = (s, h) => { $(s).innerHTML = h; };
+
+/* ---- hazır renkler (hepsi beyaz harfle ≥4.5:1) ---- */
+const COLORS = [
+  ['#64748B','Arduvaz'], ['#2563EB','Mavi'], ['#4F46E5','Çivit'], ['#7C3AED','Mor'],
+  ['#BE185D','Pembe'], ['#C2410C','Turuncu'], ['#047857','Yeşil'], ['#0E7490','Deniz'],
+];
+const initial = n => [...n.trim()][0].toLocaleUpperCase('tr');
+const badge = (w, cls = '') => `<span class="ws-badge ${cls}" style="--ws-c:${w.c}" aria-hidden="true">${initial(w.n)}</span>`;
+
+/* ---- örnek veri ---- */
+const U = { AD:['Ayşe Demir','#2563EB'], MK:['Mehmet Kaya','#0E7490'], ZA:['Zeynep Arslan','#7C3AED'], CO:['Can Öztürk','#C2410C'], ES:['Elif Şahin','#047857'] };
+const WS = [
+  { id:'ws1', n:'Genel', c:'#64748B', d:'Varsayılan alan; göçten önceki projeler burada.', P:[
+    { k:'INT', n:'İç Süreçler', is:18, op:6, h:'42h', lead:'Mehmet Kaya', m:['AD','MK'] },
+    { k:'EGT', n:'Eğitim ve Dokümantasyon', is:7, op:3, h:'11.5h', lead:'Zeynep Arslan', m:['ZA','AD','ES'] },
+  ]},
+  { id:'ws2', n:'Bnexify Danışmanlık', c:'#2563EB', d:'Bordro, mali müşavirlik ve e-dönüşüm hizmetleri', arch:1, P:[
+    { k:'BRD', n:'Bordro Hizmetleri', is:42, op:14, h:'186h', lead:'Ayşe Demir', m:['AD','MK','ZA','CO'], cur:true },
+    { k:'MLM', n:'Mali Müşavirlik', is:31, op:9, h:'128.5h', lead:'Can Öztürk', m:['CO','AD'] },
+    { k:'EDN', n:'e-Dönüşüm', is:24, op:7, h:'96h', lead:'Elif Şahin', m:['ES','AD','MK'] },
+  ]},
+  { id:'ws3', n:'Müşteri: Oyak', c:'#0E7490', d:'Oyak grup şirketleri bordro ve portal işleri', P:[
+    { k:'OYK', n:'Oyak Liman Bordro', is:48, op:12, h:'210h', lead:'Mehmet Kaya', m:['MK','AD','ZA'], menu:true },
+    { k:'OYP', n:'Oyak Portal Geçişi', is:15, op:10, h:'38h', lead:'Zeynep Arslan', m:['ZA','ES'] },
+  ]},
+];
+const WS_ARCH = { id:'ws4', n:'2025 Denetim', c:'#7C3AED', d:'Yıl sonu denetimi; Ocak 2026\'da kapandı.', P:[
+  { k:'DNT', n:'2025 Yıl Sonu Denetimi', is:36, op:0, h:'164h', lead:'Can Öztürk', m:['CO','AD'] } ] };
+const WS_EMPTY = { id:'ws5', n:'Müşteri: Sanipak', c:'#047857', d:'Yeni müşteri; sözleşme Aralık 2026.', P:[] };
+const cur = WS[1];
+
+/* ---- sol menü ---- */
+const NAV = [
+  ['list','Benim işlerim',0,14], ['g','Planlama'], ['board','Pano'], ['backlog','Backlog'], ['plan','Zaman planı'],
+  ['clock','Zaman çizelgesi'], ['g','Raporlar'], ['effort','Efor raporu'], ['reports','Raporlar'],
+  ['g','Yönetim'], ['grid','Projeler',1], ['settings','Ayarlar'],
+];
+const nav = () => '<nav class="nav">' + NAV.map(([i, t, on, n]) => i === 'g' ? `</nav><div class="navgroup">${t}</div><nav class="nav">`
+  : `<a href="#" class="${on ? 'on' : ''}">${ic(i)}${t}${n ? `<span class="n">${n}</span>` : ''}</a>`).join('') + '</nav>';
+
+const projOpts = w => w.P.map(p => `<option ${p.cur ? 'selected' : ''}>${p.n}</option>`).join('');
+const wsSwitch = (w, o = {}) => `<div class="ws-switch">
+  <button class="ws-cur" aria-haspopup="menu" aria-expanded="${!!o.open}" aria-label="Çalışma alanı: ${w ? w.n : 'yok'} (değiştir)">
+    ${w ? badge(w) : `<span class="ws-badge" style="--ws-c:var(--surface3);color:var(--meta)">${ic('layers','style="width:14px;height:14px"')}</span>`}
+    <span class="tx"><span class="lb">Çalışma alanı</span><span class="nm">${w ? w.n : 'Henüz alan yok'}</span></span>${ic('updown')}</button>
+  <label class="ws-proj">${ic('folder')}<span class="sr">Proje</span>
+    <select id="${o.id || ''}" ${o.noProj ? 'disabled' : ''}>${o.noProj ? '<option>Proje yok</option>' : projOpts(w)}</select>${ic('down', 'class="i chev"')}</label>
+  ${o.open ? wsMenu(w, o) : ''}
+</div>`;
+const wsMenu = (w, o = {}) => `<div class="ws-menu" role="menu" aria-label="Çalışma alanları">
+  <div class="ws-menu-h">Çalışma alanları</div>
+  ${WS.map(x => `<button class="ws-mi ${x.id === 'ws3' ? 'hl' : ''}" role="menuitemradio" aria-checked="${x === w}">${badge(x)}<span class="nm">${x.n}</span>
+    <span class="n" aria-label="${x.P.length} proje">${x.P.length}</span>${x === w ? ic('check', 'class="i ck"') : '<span style="width:16px"></span>'}</button>`).join('')}
+  <div class="ws-hr" role="separator"></div>
+  <button class="ws-mi act" role="menuitem">${ic('plus')}Yeni çalışma alanı</button>
+  <button class="ws-mi sub" role="menuitem">${ic('grid')}Projeleri ve alanları yönet</button>
+</div>`;
+
+set('#railSwitch', wsSwitch(cur, { id:'projSel' }));
+set('#railNav', nav());
+set('#railOpen', `<div class="brand"><span class="brand-ic"></span><b>ÇevikPano</b></div>${wsSwitch(cur, { open:true })}${nav()}`);
+set('#railEmpty', wsSwitch(WS_EMPTY, { noProj:true }));
+set('#icSearch', ic('search')); set('#icTheme', ic('moon'));
+set('#mctx', `${badge(cur, 'sm')}Bordro Hizmetleri${ic('down')}`);
+
+/* ---- Projeler ekranı ---- */
+set('#toolrow', `<button class="btn pri">${ic('plus')}Yeni proje</button><button class="btn">${ic('layers')}Yeni çalışma alanı</button>
+  <span class="spacer"></span><span class="hint">Proje oluşturma ve üye ekleme herkese açık · silme yalnızca yöneticide</span>`);
+
+const cardMenu = () => `<div class="ws-pop" role="menu" aria-label="Proje işlemleri">
+  <button class="ws-mi hl" role="menuitem">${ic('move')}Çalışma alanını değiştir…</button>
+  <button class="ws-mi" role="menuitem">${ic('archive')}Arşivle</button>
+  <div class="ws-hr" role="separator"></div>
+  <button class="ws-mi danger" role="menuitem">${ic('trash')}Projeyi sil</button></div>`;
+const pcard = (p, o = {}) => `<article class="ws-pcard ${p.cur ? 'is-cur' : ''}">
+  <div class="ws-ph"><span class="ws-key">${p.k}</span>
+    <input class="ws-pname" value="${p.n}" aria-label="Proje adı" ${o.ro ? 'disabled' : ''}>
+    ${p.cur ? `<span class="chip cur">${ic('check')}seçili</span>` : ''}${o.arch ? `<span class="chip">${ic('archive')}arşiv</span>` : ''}
+    <div style="position:relative">
+      <button class="ws-more" aria-haspopup="menu" aria-expanded="${!!p.menu}" aria-label="${p.n}: işlemler" title="İşlemler">${ic('more')}</button>
+      ${p.menu ? cardMenu() : ''}</div></div>
+  <div class="ws-pstats"><span>${ic('issues')}<b>${p.is}</b> iş</span><span>${ic('circle')}<b>${p.op}</b> açık</span><span>${ic('hour')}<b>${p.h}</b> efor</span></div>
+  <div><div class="ws-plbl" style="margin-bottom:6px">Üyeler (${p.m.length})</div>
+    <div class="ws-mems">${Object.entries(U).filter(([k]) => o.allMem || p.m.includes(k)).map(([k, [n, c]]) => `<button class="memchip ${p.m.includes(k) ? 'on' : ''}" aria-pressed="${p.m.includes(k)}">
+      <span class="c-av" style="background:${c}">${k === 'CO' ? 'CÖ' : k === 'ES' ? 'EŞ' : k}</span>${n.split(' ')[0]}${p.m.includes(k) ? ic('check') : ic('plus')}</button>`).join('')}
+      ${o.allMem ? '' : `<button class="memchip" aria-label="Üye ekle">${ic('userplus')}Üye ekle</button>`}</div></div>
+  <div class="ws-pf"><span class="lead2">Yürüten <b>${p.lead}</b></span>
+    <button class="btn">${o.arch ? 'Görüntüle' : 'Projeye geç'}${ic('arrow')}</button></div>
+</article>`;
+const ghead = (w, o = {}) => `<div class="ws-gh">${badge(w, 'lg' + (o.arch ? ' is-arch' : ''))}
+  <div class="tx"><h2 id="g-${w.id}"><span class="t">${w.n}</span>
+    <span class="cnt">${w.P.length} proje${w.arch ? ` · ${w.arch} arşivli` : ''}</span>${o.arch ? `<span class="chip">${ic('archive')}Arşivlendi</span>` : ''}</h2>
+    <div class="ds">${w.d}</div></div>
+  <div class="acts">${o.arch ? `<button class="btn">${ic('unarchive')}Arşivden çıkar</button>`
+    : `<button class="btn ghost" aria-label="${w.n} alanına proje ekle">${ic('plus')}Proje</button>`}
+    ${o.noMenu ? '' : `<button class="ws-more" aria-haspopup="menu" aria-expanded="false" aria-label="${w.n}: alan işlemleri" title="Alan işlemleri">${ic('more')}</button>`}</div></div>`;
+const group = (w, o = {}) => `<section class="ws-grp ${o.arch ? 'is-arch' : ''}" aria-labelledby="g-${w.id}">${ghead(w, o)}
+  ${w.P.length ? `<div class="ws-grid">${w.P.map(p => pcard(p, o)).join('')}</div>` : gEmpty()}</section>`;
+const gEmpty = () => `<div class="ws-gempty">${ic('folderplus')}<span class="tx">Bu çalışma alanında henüz proje yok</span>
+  <button class="btn">${ic('plus')}Yeni proje</button></div>`;
+
+set('#projects', WS.map(w => group(w, { noMenu: w.id === 'ws1' })).join('') +
+  `<button class="ws-archtog" aria-pressed="false">${ic('archive')}Arşivlenmiş çalışma alanlarını göster <span class="n">(1)</span><span class="ws-sw" aria-hidden="true"></span></button>`);
+
+/* alan başlığı menüsü */
+set('#ghMenu', `<div style="position:relative;width:100%">
+  <div class="ws-gh" style="padding-bottom:0">${badge(cur, 'lg')}<div class="tx"><h2><span class="t">${cur.n}</span><span class="cnt">3 proje · 1 arşivli</span></h2></div>
+  <div class="acts"><button class="ws-more" aria-expanded="true" aria-label="Alan işlemleri" style="background:var(--surface);border-color:var(--line2)">${ic('more')}</button></div></div>
+  <div class="ws-pop" role="menu" aria-label="Alan işlemleri">
+    <button class="ws-mi" role="menuitem">${ic('pencil')}Düzenle (ad, renk, açıklama)</button>
+    <button class="ws-mi" role="menuitem">${ic('archive')}Arşivle</button>
+    <div class="ws-hr" role="separator"></div>
+    <button class="ws-mi danger" role="menuitem" disabled aria-describedby="whyDel">${ic('trash')}<span class="two">Sil<span class="why" id="whyDel">Önce projeleri taşıyın · 4 proje (1 arşivli)</span></span></button>
+  </div></div>`);
+set('#srvErr', `${ic('alert')}<span class="tx"><b>Çalışma alanı silinemedi.</b> Önce projeleri taşıyın.</span>`);
+
+/* pencereler */
+set('#dlgNew', `<div class="ws-dlg" role="dialog" aria-modal="true" aria-labelledby="dn-t">
+  <div class="m-h"><b id="dn-t">Yeni çalışma alanı</b><button class="iconbtn" aria-label="Kapat" style="border-color:transparent">${ic('x')}</button></div>
+  <div class="m-b">
+    <div class="ws-prev">${badge({ n:'bnexify danışmanlık', c:'#BE185D' }, 'xl')}<div class="tx"><b>bnexify danışmanlık</b><span>Önizleme · sol menüde böyle görünür</span></div></div>
+    <div class="ws-fld has-err"><label for="wn">Ad <span class="ws-cnt">19/60</span></label>
+      <input class="inp" id="wn" value="bnexify danışmanlık" maxlength="60" aria-invalid="true" aria-describedby="wn-e">
+      <div class="ws-err" id="wn-e">${ic('alert')}Bu adla etkin bir çalışma alanı zaten var.</div></div>
+    <div class="ws-fld"><div class="lb" id="wc-l">Renk</div>
+      <div class="ws-colors" role="radiogroup" aria-labelledby="wc-l">${COLORS.map(([c, n]) =>
+        `<button class="ws-sw-c" role="radio" aria-checked="${c === '#BE185D'}" aria-label="${n}" title="${n}" style="--ws-c:${c}">${ic('check')}</button>`).join('')}</div>
+      <div class="ws-cname">Seçili: Pembe</div></div>
+    <div class="ws-fld"><label for="wd">Açıklama <span class="opt">isteğe bağlı · 0/500</span></label>
+      <textarea class="inp" id="wd" rows="2" placeholder="Bu alanda hangi projeler duracak?"></textarea></div>
+  </div>
+  <div class="m-f"><button class="btn">Vazgeç</button><button class="btn pri">Oluştur</button></div></div>`);
+
+const moveOpts = [
+  [WS[0], 'aria-checked="false"', `${WS[0].P.length} proje`],
+  [WS[1], 'aria-checked="true"', `${WS[1].P.length} proje`],
+  [WS[2], 'aria-checked="false"', 'Şu anki alan'],
+  [WS_ARCH, 'aria-checked="false" aria-disabled="true"', 'Arşivli · proje taşınamaz'],
+];
+set('#dlgMove', `<div class="ws-dlg" role="dialog" aria-modal="true" aria-labelledby="dm-t">
+  <div class="m-h"><b id="dm-t">Çalışma alanını değiştir</b><button class="iconbtn" aria-label="Kapat" style="border-color:transparent">${ic('x')}</button></div>
+  <div class="m-b">
+    <div class="sub">Proje: <span class="ws-key">OYK</span><b style="color:var(--ink)">Oyak Liman Bordro</b></div>
+    <div class="ws-opts" role="radiogroup" aria-label="Hedef çalışma alanı">${moveOpts.map(([w, a, s]) =>
+      `<button class="ws-opt" role="radio" ${a}>${badge(w, a.includes('disabled') ? 'is-arch' : '')}<span class="tx"><span class="nm">${w.n}</span><span class="s">${s}</span></span>
+        ${a.includes('disabled') ? ic('lock', 'style="width:16px;height:16px;color:var(--meta)"') : w === WS[2] ? `<span class="chip">şu anki</span>` : ''}<span class="ws-rad"></span></button>`).join('')}</div>
+    <div class="ws-info">${ic('info')}<span>İş numaraları değişmez (<span class="k">OYK-1 … OYK-48</span>). Sprintler, üyeler, bağlantılar ve süre kayıtları aynen kalır; diğer kullanıcılar birkaç saniye içinde yeni yerinde görür.</span></div>
+    <div style="height:14px"></div>
+  </div>
+  <div class="m-f"><button class="btn">Vazgeç</button><button class="btn pri">${ic('move')}Taşı</button></div></div>`);
+
+/* boş durumlar */
+set('#emptyA', `<div class="ws-empty"><span class="ctx">${badge(WS_EMPTY, 'sm')}${WS_EMPTY.n}</span><span class="ws-empty-ic">${ic('folderplus')}</span>
+  <h3>Bu çalışma alanında henüz proje yok</h3><p>İlk projeyi ekleyince pano, backlog ve raporlar burada açılır. Başka bir alana sol menüden geçebilirsin.</p>
+  <div class="acts"><button class="btn pri">${ic('plus')}Yeni proje</button></div></div>`);
+set('#emptyGrp', `<section class="ws-grp" style="margin:0">${ghead(WS_EMPTY).replace('<div class="ws-gh">', '<div class="ws-gh">')}${gEmpty()}</section>`);
+set('#emptyB1', `<div class="ws-empty"><span class="ws-empty-ic">${ic('users')}</span>
+  <h3>Henüz bir projeye eklenmedin</h3><p>Kendi çalışma alanını açıp ilk projeni oluşturabilirsin. Ekibin bir projesindeysen yöneticin seni üye olarak ekleyebilir.</p>
+  <div class="acts"><button class="btn pri">${ic('layers')}Çalışma alanı oluştur</button></div></div>`);
+set('#emptyB2', `<div class="ws-empty"><span class="ws-empty-ic">${ic('eye')}</span>
+  <h3>Henüz bir projeye eklenmedin</h3><p>Yöneticinden seni bir projeye eklemesini iste. Eklendiğinde projeler burada ve sol menüde görünür.</p></div>`);
+
+/* Benim işlerim süzgeci */
+const HW = [['Genel', 2, WS[0]], ['Bnexify Danışmanlık', 9, WS[1]], ['Müşteri: Oyak', 3, WS[2]]];
+set('#homeFilter', `<div class="ws-hf">
+  <span class="lbl" id="hf-a">Alan</span>
+  <div class="row" role="group" aria-labelledby="hf-a">
+    <button class="hm-pf" aria-pressed="false"><span class="t">Tümü</span><span class="n">14</span></button>
+    ${HW.map(([n, c, w]) => `<button class="hm-pf ws ${w === cur ? 'on' : ''}" aria-pressed="${w === cur}">${badge(w, 'sm')}<span class="t">${n}</span><span class="n">${c}</span></button>`).join('')}</div>
+  <span class="lbl" id="hf-p">Proje</span>
+  <div class="row r2" role="group" aria-labelledby="hf-p">
+    <button class="hm-pf on" aria-pressed="true"><span class="t">Tümü</span><span class="n">9</span></button>
+    <button class="hm-pf" aria-pressed="false"><span class="t">Bordro Hizmetleri</span><span class="n">4</span></button>
+    <button class="hm-pf" aria-pressed="false"><span class="t">Mali Müşavirlik</span><span class="n">3</span></button>
+    <button class="hm-pf" aria-pressed="false"><span class="t">e-Dönüşüm</span><span class="n">2</span></button></div>
+</div>`);
+
+/* arşiv görünümü */
+set('#archView', `<button class="ws-archtog" aria-pressed="true" style="margin-bottom:14px">${ic('archive')}Arşivlenmiş çalışma alanlarını göster <span class="n">(1)</span><span class="ws-sw" aria-hidden="true"></span></button>
+  ${group(WS_ARCH, { arch:true, ro:true, allMem:true })}`);
+
+/* mobil proje seç */
+set('#sheet', `<div class="ws-sheet" role="dialog" aria-labelledby="sh-t"><div class="m-h"><b id="sh-t">Proje seç</b><button class="iconbtn" aria-label="Kapat" style="border-color:transparent;width:40px;height:40px">${ic('x')}</button></div>
+  <div class="body"><div class="ws-switch"><button class="ws-cur" aria-haspopup="menu" aria-expanded="false">${badge(cur)}<span class="tx"><span class="lb">Çalışma alanı</span><span class="nm">${cur.n}</span></span>${ic('updown')}</button></div>
+    ${cur.P.map(p => `<button class="ws-prow" ${p.cur ? 'aria-current="true"' : ''}>${ic('folder')}<span class="t">${p.n}</span>${p.cur ? ic('check') : ''}</button>`).join('')}</div>
+  <div class="foot"><button class="btn">${ic('plus')}Yeni çalışma alanı</button></div></div>`);
+</script>
+</body></html>
