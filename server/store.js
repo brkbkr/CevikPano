@@ -123,7 +123,8 @@ export const logChange = (c, collection, id, op, uid, batch) =>
    c === '_settings' → genel ayar (id = anahtar), c === '_prefs' → kişisel tercih.
    Yetkisiz ya da geçersiz değişiklikler atlanır ve `rejected` içinde döner;
    sunucunun değiştirdiği kayıtlar (birleştirme, iş anahtarı) `adjusted` içinde döner. */
-export async function applyChanges(pool, me, changes) {
+/* opts.system: sunucu kaynaklı yazma (e-postadan iş, server/mail.js) — talep edeni bilinmeyen iş havuza düşebilir. */
+export async function applyChanges(pool, me, changes, opts = {}) {
   if (!Array.isArray(changes)) throw new HttpError(400, 'changes dizi olmalı');
   if (changes.length > 5000) throw new HttpError(413, 'Tek seferde en fazla 5000 değişiklik gönderilebilir');
   /* Kararlı gruplama: kullanıcılar → çalışma alanı/cari kayıtları → proje kayıtları → diğerleri (silmeler
@@ -139,7 +140,7 @@ export async function applyChanges(pool, me, changes) {
   const ordered = changes.map((ch, i) => [rank(ch), i, ch]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
   /* Kilitlenme (40P01) ya da serileştirme hatası (40001): işlem bir kez yeniden denenir. */
   for (let attempt = 0; ; attempt++) {
-    try { return await applyOnce(pool, me, ordered); }
+    try { return await applyOnce(pool, me, ordered, opts); }
     catch (e) {
       if (!['40P01', '40001'].includes(e?.code)) throw e;
       if (attempt >= 1) throw new HttpError(409, 'Sunucu meşgul, yeniden deneyin');
@@ -147,12 +148,12 @@ export async function applyChanges(pool, me, changes) {
   }
 }
 
-async function applyOnce(pool, me, ordered) {
+async function applyOnce(pool, me, ordered, opts = {}) {
   const rejected = [], adjusted = [];
   let applied = 0;
   const canEdit = me.role !== 'viewer';
   const batch = randomUUID();
-  const ctx = { me, batch, adjusted, touchedIssues: new Set(), cols: new Map(), colNamed: new Set() };
+  const ctx = { me, batch, adjusted, touchedIssues: new Set(), cols: new Map(), colNamed: new Set(), system: opts.system === true };
   const meAdmin = isAdminRole(me.role);
   const rejIdx = new Map();                         // ret listesi gönderim sırasında döner
 
@@ -346,7 +347,7 @@ async function applyRecord(c, ctx, ch) {
       && (await c.query('SELECT 1 FROM statuses WHERE id=$1 AND project_id=$2 FOR SHARE', [data.statusId, data.projectId])).rowCount > 0;
     if (!ok) throw new HttpError(400, 'Kolon bulunamadı');
   }
-  if (ch.c === 'issues') await checkRequester(c, data, cur);
+  if (ch.c === 'issues') await checkRequester(c, data, cur, ctx.system);
   if (ch.c === 'issues' && await ensureIssueKey(c, ctx, data, cur)) adjusted = true;
   if (cur && same(cur, data)) { if (adjusted) ctx.adjusted.push({ c: ch.c, id: ch.id }); return false; }
   if (ch.c === 'workspaces') await checkWorkspace(c, me, ch.id, data, cur);
@@ -616,10 +617,11 @@ async function checkProjectCustomer(c, data, cur, passive = 'Pasif cari projeye 
    İçe aktarma / geri yükleme bu yoldan geçmez. */
 export const REQUESTER_REQUIRED = 'Talep eden gerekli';
 const reqKey = r => (r && typeof r === 'object' ? `${r.customerId ?? ''}|${r.contactId ?? ''}` : '');
-async function checkRequester(c, data, cur) {
+async function checkRequester(c, data, cur, system = false) {
   const r = data.requester ?? null;
   if (cur && reqKey(cur.requester) === reqKey(r)) return;
   if (!r) {
+    if (system) return;                              // e-postadan: "Talep eden bekleniyor" etiketiyle havuza
     const tpl = (await c.query(`SELECT data->>'template' AS t FROM projects WHERE id=$1`, [data.projectId])).rows[0]?.t;
     if (tpl === 'talep') throw new HttpError(400, REQUESTER_REQUIRED);
     return;

@@ -6,6 +6,7 @@ import { readState, readChanges, applyChanges, addContact, HttpError } from './s
 import { listNotifications, unreadCount, markRead } from './notify.js';
 import { createSnapshot, listSnapshots, getSnapshot, replaceAll, listTrash, restoreTrash, activity } from './backup.js';
 import { isAdminRole } from './util.js';
+import { mailRoutes } from './mail.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(here, '..', 'public');
@@ -141,6 +142,9 @@ export function createApp(pool) {
     res.setHeader('Content-Disposition', `attachment; filename="pano-yedek-${new Date().toISOString().slice(0, 10)}.json"`);
     res.json(data);
   });
+
+  /* Posta kutuları (görev 11, E2): yalnız yönetici; jetonlar hiçbir yanıtta yok. */
+  mailRoutes(app, pool, requireUser, requireAdmin);
 
   app.use('/api', (_req, _res, next) => next(new HttpError(404, 'Bulunamadı')));
 
