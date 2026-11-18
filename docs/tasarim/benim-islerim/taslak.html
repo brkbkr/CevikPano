@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="tr" data-theme="light"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Benim işlerim taslağı (issue #9, ilk dilim)</title>
+<script>if (/theme=dark/.test(location.search)) document.documentElement.dataset.theme = 'dark';</script>
+<style>
+/* ---- uygulamadan kopyalanan token'lar (tasarım dili v3 + sol menü v4 + kart v5) ---- */
+:root{
+  --paper:#F3F6FB; --surface:#FFFFFF; --surface2:#F6F9FD; --surface3:#EBF1F9;
+  --line:#E1E8F2; --line2:#CCD7E6;
+  --ink:#0B1B33; --ink2:#43546E; --ink3:#7E8CA3;
+  --accent:#2563EB; --accent-d:#1D4ED8; --accent-soft:#EAF1FE; --accent-ink:#FFFFFF;
+  --btn-grad:linear-gradient(180deg,#3B82F6,#2563EB);
+  --ring:0 0 0 3px rgba(37,99,235,.20);
+  --shadow-sm:0 1px 2px rgba(11,27,51,.05);
+  --shadow:0 1px 2px rgba(11,27,51,.04),0 8px 20px -6px rgba(11,27,51,.10);
+  --shadow-lg:0 30px 60px -15px rgba(11,27,51,.30),0 2px 6px rgba(11,27,51,.06);
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --sans:Inter,system-ui,sans-serif;
+  --todo:#64748B; --prog:#C2610C; --done:#059669;
+  --rail-bg:#FFFFFF; --rail-ink:#334155; --rail-ink2:#94A3B8; --rail-line:#E5EAF2;
+  --rail-hover:#F3F7FD; --rail-on:#EAF2FF; --rail-on-ink:#1D4ED8; --rail-icon:#3B82F6; --rail-bar:#2563EB; --rail-field:#F3F7FD;
+  --meta:#64748B;
+  --late:#B91C1C; --today:#B45309; --ok:#15803D; --over:#B45309;
+  --p-acil:#B91C1C;   --p-acil-bg:#FEF2F2;   --p-acil-ln:#FECACA;
+  --p-yuksek:#C2410C; --p-yuksek-bg:#FFF7ED; --p-yuksek-ln:#FED7AA;
+  --p-orta:#41587A;   --p-orta-bg:#EEF2F7;   --p-orta-ln:#D3DCE8;
+  --p-dusuk:#64748B;  --p-dusuk-bg:#F8FAFC;  --p-dusuk-ln:#E5E9F0;
+  --c-track:#E6ECF4;
+  /* ---- yeni: Benim işlerim (hm-) ---- */
+  --late-bg:#FEF2F2; --today-bg:#FFF7ED;
+  --toast-act:#93C5FD; --toast-ok:#4ADE80; --toast-warn:#FCA5A5;
+}
+[data-theme="dark"]{
+  --paper:#060B16; --surface:#0C1424; --surface2:#101A2E; --surface3:#16223A;
+  --line:#1B2842; --line2:#273857;
+  --ink:#E6EDF8; --ink2:#A3B2CB; --ink3:#6B7C99;
+  --accent:#60A5FA; --accent-d:#93C5FD; --accent-soft:rgba(96,165,250,.14); --accent-ink:#06101F;
+  --btn-grad:linear-gradient(180deg,#60A5FA,#3B82F6);
+  --ring:0 0 0 3px rgba(96,165,250,.28);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 20px -6px rgba(0,0,0,.55);
+  --shadow-lg:0 30px 60px -15px rgba(0,0,0,.75),0 2px 6px rgba(0,0,0,.4);
+  --todo:#94A3B8; --prog:#F0A040; --done:#34D399;
+  --rail-bg:#0C1424; --rail-ink:#C3CEE0; --rail-ink2:#5F6F8C; --rail-line:#1B2842;
+  --rail-hover:#121D33; --rail-on:rgba(96,165,250,.14); --rail-on-ink:#BFDBFE; --rail-icon:#60A5FA; --rail-bar:#60A5FA; --rail-field:#101A2E;
+  --meta:#8494AE; --late:#F87171; --today:#FBBF24; --ok:#34D399; --over:#FBBF24;
+  --p-acil:#FCA5A5;   --p-acil-bg:rgba(248,113,113,.14);  --p-acil-ln:rgba(248,113,113,.30);
+  --p-yuksek:#FDBA74; --p-yuksek-bg:rgba(251,146,60,.14); --p-yuksek-ln:rgba(251,146,60,.30);
+  --p-orta:#B4C2D8;   --p-orta-bg:rgba(148,163,184,.14);  --p-orta-ln:rgba(148,163,184,.28);
+  --p-dusuk:#8A97AB;  --p-dusuk-bg:rgba(148,163,184,.06); --p-dusuk-ln:rgba(148,163,184,.18);
+  --c-track:#1E2B45;
+  --late-bg:rgba(248,113,113,.12); --today-bg:rgba(251,191,36,.12);
+  --toast-act:#1D4ED8; --toast-ok:#15803D; --toast-warn:#B91C1C;
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:var(--sans);background:var(--paper);color:var(--ink);padding:24px;-webkit-font-smoothing:antialiased;font-size:13px}
+button{font-family:inherit;font-size:inherit;color:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible{outline:none;box-shadow:var(--ring)}
+svg.i{width:14px;height:14px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.doc-h{font-size:20px;margin:0 0 4px;letter-spacing:-.02em}
+.lead{color:var(--ink2);font-size:13px;margin:0 0 18px;max-width:960px;line-height:1.5}
+.sec-t{font-size:13px;font-weight:700;margin:28px 0 10px;color:var(--ink2)}
+.sec-t small{font-weight:500;color:var(--meta)}
+
+/* ================= uygulama çerçevesi (rail + üst çubuk) ================= */
+.app{display:grid;grid-template-columns:232px minmax(0,1fr);border:1px solid var(--line);border-radius:16px;overflow:hidden;
+  box-shadow:var(--shadow);background:var(--paper);position:relative}
+.rail{background:var(--rail-bg);border-right:1px solid var(--rail-line);display:flex;flex-direction:column;padding:16px 10px;gap:2px;color:var(--rail-ink)}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 14px}
+.brand-ic{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#38BDF8 0%,#2563EB 52%,#1E3A8A 100%);box-shadow:0 4px 12px rgba(37,99,235,.35)}
+.brand b{font-size:15.5px;letter-spacing:-.02em;color:var(--ink)}
+.projsel{margin:0 4px 10px;padding:8px 10px;border-radius:10px;font-size:13px;font-weight:600;display:flex;justify-content:space-between;
+  align-items:center;background:var(--rail-field);border:1px solid var(--rail-line);color:var(--ink)}
+.navgroup{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:12px 10px 5px;color:var(--rail-ink2)}
+.nav a{display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:10px;font-size:13.2px;font-weight:500;color:var(--rail-ink);text-decoration:none}
+.nav a svg.i{width:18px;height:18px;color:var(--rail-icon)}
+.nav a.on{background:var(--rail-on);color:var(--rail-on-ink);box-shadow:inset 3px 0 0 var(--rail-bar);font-weight:600}
+.nav a.on svg.i{color:var(--rail-bar)}
+.nav a .n{margin-left:auto;font-family:var(--mono);font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--surface3);color:var(--ink2)}
+.nav a.on .n{background:var(--surface);color:var(--rail-on-ink)}
+.who{margin-top:auto;display:flex;align-items:center;gap:9px;padding:9px;border-radius:12px;font-size:12px;background:var(--surface2);border:1px solid var(--rail-line)}
+.who b{display:block;color:var(--ink)} .who span{font-size:10px;color:var(--meta);font-family:var(--mono);letter-spacing:.06em}
+
+.main{min-width:0;display:flex;flex-direction:column;
+  background:radial-gradient(900px 420px at 100% -10%,color-mix(in srgb,var(--accent) 7%,transparent),transparent 70%),var(--paper)}
+.topbar{background:color-mix(in srgb,var(--surface) 78%,transparent);border-bottom:1px solid var(--line);padding:14px 20px 12px}
+.tb-head{display:flex;align-items:center;gap:12px}
+.tb-title{flex:1;min-width:0}
+.crumb{font-family:var(--mono);font-size:10.5px;color:var(--meta);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
+.topbar h1{margin:0;font-size:22px;font-weight:750;letter-spacing:-.025em}
+.tb-actions{display:flex;gap:8px;align-items:center}
+.cmdk{display:flex;align-items:center;gap:8px;height:36px;padding:0 10px 0 12px;border-radius:10px;border:1px solid var(--line);
+  background:var(--surface2);color:var(--meta);font-size:12.5px;min-width:220px}
+.cmdk span{flex:1;text-align:left}
+.cmdk kbd{font-family:var(--sans);font-size:10.5px;font-weight:600;padding:2px 6px;border-radius:6px;border:1px solid var(--line);background:var(--surface)}
+.iconbtn{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:var(--ink2);border:1px solid var(--line);background:var(--surface)}
+.iconbtn svg.i{width:18px;height:18px}
+.vtabs{display:none}
+.content{padding:18px 20px 96px;min-width:0}
+.hm-c{container:hm / inline-size}
+
+/* ortak düğmeler */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 12px;border-radius:9px;font-size:13px;font-weight:550;
+  border:1px solid var(--line2);background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm);white-space:nowrap}
+.btn:hover{background:var(--surface2)}
+.btn.pri{background:var(--btn-grad);border-color:transparent;color:var(--accent-ink);
+  box-shadow:0 1px 2px rgba(11,27,51,.12),0 4px 12px -2px color-mix(in srgb,var(--accent) 45%,transparent)}
+.btn.link{border-color:transparent;background:none;box-shadow:none;color:var(--accent-d);padding:0 8px}
+.btn svg.i{width:16px;height:16px}
+
+/* kart v5'ten: öncelik rozeti + avatar */
+.prio{position:relative;display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 7px 0 5px;border-radius:7px;
+  font-size:11px;font-weight:650;border:1px solid transparent;flex-shrink:0;line-height:1;white-space:nowrap}
+button.prio::after{content:"";position:absolute;inset:-7px -3px}
+.prio svg.i{width:13px;height:13px;stroke-width:2.2}
+.prio.acil{color:var(--p-acil);background:var(--p-acil-bg);border-color:var(--p-acil-ln)}
+.prio.yuksek{color:var(--p-yuksek);background:var(--p-yuksek-bg);border-color:var(--p-yuksek-ln)}
+.prio.orta{color:var(--p-orta);background:var(--p-orta-bg);border-color:var(--p-orta-ln)}
+.prio.dusuk{color:var(--p-dusuk);background:var(--p-dusuk-bg);border-color:var(--p-dusuk-ln)}
+.c-av{position:relative;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;
+  font-size:10px;letter-spacing:.02em;flex-shrink:0;border:0;padding:0;box-shadow:0 0 0 2px var(--surface)}
+button.c-av::after{content:"";position:absolute;inset:-5px}
+
+/* ================= Benim işlerim (hm-) ================= */
+/* proje süzgeci */
+.hm-filter{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.hm-filter .lbl{font-size:12px;font-weight:600;color:var(--meta);margin-right:4px}
+.hm-pf{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line2);
+  background:var(--surface);color:var(--ink2);font-size:12.5px;font-weight:550;max-width:100%}
+.hm-pf span.t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hm-pf .n{font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--meta)}
+.hm-pf:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line2))}
+.hm-pf.on{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 45%,transparent);color:var(--accent-d)}
+.hm-pf.on .n{color:var(--accent-d)}
+
+/* üst özet şeridi */
+.hm-sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:22px}
+.hm-stat{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow-sm);min-width:0}
+.hm-stat-ic{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);flex-shrink:0}
+.hm-stat-ic svg.i{width:19px;height:19px}
+.hm-stat-b{min-width:0;flex:1}
+.hm-stat-l{font-size:12px;font-weight:600;color:var(--ink2)}
+.hm-stat-v{font-family:var(--mono);font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.2;color:var(--ink)}
+.hm-stat-v small{font-size:13px;font-weight:600;color:var(--meta);letter-spacing:0}
+.hm-stat-s{font-size:11.5px;color:var(--meta);margin-top:1px}
+.hm-stat.is-late .hm-stat-ic{background:var(--late-bg);color:var(--late)}
+.hm-stat.is-late .hm-stat-v{color:var(--late)}
+.hm-stat.is-zero .hm-stat-ic{background:var(--surface3);color:var(--ok)}
+.hm-cap{display:flex;align-items:center;gap:8px;margin-top:6px}
+.hm-bar{flex:1;height:6px;border-radius:6px;background:var(--c-track);overflow:hidden}
+.hm-bar i{display:block;height:100%;border-radius:6px;background:var(--accent)}
+.hm-bar.over i{background:var(--over)}
+.hm-cap b{font-family:var(--mono);font-size:11.5px;font-weight:650;color:var(--accent-d)}
+
+/* grup */
+.hm-grp{margin-top:18px}
+.hm-gh{display:flex;align-items:center;gap:8px;padding:0 4px 8px;font-size:13px;font-weight:700;color:var(--ink);letter-spacing:-.005em}
+.hm-gh svg.i{width:16px;height:16px;color:var(--meta)}
+.hm-gh .n{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink2);background:var(--surface3);padding:1px 8px;border-radius:999px}
+.hm-gh .d{margin-left:auto;font-size:11.5px;font-weight:500;color:var(--meta)}
+.hm-grp.g-late .hm-gh{color:var(--late)}
+.hm-grp.g-late .hm-gh svg.i{color:var(--late)}
+.hm-grp.g-late .hm-gh .n{background:var(--late-bg);color:var(--late)}
+.hm-grp.g-today .hm-gh svg.i{color:var(--today)}
+.hm-grp.g-week .hm-gh svg.i,.hm-grp.g-later .hm-gh svg.i{color:var(--accent)}
+.hm-list{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow-sm)}
+.hm-more{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;height:40px;border:0;border-top:1px solid var(--line);
+  background:var(--surface2);color:var(--accent-d);font-size:12.5px;font-weight:600}
+
+/* iş satırı — masaüstü: tek sıra ızgara, özet iki satırlı blok */
+.hm-row{display:grid;grid-template-columns:40px minmax(0,1fr) 78px 120px 116px 276px;align-items:center;column-gap:12px;
+  min-height:60px;padding:8px 14px 8px 6px;border-bottom:1px solid var(--line);position:relative}
+.hm-row:last-child{border-bottom:0}
+.hm-row:hover{background:color-mix(in srgb,var(--surface2) 70%,var(--surface))}
+.hm-tick{width:40px;height:40px;border:0;background:none;padding:0;display:grid;place-items:center;border-radius:10px;color:transparent}
+.hm-tick::before{content:"";grid-area:1/1;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--line2);background:var(--surface)}
+.hm-tick svg.i{grid-area:1/1;width:12px;height:12px;stroke-width:2.4;z-index:1}
+.hm-tick:hover::before{border-color:var(--ok)} .hm-tick:hover{color:var(--ok)}
+.hm-main{min-width:0}
+.hm-t{display:block;width:100%;text-align:left;border:0;background:none;padding:0;font-size:13.5px;font-weight:600;line-height:1.35;color:var(--ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:4px}
+.hm-t:hover{color:var(--accent-d);text-decoration:underline;text-underline-offset:2px}
+.hm-sub{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:11.5px;color:var(--meta);white-space:nowrap;min-width:0}
+.hm-sub .k{font-family:var(--mono);font-size:11px;font-weight:500}
+.hm-sub .pj{display:inline-flex;align-items:center;gap:4px;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.hm-sub .pj svg.i,.hm-sub .rem svg.i,.hm-sub .blk svg.i{width:12px;height:12px}
+.hm-sub .rem{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:11px}
+.hm-sub .blk{display:inline-flex;align-items:center;gap:4px;color:var(--ink2);overflow:hidden;text-overflow:ellipsis}
+.hm-sub .blk .k{color:var(--accent-d)}
+.hm-sep{width:3px;height:3px;border-radius:50%;background:var(--line2);flex-shrink:0}
+.hm-meta{display:contents}
+.hm-due{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--ink2);white-space:nowrap}
+.hm-due svg.i{width:14px;height:14px;color:var(--meta)}
+.hm-due.d-late{color:var(--late);font-weight:650} .hm-due.d-late svg.i{color:var(--late)}
+.hm-due.d-today{color:var(--today);font-weight:650} .hm-due.d-today svg.i{color:var(--today)}
+.hm-due.d-none{color:var(--meta)}
+.hm-st{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;border-radius:999px;font-size:11.5px;font-weight:600;
+  color:var(--ink2);background:var(--surface2);border:1px solid var(--line);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;justify-self:start}
+.hm-st i{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:var(--todo)}
+.hm-st.s-inprogress i{background:var(--prog)}
+.hm-st.s-review i{background:var(--accent)}
+.hm-act{display:flex;align-items:center;justify-content:flex-end;gap:6px;min-width:0}
+.hm-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 11px;border-radius:9px;
+  border:1px solid var(--line2);background:var(--surface);color:var(--ink);font-size:12.5px;font-weight:600;white-space:nowrap;min-width:0}
+.hm-btn span{overflow:hidden;text-overflow:ellipsis}
+.hm-btn svg.i{width:15px;height:15px;color:var(--accent)}
+.hm-btn:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line2));background:var(--accent-soft)}
+.hm-adv{max-width:144px}
+.hm-adv.to-done svg.i{color:var(--ok)}
+.hm-adv.none{visibility:hidden}
+
+/* izleyici: tamamla ve düğmeler yok */
+.hm-ro-note{display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:12px;color:var(--ink2);background:var(--surface2);border-bottom:1px solid var(--line)}
+.hm-ro-note svg.i{width:15px;height:15px;color:var(--meta)}
+.hm-list.ro .hm-row{grid-template-columns:40px minmax(0,1fr) 78px 120px 116px}
+.hm-ro-dot{width:40px;display:grid;place-items:center;color:var(--line2)}
+
+/* boş durum */
+.hm-empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:34px 20px 30px;background:var(--surface);
+  border:1px dashed var(--line2);border-radius:14px}
+.hm-empty-ic{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);margin-bottom:12px}
+.hm-empty-ic svg.i{width:24px;height:24px}
+.hm-empty h3{margin:0 0 4px;font-size:15px;font-weight:700;letter-spacing:-.01em}
+.hm-empty p{margin:0 0 16px;font-size:12.5px;color:var(--ink2);max-width:340px;line-height:1.5}
+.hm-empty .acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+
+/* bildirim (toast) — mevcut .toast'un üzerine */
+.toast{display:flex;align-items:center;gap:10px;min-height:48px;padding:6px 6px 6px 14px;border-radius:12px;background:var(--ink);color:var(--paper);
+  box-shadow:var(--shadow-lg);font-size:13px;font-weight:500;position:relative;overflow:hidden;max-width:520px}
+.toast > svg.i{width:18px;height:18px;color:var(--toast-ok)}
+.toast.t-warn > svg.i{color:var(--toast-warn)}
+.toast .tx{flex:1;min-width:0;line-height:1.35}
+.toast .tx .k{font-family:var(--mono);font-size:12px;font-weight:600}
+.toast-undo{height:36px;padding:0 12px;border-radius:8px;border:0;background:transparent;color:var(--toast-act);font-weight:700;font-size:13px;flex-shrink:0}
+.toast-undo:hover{background:color-mix(in srgb,var(--paper) 10%,transparent)}
+.toast-x{width:36px;height:36px;border:0;background:none;color:color-mix(in srgb,var(--paper) 70%,transparent);display:grid;place-items:center;border-radius:8px;flex-shrink:0}
+.toast-x svg.i{width:16px;height:16px}
+.toast .tm{position:absolute;left:0;bottom:0;height:3px;background:var(--toast-act);opacity:.7}
+.toast.t-warn{padding-right:14px}
+
+/* ================= sunum yardımcıları ================= */
+.app-toast{position:absolute;left:calc(232px + (100% - 232px) / 2);bottom:20px;transform:translateX(-50%);width:max-content;max-width:520px;z-index:3}
+.states{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.panel.wide{grid-column:1 / -1}
+.panel{background:var(--surface2);border:1px solid var(--line);border-radius:14px;padding:16px;min-width:0}
+.panel h2{font-size:13px;font-weight:700;margin:0 0 10px;color:var(--ink2)}
+.panel h2 small{font-weight:500;color:var(--meta)}
+.panel p.note{font-size:12px;color:var(--ink2);margin:10px 0 0;line-height:1.5}
+.panel .stack{display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.phone{position:relative;width:100%;max-width:390px;height:330px;border:1px solid var(--line);border-radius:22px;overflow:hidden;background:var(--paper)}
+.phone .scr{padding:10px 12px}
+.phone .toast{position:absolute;left:12px;right:12px;bottom:calc(12px + 22px);max-width:none}
+.phone .safe{position:absolute;left:0;right:0;bottom:0;height:22px;display:grid;place-items:center;background:color-mix(in srgb,var(--paper) 85%,transparent)}
+.phone .safe i{width:120px;height:4px;border-radius:4px;background:var(--ink);opacity:.55}
+.phone .lbl-safe{position:absolute;left:12px;bottom:5px;font-size:9.5px;color:var(--meta);font-family:var(--mono)}
+.legend{margin-top:26px;font-size:12.5px;color:var(--ink2);background:var(--surface);border-radius:14px;padding:14px 18px;border:1px solid var(--line);line-height:1.6}
+.legend b{color:var(--ink)} .legend ol{margin:6px 0 0;padding-left:18px} .legend li{margin:3px 0}
+.legend code{font-family:var(--mono);font-size:11.5px;color:var(--ink)}
+
+/* ================= mobil ≤640px ================= */
+@media (max-width:900px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .rail{display:none}
+  .app-toast{display:none}
+  .cmdk span,.cmdk kbd{display:none}
+  .cmdk{min-width:0;width:36px;height:36px;padding:0;justify-content:center}
+  .vtabs{display:flex;gap:2px;margin:10px -14px -12px;padding:0 14px;overflow-x:auto;border-top:1px solid var(--line);scrollbar-width:none}
+  .vtabs::-webkit-scrollbar{display:none}
+  .vtabs button{white-space:nowrap;padding:10px 12px;font-size:12.5px;color:var(--meta);border:0;border-bottom:2px solid transparent;background:none}
+  .vtabs button.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+}
+@media (max-width:640px){
+  body{padding:0}
+  .doc-h,.lead,.sec-t,.legend,.states{margin-left:12px;margin-right:12px}
+  .doc-h{margin-top:16px}
+  .app{border-radius:0;border-left:0;border-right:0;box-shadow:none}
+  .topbar{padding:12px 14px}
+  .topbar h1{font-size:19px}
+  .tb-logo{display:block}
+  .tb-actions .iconbtn,.tb-actions .cmdk{width:40px;height:40px}
+  .content{padding:14px 12px 24px}
+
+  .hm-pf{height:40px;padding:0 14px}
+  .hm-filter .lbl{width:100%}
+  .hm-sum{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:18px}
+  .hm-stat{padding:12px;gap:10px}
+  .hm-stat-ic{width:32px;height:32px} .hm-stat-ic svg.i{width:17px;height:17px}
+  .hm-stat-v{font-size:19px}
+  .hm-stat.wk{grid-column:1 / -1}
+
+
+  .states{grid-template-columns:1fr}
+  .panel{padding:14px 12px}
+  .desk-only{display:none}
+}
+@container hm (max-width:640px){
+  .hm-row{grid-template-columns:40px minmax(0,1fr);grid-template-areas:"tick main" ". meta" ". act";row-gap:8px;padding:10px 12px 12px 2px;align-items:start}
+  .hm-tick{grid-area:tick;margin-top:-6px}
+  .hm-main{grid-area:main}
+  .hm-t{white-space:normal;font-size:14px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+  .hm-sub{flex-wrap:wrap;row-gap:2px;white-space:normal}
+  .hm-meta{grid-area:meta;display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+  .hm-meta .prio{height:26px;font-size:11.5px}
+  .hm-act{grid-area:act;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 40px;gap:8px}
+  .hm-btn{height:40px;width:100%}
+  .hm-adv{max-width:none}
+  .hm-adv.none{display:none}
+  .hm-act:has(.hm-adv.none){grid-template-columns:minmax(0,1fr) 40px}
+  .hm-act .c-av{width:40px;height:40px;font-size:12px;box-shadow:none}
+  .hm-list.ro .hm-row{grid-template-columns:40px minmax(0,1fr);grid-template-areas:"tick main" ". meta"}
+  .hm-ro-dot{grid-area:tick}
+}
+@container hm (max-width:350px){ .hm-log span{display:none} }
+@media (min-width:641px){ .mob-only{display:none} .tb-logo{display:none} }
+.tb-logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#38BDF8 0%,#2563EB 52%,#1E3A8A 100%);flex-shrink:0}
+@media (prefers-reduced-motion:reduce){.toast .tm{display:none}}
+</style></head><body>
+
+<h1 class="doc-h">Benim işlerim — taslak</h1>
+<p class="lead">Issue #9, ilk dilim. Girişte açılan ekran: üstte süzgeç ve 3 kutuluk özet, altında tarih gruplarına ayrılmış kendi işlerin.
+  Satırda solda tamamla, ortada özet (altında anahtar · proje · kalan süre), sağda öncelik, bitiş, durum ve iki eylem: <b>İlerlet</b> (sonraki durumun adıyla) ve <b>Süre gir</b>.
+  Kırmızı yalnızca gecikmede ve Acil önceliğinde. Örnek tarih: 18 Kasım 2026 Çarşamba.</p>
+
+<!-- ================= uygulama görünümü ================= -->
+<div class="app" id="app">
+  <aside class="rail">
+    <div class="brand"><span class="brand-ic"></span><b>ÇevikPano</b></div>
+    <div class="projsel">Bordro Hizmetleri <svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></div>
+    <div id="railNav"></div>
+    <div class="who"><span class="c-av" style="background:#2563EB;box-shadow:none;width:30px;height:30px;font-size:11px">AD</span>
+      <div><b>Ayşe Demir</b><span>ÜYE</span></div></div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div class="tb-head">
+        <span class="tb-logo"></span>
+        <div class="tb-title"><div class="crumb" id="crumb">18 Kasım Çarşamba</div><h1>Benim işlerim</h1></div>
+        <div class="tb-actions">
+          <button class="cmdk" aria-label="Ara veya komut"><svg class="i" viewBox="0 0 24 24" style="width:15px;height:15px"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Ara veya komut…</span><kbd>Ctrl K</kbd></button>
+          <button class="iconbtn" aria-label="Tema değiştir"><svg class="i" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button>
+          <button class="iconbtn" aria-label="Bildirimler"><svg class="i" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></button>
+        </div>
+      </div>
+      <div class="vtabs"><button class="on">Benim işlerim</button><button>Pano</button><button>Backlog</button><button>Zaman planı</button>
+        <button>Yol haritası</button><button>Zaman çizelgesi</button><button>Efor raporu</button><button>Raporlar</button></div>
+    </header>
+    <div class="content hm-c" id="home"></div>
+  </main>
+  <div class="app-toast" id="appToast"></div>
+</div>
+
+<!-- ================= durumlar ================= -->
+<h2 class="sec-t">Durumlar <small>· izleyici, boş durumlar, bildirim, mobil yerleşim</small></h2>
+<div class="states">
+  <div class="panel wide hm-c">
+    <h2>İzleyici rolü <small>· tamamla kutusu ve düğmeler yok, öncelik düz metin</small></h2>
+    <div class="hm-list ro" id="roList"></div>
+    <p class="note">Sunucu zaten reddediyor; arayüz yanıltmasın diye denetim hiç çizilmez. Üstte tek satırlık açıklama. Satır yüksekliği ve sütunlar aynı kalır, yalnız eylem sütunu yok.</p>
+  </div>
+  <div class="panel hm-c">
+    <h2>Bildirim <small>· ~6 sn, "Geri al"; alttaki çizgi kalan süreyi gösterir</small></h2>
+    <div class="stack" id="toasts"></div>
+    <p class="note">Bitti'ye geçen ya da başkasına atanan iş listeden düşer ve bu bildirim çıkar. Üzerine gelince / odaklanınca süre durur. İş bu arada değiştiyse kırmızı ikonlu "geri alınamadı" bildirimi (düğmesiz, 4 sn). <code>role="status"</code>, <code>aria-live="polite"</code>.</p>
+  </div>
+  <div class="panel hm-c">
+    <h2>Boş durum <small>· üye / yönetici</small></h2>
+    <div id="empty1"></div>
+    <p class="note">İzleyicide yalnız "Projelere git" görünür. Özet şeridi yine çizilir (0 açık iş, gecikmiş kutusu yeşil onay ikonlu "Gecikmiş iş yok").</p>
+  </div>
+  <div class="panel hm-c">
+    <h2>Süzgeçle boş <small>· seçili projede iş yok</small></h2>
+    <div id="empty2"></div>
+    <p class="note">"Tüm projeleri göster" süzgeci Tümü'ye alır (<code>DB.ui.homeProj</code> boşalır).</p>
+    <h2 style="margin-top:18px">50 satırı aşan grup <small>· grubun altında</small></h2>
+    <div class="hm-list"><button class="hm-more" id="moreBtn"></button></div>
+  </div>
+  <div class="panel hm-c">
+    <h2>Mobil: bildirimin yeri <small>· 390px, alt kenar + güvenli alan</small></h2>
+    <div class="phone"><div class="scr hm-c" id="phoneScr"></div><div id="phoneToast"></div><div class="safe"><i></i></div><span class="lbl-safe">safe-area</span></div>
+    <p class="note">Mobilde sekmeler üstte (<code>#vtabs</code>); altta sabit çubuk yok. Bildirim iki yana 12px, alttan <code>12px + env(safe-area-inset-bottom)</code>; ileride alt çubuk gelirse <code>--hm-bottom</code> kadar yukarı kalkar.</p>
+  </div>
+  <div class="panel wide desk-only hm-c">
+    <h2>Odak ve klavye</h2>
+    <div class="hm-list" id="focusList"></div>
+    <p class="note">Satırda Tab sırası: tamamla → özet → öncelik → İlerlet → Süre gir → atanan. Özete Enter iş penceresini açar. Odak halkası <code>--ring</code>.</p>
+  </div>
+</div>
+
+<div class="legend"><b>Tasarım kararları</b>
+  <ol>
+    <li><b>Kart değil liste:</b> eski karşılama kartı ve proje kartları kalkar. Gruplar beyaz zemin üzerinde tek kenarlı liste kutusu; grup başlığı kutunun dışında (ikon + ad + sayı rozeti).</li>
+    <li><b>Kırmızı bütçesi:</b> yalnız "Gecikmiş" grubu, gecikme metni, gecikmiş sayısı (&gt;0) ve Acil rozeti kırmızı. "Bugün" amber; Bu hafta / Daha sonra mavi ikon; Tarihsiz ve Beklemede nötr. Her renk ikon + metinle birlikte.</li>
+    <li><b>Satır:</b> solda 40px tamamla dairesi; ortada özet (13.5px/600, tek satır, taşarsa üç nokta) ve altında <code>anahtar · proje · kalan süre</code>; sağda öncelik rozeti, bitiş, durum çipi ve eylemler. Durum çipi nötr zeminli, kategori noktası renkli (mevcut renkli çipler açık temada 3.4–3.9:1 kalıyordu).</li>
+    <li><b>İlerlet:</b> düğmede sağ ok + <b>sonraki durumun adı</b> ("Kontrolde"); sonraki durum tamamlandı kategorisindeyse onay ikonu yeşil ("Bitti"). Son durumda düğme yer tutar ama görünmez (masaüstü hizası bozulmaz), mobilde hiç çizilmez.</li>
+    <li><b>Mobil (≤640px):</b> satır 3 kata ayrılır: özet (en çok 2 satır) + anahtar · proje · kalan; öncelik · bitiş · durum; iki eşit 40px düğme + 40px atanan. Özet kutuları 2 sütun, haftalık süre tam genişlik. Süzgeç çipleri 40px ve satıra sarılır; yatay kaydırma yok.</li>
+  </ol>
+</div>
+
+<script>
+const I = {
+  acil:'<path d="m7 11 5-5 5 5"/><path d="m7 18 5-5 5 5"/>', yuksek:'<path d="m6 15 6-6 6 6"/>',
+  orta:'<path d="M6 9h12M6 15h12"/>', dusuk:'<path d="m6 9 6 6 6-6"/>',
+  cal:'<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M16 3v4M8 3v4M3.5 10h17"/>',
+  alert:'<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16.2v.3"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  check:'<path d="m5 12.5 4.5 4.5L19 7.5"/>', checkc:'<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>',
+  later:'<path d="M20.5 9.5V7.5A2.5 2.5 0 0 0 18 5H6a2.5 2.5 0 0 0-2.5 2.5V18A2.5 2.5 0 0 0 6 20.5h4"/><path d="M16 3v4M8 3v4M3.5 10h7"/><circle cx="17" cy="17" r="4.5"/><path d="M17 15v2l1.3 1.2"/>',
+  nodate:'<path d="M5 5.2A2.5 2.5 0 0 0 3.5 7.5V18A2.5 2.5 0 0 0 6 20.5h12a2.5 2.5 0 0 0 2.3-1.5M20.5 15V7.5A2.5 2.5 0 0 0 18 5h-7.5M3.5 10h6.5M14 10h6.5M16 3v4M8 3v1.5M3 3l18 18"/>',
+  pause:'<circle cx="12" cy="12" r="9"/><path d="M10 15V9M14 15V9"/>',
+  arrow:'<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
+  timeplus:'<path d="M20.9 13A9 9 0 1 0 12 21"/><path d="M12 7v5l3 2"/><path d="M18.5 15.5v6M15.5 18.5h6"/>',
+  hour:'<path d="M6.5 3h11M6.5 21h11"/><path d="M7.5 3v2.5a4.5 4.5 0 0 0 9 0V3M7.5 21v-2.5a4.5 4.5 0 0 1 9 0V21"/>',
+  folder:'<path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/>',
+  link:'<path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><path d="M8 12h8"/>',
+  list:'<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
+  layers:'<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>',
+  eye:'<path d="M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7z"/><circle cx="12" cy="12" r="3"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>', x:'<path d="M6 6l12 12M18 6 6 18"/>', down:'<path d="m6 9 6 6 6-6"/>',
+  inbox:'<path d="M3 13h5l1.5 2.5h5L16 13h5"/><path d="M5.5 5h13L21 13v5.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5V13z"/>',
+  filter:'<path d="M4 5h16l-6 7.5V19l-4 1.5v-8z"/>',
+  board:'<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 7v7M12 7v4M16 7v9"/>',
+  backlog:'<path d="M10 6h11M10 12h11M10 18h11"/><path d="m3 6 1.5 1.5L7 5"/><path d="m3 12 1.5 1.5L7 11"/><path d="M3 18h4"/>',
+  plan:'<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M16 2v4M8 2v4M3 10h18M7 14h5M11 18h6"/>',
+  effort:'<path d="M3.3 19a9 9 0 1 1 17.4 0"/><path d="m12 14 4-4"/>',
+  reports:'<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  projects:'<path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/>',
+  settings:'<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
+};
+const ic = (n, s = '') => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true" ${s}>${I[n]}</svg>`;
+const PR = { acil:'Acil', yuksek:'Yüksek', orta:'Orta', dusuk:'Düşük' };
+
+document.getElementById('railNav').innerHTML = [
+  ['list','Benim işlerim',true,13], ['g','Planlama'], ['board','Pano'], ['backlog','Backlog'], ['plan','Zaman planı'],
+  ['clock','Zaman çizelgesi'], ['g','Raporlar'], ['effort','Efor raporu'], ['reports','Raporlar'], ['search','Arama'],
+  ['g','Yönetim'], ['projects','Projeler'], ['settings','Ayarlar'],
+].map(([i, t, on, n]) => i === 'g' ? `</nav><div class="navgroup">${t}</div><nav class="nav">`
+  : `<a href="#" class="${on ? 'on' : ''}">${ic(i)}${t}${n ? `<span class="n">${n}</span>` : ''}</a>`).join('').replace(/^/, '<nav class="nav">') + '</nav>';
+
+/* ---- örnek veri (bugün 18 Kas 2026 Çar; hafta 16–22 Kas) ---- */
+const P = { BRD:'Bordro Hizmetleri', MLM:'Mali Müşavirlik', EDN:'e-Dönüşüm' };
+const G = [
+  { id:'late', cls:'g-late', ic:'alert', t:'Gecikmiş', rows:[
+    { k:'BRD-12', p:'BRD', s:'Oyak Liman – 2027 yılbaşı bordro parametre güncellemesi', pr:'acil', due:['late','3 gün gecikme'], rem:'5h', st:['inprogress','Devam ediyor'], nx:'Kontrolde' },
+    { k:'MLM-31', p:'MLM', s:'Ekol Lojistik SGK teşvik başvurusu', pr:'yuksek', due:['late','1 gün gecikme'], rem:'2h', st:['todo','Yapılacak'], nx:'Devam ediyor' },
+    { k:'EDN-8',  p:'EDN', s:'Borusan e-Defter dönem kapanışında berat hatası', pr:'orta', due:['late','5 gün gecikme'], st:['review','Kontrolde'], nx:'Bitti', done:true },
+  ]},
+  { id:'today', cls:'g-today', ic:'sun', t:'Bugün', rows:[
+    { k:'BRD-18', p:'BRD', s:'Sanipak sözleşme takibi ve imza süreci', pr:'yuksek', due:['today','Bugün'], rem:'3h', st:['inprogress','Devam ediyor'], nx:'Kontrolde' },
+    { k:'MLM-27', p:'MLM', s:'Arçelik KDV iade dosyasının hazırlanması', pr:'orta', due:['','Sal 24 Kas'], rem:'4h', st:['inprogress','Devam ediyor'], nx:'Kontrolde' },
+  ]},
+  { id:'week', cls:'g-week', ic:'cal', t:'Bu hafta', d:'Pazar 22 Kas\'a kadar', rows:[
+    { k:'EDN-14', p:'EDN', s:'Koç Holding e-Fatura entegrasyon testi', pr:'yuksek', due:['','Cum 20 Kas'], rem:'6h', st:['todo','Açık'], nx:'Analiz' },
+    { k:'BRD-22', p:'BRD', s:'Kasım ayı bordro mutabakatı', pr:'orta', due:['','Per 19 Kas'], rem:'1.5h', st:['review','Kontrolde'], nx:'Bitti', done:true },
+    { k:'MLM-35', p:'MLM', s:'Müşteri bilgilendirme e-postası: 2027 asgari ücret', pr:'dusuk', due:['','Cum 20 Kas'], st:['todo','Yapılacak'], nx:'Devam ediyor' },
+  ]},
+  { id:'later', cls:'g-later', ic:'later', t:'Daha sonra', rows:[
+    { k:'EDN-19', p:'EDN', s:'Türk Telekom e-Arşiv geçiş planı', pr:'orta', due:['','Çar 2 Ara'], rem:'12h', st:['todo','Açık'], nx:'Analiz' },
+    { k:'MLM-40', p:'MLM', s:'2027 bütçe sunumu taslağı', pr:'dusuk', due:['','Başlangıç 30 Kas'], st:['todo','Yapılacak'], nx:'Devam ediyor' },
+  ]},
+  { id:'nodate', cls:'g-nodate', ic:'nodate', t:'Tarihsiz', rows:[
+    { k:'MLM-12', p:'MLM', s:'Müşteri sözleşme arşivinin yeniden düzenlenmesi', pr:'orta', due:['none','Tarih yok'], rem:'8h', st:['todo','Yapılacak'], nx:'Devam ediyor' },
+    { k:'BRD-25', p:'BRD', s:'Bordro pusulası şablonuna yeni logo', pr:'dusuk', due:['none','Tarih yok'], st:['inprogress','Devam ediyor'], nx:'Kontrolde' },
+  ]},
+  { id:'wait', cls:'g-wait', ic:'pause', t:'Beklemede', rows:[
+    { k:'EDN-21', p:'EDN', s:'Sanipak e-İrsaliye canlıya geçiş', pr:'yuksek', due:['','Çar 25 Kas'], st:['todo','Açık'], nx:'Analiz',
+      blk:['EDN-20','Test ortamı mali mühür yenileme'] },
+  ]},
+];
+
+function row(r, o = {}) {
+  const ro = o.ro;
+  const due = `<span class="hm-due ${r.due[0] ? 'd-' + r.due[0] : ''}" title="${r.due[0] === 'late' ? 'Bitiş tarihi geçti (iş günü)' : 'Bitiş'}">${
+    ic(r.due[0] === 'late' ? 'alert' : r.due[0] === 'today' ? 'clock' : r.due[0] === 'none' ? 'nodate' : 'cal')}${r.due[1]}</span>`;
+  const sub = [`<span class="k">${r.k}</span>`, `<span class="pj">${ic('folder')}${P[r.p]}</span>`];
+  if (r.rem) sub.push(`<span class="rem" title="Kalan süre">${ic('hour')}${r.rem} kalan</span>`);
+  if (r.blk) sub.push(`<span class="blk" title="Engelleyen iş">${ic('link')}Bekliyor: <span class="k">${r.blk[0]}</span> ${r.blk[1]}</span>`);
+  const prio = ro ? `<span class="prio ${r.pr}" title="Öncelik: ${PR[r.pr]}">${ic(r.pr)}${PR[r.pr]}</span>`
+    : `<button class="prio ${r.pr}" aria-label="Öncelik: ${PR[r.pr]} (değiştir)" ${o.focusPrio ? 'style="box-shadow:var(--ring)"' : ''}>${ic(r.pr)}${PR[r.pr]}</button>`;
+  return `<div class="hm-row">
+    ${ro ? '<span class="hm-ro-dot"></span>' : `<button class="hm-tick" aria-label="Tamamla: ${r.k}" title="Tamamla">${ic('check')}</button>`}
+    <div class="hm-main"><button class="hm-t" title="${r.s}">${r.s}</button>
+      <div class="hm-sub">${sub.join('<span class="hm-sep"></span>')}</div></div>
+    <div class="hm-meta">${prio}${due}<span class="hm-st s-${r.st[0]}"><i></i>${r.st[1]}</span></div>
+    ${ro ? '' : `<div class="hm-act">
+      <button class="hm-btn hm-adv ${r.done ? 'to-done' : ''} ${r.last ? 'none' : ''}" title="İlerlet: ${r.st[1]} → ${r.nx}" aria-label="İlerlet: ${r.nx} durumuna geçir"
+        ${o.focusAdv ? 'style="box-shadow:var(--ring);border-color:var(--accent)"' : ''}>${ic(r.done ? 'checkc' : 'arrow')}<span>${r.nx}</span></button>
+      <button class="hm-btn hm-log" title="Süre gir" aria-label="Süre gir: ${r.k}">${ic('timeplus')}<span>Süre gir</span></button>
+      <button class="c-av" style="background:#2563EB" title="Atanan: Ayşe Demir" aria-label="Atanan: Ayşe Demir (değiştir)">AD</button>
+    </div>`}
+  </div>`;
+}
+const grp = g => `<section class="hm-grp ${g.cls}" aria-labelledby="g-${g.id}">
+  <h2 class="hm-gh" id="g-${g.id}">${ic(g.ic)}${g.t}<span class="n" aria-label="${g.rows.length} iş">${g.rows.length}</span>${g.d ? `<span class="d">${g.d}</span>` : ''}</h2>
+  <div class="hm-list">${g.rows.map(r => row(r)).join('')}</div></section>`;
+
+const all = G.flatMap(g => g.rows);
+const cnt = p => all.filter(r => r.p === p).length;
+const late = G[0].rows.length;
+document.getElementById('home').innerHTML = `
+  <div class="hm-filter" role="group" aria-label="Proje süzgeci"><span class="lbl">Proje</span>
+    <button class="hm-pf on" aria-pressed="true"><span class="t">Tümü</span><span class="n">${all.length}</span></button>
+    ${Object.entries(P).map(([k, n]) => `<button class="hm-pf" aria-pressed="false"><span class="t">${n}</span><span class="n">${cnt(k)}</span></button>`).join('')}
+  </div>
+  <div class="hm-sum">
+    <div class="hm-stat"><span class="hm-stat-ic">${ic('layers')}</span><div class="hm-stat-b">
+      <div class="hm-stat-l">Açık iş</div><div class="hm-stat-v">${all.length}</div><div class="hm-stat-s">3 projede</div></div></div>
+    <div class="hm-stat is-late"><span class="hm-stat-ic">${ic('alert')}</span><div class="hm-stat-b">
+      <div class="hm-stat-l">Gecikmiş</div><div class="hm-stat-v">${late}</div><div class="hm-stat-s">en eskisi 5 iş günü</div></div></div>
+    <div class="hm-stat wk"><span class="hm-stat-ic">${ic('clock')}</span><div class="hm-stat-b">
+      <div class="hm-stat-l">Bu hafta girilen süre <span style="font-weight:500;color:var(--meta)">· 16–22 Kas</span></div>
+      <div class="hm-stat-v">22.5h <small>/ 40h</small></div>
+      <div class="hm-cap"><span class="hm-bar" role="progressbar" aria-valuenow="56" aria-valuemin="0" aria-valuemax="100" aria-label="Haftalık kapasite"><i style="width:56%"></i></span><b>%56</b></div></div></div>
+  </div>
+  ${G.map(grp).join('')}`;
+
+/* izleyici */
+document.getElementById('roList').innerHTML =
+  `<div class="hm-ro-note">${ic('eye')}İzleyici olarak görüntülüyorsun; işleri değiştiremezsin.</div>` +
+  [G[0].rows[0], G[2].rows[0]].map(r => row(r, { ro:true })).join('');
+
+/* odak örneği */
+document.getElementById('focusList').innerHTML = row(G[1].rows[0], { focusAdv:true });
+
+/* bildirimler */
+const toast = (k, msg, o = {}) => `<div class="toast ${o.warn ? 't-warn' : ''}" role="status" aria-live="polite">
+  ${ic(o.warn ? 'alert' : 'checkc')}<span class="tx"><span class="k">${k}</span> ${msg}</span>
+  ${o.warn ? '' : `<button class="toast-undo">Geri al</button><button class="toast-x" aria-label="Kapat">${ic('x')}</button>
+  <span class="tm" style="width:${o.w || 62}%"></span>`}</div>`;
+document.getElementById('toasts').innerHTML =
+  toast('BRD-18', 'Bitti olarak işaretlendi.') +
+  toast('MLM-31', 'Mehmet Kaya\'ya atandı; listenden çıktı.', { w:35 }) +
+  toast('BRD-18', 'bu arada değişti, geri alınamadı.', { warn:true });
+document.getElementById('appToast').innerHTML = toast('EDN-8', 'Bitti olarak işaretlendi.', { w:80 });
+
+/* boş durumlar */
+document.getElementById('empty1').innerHTML = `<div class="hm-empty"><span class="hm-empty-ic">${ic('inbox')}</span>
+  <h3>Sana atanmış açık iş yok</h3><p>Yeni bir iş oluşturabilir ya da projelere göz atıp kendine iş alabilirsin.</p>
+  <div class="acts"><button class="btn pri">${ic('plus')}İş oluştur</button><button class="btn">${ic('projects')}Projelere git</button></div></div>`;
+document.getElementById('empty2').innerHTML = `<div class="hm-empty"><span class="hm-empty-ic">${ic('filter')}</span>
+  <h3>Bu projede sana atanmış açık iş yok</h3><p>Süzgeç: <b>e-Dönüşüm</b>. Diğer projelerde 9 açık işin var.</p>
+  <div class="acts"><button class="btn">Tüm projeleri göster</button></div></div>`;
+document.getElementById('moreBtn').innerHTML = `${ic('down')}Tümünü göster · 23 iş daha`;
+
+/* mobil bildirim çerçevesi */
+document.getElementById('phoneScr').innerHTML = `<div class="hm-list">${row(G[1].rows[1])}${row(G[2].rows[0])}</div>`;
+document.getElementById('phoneToast').innerHTML = toast('BRD-18', 'Bitti olarak işaretlendi.', { w:62 });
+</script>
+</body></html>
