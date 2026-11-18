@@ -2200,3 +2200,340 @@ describe('müşteri → cari (005)', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
     ok(await A.sync([del('customers', 'c_mh'), del('customers', 'c_mp')]));
   });
 });
+
+/* ---- Posta kutuları (görev 11, E2): sağlayıcı fetch'i taklit edilir; gerçek ağ isteği yok ---- */
+describe('posta kutuları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  let mail, A, U, V, adminCookie;
+  const ENV = ['MAIL_TOKEN_KEY', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'MS_CLIENT_ID', 'MS_CLIENT_SECRET', 'MS_TENANT', 'MAIL_ENABLED', 'MAIL_POLL_SEC'];
+  const saved = {};
+  const calls = [], seenBodies = [];
+  const routes = [];                      // [regex(origin+path), fn(url, opt) → Response]; en son eklenen önce
+  const J = (status, body, headers = {}) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...headers } });
+  const route = (re, fn) => { routes.unshift([re, fn]); };
+  const configure = () => {
+    process.env.MAIL_TOKEN_KEY = Buffer.alloc(32, 7).toString('base64');
+    process.env.GOOGLE_CLIENT_ID = 'g-istemci'; process.env.GOOGLE_CLIENT_SECRET = 'g-sir';
+    process.env.MS_CLIENT_ID = 'm-istemci'; process.env.MS_CLIENT_SECRET = 'm-sir'; process.env.MS_TENANT = 'common';
+    process.env.MAIL_ENABLED = 'true';
+  };
+  const unconfigure = () => { for (const k of ENV) delete process.env[k]; };
+  /* Ham istek (yönlendirme izlenmez): OAuth başlangıç / dönüş için. */
+  const raw = async (path, cookie) => {
+    const r = await fetch(base + path, { redirect: 'manual', headers: cookie ? { cookie } : {} });
+    return { status: r.status, location: r.headers.get('location') || '' };
+  };
+  const loginCookie = async (u, p) => {
+    const r = await fetch(base + '/api/auth/login', { method: 'POST', headers: { 'x-pano': '1', 'content-type': 'application/json' }, body: JSON.stringify({ username: u, password: p }) });
+    return r.headers.get('set-cookie').split(';')[0];
+  };
+  const track = r => { seenBodies.push(JSON.stringify(r.json)); return r; };
+  const newUser = async (id, username, role) => {
+    await A.sync([{ c: 'users', id, op: 'put', data: { username, name: username, role, active: true } }]);
+    const k = client(); await k.login(username, 'Start12345');
+    assert.equal((await k.req('POST', '/api/auth/password', { newPassword: 'PostaYeni12345' })).status, 200);
+    return k;
+  };
+  const enc64 = s => Buffer.from(s, 'utf8').toString('base64url');
+  const gm = (id, h, { text, html, files = 0, labels = ['INBOX'] } = {}) => ({
+    id, labelIds: labels, internalDate: String(Date.now()),
+    payload: { mimeType: 'multipart/mixed', headers: Object.entries(h).map(([name, value]) => ({ name, value })), parts: [
+      text != null && { mimeType: 'text/plain', headers: [{ name: 'Content-Type', value: 'text/plain; charset="UTF-8"' }], body: { data: enc64(text) } },
+      html != null && { mimeType: 'text/html', headers: [{ name: 'Content-Type', value: 'text/html; charset=utf-8' }], body: { data: enc64(html) } },
+      ...Array.from({ length: files }, (_, i) => ({ mimeType: 'application/pdf', filename: `ek${i}.pdf`, body: { attachmentId: 'at' + i } })),
+    ].filter(Boolean) } });
+  const inbox = new Map();                 // Gmail kimliği → ileti
+  const issuesOf = async pid => (await pool.query(`SELECT data FROM issues WHERE project_id=$1 ORDER BY created_at, id`, [pid])).rows.map(r => r.data);
+  const acct = async addr => (await pool.query('SELECT * FROM mail_accounts WHERE lower(address)=lower($1)', [addr])).rows[0];
+  const poll = async id => track(await A.req('POST', `/api/mail/accounts/${id}/poll`));
+
+  before(async () => {
+    for (const k of ENV) saved[k] = process.env[k];
+    unconfigure();
+    mail = await import('../server/mail.js');
+    mail.setMailFetch(async (url, opt = {}) => {
+      const u = new globalThis.URL(url); calls.push({ url: u.toString(), method: opt.method || 'GET', body: opt.body || '' });
+      for (const [re, fn] of routes) if (re.test(u.origin + u.pathname)) return fn(u, opt);
+      return J(404, { error: 'bulunamadı' });
+    });
+    A = client(); await A.login('admin', 'test-admin-pw');
+    adminCookie = await loginCookie('admin', 'test-admin-pw');
+    U = await newUser('u_pm1', 'postauye', 'member');
+    V = await newUser('u_pmv', 'postaizci', 'viewer');
+    const ok = r => assert.equal(r.json.rejected.length, 0, JSON.stringify(r.json.rejected));
+    ok(await A.sync([
+      { c: 'customers', id: 'c_pm1', op: 'put', data: { name: 'Posta Müşteri A.Ş.', kind: 'customer', contacts: [{ id: 'ct_pm', name: 'Ayşe Posta', email: 'Ayse@Musteri.test' }] } },
+      { c: 'projects', id: 'p_mx', op: 'put', data: { name: 'Destek posta', key: 'PST', counter: 0, workspaceId: 'ws1', template: 'talep' } },
+      { c: 'projects', id: 'p_my', op: 'put', data: { name: 'Muhasebe', key: 'MHS', counter: 0, workspaceId: 'ws1' } },
+      ...[['Yeni', 'todo'], ['İnceleniyor', 'inprogress'], ['Talep edenden yanıt bekleniyor', 'inprogress'], ['Çözüldü', 'done']].map(([n, c], i) =>
+        ({ c: 'statuses', id: `p_mx_s${i}`, op: 'put', data: { projectId: 'p_mx', name: n, cat: c, ord: i } })),
+      { c: 'statuses', id: 'p_my_s0', op: 'put', data: { projectId: 'p_my', name: 'Yapılacak', cat: 'todo', ord: 0 } },
+    ]));
+  });
+  after(() => { mail?.setMailFetch(null); for (const k of ENV) { if (saved[k] === undefined) delete process.env[k]; else process.env[k] = saved[k]; } });
+
+  test('yapılandırma yoksa özellik kapalı: "Sunucu yapılandırılmamış"', async () => {
+    const s = track(await A.req('GET', '/api/mail/status'));
+    assert.equal(s.status, 200);
+    assert.equal(s.json.configured, false); assert.equal(s.json.polling, false);
+    const r = await A.req('GET', '/api/mail/oauth/google/start');
+    assert.equal(r.status, 409); assert.equal(r.json.error, 'Sunucu yapılandırılmamış');
+    /* anahtar var ama 32 bayt değil → yine kapalı */
+    process.env.MAIL_TOKEN_KEY = Buffer.alloc(16).toString('base64'); process.env.GOOGLE_CLIENT_ID = 'x'; process.env.GOOGLE_CLIENT_SECRET = 'y';
+    assert.equal((await A.req('GET', '/api/mail/status')).json.configured, false);
+    unconfigure();
+    assert.equal(calls.length, 0);
+  });
+
+  test('izleyici ve üye posta uçlarına 403; oturumsuz 401', async () => {
+    configure();
+    for (const k of [U, V]) {
+      assert.equal((await k.req('GET', '/api/mail/status')).status, 403);
+      assert.equal((await k.req('GET', '/api/mail/oauth/google/start')).status, 403);
+      assert.equal((await k.req('POST', '/api/mail/rules', { rules: [] })).status, 403);
+      assert.equal((await k.req('POST', '/api/mail/accounts/mb_x', { active: false })).status, 403);
+      assert.equal((await k.req('POST', '/api/mail/accounts/mb_x/delete')).status, 403);
+      assert.equal((await k.req('POST', '/api/mail/accounts/mb_x/poll')).status, 403);
+    }
+    assert.equal((await client().req('GET', '/api/mail/status')).status, 401);
+    /* üye dönüş adresine gelirse bağlanmaz */
+    const uc = await loginCookie('postauye', 'PostaYeni12345');
+    assert.match((await raw('/api/mail/oauth/google/callback?state=x&code=y', uc)).location, /posta=hata&neden=yetki/);
+    assert.equal((await A.req('POST', '/api/mail/rules', { rules: [] }, { 'x-pano': '' })).status, 403);   // CSRF
+  });
+
+  test('OAuth (Google): state + PKCE, kapsamlar; tek kullanımlık state; jeton şifreli', async () => {
+    configure();
+    let challenge = '';
+    route(/oauth2\.googleapis\.com\/token$/, async (_u, opt) => {
+      const f = new URLSearchParams(opt.body);
+      if (f.get('grant_type') === 'authorization_code') {
+        const { createHash } = await import('node:crypto');
+        if (createHash('sha256').update(f.get('code_verifier') || '').digest('base64url') !== challenge || f.get('code') !== 'kod-1')
+          return J(400, { error: 'invalid_grant' });
+        return J(200, { access_token: 'tok_ERISIM_g1', refresh_token: 'tok_YENILEME_g1', expires_in: 3600 });
+      }
+      return J(200, { access_token: 'tok_ERISIM_g2', expires_in: 3600 });
+    });
+    route(/gmail\.googleapis\.com\/gmail\/v1\/users\/me\/profile$/, () => J(200, { emailAddress: 'destek@sirket.test', historyId: '100' }));
+
+    const st = await raw('/api/mail/oauth/google/start', adminCookie);
+    assert.equal(st.status, 302);
+    const L = new globalThis.URL(st.location);
+    assert.equal(L.origin + L.pathname, 'https://accounts.google.com/o/oauth2/v2/auth');
+    const q = L.searchParams;
+    assert.equal(q.get('code_challenge_method'), 'S256'); assert.equal(q.get('access_type'), 'offline'); assert.equal(q.get('prompt'), 'consent');
+    for (const sc of ['gmail.readonly', 'gmail.send', 'openid', 'email']) assert.ok(q.get('scope').includes(sc), sc);
+    assert.match(q.get('redirect_uri'), /\/api\/mail\/oauth\/google\/callback$/);
+    assert.ok(q.get('state').length >= 30);
+    challenge = q.get('code_challenge');
+
+    /* sahte state; başka sağlayıcının dönüşü (state'i tüketir) */
+    assert.match((await raw('/api/mail/oauth/google/callback?state=sahte&code=kod-1', adminCookie)).location, /neden=state/);
+    assert.match((await raw(`/api/mail/oauth/microsoft/callback?state=${q.get('state')}&code=kod-1`, adminCookie)).location, /neden=state/);
+    assert.match((await raw(`/api/mail/oauth/google/callback?state=${q.get('state')}&code=kod-1`, adminCookie)).location, /neden=state/);
+    const st2 = new globalThis.URL((await raw('/api/mail/oauth/google/start', adminCookie)).location).searchParams;
+    challenge = st2.get('code_challenge');
+    /* oturumsuz dönüş bağlanmaz */
+    assert.match((await raw(`/api/mail/oauth/google/callback?state=${st2.get('state')}&code=kod-1`, '')).location, /neden=oturum/);
+    /* yanlış kod (PKCE/kod doğrulaması sağlayıcıda başarısız) */
+    const st3 = new globalThis.URL((await raw('/api/mail/oauth/google/start', adminCookie)).location).searchParams;
+    assert.match((await raw(`/api/mail/oauth/google/callback?state=${st3.get('state')}&code=baska`, adminCookie)).location, /neden=saglayici/);
+    const ok = await raw(`/api/mail/oauth/google/callback?state=${st2.get('state')}&code=kod-1`, adminCookie);
+    assert.equal(ok.location, '/?posta=bagli#system');
+    /* aynı state ikinci kez → reddedilir */
+    assert.match((await raw(`/api/mail/oauth/google/callback?state=${st2.get('state')}&code=kod-1`, adminCookie)).location, /neden=state/);
+
+    const a = await acct('destek@sirket.test');
+    assert.equal(a.provider, 'google'); assert.equal(a.cursor, '100'); assert.equal(a.status, 'ok');
+    assert.match(a.refresh_token_enc, /^v1:/);
+    assert.ok(!a.refresh_token_enc.includes('YENILEME') && !a.access_token_enc.includes('ERISIM'));
+    assert.equal(mail.decrypt(a.refresh_token_enc), 'tok_YENILEME_g1');
+    const s = track(await A.req('GET', '/api/mail/status'));
+    assert.equal(s.json.configured, true); assert.equal(s.json.accounts.length, 1);
+    assert.deepEqual(Object.keys(s.json.accounts[0]).sort(), ['active', 'address', 'backoffUntil', 'createdAt', 'defaultProjectId', 'id', 'lastError', 'lastPollAt', 'provider', 'status']);
+    /* durum / dışa aktarma / yedek: posta tabloları yok */
+    track(await A.req('GET', '/api/state')); track(await A.req('GET', '/api/export'));
+    track(await A.req('POST', '/api/backups', { label: 'posta' }));
+    const snap = (await pool.query('SELECT data::text AS t FROM snapshots ORDER BY id DESC LIMIT 1')).rows[0].t;
+    assert.ok(!snap.includes('v1:') && !snap.includes('mail_accounts'));
+  });
+
+  test('varsayılan proje yalnız talep şablonlu; kurallar sırayla, ilk eşleşen kazanır', async () => {
+    configure();
+    const a = await acct('destek@sirket.test');
+    assert.equal((await A.req('POST', `/api/mail/accounts/${a.id}`, { defaultProjectId: 'p_my' })).status, 400);
+    assert.equal((await A.req('POST', `/api/mail/accounts/${a.id}`, { defaultProjectId: 'p_yok' })).status, 400);
+    const r = track(await A.req('POST', `/api/mail/accounts/${a.id}`, { defaultProjectId: 'p_mx' }));
+    assert.equal(r.status, 200); assert.equal(r.json.defaultProjectId, 'p_mx');
+    assert.equal((await A.req('POST', '/api/mail/rules', { rules: [{ projectId: 'p_yok' }] })).status, 400);
+    assert.equal((await A.req('POST', '/api/mail/rules', { rules: [{ projectId: 'p_my', assigneeId: 'u_yok' }] })).status, 400);
+    const rules = [
+      { id: 'mr_fat', subjectContains: 'FATURA', projectId: 'p_my', assigneeId: 'u_pm1' },
+      { id: 'mr_dom', fromDomain: 'tedarik.test', projectId: 'p_mx' },
+    ];
+    const s = track(await A.req('POST', '/api/mail/rules', { rules }));
+    assert.equal(s.status, 200); assert.deepEqual(s.json.map(x => x.id), ['mr_fat', 'mr_dom']);
+    const R = (await pool.query('SELECT * FROM mail_rules ORDER BY ord')).rows;
+    const msg = { to: ['destek@sirket.test'], subject: 'Fatura sorusu', from: { addr: 'ali@tedarik.test' } };
+    assert.equal(mail.matchRule(R, a.id, msg).id, 'mr_fat');
+    assert.equal(mail.matchRule([...R].reverse(), a.id, msg).id, 'mr_dom');            // sıra değişince diğeri
+    assert.equal(mail.matchRule(R, a.id, { ...msg, subject: 'Merhaba', from: { addr: 'x@alt.tedarik.test' } }).id, 'mr_dom');
+    assert.equal(mail.matchRule(R, a.id, { ...msg, subject: 'Merhaba', from: { addr: 'x@kotutedarik.test' } }), null);
+    assert.equal(mail.matchRule([{ id: 'r', to_match: 'INFO@', active: true }], a.id, { ...msg, to: ['info@sirket.test'] }).id, 'r');
+    assert.equal(mail.matchRule([{ id: 'r', account_id: 'mb_baska', active: true }], a.id, msg), null);
+  });
+
+  test('HTML → düz metin: betik/stil atılır, etiket kalmaz, varlıklar çözülür, alıntı kırpılır', () => {
+    const t = mail.htmlToText('<html><head><style>p{color:red}</style></head><body><p>Merhaba&nbsp;<b>dünya</b> &amp; &lt;x&gt;</p>'
+      + '<script>alert(1)</script><img src=x onerror="alert(2)"><ul><li>bir</li><li>iki</li></ul>&#304;stanbul &#x131;</body></html>');
+    assert.ok(!/script|onerror|color:red|<img|<b>/.test(t), t);
+    assert.match(t, /Merhaba dünya & <x>/); assert.match(t, /• bir\n• iki/); assert.match(t, /İstanbul ı/);
+    assert.equal(mail.stripQuotes('Teşekkürler\n\nOn Mon, 1 Jan 2026 at 10:00 Ali <a@b.c> wrote:\n> eski metin'), 'Teşekkürler');
+    assert.equal(mail.stripQuotes('Tamam.\n\n1 Oca 2026 Pzt 10:00 tarihinde Ali <a@b.c> şunu yazdı:\n> eski'), 'Tamam.');
+    assert.equal(mail.stripQuotes('> yalnız alıntı'), '> yalnız alıntı');
+    assert.equal(mail.decodeHeader('=?UTF-8?B?w5zDp8O8bmPDvCBzb3J1?='), 'Üçüncü soru');
+  });
+
+  test('çekme: yeni iş (kural/varsayılan), eşleşmeyen gönderen havuza, Message-ID tekil, In-Reply-To ve [ANAHTAR] → yorum, döngü önleme', async () => {
+    configure();
+    const a = await acct('destek@sirket.test');
+    route(/gmail\.googleapis\.com\/gmail\/v1\/users\/me\/history$/, () => J(200, {
+      historyId: '200', history: [{ messagesAdded: [...inbox.values()].map(m => ({ message: { id: m.id, labelIds: m.labelIds } })) }] }));
+    route(/gmail\.googleapis\.com\/gmail\/v1\/users\/me\/messages\/[^/]+$/, u => {
+      const m = inbox.get(decodeURIComponent(u.pathname.split('/').pop())); return m ? J(200, m) : J(404, { error: 'yok' });
+    });
+    const H = (from, subject, mid, extra = {}) => ({ From: from, To: 'Destek <destek@sirket.test>', Subject: subject, 'Message-ID': mid, ...extra });
+    inbox.set('g1', gm('g1', H('Ayşe Posta <ayse@musteri.test>', 'Yazıcı çalışmıyor', '<m1@musteri.test>'),
+      { html: '<div>Yazıcı <b>çalışmıyor</b>.<script>window.x=1</script><img src=x onerror=alert(1)></div><blockquote>eski</blockquote>', files: 2 }));
+    inbox.set('g2', gm('g2', H('Bilinmeyen <kimse@yabanci.test>', '<img src=x onerror=alert(1)> Merhaba', '<m2@yabanci.test>'), { text: 'Düz metin gövde' }));
+    inbox.set('g3', gm('g3', H('Ali <ali@yabanci.test>', 'FATURA hakkında', '<m3@yabanci.test>'), { text: 'Fatura' }));
+    inbox.set('g4', gm('g4', H('Kopya <ayse@musteri.test>', 'Yazıcı çalışmıyor', '<m1@musteri.test>'), { text: 'aynı ileti başka kimlikle' }));
+    inbox.set('g5', gm('g5', H('Oto <oto@yabanci.test>', 'İzindeyim', '<m5@yabanci.test>', { 'Auto-Submitted': 'auto-replied' }), { text: 'otomatik' }));
+    inbox.set('g6', gm('g6', H('Biz <destek@sirket.test>', 'Kendi gönderdiğimiz', '<m6@sirket.test>'), { text: 'döngü' }));
+    inbox.set('g7', gm('g7', H('Toplu <bulten@yabanci.test>', 'Bülten', '<m7@yabanci.test>', { Precedence: 'bulk' }), { text: 'bülten' }));
+
+    let r = await poll(a.id);
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    const R = r.json.result;
+    assert.deepEqual({ i: R.issues, d: R.duplicate, s: R.skipped, e: R.errors }, { i: 3, d: 1, s: 3, e: 0 }, JSON.stringify(r.json));
+    const mx = await issuesOf('p_mx'), my = await issuesOf('p_my');
+    const i1 = mx.find(i => i.summary === 'Yazıcı çalışmıyor'), i2 = mx.find(i => i.summary.includes('Merhaba'));
+    assert.ok(i1 && i2); assert.equal(mx.filter(i => i.summary === 'Yazıcı çalışmıyor').length, 1);
+    assert.deepEqual(i1.requester, { customerId: 'c_pm1', contactId: 'ct_pm' });        // harf duyarsız eşleşme
+    assert.deepEqual(i1.labels, []); assert.equal(i1.reporter, 'u_posta'); assert.equal(i1.statusId, 'p_mx_s0');
+    assert.match(i1.key, /^PST-\d+$/);
+    assert.ok(!/[<>]|script|onerror/.test(i1.description), i1.description);
+    assert.match(i1.description, /Yazıcı çalışmıyor\./); assert.ok(!i1.description.includes('eski'));
+    assert.match(i1.description, /2 ek vardı/);
+    assert.equal(i2.requester, undefined); assert.deepEqual(i2.labels, ['Talep eden bekleniyor']); assert.equal(i2.requesterEmail, 'kimse@yabanci.test');
+    assert.equal(i2.summary, '<img src=x onerror=alert(1)> Merhaba');                   // düz metin olarak saklanır; istemci esc() ile basar
+    assert.equal(my.length, 1); assert.equal(my[0].assignee, 'u_pm1');                  // kural: FATURA → Muhasebe + atanan
+    assert.equal((await pool.query(`SELECT count(*)::int AS n FROM mail_messages`)).rows[0].n, 6);
+    assert.equal((await acct('destek@sirket.test')).cursor, '200');
+    const hist = (await pool.query(`SELECT data FROM history WHERE issue_id=$1`, [i1.id])).rows.map(x => x.data);
+    assert.ok(hist.some(h => h.kind === 'create' && h.key === i1.key));
+
+    /* yanıt: In-Reply-To → yorum + "Talep edenden yanıt bekleniyor" → "İnceleniyor" */
+    const cur = (await pool.query('SELECT data FROM issues WHERE id=$1', [i1.id])).rows[0].data;
+    assert.equal((await A.sync([{ c: 'issues', id: i1.id, op: 'put', data: { ...cur, statusId: 'p_mx_s2' }, base: cur }])).json.rejected.length, 0);
+    inbox.set('g8', gm('g8', H('Ayşe Posta <ayse@musteri.test>', 'Re: Yazıcı çalışmıyor', '<m8@musteri.test>', { 'In-Reply-To': '<m1@musteri.test>', References: '<m1@musteri.test>' }),
+      { text: 'Hâlâ çalışmıyor.\n\nOn Tue, 2 Jan 2026 Destek <destek@sirket.test> wrote:\n> eski yazışma' }));
+    inbox.set('g9', gm('g9', H('Bilinmeyen <kimse@yabanci.test>', `Re: Merhaba [${i2.key}]`, '<m9@yabanci.test>'), { text: 'Ek bilgi' }));
+    r = await poll(a.id);
+    assert.deepEqual([r.json.result.issues, r.json.result.comments], [0, 2], JSON.stringify(r.json));
+    const cm = (await pool.query(`SELECT data FROM comments WHERE issue_id=$1`, [i1.id])).rows.map(x => x.data);
+    assert.equal(cm.length, 1); assert.equal(cm[0].userId, 'u_posta');
+    assert.match(cm[0].body, /Hâlâ çalışmıyor\./); assert.ok(!cm[0].body.includes('eski yazışma'));
+    assert.equal((await pool.query('SELECT data FROM issues WHERE id=$1', [i1.id])).rows[0].data.statusId, 'p_mx_s1');
+    assert.equal((await pool.query(`SELECT count(*)::int AS n FROM comments WHERE issue_id=$1`, [i2.id])).rows[0].n, 1);
+    /* aynı iletiler yeniden gelse de bir şey olmaz */
+    r = await poll(a.id);
+    assert.deepEqual([r.json.result.issues, r.json.result.comments], [0, 0]);
+    /* sistem kullanıcısı giriş yapamaz */
+    assert.equal((await client().login('posta-sistemi', 'herhangi')).status, 401);
+  });
+
+  test('429: Retry-After kadar geri çekilir; süre dolmadan otomatik turda istek atılmaz; yoksa üstel', async () => {
+    configure();
+    const a = await acct('destek@sirket.test');
+    route(/gmail\.googleapis\.com\/gmail\/v1\/users\/me\/history$/, () => J(429, { error: { message: 'Too many' } }, { 'retry-after': '120' }));
+    const r = await poll(a.id);
+    assert.equal(r.json.result.error, true); assert.equal(r.json.result.retryIn, 120);
+    const b = await acct('destek@sirket.test');
+    assert.equal(b.fail_count, 1); assert.match(b.last_error, /429/);
+    const left = (new Date(b.backoff_until) - Date.now()) / 1000;
+    assert.ok(left > 100 && left <= 121, String(left));
+    const n = calls.length;
+    await mail.pollAll(pool);
+    assert.equal(calls.length, n);
+    /* Retry-After yoksa üstel: ikinci hata → MAIL_POLL_SEC(120) * 2 */
+    route(/gmail\.googleapis\.com\/gmail\/v1\/users\/me\/history$/, () => J(503, {}));
+    const r2 = await poll(a.id);
+    assert.equal(r2.json.result.retryIn, 240);
+    routes.shift(); routes.shift();                               // 503/429 taklitlerini kaldır
+    await pool.query('UPDATE mail_accounts SET backoff_until=NULL, fail_count=0, last_error=NULL WHERE id=$1', [a.id]);
+  });
+
+  test('Outlook: Graph delta (ilk turda yalnız imleç), HTML gövde düz metin, sabit adres dışına istek yok', async () => {
+    configure();
+    route(/login\.microsoftonline\.com\/common\/oauth2\/v2\.0\/token$/, () => J(200, { access_token: 'tok_ERISIM_m1', refresh_token: 'tok_YENILEME_m1', expires_in: 3600 }));
+    route(/graph\.microsoft\.com\/v1\.0\/me$/, () => J(200, { mail: 'Talep@Outlook.test' }));
+    const L = new globalThis.URL((await raw('/api/mail/oauth/microsoft/start', adminCookie)).location);
+    assert.equal(L.origin + L.pathname, 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize');
+    for (const sc of ['offline_access', 'Mail.Read', 'Mail.Send', 'User.Read', 'openid', 'email']) assert.ok(L.searchParams.get('scope').split(' ').includes(sc), sc);
+    assert.equal((await raw(`/api/mail/oauth/microsoft/callback?state=${L.searchParams.get('state')}&code=k`, adminCookie)).location, '/?posta=bagli#system');
+    const a = await acct('talep@outlook.test');
+    await A.req('POST', `/api/mail/accounts/${a.id}`, { defaultProjectId: 'p_mx' });
+    route(/graph\.microsoft\.com\/v1\.0\/me\/mailFolders\/inbox\/messages\/delta$/, u => {
+      if (u.searchParams.get('$filter')) return J(200, { value: [], '@odata.deltaLink': 'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=d1' });
+      if (u.searchParams.get('$deltatoken') === 'd1') return J(200, { value: [{ id: 'AAMk/1==' }, { id: 'sil', '@removed': { reason: 'deleted' } }],
+        '@odata.deltaLink': 'https://evil.example/steal?$deltatoken=d2' });
+      return J(400, {});
+    });
+    route(/graph\.microsoft\.com\/v1\.0\/me\/messages\/.+$/, u => {
+      assert.equal(u.pathname, '/v1.0/me/messages/AAMk%2F1%3D%3D');                       // kimlik yola kodlanarak girer
+      return J(200, { id: 'AAMk/1==', internetMessageId: '<o1@outlook.test>', subject: 'Outlook talebi',
+        from: { emailAddress: { name: 'Dış Kişi', address: 'dis@kisi.test' } }, toRecipients: [{ emailAddress: { address: 'talep@outlook.test' } }],
+        receivedDateTime: new Date().toISOString(), hasAttachments: true, body: { contentType: 'html', content: '<p>Merhaba <i>ekip</i></p><style>x{}</style>' } });
+    });
+    let r = await poll(a.id);
+    assert.equal(r.json.result.issues, 0, JSON.stringify(r.json));
+    assert.match((await acct('talep@outlook.test')).cursor, /deltatoken=d1$/);
+    r = await poll(a.id);
+    assert.equal(r.json.result.issues, 1, JSON.stringify(r.json));
+    const it = (await issuesOf('p_mx')).find(i => i.summary === 'Outlook talebi');
+    assert.equal(it.description, 'Merhaba ekip\n\n(İletide ek vardı; ekler aktarılmadı.)');
+    /* sonraki turda imleç sabit olmayan adrese işaret ediyor: istek atılmaz, hata kaydedilir */
+    const before = calls.length;
+    r = await poll(a.id);
+    assert.equal(r.json.result.error, true);
+    assert.ok(calls.slice(before).every(c => !c.url.includes('evil.example')));
+    assert.match((await acct('talep@outlook.test')).last_error, /izinli değil/);
+  });
+
+  test('jeton geçersiz → "Yeniden bağlanın" + yöneticiye bildirim; bağlantıyı kes jetonu siler ve Google izni geri alınır', async () => {
+    configure();
+    const a = await acct('destek@sirket.test');
+    await pool.query(`UPDATE mail_accounts SET access_expires_at=now() - interval '1 hour' WHERE id=$1`, [a.id]);
+    route(/oauth2\.googleapis\.com\/token$/, () => J(400, { error: 'invalid_grant', error_description: 'Token has been expired or revoked.' }));
+    const r = await poll(a.id);
+    assert.equal(r.json.result.reconnect, true);
+    const b = await acct('destek@sirket.test');
+    assert.equal(b.status, 'reconnect'); assert.equal(b.refresh_token_enc, null); assert.match(b.last_error, /Yeniden bağlanın/);
+    const n = track(await A.req('GET', '/api/notifications'));
+    assert.ok(n.json.items.some(x => x.kind === 'mail' && x.meta.address === 'destek@sirket.test'));
+    /* yeniden bağlanmış gibi: kesmede revoke çağrılır */
+    await pool.query(`UPDATE mail_accounts SET status='ok', refresh_token_enc=$2 WHERE id=$1`, [a.id, mail.encrypt('tok_YENILEME_g9')]);
+    route(/oauth2\.googleapis\.com\/revoke$/, () => J(200, {}));
+    const d = track(await A.req('POST', `/api/mail/accounts/${a.id}/delete`));
+    assert.equal(d.status, 200); assert.equal(d.json.revoked, true);
+    assert.ok(calls.some(c => c.url === 'https://oauth2.googleapis.com/revoke' && c.method === 'POST' && c.body.includes('tok_YENILEME_g9')));
+    assert.equal(await acct('destek@sirket.test'), undefined);
+    assert.equal((await pool.query('SELECT count(*)::int AS n FROM mail_messages WHERE account_id=$1', [a.id])).rows[0].n, 0);
+  });
+
+  test('jeton ve sır hiçbir yanıtta görünmez', () => {
+    const all = seenBodies.join('\n');
+    for (const s of ['tok_', 'refresh_token', 'access_token', 'g-sir', 'm-sir', '_enc', 'verifier', 'v1:']) assert.ok(!all.includes(s), s);
+  });
+});

@@ -51,7 +51,7 @@ export const redirectUri = (p, origin) =>
 
 /* ---- jeton şifreleme: v1:base64(iv[12] | etiket[16] | şifreli) ---- */
 export function encrypt(text) {
-  const key = tokenKey(); if (!key) throw new HttpError(503, NOT_CONFIGURED);
+  const key = tokenKey(); if (!key) throw new HttpError(409, NOT_CONFIGURED);
   const iv = randomBytes(12), c = createCipheriv('aes-256-gcm', key, iv);
   const ct = Buffer.concat([c.update(String(text), 'utf8'), c.final()]);
   return 'v1:' + Buffer.concat([iv, c.getAuthTag(), ct]).toString('base64');
@@ -107,7 +107,7 @@ async function call(url, { method = 'GET', token, form, headers = {} } = {}) {
 /* ---- OAuth ---- */
 export async function oauthStart(pool, me, provider, origin) {
   if (!PROVIDERS.includes(provider)) throw new HttpError(404, 'Bilinmeyen sağlayıcı');
-  if (!providerConfigured(provider)) throw new HttpError(503, NOT_CONFIGURED);
+  if (!providerConfigured(provider)) throw new HttpError(409, NOT_CONFIGURED);
   const state = b64url(randomBytes(24)), verifier = b64url(randomBytes(48));
   const challenge = b64url(createHash('sha256').update(verifier).digest());
   await pool.query(`DELETE FROM mail_oauth_states WHERE created_at < now() - interval '10 minutes'`);
@@ -208,7 +208,7 @@ export function htmlToText(html) {
     .replace(/<(blockquote)\b[^>]*>/gi, '\n[[ALINTI]]\n')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<li\b[^>]*>/gi, '\n• ')
-    .replace(/<\/(p|div|h[1-6]|tr|li|ul|ol|table|section|article|header|footer|pre)\s*>/gi, '\n')
+    .replace(/<\/(p|div|h[1-6]|tr|ul|ol|table|section|article|header|footer|pre)\s*>/gi, '\n')
     .replace(/<(p|div|h[1-6]|tr|table|pre)\b[^>]*>/gi, '\n')
     .replace(/<\/t[dh]\s*>/gi, '\t')
     .replace(/<[^>]*>/g, '')
