@@ -89,6 +89,18 @@ export function normalizePriority(d) {
   return true;
 }
 
+/* Arşiv bilgisi: eski (SharePoint) verideki "true"/"false" metni (büyük/küçük harf duyarsız) ve 1/0
+   boolean'a çevrilir; diğer değerlere dokunulmaz (doğrulama reddeder). Değer değiştiyse true döner. */
+export function normalizeArchived(d) {
+  if (!d || d.archived == null || typeof d.archived === 'boolean') return false;
+  const v = d.archived;
+  const s = typeof v === 'string' ? v.trim().toLowerCase() : v;
+  if (s === 'true' || s === 1) d.archived = true;
+  else if (s === 'false' || s === 0) d.archived = false;
+  else return false;
+  return true;
+}
+
 /* Genel ayar `cfg`: iş tipleri kartta rozet olarak basılır (harf, ad, renk). */
 export function validateCfg(v) {
   if (v == null || typeof v !== 'object' || Array.isArray(v)) throw new HttpError(400, 'Geçersiz ayar');

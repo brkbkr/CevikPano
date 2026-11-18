@@ -724,6 +724,35 @@ describe('çalışma alanları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () =
     assert.equal(ok.json.applied, 2, JSON.stringify(ok.json.rejected));
   });
 
+  test('archived: "true"/"false" metni ve 1/0 boolean\'a çevrilir (adjusted), diğer değerler reddedilir', async () => {
+    const { normalizeArchived, validate } = await import('../server/validate.js');
+    for (const [v, want] of [['true', true], [' TRUE ', true], ['False', false], [1, true], [0, false]]) {
+      const d = { archived: v }; assert.equal(normalizeArchived(d), true, String(v)); assert.strictEqual(d.archived, want, String(v));
+    }
+    for (const v of [true, false, null, undefined, 'evet', '1', 2, {}]) {
+      const d = { archived: v }; assert.equal(normalizeArchived(d), false, String(v)); assert.strictEqual(d.archived, v);
+    }
+    assert.throws(() => validate('projects', { name: 'x', archived: 'evet' }), /Arşiv bilgisi/);
+    let r = await U1.sync([
+      { c: 'projects', id: 'p_arm', op: 'put', data: { name: 'Metin arşiv', key: 'PAM', archived: 'true' } },
+      { c: 'projects', id: 'p_arm0', op: 'put', data: { name: 'Sayı arşiv', key: 'PA0', archived: 0 } },
+      ws('ws_arm', { name: 'Metin arşivli alan', archived: 'FALSE' }),
+      { c: 'projects', id: 'p_arx', op: 'put', data: { name: 'Kötü arşiv', key: 'PAX', archived: 'evet' } },
+      ws('ws_arx', { name: 'Kötü arşivli alan', archived: 'hayır' }),
+    ]);
+    assert.equal(r.json.applied, 3, JSON.stringify(r.json));
+    assert.deepEqual(reasons(r), ['Arşiv bilgisi true ya da false olmalı', 'Arşiv bilgisi true ya da false olmalı']);
+    assert.deepEqual(r.json.adjusted.map(x => x.id).sort(), ['p_arm', 'p_arm0', 'ws_arm']);
+    assert.strictEqual((await row('projects', 'p_arm')).data.archived, true);
+    assert.equal((await row('projects', 'p_arm')).archived, true);
+    assert.strictEqual((await row('projects', 'p_arm0')).data.archived, false);
+    assert.strictEqual((await row('workspaces', 'ws_arm')).data.archived, false);
+    /* Var olan alan "true" metniyle arşivlenince arşiv kuralları uygulanır. */
+    r = await A.sync([ws('ws1', { ...(await row('workspaces', 'ws1')).data, archived: 'true' })]);
+    assert.deepEqual(reasons(r), ['Genel çalışma alanı arşivlenemez']);
+    await pool.query(`DELETE FROM projects WHERE id IN ('p_arm','p_arm0')`);
+  });
+
   test('ad HTML olarak değil metin olarak saklanır', async () => {
     const name = '<script>alert(1)</script>';
     const r = await U1.sync([ws('ws_xss', { name })]);
@@ -888,9 +917,13 @@ describe('çalışma alanları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () =
   });
 
   test('içe aktarma / geri yükleme: dosyada alan yoksa Genel yeniden oluşur', async () => {
-    const r = await A.req('POST', '/api/import', { data: { projects: [{ id: 'pi', key: 'IMP', name: 'İthal' }], issues: [] } });
+    const r = await A.req('POST', '/api/import', { data: { projects: [{ id: 'pi', key: 'IMP', name: 'İthal' },
+      { id: 'pi2', key: 'IM2', name: 'Eski arşivli', archived: 'TRUE' }, { id: 'pi3', key: 'IM3', name: 'Eski etkin', archived: 'false' },
+      { id: 'pi4', key: 'IM4', name: 'Bozuk arşiv', archived: 'evet' }], issues: [] } });
     assert.equal(r.status, 200);
+    assert.equal(r.json.projects, 3); assert.equal(r.json.skipped, 1);   // metin arşiv bilgisi atlanmaz, düzeltilir
     const st = (await A.state()).json.data;
+    assert.deepEqual(st.projects.map(p => [p.id, p.archived]), [['pi', undefined], ['pi2', true], ['pi3', false]]);
     assert.deepEqual(st.workspaces, [{ id: 'ws1', name: 'Genel', color: '#64748B', description: '', archived: false, createdBy: null }]);
     const pre = (await A.req('GET', '/api/backups')).json.find(b => b.kind === 'pre-import');
     assert.ok(pre.counts.workspaces > 1);

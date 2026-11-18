@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
 import { TABLES, PREF_KEYS, IGNORED_KEYS, tx } from './db.js';
 import { HttpError, cj, same, merge3, isAdminRole } from './util.js';
-import { validate, normalizePriority, validId, validateCfg, stripBadKeys } from './validate.js';
+import { validate, normalizePriority, normalizeArchived, validId, validateCfg, stripBadKeys } from './validate.js';
 import { notifyForIssue, notifyForComment } from './notify.js';
 
 export { HttpError };
@@ -200,6 +200,7 @@ async function applyRecord(c, ctx, ch) {
     if (n !== data.counter) { data.counter = n; adjusted = true; }
   }
   if (ch.c === 'issues' && normalizePriority(data)) adjusted = true;
+  if ((ch.c === 'projects' || ch.c === 'workspaces') && normalizeArchived(data)) adjusted = true;
   if (ch.c === 'workspaces' && enforceCreatedBy(data, cur, me)) adjusted = true;
   validate(ch.c, data);
   /* Atanan değiştiyse var olan, aktif bir kullanıcı olmalı. */

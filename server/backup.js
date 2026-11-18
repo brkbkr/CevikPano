@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { TABLES, IGNORED_KEYS, PREF_KEYS, tx } from './db.js';
 import { HttpError } from './util.js';
 import { readAll, publicUser, logChange, DEFAULT_USER_PASSWORD, ensureDefaultWorkspace } from './store.js';
-import { validate, normalizePriority, validId, stripBadKeys } from './validate.js';
+import { validate, normalizePriority, normalizeArchived, validId, stripBadKeys } from './validate.js';
 
 const KEEP_AUTO = 14, KEEP_OTHER = 30;
 
@@ -120,6 +120,7 @@ export async function replaceAll(pool, me, data, kind) {
             usedKey.add(d.projectId + '|' + d.key);
           }
           if (k === 'issues') normalizePriority(d);    // eski yedekte metin/geçersiz öncelik atlanmasın
+          if (k === 'projects' || k === 'workspaces') normalizeArchived(d);   // "true"/"false" metni atlanmasın
           try { validate(k, d); } catch (e) { stats.skipped = (stats.skipped || 0) + 1; continue; }
           if (table) await c.query(`INSERT INTO ${table} (id, data, updated_by) VALUES ($1,$2::jsonb,$3)`, [id, JSON.stringify(d), me.id]);
           else await c.query(`INSERT INTO misc_records (collection, id, data, updated_by) VALUES ($1,$2,$3::jsonb,$4)`, [k, id, JSON.stringify(d), me.id]);
