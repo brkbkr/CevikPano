@@ -1,0 +1,28 @@
+# Ortak kapı (Caddy). Tüm ortamlar pano-edge ağına bağlanır; dışarıya açık tek servis budur.
+#   PROD_DOMAIN=... TEST_DOMAIN=... docker compose -p pano-edge -f deploy/edge.yml up -d
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      PROD_DOMAIN: ${PROD_DOMAIN:?PROD_DOMAIN gerekli}
+      TEST_DOMAIN: ${TEST_DOMAIN:?TEST_DOMAIN gerekli}
+    # Klasör bağlanır (tek dosya değil): git güncellemesi Caddyfile'ı değiştirince konteyner yenisini görür.
+    command: caddy run --config /etc/pano-edge/Caddyfile --adapter caddyfile
+    volumes:
+      - .:/etc/pano-edge:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [edge]
+
+volumes:
+  caddy-data:
+  caddy-config:
+
+networks:
+  edge:
+    name: pano-edge
+    external: true

@@ -1,7 +1,12 @@
 name: test
-on: [push, pull_request]
+on:
+  push:
+    branches-ignore: [production]
+  pull_request:
+
 jobs:
-  test:
+  api:
+    name: API testleri
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -18,3 +23,42 @@ jobs:
       - run: npm test
         env:
           TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/pano_test
+
+  e2e:
+    name: Tarayıcı testleri
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: postgres, POSTGRES_DB: pano_e2e }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/pano_e2e
+      ADMIN_PASSWORD: admin12345
+      DEFAULT_USER_PASSWORD: Baslangic123
+      PORT: "3100"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Playwright
+        run: npm install --no-save playwright@1.63.0 && npx playwright install --with-deps chromium
+      - name: Sunucuyu başlat ve demo veriyi yükle
+        run: |
+          nohup node server/index.js > server.log 2>&1 &
+          for _ in $(seq 1 30); do curl -fsS http://localhost:3100/healthz && break; sleep 1; done
+          node scripts/seed-demo.mjs http://localhost:3100 test/fixtures/demo.json
+      - name: Regresyon testi
+        run: node test/e2e/regresyon.cjs
+      - name: Sunucu günlüğü
+        if: failure()
+        run: cat server.log
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: ekran-goruntuleri
+          path: /tmp/pano_q_*.png
+          if-no-files-found: ignore

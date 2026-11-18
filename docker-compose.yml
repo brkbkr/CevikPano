@@ -1,6 +1,12 @@
-# Kendi sunucunda (Oracle Cloud, Hetzner, DigitalOcean ...) tek komutla çalıştırma.
-# Değerler .env dosyasından gelir (scripts/oracle-kurulum.sh üretir). Elle:
-#   cp .env.example .env  →  düzenle  →  docker compose up -d --build
+# Bir ÇevikPano ortamı: uygulama + kendi veritabanı.
+# Aynı sunucuda birden çok ortam (canlı, test) çalışabilir; her biri ayrı proje adıyla
+# (docker compose -p <ad>) ve kendi .env dosyasıyla başlatılır, verileri birbirinden ayrıdır.
+# Dışarıya (80/443) açılan tek servis ortak kapıdır: deploy/edge.yml (Caddy, otomatik HTTPS).
+#
+# Elle tek ortam: cp .env.example .env → düzenleyin →
+#   docker network create pano-edge
+#   docker compose up -d --build
+#   PROD_DOMAIN=<alan> TEST_DOMAIN=test.<alan> docker compose -p pano-edge -f deploy/edge.yml up -d
 services:
   db:
     image: postgres:16-alpine
@@ -30,21 +36,24 @@ services:
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD gerekli}
       DEFAULT_USER_PASSWORD: ${DEFAULT_USER_PASSWORD:?DEFAULT_USER_PASSWORD gerekli}
-
-  # HTTPS: Caddy, DOMAIN için Let's Encrypt sertifikasını kendisi alır ve yeniler.
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    depends_on: [app]
-    command: caddy reverse-proxy --from ${DOMAIN:?DOMAIN gerekli} --to app:3000
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - caddy-data:/data
-      - caddy-config:/config
+      # Ortam bilgisi (Sistem ekranında ve test şeridinde görünür)
+      APP_ENV: ${APP_ENV:-production}
+      APP_COMMIT: ${APP_COMMIT:-}
+      APP_COMMIT_DATE: ${APP_COMMIT_DATE:-}
+      APP_COMMIT_MSG: ${APP_COMMIT_MSG:-}
+      PUBLIC_URL: https://${DOMAIN:-localhost}
+      PEER_URL: ${PEER_URL:-}
+      GITHUB_REPO: ${GITHUB_REPO:-brkbkr/CevikPano}
+    networks:
+      default: {}
+      edge:
+        aliases:
+          - ${STACK:-cevikpano}-app
 
 volumes:
   db-data:
-  caddy-data:
-  caddy-config:
+
+networks:
+  edge:
+    name: pano-edge
+    external: true

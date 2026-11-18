@@ -635,6 +635,32 @@ label.field{font-size:11px;text-transform:none;letter-spacing:0;color:var(--ink2
 .act-c{color:var(--ink3)}
 .act-t{color:var(--ink2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 
+/* ---------- ortam şeridi ve sürümler ---------- */
+.envbar{position:fixed;top:0;left:0;right:0;z-index:300;height:28px;display:flex;align-items:center;justify-content:center;gap:12px;
+  background:repeating-linear-gradient(135deg,#F59E0B 0 14px,#F7B035 14px 28px);color:#1F1300;font-size:12px;font-weight:600;padding:0 12px;white-space:nowrap;overflow:hidden}
+.envbar b{letter-spacing:.08em}
+.envbar a{color:#1F1300;text-decoration:underline}
+body.env-test .app{height:calc(100vh - 28px);margin-top:28px}
+body.env-test #login{top:28px}
+body.env-test .pop{top:90px}
+.vgrid{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:stretch;margin:14px 0}
+.varrow{align-self:center;font-size:22px;color:var(--ink3)}
+.vcard{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--surface2);display:flex;flex-direction:column;gap:6px;min-width:0}
+.vcard.test{border-color:#F5C46A}
+.vcard.prod{border-color:var(--done-line)}
+.vc-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.vc-h a{margin-left:auto;font-size:12px;color:var(--accent);text-decoration:none}
+.vc-dot{width:8px;height:8px;border-radius:50%;background:var(--done)}
+.vcard.test .vc-dot{background:#F59E0B}
+.vc-sha{display:flex;gap:10px;align-items:baseline;font-size:12px;color:var(--ink3)}
+.vc-sha a{color:var(--accent)}
+.vc-msg{font-size:13.5px;font-weight:550;overflow-wrap:anywhere}
+.vc-f{font-size:11.5px;color:var(--ink3)}
+.vnote{padding:9px 12px;border-radius:10px;background:var(--warn-bg);border:1px solid var(--warn-line);color:var(--warn-ink);font-size:12.5px}
+.vnote.ok{background:var(--done-bg);border-color:var(--done-line);color:var(--done)}
+.vact{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+@media (max-width:900px){.vgrid{grid-template-columns:1fr}.varrow{transform:rotate(90deg);justify-self:center}.envbar span{display:none}}
+
 /* ---------- giriş ---------- */
 #login{background:
   radial-gradient(1200px 600px at 10% -10%,color-mix(in srgb,var(--accent) 22%,transparent),transparent 60%),
@@ -5745,7 +5771,7 @@ function setUnread(n) {
   UNREAD = n;
   const b = document.getElementById('bellBadge');
   if (b) { b.hidden = !n; b.textContent = n > 99 ? '99+' : n; }
-  document.title = (n ? `(${n}) ` : '') + 'ÇevikPano';
+  document.title = (n ? `(${n}) ` : '') + (VERSION?.env === 'test' ? '[TEST] ' : '') + 'ÇevikPano';
 }
 
 function setOnline(list) {
@@ -5836,9 +5862,9 @@ function wireTopbar() {
 }
 
 /* ---- Sistem: yedekler, çöp kutusu, etkinlik (yönetici) ---- */
-let SYS_TAB = 'backups';
+let SYS_TAB = 'versions';
 function toolbarSystem() {
-  return `<div class="seg">${[['backups', 'Yedekler'], ['trash', 'Çöp kutusu'], ['activity', 'Etkinlik']].map(([k, l]) =>
+  return `<div class="seg">${[['versions', 'Sürümler'], ['backups', 'Yedekler'], ['trash', 'Çöp kutusu'], ['activity', 'Etkinlik']].map(([k, l]) =>
     `<button data-systab="${k}" class="${SYS_TAB === k ? 'on' : ''}">${l}</button>`).join('')}</div>
     <div class="spacer"></div>
     ${SYS_TAB === 'backups' ? '<button class="btn pri" id="sysBackup">+ Şimdi yedek al</button>' : ''}`;
@@ -5863,7 +5889,9 @@ async function loadSystem() {
     catch (e) { toast(e.message); } finally { nb.disabled = false; }
   };
   try {
-    if (SYS_TAB === 'backups') {
+    if (SYS_TAB === 'versions') {
+      el.innerHTML = await renderVersions();
+    } else if (SYS_TAB === 'backups') {
       const list = await API.get('/api/backups');
       el.innerHTML = `<h3>Yedekler</h3>
         <div class="sub">Her gün otomatik yedek alınır (son 14 gün saklanır). İçe aktarma ve geri yüklemeden önce de otomatik yedek alınır.
@@ -5968,7 +5996,64 @@ async function enterApp(useHash, fromLogin) {
   startPolling(); poll();
 }
 
+/* ---- ortam ve sürüm ---- */
+let VERSION = null;
+const ENV_TR = { production: 'Canlı', test: 'Test', development: 'Geliştirme' };
+async function loadVersion() {
+  try { VERSION = await API.get('/api/version'); } catch (e) { VERSION = null; }
+  if (VERSION?.env === 'test') {
+    document.body.classList.add('env-test');
+    document.title = '[TEST] ÇevikPano';
+    if (!document.getElementById('envBar')) {
+      const b = document.createElement('div');
+      b.id = 'envBar'; b.className = 'envbar';
+      b.innerHTML = `<b>TEST ORTAMI</b><span>Buradaki veriler gerçek değildir; denemek için kullanın.</span>
+        ${VERSION.peerUrl ? `<a href="${esc(VERSION.peerUrl)}" target="_blank" rel="noopener">Canlı siteye git →</a>` : ''}`;
+      document.body.prepend(b);
+    }
+  }
+}
+const shortSha = c => (c || '').slice(0, 7) || '—';
+async function renderVersions() {
+  const me = VERSION || {};
+  let peer = null;
+  if (me.peerUrl) {
+    try { const r = await fetch(me.peerUrl.replace(/\/$/, '') + '/api/version', { cache: 'no-store' }); if (r.ok) peer = await r.json(); }
+    catch (e) { peer = null; }
+  }
+  const test = me.env === 'test' ? me : peer?.env === 'test' ? peer : null;
+  const prod = me.env === 'production' ? me : peer?.env === 'production' ? peer : null;
+  const repo = me.repo || peer?.repo || '';
+  const gh = repo ? 'https://github.com/' + repo : '';
+  const card = (title, v, url, cls) => `<div class="vcard ${cls}">
+      <div class="vc-h"><span class="vc-dot"></span><b>${title}</b>${url ? `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(url.replace(/^https?:\/\//, ''))} ↗</a>` : ''}</div>
+      ${v ? `<div class="vc-sha">${v.commit && gh ? `<a class="k" href="${gh}/commit/${esc(v.commit)}" target="_blank" rel="noopener">${shortSha(v.commit)}</a>` : `<span class="k">${shortSha(v.commit)}</span>`}
+          ${v.commitDate ? `<span>${fmtWhen(v.commitDate)}</span>` : ''}</div>
+        <div class="vc-msg">${esc(v.commitMessage || 'Sürüm açıklaması yok')}</div>
+        <div class="vc-f">Sunucuda çalışıyor: ${fmtWhen(v.startedAt)}</div>`
+      : '<div class="vc-msg">Bu ortama ulaşılamadı.</div>'}
+    </div>`;
+  const differs = test && prod && test.commit && prod.commit && test.commit !== prod.commit;
+  return `<h3>Sürümler</h3>
+    <div class="sub">Onaylanan (GitHub'da birleştirilen) her değişiklik birkaç dakika içinde önce <b>test</b> sitesine gelir.
+      Testte denedikten sonra <b>Canlıya yayınla</b> ile canlı siteye alınır. Yeni sürüm açılmazsa sunucu kendiliğinden önceki sürüme döner.</div>
+    <div class="vgrid">
+      ${card('🧪 Test', test, test?.publicUrl || (me.env !== 'test' ? me.peerUrl : me.publicUrl), 'test')}
+      <div class="varrow">→</div>
+      ${card('🚀 Canlı', prod, prod?.publicUrl || (me.env !== 'production' ? me.peerUrl : me.publicUrl), 'prod')}
+    </div>
+    ${differs ? `<div class="vnote">Testte, canlıda henüz olmayan yeni bir sürüm var. Denedikten sonra yayınlayabilirsiniz.</div>`
+      : test && prod ? '<div class="vnote ok">Test ve canlı aynı sürümde.</div>' : ''}
+    ${gh ? `<div class="vact">
+      <a class="btn pri" href="${gh}/actions/workflows/yayinla.yml" target="_blank" rel="noopener">🚀 Canlıya yayınla (GitHub)</a>
+      <a class="btn" href="${gh}/commits/main" target="_blank" rel="noopener">Testteki değişiklikler</a>
+      <a class="btn" href="${gh}/pulls" target="_blank" rel="noopener">Onay bekleyenler (PR)</a></div>
+      <div class="sub" style="margin-top:8px">GitHub'da açılan sayfada <b>Run workflow</b> → yeşil <b>Run workflow</b> düğmesine basın.
+        Önceki bir sürüme dönmek için aynı sayfada “sürüm” kutusuna o sürümün kodunu (ör. ${shortSha(prod?.commit) || 'abc1234'}) yazın.</div>` : ''}`;
+}
+
 (async () => {
+  await loadVersion();
   try { ME = await API.get('/api/auth/me'); } catch (e) { ME = null; }
   if (!ME) return showLogin();
   await enterApp(true, false);

@@ -5,7 +5,8 @@
 const { chromium } = require('playwright');
 const BASE = process.env.BASE_URL || 'http://localhost:3100/'; const SS = require('os').tmpdir() + '/pano_q_';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const ok = (name, cond, extra = '') => console.log((cond ? 'PASS ' : 'FAIL ') + name + (extra ? ' — ' + extra : ''));
+let FAILS = 0;
+const ok = (name, cond, extra = '') => { if (!cond) FAILS++; console.log((cond ? 'PASS ' : 'FAIL ') + name + (extra ? ' — ' + extra : '')); };
 (async () => {
   const b = await chromium.launch();
   const errs = [];
@@ -128,4 +129,5 @@ const ok = (name, cond, extra = '') => console.log((cond ? 'PASS ' : 'FAIL ') + 
 
   console.log(errs.length ? errs.join('\n') : 'no page errors / alerts');
   await b.close();
+  if (FAILS || errs.length) { console.log(`${FAILS} başarısız kontrol, ${errs.length} sayfa hatası`); process.exit(1); }
 })().catch(e => { console.error(e); process.exit(1); });

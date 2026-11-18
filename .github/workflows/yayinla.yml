@@ -1,0 +1,81 @@
+name: Canlıya yayınla
+# GitHub → Actions → "Canlıya yayınla" → Run workflow.
+# "production" dalını seçilen sürüme taşır; sunucudaki dağıtıcı birkaç dakika içinde canlıya alır.
+# Boş bırakılırsa testteki (main) son sürüm yayınlanır. Geri dönmek için eski bir sürümün kodunu yazın.
+on:
+  workflow_dispatch:
+    inputs:
+      surum:
+        description: "Sürüm (boş = testteki son sürüm; geri dönmek için eski sürüm kodu, ör. abc1234)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  checks: read
+
+concurrency:
+  group: yayinla
+  cancel-in-progress: false
+
+jobs:
+  yayinla:
+    name: Canlıya yayınla
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Sürümü belirle
+        id: s
+        env:
+          SURUM: ${{ github.event.inputs.surum }}
+        run: |
+          set -euo pipefail
+          REF="${SURUM:-origin/main}"
+          SHA="$(git rev-parse --verify --quiet "${REF}^{commit}")" || { echo "::error::Sürüm bulunamadı: $REF"; exit 1; }
+          git merge-base --is-ancestor "$SHA" origin/main || { echo "::error::Bu sürüm onaylanmış (main) sürümlerden biri değil: $REF"; exit 1; }
+          OLD="$(git rev-parse --verify --quiet origin/production || true)"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "old=$OLD" >> "$GITHUB_OUTPUT"
+
+      - name: Testler geçmiş mi?
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.s.outputs.sha }}
+        run: |
+          set -euo pipefail
+          runs="$(gh api "repos/${{ github.repository }}/commits/$SHA/check-runs" --jq '[.check_runs[] | select(.name != "Canlıya yayınla")]')"
+          total="$(jq length <<<"$runs")"
+          bad="$(jq '[.[] | select(.status != "completed" or (.conclusion != "success" and .conclusion != "skipped"))] | length' <<<"$runs")"
+          jq -r '.[] | "  \(.name): \(.status) \(.conclusion // "")"' <<<"$runs"
+          if [ "$total" -eq 0 ]; then echo "::error::Bu sürüm için test sonucu bulunamadı."; exit 1; fi
+          if [ "$bad" -ne 0 ]; then echo "::error::Bu sürümün testleri geçmemiş ya da henüz bitmemiş; yayınlanmadı."; exit 1; fi
+
+      - name: Yayınla
+        env:
+          SHA: ${{ steps.s.outputs.sha }}
+          OLD: ${{ steps.s.outputs.old }}
+        run: |
+          set -euo pipefail
+          if [ "$SHA" = "$OLD" ]; then
+            echo "Bu sürüm zaten canlıda." | tee -a "$GITHUB_STEP_SUMMARY"; exit 0
+          fi
+          git push origin "$SHA:refs/heads/production" --force
+          TAG="yayin-$(date -u +%Y%m%d-%H%M)"
+          git tag "$TAG" "$SHA" && git push origin "$TAG"
+          {
+            echo "## 🚀 Canlıya yayınlandı: \`${SHA:0:7}\`"
+            echo
+            echo "Sunucu birkaç dakika içinde yeni sürüme geçecek (Sistem → Sürümler ekranından izleyebilirsiniz)."
+            echo
+            if [ -n "$OLD" ] && git merge-base --is-ancestor "$OLD" "$SHA"; then
+              echo "### Bu yayındaki değişiklikler"
+              # shellcheck disable=SC2016
+              git log --format='- %s (`%h`)' "$OLD..$SHA"
+            elif [ -n "$OLD" ]; then
+              echo "### ↩ Önceki bir sürüme dönüldü (\`${OLD:0:7}\` → \`${SHA:0:7}\`)"
+            else
+              echo "İlk yayın."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
