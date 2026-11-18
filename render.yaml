@@ -1,0 +1,31 @@
+# Render Blueprint — render.com → New → Blueprint → bu depoyu seçin.
+# Bir PostgreSQL veritabanı ve ona bağlı web servisi oluşturur.
+databases:
+  - name: cevikpano-db
+    databaseName: cevikpano
+    user: cevikpano
+    plan: free
+    region: frankfurt
+
+services:
+  - type: web
+    name: cevikpano
+    runtime: docker
+    plan: free
+    region: frankfurt
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cevikpano-db
+          property: connectionString
+      - key: ADMIN_USERNAME
+        value: admin
+      # Kurulumda Render bu parolayı soracak (depoya yazılmaz).
+      - key: ADMIN_PASSWORD
+        sync: false
+      # Yeni / içe aktarılan / sıfırlanan kullanıcıların başlangıç parolası.
+      # Render rastgele üretir; yöneticiler uygulamada Kullanıcılar ekranında görür.
+      - key: DEFAULT_USER_PASSWORD
+        generateValue: true
