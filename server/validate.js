@@ -58,6 +58,10 @@ function contactRules(list) {
   return [];
 }
 
+/* Proje türü (#12): boş/yok = genel sprint ayarından hesaplanır (kayda yazılmaz). */
+export const PROJECT_TYPES = ['board', 'agile'];
+export const COL_NAME_MAX = 30;
+
 const RULES = {
   projects: d => [
     [str(d.name, 200) && d.name.trim(), 'Proje adı gerekli'],
@@ -66,6 +70,7 @@ const RULES = {
     [d.workspaceId == null || d.workspaceId === '' || validId(d.workspaceId), 'Geçersiz çalışma alanı'],
     [optBool(d.archived), 'Arşiv bilgisi true ya da false olmalı'],
     [d.customerId == null || d.customerId === '' || validId(d.customerId), 'Geçersiz cari'],
+    [d.type == null || d.type === '' || PROJECT_TYPES.includes(d.type), 'Geçersiz proje türü'],
   ],
   /* Cariler (#11). İletilerde değer YOK: kişisel veri (T.C. kimlik no, e-posta) günlüğe/yanıta düşmesin. */
   customers: d => [
@@ -89,9 +94,13 @@ const RULES = {
     [optStr(d.description, 500), 'Açıklama en fazla 500 karakter'],
     [optBool(d.archived), 'Arşiv bilgisi true ya da false olmalı'],
   ],
-  statuses: d => [
+  /* Kolon adı 1–30 karakter: yalnız canlı yazmada (opts.live), yeni kolonda ya da ad değişince.
+     Eski uzun adlı kolon sıralanabilir; içe aktarma/geri yükleme eski veriyi reddetmez. */
+  statuses: (d, opts) => [
     [str(d.projectId, 200), 'Durumun projesi yok'],
     [str(d.name, 100) && d.name.trim(), 'Durum adı gerekli'],
+    [!opts.live || typeof d.name !== 'string' || (opts.cur && opts.cur.name === d.name) || (d.name.trim().length >= 1 && d.name.length <= COL_NAME_MAX),
+      `Kolon adı 1 ile ${COL_NAME_MAX} karakter arasında olmalı`],
     [d.cat == null || ['todo', 'inprogress', 'done'].includes(d.cat), 'Geçersiz durum kategorisi'],
   ],
   sprints: d => [[str(d.projectId, 200), 'Sprintin projesi yok'], [optStr(d.name, 200), 'Sprint adı çok uzun']],
@@ -173,9 +182,10 @@ export function validateCfg(v) {
   if (!ok) throw new HttpError(400, 'Geçersiz iş tipi ayarı (kimlik, ad, harf ve #RRGGBB renk gerekli)');
 }
 
-export function validate(collection, data) {
+/* opts: { live: true, cur } → /api/sync yazması (cur: veritabanındaki güncel hâl); içe aktarmada verilmez. */
+export function validate(collection, data, opts = {}) {
   if (JSON.stringify(data).length > MAX_RECORD) throw new HttpError(400, 'Kayıt çok büyük');
   const r = Object.hasOwn(RULES, collection) ? RULES[collection] : undefined;   // `constructor` kural değildir
   if (!r) return;
-  for (const [ok, msg] of r(data)) if (!ok) throw new HttpError(400, msg);
+  for (const [ok, msg] of r(data, opts)) if (!ok) throw new HttpError(400, msg);
 }

@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
 import { TABLES, PREF_KEYS, IGNORED_KEYS, tx, tableOf, reservedName } from './db.js';
 import { HttpError, cj, same, merge3, isAdminRole } from './util.js';
-import { validate, normalizePriority, normalizeArchived, normalizeCustomer, validId, validateCfg, stripBadKeys } from './validate.js';
+import { validate, PROJECT_TYPES, normalizePriority, normalizeArchived, normalizeCustomer, validId, validateCfg, stripBadKeys } from './validate.js';
 import { notifyForIssue, notifyForComment } from './notify.js';
 
 export { HttpError };
@@ -12,8 +12,9 @@ const SECRET_USER_KEYS = ['pw', 'salt', 'mustChange', 'password', 'password_hash
 const USER_COLS = ['id', 'username', 'name', 'role', 'active', 'system'];
 const ROLES = ['super', 'admin', 'member', 'viewer'];
 /* Proje yapılandırması ve cariler: yalnızca yönetici değiştirir. Üye projeyi oluşturup düzenleyebilir
-   (projeye etkin cari bağlamak dahil) ama silemez. */
-export const ADMIN_ONLY = ['statuses', 'fields', 'rules', '_settings', 'customers'];
+   (projeye etkin cari bağlamak dahil) ama silemez. Kolonlar (statuses) #12'den beri yönetici ya da
+   projenin üyesi olan Üye tarafından değiştirilir (canConfigure). */
+export const ADMIN_ONLY = ['fields', 'rules', '_settings', 'customers'];
 const ISSUE_CHILDREN = ['comments', 'worklogs', 'history', 'transitions'];
 /* Yeni kaydı yalnız ekleyerek oluşturan koleksiyonlar (eşzamanlı oluşturmada üzerine yazılmaz). */
 const CREATE_ONCE = ['workspaces', 'customers'];
@@ -119,12 +120,19 @@ export async function applyChanges(pool, me, changes) {
   let applied = 0;
   const canEdit = me.role !== 'viewer';
   const batch = randomUUID();
-  const ctx = { me, batch, adjusted, touchedIssues: new Set() };
+  const ctx = { me, batch, adjusted, touchedIssues: new Set(), cols: new Map(), colNamed: new Set() };
   const meAdmin = isAdminRole(me.role);
+  /* Kararlı gruplama: kullanıcılar → proje kayıtları → diğerleri → en sonda kolon silmeleri.
+     Yeni projenin kolonları dizide önce gelse de proje önce yazılır; silinen kolonun işleri aynı
+     gönderimde taşındıysa silme onlardan sonra denetlenir. */
+  const rank = ch => (ch?.c === 'users' ? 0 : ch?.c === 'projects' && ch?.op === 'put' ? 1
+    : ch?.c === 'statuses' && ch?.op === 'del' ? 3 : 2);
+  const ordered = changes.map((ch, i) => [rank(ch), i, ch]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const rejIdx = new Map();                         // ret listesi gönderim sırasında döner
 
   await tx(pool, async c => {
-    for (const ch of changes) {
-      const reject = reason => rejected.push({ c: ch?.c, id: ch?.id, reason });
+    for (const [, i, ch] of ordered) {
+      const reject = reason => { const r = { c: ch?.c, id: ch?.id, reason }; rejIdx.set(r, i); rejected.push(r); };
       if (!ch || typeof ch.c !== 'string' || typeof ch.id !== 'string'
           || ch.c.length > 60 || !/^[\w$-]+$/.test(ch.c) || !['put', 'del'].includes(ch.op)) { reject('geçersiz'); continue; }
       /* Kimlikler HTML özniteliklerine basılır: yalnız güvenli karakterler (XSS'e karşı kalıcı çözüm). */
@@ -174,16 +182,23 @@ export async function applyChanges(pool, me, changes) {
     }
     /* Harcanan süre her zaman süre kayıtlarının toplamıdır (eşzamanlı kayıtta kayma olmasın). */
     for (const iid of ctx.touchedIssues) await recomputeSpent(c, ctx, iid);
+    await checkColumns(c, ctx);
     const admins = Number((await c.query(
       `SELECT count(*) AS n FROM users WHERE active AND role IN ('admin','super')`)).rows[0].n);
     if (admins < 1) throw new HttpError(409, 'En az bir aktif yönetici kalmalı');
   });
+  rejected.sort((a, b) => rejIdx.get(a) - rejIdx.get(b));
   return { applied, rejected, adjusted, seq: await maxSeq(pool) };
 }
 
 async function applyRecord(c, ctx, ch) {
   const { me, batch } = ctx;
   const table = tableOf(ch.c);
+  if (ch.c === 'statuses') {
+    /* Danışma kilidi satır kilidinden ÖNCE (kilit sırası hep aynı: kilitlenme olmasın). */
+    const pre = (await c.query('SELECT project_id FROM statuses WHERE id=$1', [ch.id])).rows[0]?.project_id;
+    await lockColumns(c, ctx, [pre, ch.op === 'put' ? ch.data?.projectId : null]);
+  }
   const sel = table
     ? await c.query(`SELECT data FROM ${table} WHERE id=$1 FOR UPDATE`, [ch.id])
     : await c.query('SELECT data FROM misc_records WHERE collection=$1 AND id=$2 FOR UPDATE', [ch.c, ch.id]);
@@ -202,6 +217,12 @@ async function applyRecord(c, ctx, ch) {
     if (!cur) return false;
     if (ch.c === 'issues') await cascadeIssueDelete(c, ctx, ch.id);
     if (ch.c === 'workspaces') await checkWorkspaceDelete(c, ch.id);
+    if (ch.c === 'statuses') {
+      await canConfigure(c, me, cur.projectId);
+      await lockColumns(c, ctx, [cur.projectId]);
+      if ((await c.query('SELECT 1 FROM issues WHERE status_id=$1 LIMIT 1', [ch.id])).rowCount)
+        throw new HttpError(409, 'Önce içindeki işleri taşıyın');
+    }
     if (ch.c === 'customers') {
       /* Kişisel veri: cari çöp kutusuna gitmez, kalıcı silinir (geri alınamaz). Silinen cari yedeklerden de
          çıkarılır; yetkili kişi silmesi eski yedeklerde saklama süresi dolana kadar kalabilir. */
@@ -219,6 +240,8 @@ async function applyRecord(c, ctx, ch) {
 
   /* Silinmiş cari eski hâliyle (base) geri gelmez; yeni cari base'siz gelir. */
   if (ch.c === 'customers' && !cur && ch.base && typeof ch.base === 'object') throw new HttpError(409, 'Cari silinmiş');
+  /* Silinmiş kolon eski hâliyle (base) yeniden doğmaz. */
+  if (ch.c === 'statuses' && !cur && ch.base && typeof ch.base === 'object') throw new HttpError(409, 'Kolon silinmiş');
   let data = { id: ch.id, ...ch.data };
   data.id = ch.id;
   let adjusted = false;
@@ -238,18 +261,33 @@ async function applyRecord(c, ctx, ch) {
   if ((ch.c === 'projects' || ch.c === 'workspaces') && normalizeArchived(data)) adjusted = true;
   if (ch.c === 'customers' && normalizeCustomer(data)) adjusted = true;
   if (ch.c === 'workspaces' && enforceCreatedBy(data, cur, me)) adjusted = true;
-  validate(ch.c, data);
+  validate(ch.c, data, { live: true, cur });
   /* Atanan değiştiyse var olan, aktif bir kullanıcı olmalı. */
   if (ch.c === 'issues' && data.assignee != null && data.assignee !== '' && data.assignee !== cur?.assignee) {
     const ok = typeof data.assignee === 'string'
       && (await c.query('SELECT 1 FROM users WHERE id=$1 AND active', [data.assignee])).rowCount > 0;
     if (!ok) throw new HttpError(400, 'Atanan kullanıcı bulunamadı ya da pasif');
   }
+  /* Kolonu değişen iş var olan bir kolona gider. FOR SHARE: kolon aynı anda silinirse biri bekler
+     (silme, işi gördükten sonra "Önce içindeki işleri taşıyın" der). */
+  if (ch.c === 'issues' && data.statusId != null && data.statusId !== '' && data.statusId !== cur?.statusId) {
+    const ok = typeof data.statusId === 'string'
+      && (await c.query('SELECT 1 FROM statuses WHERE id=$1 FOR SHARE', [data.statusId])).rowCount > 0;
+    if (!ok) throw new HttpError(400, 'Kolon bulunamadı');
+  }
   if (ch.c === 'issues' && await ensureIssueKey(c, ctx, data, cur)) adjusted = true;
   if (cur && same(cur, data)) { if (adjusted) ctx.adjusted.push({ c: ch.c, id: ch.id }); return false; }
   if (ch.c === 'workspaces') await checkWorkspace(c, me, ch.id, data, cur);
   if (ch.c === 'projects') await checkProjectWorkspace(c, data, cur);
   if (ch.c === 'projects') await checkProjectCustomer(c, data, cur);
+  if (ch.c === 'projects' && cur) await checkProjectType(c, me, ch.id, data, cur);
+  if (ch.c === 'sprints') await checkSprintStart(c, data, cur);
+  if (ch.c === 'statuses') {
+    if (cur) await canConfigure(c, me, cur.projectId);
+    await canConfigure(c, me, data.projectId);
+    await lockColumns(c, ctx, [cur?.projectId, data.projectId]);
+    if (!cur || colName(cur.name) !== colName(data.name) || cur.projectId !== data.projectId) ctx.colNamed.add(ch.id);
+  }
   if (ch.c === 'customers') await checkCustomerTaxNo(c, ctx, ch.id, data, cur);
 
   const json = JSON.stringify(data);
@@ -272,6 +310,79 @@ async function applyRecord(c, ctx, ch) {
   if (ch.c === 'issues') { ctx.touchedIssues.add(ch.id); await notifyForIssue(c, me, data, cur); }
   if (ch.c === 'comments' && !cur) await notifyForComment(c, me, data);
   return true;
+}
+
+/* ---- proje türü ve kolonlar (#12) ----
+   Tür proje kaydında `data.type` ('board' | 'agile'); yoksa genel sprint ayarından hesaplanır
+   (settings.cfg.modules.sprint === true → agile), kayda yazılmaz. İstemcideki projType ile aynı. */
+const COL_LOCK = 727276;
+export const MAX_COLUMNS = 12;
+const COLS_FORBIDDEN = 'Kolonları yalnızca yönetici ya da proje üyesi değiştirebilir';
+const TYPE_FORBIDDEN = 'Proje türünü yalnızca yönetici ya da proje üyesi değiştirebilir';
+const colName = s => String(s ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr');
+
+const sprintOn = async c =>
+  (await c.query(`SELECT value FROM settings WHERE key='cfg'`)).rows[0]?.value?.modules?.sprint === true;
+export const projType = (p, on) => (PROJECT_TYPES.includes(p?.type) ? p.type : (on ? 'agile' : 'board'));
+
+/* Yönetici/süper geçer. Diğerleri: projenin üye listesi boş/yoksa herkes üye, değilse listede olmalı
+   (istemcideki isMember ile aynı). */
+async function canConfigure(c, me, pid, forbidden = COLS_FORBIDDEN) {
+  if (isAdminRole(me.role)) return;
+  const p = typeof pid === 'string' && pid
+    ? (await c.query('SELECT data FROM projects WHERE id=$1', [pid])).rows[0]?.data : undefined;
+  if (!p) throw new HttpError(400, 'Durumun projesi yok');
+  const m = p.members;
+  if (Array.isArray(m) && m.length > 0 && !m.includes(me.id)) throw new HttpError(403, forbidden);
+}
+
+/* Tür değişimi (hesaplanan türe göre): yetki + Pano'ya geçerken aktif sprint olmamalı. Proje satırı
+   FOR UPDATE ile kilitli; sprint başlatma projeyi FOR SHARE okur → ikisi sıralanır. */
+async function checkProjectType(c, me, id, data, cur) {
+  if ((cur.type ?? '') === (data.type ?? '')) return;
+  const on = await sprintOn(c);
+  const to = projType(data, on);
+  if (projType(cur, on) === to) return;
+  await canConfigure(c, me, id, TYPE_FORBIDDEN);
+  if (to === 'board' && (await c.query(`SELECT 1 FROM sprints WHERE project_id=$1 AND state='active' LIMIT 1`, [id])).rowCount)
+    throw new HttpError(409, 'Önce aktif sprinti tamamlayın');
+}
+
+/* Pano türündeki projede sprint başlatılamaz (aktif olan ya da projesi değişen aktif sprint). */
+async function checkSprintStart(c, data, cur) {
+  if (data.state !== 'active' || (cur?.state === 'active' && cur?.projectId === data.projectId)) return;
+  const p = (await c.query('SELECT data FROM projects WHERE id=$1 FOR SHARE', [data.projectId])).rows[0]?.data;
+  if (p && projType(p, await sprintOn(c)) === 'board') throw new HttpError(400, 'Pano türündeki projede sprint başlatılamaz');
+}
+
+const colStats = async (c, pid) => {
+  const rows = (await c.query(`SELECT id, data->>'name' AS name, data->>'cat' AS cat FROM statuses WHERE project_id=$1`, [pid])).rows;
+  return { total: rows.length, done: rows.filter(r => r.cat === 'done').length, rows };
+};
+
+/* Projenin ilk kolon değişikliğinden önce: danışma kilidi + o anki durum (gönderim sonu denetimi için). */
+async function lockColumns(c, ctx, pids) {
+  for (const pid of [...new Set(pids.filter(p => typeof p === 'string' && p))].sort()) {
+    if (ctx.cols.has(pid)) continue;
+    await c.query('SELECT pg_advisory_xact_lock($1, hashtext($2))', [COL_LOCK, pid]);
+    ctx.cols.set(pid, await colStats(c, pid));
+  }
+}
+
+/* Gönderim sonu bütünlük: ihlalde tüm gönderim 409 ile geri alınır. Aynı gönderimde silinen (ya da hiç
+   olmayan) proje atlanır. Eski projede Bitti kolonu hiç yoksa Bitti kuralı işlemez. */
+async function checkColumns(c, ctx) {
+  for (const [pid, before] of ctx.cols) {
+    if (!(await c.query('SELECT 1 FROM projects WHERE id=$1', [pid])).rowCount) continue;
+    const after = await colStats(c, pid);
+    if (before.done > 0 && after.done === 0) throw new HttpError(409, 'Projede en az bir Bitti kolonu kalmalı');
+    if (before.total > 0 && after.total === 0) throw new HttpError(409, 'Projenin son kolonu silinemez');
+    if (after.total > before.total && after.total > MAX_COLUMNS)
+      throw new HttpError(409, `Bir projede en fazla ${MAX_COLUMNS} kolon olabilir`);
+    const clash = after.rows.some(r => ctx.colNamed.has(r.id)
+      && after.rows.some(o => o.id !== r.id && colName(o.name) === colName(r.name)));
+    if (clash) throw new HttpError(409, 'Bu adla bir kolon zaten var');
+  }
 }
 
 /* ---- çalışma alanları (#22) ----
