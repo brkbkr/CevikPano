@@ -152,10 +152,6 @@ label.field{display:block;font-family:var(--mono);font-size:10px;text-transform:
 .qa-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
 .qadd{background:var(--surface);border:1px solid var(--accent);border-radius:var(--r);padding:8px;
   display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow)}
-.qadd .inp{padding:5px 7px;font-size:12px}
-.qa-row{display:flex;gap:5px;align-items:center}
-.qa-row .inp{flex:1;min-width:0}
-.qa-hint{flex:1;font-size:10px;color:var(--ink3);line-height:1.2}
 .cbox{width:15px;height:15px;border:1.5px solid var(--line2);border-radius:4px;flex-shrink:0;
   display:grid;place-items:center;font-size:10px;color:#fff;background:var(--surface)}
 .cbox:hover{border-color:var(--done);background:var(--done-bg)}
@@ -554,7 +550,6 @@ label.field{font-size:11px;text-transform:none;letter-spacing:0;color:var(--ink2
 .card .c-plan{border-radius:7px;background:var(--surface2);border-color:var(--line)}
 .card .bar{height:4px;border-radius:4px}
 .qa-btn{border-radius:7px;width:24px;height:24px}
-.qadd{border-radius:11px;box-shadow:var(--shadow)}
 .cbox{border-radius:5px}
 .donehead{border-radius:9px}
 
@@ -1007,6 +1002,89 @@ button.c-av::after{content:"";position:absolute;inset:-6px}
 .c-av.none{background:transparent;color:var(--meta);border:1.5px dashed var(--line2);box-shadow:none}
 .c-av.none svg.i{width:12px;height:12px}
 .c-av.open{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent)}
+/* alt iş kartı: üst işin anahtarı (tıklayınca üst iş açılır) */
+.c-par{display:inline-flex;align-items:center;gap:3px;max-width:100%;margin:0 0 6px;padding:1px 7px;border-radius:6px;
+  font-family:var(--mono);font-size:10.5px;color:var(--meta);background:var(--surface2);border:1px solid var(--line);cursor:pointer;line-height:1.6}
+.c-par:hover{color:var(--accent-d);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+.c-par:focus-visible{outline:none;box-shadow:var(--ring)}
+.row .c-par{margin:0}
+/* sprint pencereleri (id- dili) */
+.sp-m .id-mb{display:flex;flex-direction:column}
+.sp-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}
+.sp-stat{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface2);min-width:0}
+.sp-stat b{font-size:19px;font-weight:700;letter-spacing:-.01em;color:var(--ink)}
+.sp-stat small{font-size:11.5px;color:var(--ink2);overflow-wrap:anywhere}
+.sp-stat.ok b{color:var(--ok)} .sp-stat.warn b{color:var(--over)}
+.sp-cap{margin-top:14px;display:flex;flex-direction:column;gap:7px}
+.sp-capl{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--ink2)}
+.sp-capl b{color:var(--ink)} .sp-capl .bad,.sp-capl .bad b{color:var(--risk)}
+.sp-bar{height:8px;border-radius:6px;background:var(--c-track,var(--track));overflow:hidden}
+.sp-bar i{display:block;height:100%;border-radius:6px;background:var(--accent);transition:width .3s}
+.sp-bar.done i{background:var(--ok)} .sp-bar.warn i{background:var(--over)} .sp-bar.over i{background:var(--risk)}
+.sp-bar.hrs{height:5px} .sp-bar.hrs i{background:var(--accent)}
+.sp-goal{display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:11px;background:var(--accent-soft);color:var(--accent-d);font-size:13px;line-height:1.5}
+.sp-goal svg.i{width:15px;height:15px;flex-shrink:0;margin-top:2px}
+.sp-goal.ok{margin-top:14px;background:color-mix(in srgb,var(--ok) 12%,transparent);color:var(--ok)}
+.sp-note{display:flex;align-items:center;gap:6px;margin-top:12px}
+.sp-note svg.i{width:14px;height:14px;flex-shrink:0}
+.sp-dest{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
+.id-mic.sm{width:30px;height:30px;border-radius:9px} .id-mic.sm svg.i{width:16px;height:16px}
+/* Aktif sprint sekmesi */
+.as-head{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:14px 16px;margin-bottom:14px;border:1px solid var(--line);border-radius:14px;
+  background:radial-gradient(600px 160px at 0 0,color-mix(in srgb,var(--accent) 9%,transparent),transparent 70%),var(--surface);box-shadow:var(--shadow-sm)}
+.as-main{flex:1 1 280px;min-width:0}
+.as-t{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.as-t h2{margin:0;font-size:17px;font-weight:700;letter-spacing:-.01em;overflow-wrap:anywhere}
+.as-dot{width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 4px color-mix(in srgb,var(--ok) 20%,transparent)}
+.as-dates{font-family:var(--mono);font-size:12px;color:var(--meta)}
+.as-left{font-size:11.5px;font-weight:650;padding:2px 8px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);color:var(--ink2)}
+.as-left.soon{color:var(--over);border-color:color-mix(in srgb,var(--over) 40%,transparent)}
+.as-left.late{color:var(--risk);border-color:color-mix(in srgb,var(--risk) 40%,transparent)}
+.as-goal{display:flex;align-items:center;gap:6px;margin:6px 0 0;font-size:13px;color:var(--ink2);overflow-wrap:anywhere}
+.as-goal svg.i{width:14px;height:14px;flex-shrink:0;color:var(--accent)}
+.as-prog{flex:1 1 240px;max-width:380px;display:flex;flex-direction:column;gap:6px}
+.as-pl{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--ink2)} .as-pl b{color:var(--ink)}
+.as-empty{max-width:460px;margin:48px auto;text-align:center;padding:32px 24px;border:1px dashed var(--line2);border-radius:16px;background:var(--surface)}
+.as-eic{display:inline-grid;place-items:center;width:56px;height:56px;border-radius:16px;background:var(--accent-soft);color:var(--accent)}
+.as-eic svg.i{width:26px;height:26px}
+.as-empty h3{margin:14px 0 6px;font-size:17px}
+.as-empty p{margin:0 0 16px;color:var(--ink2);font-size:13.5px;line-height:1.55}
+.as-empty .btn{display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+@media (max-width:900px){
+  .sp-stats{grid-template-columns:1fr 1fr}
+  .as-head .btn{min-height:44px}
+  .as-prog{max-width:none}
+}
+.b-subs{display:inline-flex;align-items:center;gap:7px}
+.b-subs svg.i{width:14px;height:14px}
+.b-sw{position:relative;width:26px;height:14px;border-radius:8px;background:var(--line2);transition:background .15s;flex-shrink:0}
+.b-sw::after{content:"";position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:var(--surface);transition:transform .15s}
+.b-subs[aria-checked="true"] .b-sw{background:var(--accent)}
+.b-subs[aria-checked="true"] .b-sw::after{transform:translateX(12px)}
+
+/* hızlı kart ekleme (kolon başı): tek satır başlık + çipler */
+.qadd{border-radius:11px;padding:10px;gap:8px;border:1px solid color-mix(in srgb,var(--accent) 55%,var(--line));
+  box-shadow:var(--shadow-sm),0 0 0 3px color-mix(in srgb,var(--accent) 12%,transparent)}
+.qadd .qa-in{height:36px;padding:0 10px;font-size:13.2px;font-weight:550;border-radius:8px}
+.qa-chips{display:flex;align-items:center;gap:2px;flex-wrap:nowrap;min-width:0}
+.qa-chip{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-width:32px;height:32px;padding:0 5px;flex-shrink:0;
+  border-radius:8px;border:1px solid transparent;background:none;color:var(--ink2);font-size:12px;font-weight:550;font-family:inherit;cursor:pointer}
+.qa-chip:hover{background:var(--surface2);border-color:var(--line)}
+.qa-chip:focus-visible{outline:none;box-shadow:var(--ring)}
+.qa-chip.open{background:var(--surface2);border-color:var(--line2)}
+.qa-chip .ti{width:18px;height:18px;border-radius:5px;font-size:10px}
+.qa-chip .c-av{width:22px;height:22px;font-size:9px}
+.qa-chip .prio{pointer-events:none}
+.qa-du svg.i{width:13px;height:13px}
+.qa-du.on{color:var(--accent-d)}
+.qa-dn{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.qa-more{color:var(--accent-d);margin-left:auto;padding:0 6px;white-space:nowrap}
+@media (max-width:900px),(pointer:coarse){
+  .qadd .qa-in{height:44px;font-size:16px}
+  .qa-chips{flex-wrap:wrap}
+  .qa-chip{min-width:44px;height:44px}
+  .c-par{min-height:32px;padding:0 9px}
+}
 
 /* tamamla: masaüstünde üzerine gelince, dokunmatik/dar ekranda her zaman */
 .c-tick{position:absolute;top:9px;right:9px;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--line2);
@@ -3641,6 +3719,7 @@ const SVG = {
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
   checkc: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
+  flag: '<path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/>',
   subs: '<path d="M5 4v12a2 2 0 0 0 2 2h3"/><path d="M5 9h5"/><rect x="12" y="6" width="8" height="5" rx="1.5"/><rect x="12" y="15" width="8" height="5" rx="1.5"/>',
   userplus: '<circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 11.5-4.2"/><path d="M19 14v6M16 17h6"/>',
   userx: '<circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 11.5-4.2"/><path d="m17 15 4 4M21 15l-4 4"/>',
@@ -3829,20 +3908,21 @@ function dropIndexRank(container, y, sel) {
 }
 
 /* ============================ PANO ============================ */
-function boardIssues() {
-  const scope = AGILE() ? (DB.board.scope || 'sprint') : 'all';
+/* Alt işler kendi durum kolonunda kart olarak görünür; "Alt işler" anahtarı kişisel tercihtir (DB.board.subs, varsayılan göster). */
+function boardIssues(only) {
+  const scope = only || (AGILE() ? (DB.board.scope || 'sprint') : 'all');
   const act = activeSprint();
-  return issuesOf().filter(i => i.type !== 'epic' && !i.parentId && matches(i) &&
+  return issuesOf().filter(i => i.type !== 'epic' && (!i.parentId || DB.board.subs !== false) && matches(i) &&
     (scope === 'all' || (act && i.sprintId === act.id)))
     .sort((a, b) => a.rank - b.rank);
 }
 
-function toolbarBoard() {
+function toolbarBoard(sprintView) {
   const act = activeSprint();
   if (!stats().length) return '';                 // kolonsuz proje: iş açılacak kolon yok (#12)
   return `
     <div class="search"><input class="inp" id="q" placeholder="Kart ara…" value="${esc(DB.board.q)}"></div>
-    ${AGILE() ? `<div class="seg" id="scope">
+    ${AGILE() && !sprintView ? `<div class="seg" id="scope">
       <button data-s="sprint" class="${DB.board.scope !== 'all' ? 'on' : ''}">${act ? esc(act.name) : 'Aktif sprint'}</button>
       <button data-s="all" class="${DB.board.scope === 'all' ? 'on' : ''}">Tüm işler</button>
     </div>` : ''}
@@ -3853,6 +3933,8 @@ function toolbarBoard() {
     <select class="inp" id="fSwim" style="width:auto">
       ${[['none', 'Kulvar yok'], ['assignee', 'Kişiye göre'], ...(MOD('epic') ? [['epic', 'Epiğe göre']] : []), ['priority', 'Önceliğe göre']]
         .map(([v, l]) => `<option value="${v}" ${DB.board.swimlane === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+    <button type="button" class="btn b-subs" id="fSubs" role="switch" aria-checked="${DB.board.subs !== false}"
+      title="${DB.board.subs !== false ? 'Alt işleri gizle' : 'Alt işleri göster'}">${ic('subs')}Alt işler<span class="b-sw" aria-hidden="true"></span></button>
     <div class="spacer"></div>
     ${canEditCols(P()) ? `<button class="btn" id="colsEdit">${ic('cols')}Kolonları düzenle</button>` : ''}
     ${canEdit() ? '<button class="btn pri" id="newIssue">+ İş oluştur</button>' : ''}`;
@@ -3887,6 +3969,9 @@ function cardAv(i, edit) {
     ? `<button type="button" class="c-av ${u ? '' : 'none'}"${st} data-qas="${esc(i.id)}" aria-haspopup="menu" title="${lab}" aria-label="${u ? lab : 'Atanmamış (kişi ata)'} (değiştir)">${inner}</button>`
     : `<span class="c-av ${u ? '' : 'none'}"${st} role="img" title="${lab}" aria-label="${lab}">${inner}</span>`;
 }
+/* Alt iş: üst işin anahtarı küçük çip ("↳ PANO-12"); tıklayınca üst iş açılır (data-open). */
+const parChip = i => { const p = i.parentId && issue(i.parentId); if (!p) return '';
+  return `<button type="button" class="c-par" data-open="${esc(p.id)}" title="Üst iş: ${esc(p.key)} ${esc(p.summary)}" aria-label="Üst işi aç: ${esc(p.key)}">↳ ${esc(p.key)}</button>`; };
 function card(i) {
   const ep = MOD('epic') && i.epicId && issue(i.epicId);
   const done = stat(i.statusId).cat === 'done';
@@ -3900,6 +3985,7 @@ function card(i) {
       ? `<button type="button" class="c-tick on" data-reopen="${esc(i.id)}" title="Yeniden aç" aria-label="Yeniden aç">${ic('check')}</button>`
       : `<button type="button" class="c-tick" data-complete="${esc(i.id)}" title="Tamamla" aria-label="Tamamla">${ic('check')}</button>`) : ''}
     ${ep ? `<span class="epic-tag" style="background:${safeColor(ep.color || '#6B4FBB')}">${esc(ep.summary)}</span>` : ''}
+    ${parChip(i)}
     <p class="sum">${esc(i.summary)}</p>
     ${tags.length ? `<div class="c-tags">${tags.slice(0, 2).map(t => `<span class="c-tag"><i style="background:${tagColor(t)}"></i>${esc(t)}</span>`).join('')}${
       tags.length > 2 ? `<span class="c-tag" title="${esc(tags.slice(2).join(', '))}">+${tags.length - 2}</span>` : ''}</div>` : ''}
@@ -4063,10 +4149,11 @@ function columns(list) {
   }).join('')}</div>`;
 }
 
-function renderBoard() {
+/* only === 'sprint': Aktif sprint sekmesi (kapsam seçimi yok, yalnız aktif sprintin işleri). */
+function renderBoard(only) {
   if (!stats().length) return noColsView();
-  const list = boardIssues();
-  if (AGILE() && !activeSprint() && DB.board.scope !== 'all')
+  const list = boardIssues(only);
+  if (AGILE() && !activeSprint() && (only || DB.board.scope) !== 'all')
     return `<div class="panel"><h3>Aktif sprint yok</h3>
       <div class="sub">Pano, aktif sprintteki işleri gösterir. Backlog'a gidip bir sprint başlatın
       ya da “Tüm işler” kapsamına geçin.</div>
@@ -4091,7 +4178,7 @@ function toolbarBacklog() {
     <select class="inp" id="fUser" style="width:auto"><option value="">Herkes</option>
       ${DB.users.map(u => `<option value="${u.id}" ${DB.board.filterUser === u.id ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select>
     <div class="spacer"></div>
-    ${canEdit() && AGILE() ? '<button class="btn" id="newSprint">+ Sprint oluştur</button>' : ''}
+    ${canManageProject(P()) && AGILE() ? '<button class="btn" id="newSprint">+ Sprint oluştur</button>' : ''}
     ${canEdit() ? '<button class="btn pri" id="newIssue">+ İş oluştur</button>' : ''}`;
 }
 
@@ -4102,7 +4189,7 @@ function blRow(i) {
       ? `<button class="cbox on" data-reopen="${esc(i.id)}" title="Yeniden aç">✓</button>`
       : `<button class="cbox" data-complete="${esc(i.id)}" title="Tamamla"></button>`) : ''}
     ${tIcon(i.type)}<span class="k" style="color:var(--ink3);width:64px">${esc(i.key)}</span>
-    <span class="sum">${esc(i.summary)}</span>
+    ${parChip(i)}<span class="sum">${esc(i.summary)}</span>
     ${ep ? `<span class="epic-tag" style="background:${safeColor(ep.color || '#6B4FBB')};margin:0">${esc(ep.summary)}</span>` : ''}
     ${pIcon(i.priority)}
     ${i.estimate ? `<span class="k" style="color:var(--ink3)">${fmtDur(i.estimate)}</span>` : ''}
@@ -4153,7 +4240,7 @@ function renderBacklog() {
         <span class="pill todo">${c.todo}</span><span class="pill prog">${c.inprogress}</span><span class="pill done">${c.done}</span>
         ${s.goal ? `<span class="goal">“${esc(s.goal)}”</span>` : ''}
         <span class="spacer"></span>
-        ${act ? `<button class="btn sm" data-spcomplete="${s.id}">Sprint'i tamamla</button>`
+        ${!canManageProject(P()) ? '' : act ? `<button class="btn sm" data-spcomplete="${s.id}">Sprint'i tamamla</button>`
                : `<button class="btn sm" data-start="${s.id}" ${items.length ? '' : 'disabled'}>Sprint'i başlat</button>`}
         <button class="btn sm" data-editsprint="${s.id}">Düzenle</button>
       </div>
@@ -4206,40 +4293,136 @@ function wireBacklogAdd() {
   $('#bl_s').focus();
 }
 
-/* ---- sprint yaşam döngüsü (Jira ile aynı kurallar) ---- */
+/* ---- sprint yaşam döngüsü (Jira ile aynı kurallar) ----
+   Başlatma/tamamlama yalnız proje yöneticisinde (canManageProject); asıl kural sunucuda (store.js checkSprintState).
+   Sprint süresi projede (projects.data.sprintWeeks, 1–8 hafta, varsayılan 1). */
+const SPRINT_FORBIDDEN = 'Sprinti yalnızca proje yöneticisi başlatıp bitirebilir';
+const sprintWeeks = p => { const w = p?.sprintWeeks; return Number.isInteger(w) && w >= 1 && w <= 8 ? w : 1; };
+const sprintEnd = (start, p) => iso(addD(start + 'T12:00', sprintWeeks(p) * 7 - 1));
+/* Yeni sprintin önerilen tarihleri: önceki sprintin bitişinin ertesi günü (yoksa bu pazartesi) + süre. */
+function sprintRange(p) {
+  const last = DB.sprints.filter(s => s.projectId === p?.id && s.end).map(s => s.end).sort().pop();
+  const now = new Date(), mon = addD(now, -((now.getDay() + 6) % 7));
+  const start = last ? iso(addD(last + 'T12:00', 1)) : iso(mon);
+  return { start, end: sprintEnd(start, p) };
+}
+/* Sprint özetleri (pencereler ve Aktif sprint sekmesi): iş sayısı, tamamlanan, tahmin saatleri. */
+function sprintStats(sid) {
+  const items = issuesOf().filter(i => i.sprintId === sid && i.type !== 'epic');
+  const done = items.filter(isDone);
+  const est = items.reduce((a, i) => a + (i.estimate || 0), 0), estDone = done.reduce((a, i) => a + (i.estimate || 0), 0);
+  return { items, n: items.length, done: done.length, open: items.length - done.length, est, estDone, noEst: items.filter(i => !i.estimate).length };
+}
+const spDays = (a, b) => (a && b ? Math.round((hmDay(b) - hmDay(a)) / 864e5) + 1 : 0);
+const spStat = (v, l, cls = '') => `<div class="sp-stat ${cls}"><b class="num">${v}</b><small>${l}</small></div>`;
+const spBar = (pct, cls = '', label = '') => `<div class="sp-bar ${cls}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.min(100, pct))}"${label ? ` aria-label="${esc(label)}"` : ''}><i style="width:${Math.max(0, Math.min(100, pct))}%"></i></div>`;
+const spHead = (icon, id, title, sub) => `<div class="id-mh"><span class="id-mic">${ic(icon)}</span>
+    <div class="tx"><b id="${id}">${title}</b><div class="sub">${sub}</div></div>
+    <button type="button" class="id-ib" data-close aria-label="Kapat">${ic('x')}</button></div>`;
+const spDlg = (tid) => { const m = $('#scrim .modal'); m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-labelledby', tid); return m; };
+
 function startSprint(id) {
-  const s = sprint(id);
+  const s = sprint(id), pr = P();
+  if (!s) return;
+  if (!canManageProject(pr)) return toast(SPRINT_FORBIDDEN);
   if (activeSprint()) return toast('Zaten aktif bir sprint var. Önce onu tamamlayın.');
-  s.state = 'active';
-  if (!s.start) { s.start = TODAY; s.end = iso(addD(new Date(), 13)); }
-  save(); render(); toast(s.name + ' başlatıldı');
+  const st = sprintStats(id);
+  if (!st.n) return toast('Sprintte iş yok. Önce backlog\'dan iş taşıyın.');
+  const start = s.start || TODAY, end = s.start ? (s.end || sprintEnd(start, pr)) : sprintEnd(TODAY, pr);
+  const days = spDays(start, end), wk = Math.max(1, days) / 7;
+  const cap = projUsers().reduce((a, u) => a + capOf(u) * wk, 0);
+  const load = cap ? st.est / cap * 100 : 0;
+  openModal(`${spHead('sprint', 'spStartT', 'Sprinti başlat', `<span class="k">${esc(pr.key)}</span> ${esc(s.name)}`)}
+    <div class="id-mb">
+      ${s.goal ? `<div class="sp-goal">${ic('flag')}<span>${esc(s.goal)}</span></div>` : ''}
+      <div class="sp-stats">
+        ${spStat(st.n, 'iş')}${spStat(fmtDur(st.est), 'tahmin')}${spStat(days, 'gün · ' + esc(fmtD(start)) + ' → ' + esc(fmtD(end)))}
+      </div>
+      ${cap ? `<div class="sp-cap">
+        <div class="sp-capl"><span>Ekip kapasitesi <b class="num">${fmtDur(cap)}</b></span><span class="${load > 100 ? 'bad' : ''}">${load > 100 ? 'Kapasite aşılıyor · doluluk' : 'Doluluk'} <b class="num">%${Math.round(load)}</b></span></div>
+        ${spBar(load, load > 100 ? 'over' : load > 85 ? 'warn' : '', 'Tahmin / kapasite')}</div>` : ''}
+      ${st.noEst ? `<div class="id-hint sp-note">${ic('alert')}${st.noEst} işin tahmini yok; toplam eksik görünebilir.</div>` : ''}
+    </div>
+    <div class="m-f"><span class="spacer"></span><button type="button" class="btn" data-close>Vazgeç</button>
+      <button type="button" class="btn pri" id="doStart">${ic('sprint')}Sprinti başlat</button></div>`, 'id-m narrow sp-m id-trap');
+  spDlg('spStartT');
+  $('#doStart').onclick = () => {
+    if (activeSprint()) { closeModal(); return toast('Zaten aktif bir sprint var. Önce onu tamamlayın.'); }
+    s.state = 'active'; s.start = start; s.end = end;
+    closeModal(); save(); render(); toast(s.name + ' başlatıldı');
+  };
+  setTimeout(() => $('#doStart')?.focus(), 40);
 }
 function completeSprint(id) {
-  const s = sprint(id);
-  const items = issuesOf().filter(i => i.sprintId === id);
-  const open = items.filter(i => stat(i.statusId).cat !== 'done');
-  const next = sprintsOf().find(x => x.state === 'future');
-  openModal(`
-    <div class="m-h"><b>Sprint'i tamamla</b><button class="x" data-close>×</button></div>
-    <div style="padding:18px">
-      <p style="margin:0 0 12px">
-        <b>${esc(s.name)}</b> kapatılıyor.<br>
-        <span class="num">${items.length - open.length}</span> iş tamamlandı,
-        <span class="num">${open.length}</span> iş açık kaldı.</p>
-      <label class="field">Açık işler nereye taşınsın?</label>
-      <select class="inp" id="moveTo">
-        ${next ? `<option value="${next.id}">${esc(next.name)}</option>` : ''}
-        <option value="">Backlog</option>
-      </select>
+  const s = sprint(id), pr = P();
+  if (!s) return;
+  if (!canManageProject(pr)) return toast(SPRINT_FORBIDDEN);
+  const st = sprintStats(id);
+  const open = st.items.filter(i => !isDone(i));
+  const nexts = sprintsOf().filter(x => x.state === 'future');
+  const pct = st.n ? st.done / st.n * 100 : 0;
+  const dests = [...nexts.map(x => [x.id, x.name, x.start ? `${fmtD(x.start)} → ${fmtD(x.end)}` : 'Sonraki sprint']), ['', 'Backlog', 'Planlanmamış işler']];
+  openModal(`${spHead('checkc', 'spDoneT', 'Sprinti tamamla', `<span class="k">${esc(pr.key)}</span> ${esc(s.name)}`)}
+    <div class="id-mb">
+      <div class="sp-stats">
+        ${spStat(st.done, 'tamamlandı', 'ok')}${spStat(st.open, 'tamamlanmadı', st.open ? 'warn' : '')}${spStat(fmtDur(st.estDone), 'tamamlanan tahmin')}
+      </div>
+      <div class="sp-cap">
+        <div class="sp-capl"><span>Başarı</span><span><b class="num">%${Math.round(pct)}</b> · ${st.done}/${st.n} iş</span></div>
+        ${spBar(pct, 'done', 'Tamamlanan iş oranı')}</div>
+      ${open.length ? `<div class="id-fl">Tamamlanmayan ${open.length} iş nereye taşınsın?</div>
+        <div class="id-types sp-dest" role="radiogroup" aria-label="Tamamlanmayan işlerin hedefi">${dests.map(([v, n, sub], k) =>
+          `<button type="button" class="id-tcard" role="radio" data-dest="${esc(v)}" aria-checked="${k === 0}">
+            <span class="id-mic sm">${ic(v ? 'sprint' : 'backlog')}</span><span class="tx"><b>${esc(n)}</b><small>${esc(sub)}</small></span></button>`).join('')}</div>`
+        : `<div class="sp-goal ok">${ic('checkc')}<span>Tüm işler tamamlandı. Tebrikler!</span></div>`}
     </div>
-    <div class="m-f"><button class="btn" data-close>Vazgeç</button>
-      <button class="btn pri" id="doComplete">Tamamla</button></div>`, 'narrow');
+    <div class="m-f"><span class="spacer"></span><button type="button" class="btn" data-close>Vazgeç</button>
+      <button type="button" class="btn pri" id="doComplete">${ic('check')}Sprinti tamamla</button></div>`, 'id-m narrow sp-m id-trap');
+  const m = spDlg('spDoneT');
+  const g = m.querySelector('.sp-dest');
+  if (g) {
+    g.onclick = e => { const b = e.target.closest('[data-dest]'); if (!b) return; g.querySelectorAll('[data-dest]').forEach(x => x.setAttribute('aria-checked', String(x === b))); };
+    g.onkeydown = e => { if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+      const r = [...g.querySelectorAll('[role=radio]')], k = r.indexOf(e.target); if (k < 0) return;
+      e.preventDefault(); const n = r[(k + (e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 1) + r.length) % r.length]; n.focus(); n.click(); };
+  }
   $('#doComplete').onclick = () => {
-    const to = $('#moveTo').value || null;
+    const to = m.querySelector('.sp-dest [aria-checked="true"]')?.dataset.dest || null;
     open.forEach(i => { i.sprintId = to; logHist(i, 'Sprint', s.name, to ? sprint(to).name : 'Backlog'); });
     s.state = 'closed'; s.end = TODAY;
-    closeModal(); save(); render(); toast('Sprint tamamlandı');
+    closeModal(); save(); render(); toast(`${s.name} tamamlandı · %${Math.round(pct)} başarı`);
   };
+  setTimeout(() => $('#doComplete')?.focus(), 40);
+}
+
+/* ============================ AKTİF SPRİNT ============================
+   Agile projede aktif sprintin panosu: başlık şeridi (ad, hedef, tarih, kalan gün, ilerleme) + yalnız sprint işleriyle pano. */
+function renderSprint() {
+  if (!stats().length) return noColsView();
+  const s = activeSprint(), man = canManageProject(P());
+  if (!s) return `<div class="as-empty">
+      <span class="as-eic">${ic('sprint')}</span>
+      <h3>Aktif sprint yok</h3>
+      <p>Bir sprint başladığında işleri burada kolonlarıyla, ilerlemesi ve kalan günüyle görürsünüz.</p>
+      ${man ? `<a class="btn pri" id="asPlan" href="#backlog">${ic('backlog')}Sprint planla</a>` : '<p class="sub">Sprinti proje yöneticisi başlatır.</p>'}</div>`;
+  const st = sprintStats(s.id);
+  const left = s.end ? Math.round((hmDay(s.end) - hmDay(TODAY)) / 864e5) : null;
+  const pct = st.n ? st.done / st.n * 100 : 0, hp = st.est ? st.estDone / st.est * 100 : 0;
+  return `<section class="as-head" aria-label="Aktif sprint">
+      <div class="as-main">
+        <div class="as-t"><span class="as-dot" aria-hidden="true"></span><h2>${esc(s.name)}</h2>
+          ${s.start ? `<span class="as-dates">${esc(fmtD(s.start))} → ${esc(fmtD(s.end))}</span>` : ''}
+          ${left != null ? `<span class="as-left ${left < 0 ? 'late' : left <= 1 ? 'soon' : ''}">${left < 0 ? `${-left} gün gecikti` : left === 0 ? 'Son gün' : `${left} gün kaldı`}</span>` : ''}</div>
+        ${s.goal ? `<p class="as-goal">${ic('flag')}${esc(s.goal)}</p>` : ''}
+      </div>
+      <div class="as-prog">
+        <div class="as-pl"><span>İşler <b class="num">${st.done}/${st.n}</b></span><span>Saat <b class="num">${fmtDur(st.estDone)} / ${fmtDur(st.est)}</b></span></div>
+        ${spBar(pct, 'done', 'Tamamlanan iş oranı')}
+        ${st.est ? spBar(hp, 'hrs', 'Tamamlanan tahmin oranı') : ''}
+      </div>
+      ${man ? `<button type="button" class="btn" data-spcomplete="${esc(s.id)}">${ic('checkc')}Sprinti tamamla</button>` : ''}
+    </section>
+    ${renderBoard('sprint')}`;
 }
 
 /* ============================================================
@@ -5362,10 +5545,10 @@ function newIssueForm(preset = {}, keep) {
   if (!canEdit()) return;
   const pr = P(), types = ISSUE_TYPES();
   const t0 = keep?.type && types.includes(keep.type) ? keep.type : preset.type && types.includes(preset.type) ? preset.type : (types.find(t => t !== 'epic') || types[0]);
-  const p0 = keep?.priority || 3;
+  const p0 = keep?.priority || (preset.priority ? lvl(preset.priority) : 3);
   const sp = keep ? keep.sprintId : (preset.sprintId ?? (activeSprint()?.id || ''));
   const ep = keep?.epicId || '';
-  NI_AS = keep ? keep.assignee : null;
+  NI_AS = keep ? keep.assignee : (preset.assignee || null);   // hızlı eklemeden "Daha fazla…" değerleri
   const rm = reqMode(pr);
   let NI_REQ = keep?.requester || null;
   const fs = fieldsFor();
@@ -5380,7 +5563,7 @@ function newIssueForm(preset = {}, keep) {
         ${tIcon(t)}<span class="tx"><b>${esc(TYPE[t][2])}</b>${TYPE_HINT[t] ? `<small>${TYPE_HINT[t]}</small>` : ''}</span></button>`).join('')}</div>
       <input type="hidden" id="f_type" value="${esc(t0)}">
       <div class="id-fl"><label for="f_sum">Özet <span class="req">*</span></label><span class="num id-cc" id="f_sum_c">0 / 200</span></div>
-      <input class="inp" id="f_sum" maxlength="200" placeholder="Ne yapılacak?" autocomplete="off" aria-describedby="f_sum_e">
+      <input class="inp" id="f_sum" maxlength="200" placeholder="Ne yapılacak?" autocomplete="off" aria-describedby="f_sum_e" value="${esc(keep ? '' : preset.summary || '')}">
       <div class="id-err" id="f_sum_e" role="alert"></div>
       <div class="id-fl"><label for="f_desc">Açıklama <span class="opt">(isteğe bağlı)</span></label></div>
       <textarea class="inp" id="f_desc" rows="3" placeholder="Ayrıntı, kabul ölçütü ya da bağlantı ekleyin…"></textarea>
@@ -5395,7 +5578,7 @@ function newIssueForm(preset = {}, keep) {
         ${AGILE() ? `<div><div class="id-fl"><label for="f_sp">Sprint</label></div><select class="inp" id="f_sp"><option value="">Backlog</option>
           ${sprintsOf().filter(s => s.state !== 'closed').map(s => `<option value="${esc(s.id)}" ${sp === s.id ? 'selected' : ''}>${esc(s.name)}${s.state === 'active' ? ' · aktif' : ''}</option>`).join('')}</select></div>` : ''}
         <div><div class="id-fl">Başlangıç</div>${dateField({ id: 'f_start', label: 'Başlangıç', clear: false })}</div>
-        <div><div class="id-fl">Bitiş</div>${dateField({ id: 'f_due', label: 'Bitiş', clear: false })}</div>
+        <div><div class="id-fl">Bitiş</div>${dateField({ id: 'f_due', label: 'Bitiş', clear: false, value: keep ? '' : preset.due || '' })}</div>
         <div><div class="id-fl"><label for="f_est">Tahmin <span class="opt">(isteğe bağlı)</span></label></div><input class="inp" id="f_est" placeholder="4h" autocomplete="off">
           <div class="id-hint">örn. 30m · 2h · 1d 4h</div></div>
         ${MOD('epic') ? `<div><div class="id-fl"><label for="f_ep">Epik <span class="opt">(isteğe bağlı)</span></label></div><select class="inp" id="f_ep"><option value="">Yok</option>
@@ -5404,7 +5587,7 @@ function newIssueForm(preset = {}, keep) {
       </div>
       <button type="button" class="id-morebtn" id="f_moreBtn" aria-expanded="false" aria-controls="f_more">${ic('chevr')}<b>Daha fazla alan</b><span>${esc(moreN)}</span></button>
       <div id="f_more" hidden><div class="id-g2">
-        <div><div class="id-fl"><label for="f_st">Durum</label></div><select class="inp" id="f_st">${stats().map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('')}</select></div>
+        <div><div class="id-fl"><label for="f_st">Durum</label></div><select class="inp" id="f_st">${stats().map(s => `<option value="${esc(s.id)}" ${preset.statusId === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div>
         <div><div class="id-fl"><label for="f_bill">Faturalama</label></div><select class="inp" id="f_bill">${BILLABLE.map(x => `<option>${x}</option>`).join('')}</select></div>
         <div><div class="id-fl"><label for="f_btype">Fatura türü</label></div><select class="inp" id="f_btype">${BILLTYPE.map(x => `<option>${x}</option>`).join('')}</select></div>
         ${fs.map(f => `<div><div class="id-fl">${esc(f.name)}</div>${cfInput(f, '')}</div>`).join('')}
@@ -5428,7 +5611,7 @@ function newIssueForm(preset = {}, keep) {
   if ($('#f_reqBtn')) $('#f_reqBtn').onclick = e => { e.stopPropagation(); reqPick($('#f_reqBtn'), '#f_reqBtn', NI_REQ, pr, setReq); };
   const sum = $('#f_sum');
   const cnt = () => { $('#f_sum_c').textContent = `${sum.value.length} / 200`; if (sum.value.trim()) { $('#f_sum_e').innerHTML = ''; sum.removeAttribute('aria-invalid'); } };
-  sum.oninput = cnt;
+  sum.oninput = cnt; cnt();
   setTimeout(() => sum.focus(), 40);
   m.querySelector('.id-types').onclick = e => { const b = e.target.closest('[data-type]'); if (!b) return;
     m.querySelectorAll('[data-type]').forEach(x => x.setAttribute('aria-checked', String(x === b))); $('#f_type').value = b.dataset.type; };
@@ -5484,29 +5667,56 @@ function newIssueForm(preset = {}, keep) {
   $('#doCreateMore').onclick = () => create(true);
 }
 
+/* Sprint oluştur / düzenle (id- pencere dili). Yeni sprint: ad "Sprint N", tarihler proje sprint süresinden (sprintRange). */
 function sprintForm(id) {
-  if (!P()) return toast('Önce bir proje seçin');
+  const pr = P();
+  if (!pr) return toast('Önce bir proje seçin');
   const s = id ? sprint(id) : null;
-  openModal(`
-    <div class="m-h"><b>${s ? 'Sprint düzenle' : 'Sprint oluştur'}</b><button class="x" data-close>×</button></div>
-    <div style="padding:16px 18px">
-      <div class="form-row"><label class="field">Ad</label><input class="inp" id="s_name" value="${s ? esc(s.name) : esc(P().key + ' Sprint ' + (sprintsOf().length + 1))}"></div>
-      <div class="form-row"><label class="field">Sprint hedefi</label><input class="inp" id="s_goal" value="${s ? esc(s.goal) : ''}" placeholder="Bu sprintte neyi kanıtlıyoruz?"></div>
-      <div class="form-2">
-        <div class="form-row"><label class="field">Başlangıç</label><input class="inp" type="date" id="s_start" value="${s?.start || ''}"></div>
-        <div class="form-row"><label class="field">Bitiş</label><input class="inp" type="date" id="s_end" value="${s?.end || ''}"></div>
+  if (!s && !canManageProject(pr)) return toast('Sprinti yalnızca proje yöneticisi oluşturabilir');
+  const def = s ? { start: s.start || '', end: s.end || '' } : sprintRange(pr);
+  const bl = issuesOf().filter(i => !i.sprintId && i.type !== 'epic' && !isDone(i));
+  const scope = s ? sprintStats(s.id) : { n: 0, est: 0 };
+  const nm = s ? s.name : `Sprint ${sprintsOf().length + 1}`;
+  openModal(`${spHead('sprint', 'spFormT', s ? 'Sprinti düzenle' : 'Sprint oluştur', `<span class="k">${esc(pr.key)}</span> ${esc(pr.name)} · ${sprintWeeks(pr)} haftalık sprint`)}
+    <div class="id-mb">
+      <div class="id-fl"><label for="s_name">Ad <span class="req">*</span></label></div>
+      <input class="inp" id="s_name" maxlength="200" value="${esc(nm)}" autocomplete="off" aria-describedby="s_name_e">
+      <div class="id-err" id="s_name_e" role="alert"></div>
+      <div class="id-fl"><label for="s_goal">Sprint hedefi <span class="opt">(isteğe bağlı)</span></label></div>
+      <input class="inp" id="s_goal" maxlength="300" value="${esc(s?.goal || '')}" placeholder="Bu sprintte neyi kanıtlıyoruz?" autocomplete="off">
+      <div class="id-g2">
+        <div><div class="id-fl">Başlangıç</div>${dateField({ id: 's_start', label: 'Başlangıç', clear: false, value: def.start })}</div>
+        <div><div class="id-fl">Bitiş</div>${dateField({ id: 's_end', label: 'Bitiş', clear: false, quick: false, value: def.end })}</div>
       </div>
+      <div class="sp-stats" id="s_sum">
+        ${spStat(`<span id="s_days">${spDays(def.start, def.end)}</span>`, 'gün')}
+        ${s ? spStat(scope.n, 'kapsamdaki iş') + spStat(fmtDur(scope.est), 'tahmini toplam')
+            : spStat(bl.length, 'backlog\'da açık iş') + spStat(fmtDur(bl.reduce((a, i) => a + (i.estimate || 0), 0)), 'backlog tahmini')}
+      </div>
+      ${s ? '' : `<div class="id-hint sp-note">${ic('backlog')}Oluşturduktan sonra backlog'dan işleri sprinte sürükleyin.</div>`}
     </div>
-    <div class="m-f">${s ? `<button class="btn danger" data-delsprint="${s.id}">Sil</button>` : ''}
-      <span class="spacer"></span><button class="btn" data-close>Vazgeç</button>
-      <button class="btn pri" id="doSprint">Kaydet</button></div>`, 'narrow');
+    <div class="m-f">${s ? `<button type="button" class="btn danger" data-delsprint="${esc(s.id)}">Sil</button>` : ''}
+      <span class="spacer"></span><button type="button" class="btn" data-close>Vazgeç</button>
+      <button type="button" class="btn pri" id="doSprint">${ic(s ? 'check' : 'plus')}${s ? 'Kaydet' : 'Sprint oluştur'}</button></div>`, 'id-m narrow sp-m id-trap');
+  spDlg('spFormT');
+  const days = () => { $('#s_days').textContent = spDays($('#s_start').value, $('#s_end').value); };
+  const chk = () => { const msg = dateOrderErr($('#s_start').value, $('#s_end').value); dfErr('s_end', msg); return !msg; };
+  /* Başlangıç değişince bitiş sprint süresine göre yeniden hesaplanır (yeni sprintte; düzenlemede bitiş boşsa). */
+  $('#s_start').addEventListener('change', e => {
+    if (e.target.value && (!s || !$('#s_end').value)) { const en = $('#s_end'); en.value = sprintEnd(e.target.value, pr); en.dispatchEvent(new Event('change', { bubbles: true })); }
+    days(); chk(); });
+  $('#s_end').addEventListener('change', () => { days(); chk(); });
+  $('#s_name').oninput = () => { if ($('#s_name').value.trim()) $('#s_name_e').innerHTML = ''; };
   $('#doSprint').onclick = () => {
     const o = { name: $('#s_name').value.trim(), goal: $('#s_goal').value.trim(), start: $('#s_start').value, end: $('#s_end').value };
-    if (!o.name) return toast('Ad gerekli');
+    if (!o.name) { $('#s_name_e').innerHTML = ic('alert') + 'Ad gerekli.'; return $('#s_name').focus(); }
+    if (!chk()) return;
     if (s) Object.assign(s, o);
     else DB.sprints.push(Object.assign({ id: uid('sp'), projectId: DB.ui.project, state: 'future' }, o));
-    closeModal(); save(); render();
+    closeModal(); save(); render(); toast(s ? 'Sprint kaydedildi' : `${o.name} oluşturuldu`);
   };
+  $('#scrim .modal').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey || e.target.id === 's_name' || e.target.id === 's_goal')) { e.preventDefault(); $('#doSprint').click(); } });
+  setTimeout(() => $('#s_name')?.select(), 40);
 }
 
 /* Kalan tahminin süre kaydından sonraki değeri */
@@ -5798,6 +6008,7 @@ const VIEWS = {
   greports:  { s: 'global', t: 'Genel raporlar',    c: 'Tüm projeler',      r: renderGr,        tb: () => '' },
   pool:      { s: 'global', t: 'Talep havuzu',      c: 'Genel bakış',       r: renderPool,      tb: () => '' },
   board:     { s: 'proj',   t: 'Pano',              c: 'Çevik pano',        r: renderBoard,     tb: toolbarBoard },
+  sprint:    { s: 'proj',   t: 'Aktif sprint',      c: 'Sprint panosu',     r: renderSprint,    tb: () => (activeSprint() ? toolbarBoard(true) : '') },
   backlog:   { s: 'proj',   t: 'Backlog',           c: 'Planlama',          r: renderBacklog,   tb: toolbarBacklog },
   plan:      { s: 'proj',   t: 'Zaman planı',       c: 'Planlama',          r: renderPlan,      tb: toolbarPlan },
   roadmap:   { s: 'proj',   t: 'Yol haritası',      c: 'Epik zaman çizelgesi', r: renderRoadmap, tb: () => '' },
@@ -5811,14 +6022,15 @@ const VIEWS = {
 };
 
 /* Proje sekmeleri, soldan sağa (docs/tasarim/gezinme). Hangisinin görüneceğine viewAllowed karar verir. */
-const PROJ_TABS = ['board', 'backlog', 'plan', 'roadmap', 'timesheet', 'effort', 'reports', 'search', 'admin'];
-const TAB_IC = { board: 'board', backlog: 'backlog', plan: 'plan', roadmap: 'roadmap', timesheet: 'clock', effort: 'effort',
+const PROJ_TABS = ['board', 'sprint', 'backlog', 'plan', 'roadmap', 'timesheet', 'effort', 'reports', 'search', 'admin'];
+const TAB_IC = { board: 'board', sprint: 'sprint', backlog: 'backlog', plan: 'plan', roadmap: 'roadmap', timesheet: 'clock', effort: 'effort',
   reports: 'reports', search: 'search', admin: 'settings' };
 /* Görünürlük için tek kural: render (adres elle yazılsa da), sekmeler, sol menü ve hesap menüsü bunu kullanır.
    Yetki sunucuda; bu yalnız kullanıcı deneyimi içindir. */
 function viewAllowed(v) {
   if (!VIEWS[v]) return false;
   if (v === 'roadmap') return MOD('epic');
+  if (v === 'sprint') return AGILE();                             // Pano türündeki projede sekme yok
   if (v === 'pool') return poolProjects().length > 0;            // talep projesi yoksa havuz yok (görev 12)
   if (v === 'admin' || v === 'users' || v === 'system') return isAdmin();
   return true;
@@ -5986,6 +6198,7 @@ function wireToolbar() {
   on('#fUser', 'onchange', e => { DB.board.filterUser = e.target.value; save(); render(); });
   on('#fType', 'onchange', e => { DB.board.filterType = e.target.value; save(); render(); });
   on('#fSwim', 'onchange', e => { DB.board.swimlane = e.target.value; save(); render(); });
+  on('#fSubs', 'onclick', () => { DB.board.subs = DB.board.subs === false; save(); render(); $('#fSubs')?.focus(); });
   on('#newIssue', 'onclick', () => newIssueForm());
   on('#newIssue2', 'onclick', () => newIssueForm({ sprintId: '' }));
   on('#newSprint', 'onclick', () => sprintForm());
@@ -5993,6 +6206,9 @@ function wireToolbar() {
   on('#colsEdit2', 'onclick', () => colsEditor(DB.ui.project));
   on('#ptTypeSet', 'onclick', () => typeDialog(DB.ui.project));
   on('#ptColsSet', 'onclick', () => colsEditor(DB.ui.project));
+  on('#ptSprintW', 'onchange', e => { const p = P(); if (!canManageProject(p)) return;
+    const w = parseInt(e.target.value, 10); if (!(w >= 1 && w <= 8)) return;
+    p.sprintWeeks = w; save(); render(); toast(`Sprint süresi ${w} hafta`); });
   on('#logWork', 'onclick', () => logWorkForm());
   const sc = $('#scope'); if (sc) sc.onclick = e => { const b = e.target.closest('[data-s]');
     if (b) { DB.board.scope = b.dataset.s; save(); render(); } };
@@ -6622,7 +6838,12 @@ function renderAdmin() {
       <div class="r"><div class="tx"><div class="l">Proje türü</div><div class="d">Menüyü, panoyu ve sprint ekranlarını belirler.</div></div>
         ${typeTag(projType(pr))}${canEditCols(pr) ? `<button class="btn ghost" id="ptTypeSet">${ic('swap')}Türü değiştir…</button>` : ''}</div>
       <div class="r"><div class="tx"><div class="l">Kolonlar</div><div class="d">${ss.length} kolon${ss.length ? ' · ' + esc(ss[0].name) + (ss.length > 1 ? ' → ' + esc(ss[ss.length - 1].name) : '') : ''}</div></div>
-        ${canEditCols(pr) ? `<button class="btn" id="ptColsSet">${ic('cols')}Kolonları düzenle</button>` : ''}</div></div>
+        ${canEditCols(pr) ? `<button class="btn" id="ptColsSet">${ic('cols')}Kolonları düzenle</button>` : ''}</div>
+      ${projType(pr) === 'agile' ? `<div class="r"><div class="tx"><div class="l"><label for="ptSprintW">Sprint süresi (hafta)</label></div>
+        <div class="d">Yeni sprintin bitişi bu süreye göre önerilir.</div></div>
+        ${canManageProject(pr) ? `<select class="inp" id="ptSprintW" style="width:auto">${[1, 2, 3, 4, 5, 6, 7, 8].map(w =>
+          `<option value="${w}" ${sprintWeeks(pr) === w ? 'selected' : ''}>${w} hafta</option>`).join('')}</select>`
+          : `<span class="chip">${sprintWeeks(pr)} hafta</span>`}</div>` : ''}</div>
     <div class="panel"><h3>Durumlar ve kolonlar</h3>
       <div class="sub">Pano kolonları bu sırayla oluşur. <b>Kategori</b> raporları belirler — durum adını değiştirmek raporları bozmaz.</div>
       ${ss.map((s, k) => `<div class="row" style="border:1px solid var(--line);border-radius:6px;margin-bottom:6px;cursor:default">
@@ -8561,10 +8782,8 @@ function ensureProjects() {
    docs/tasarim/benim-islerim: kişiye atanmış açık işler tarih gruplarında. "Bugün" her çizimde
    yeniden hesaplanır (TODAY sayfa açılışında sabittir); hafta çizelgedeki seçili haftadan bağımsızdır. */
 function toolbarHome() {
-  return `${canEdit() ? `<button class="btn pri" id="hNewIssue">+ İş oluştur</button>
-    <button class="btn" id="hLogWork">+ Süre kaydet</button>
-    <button class="btn" id="hNewProject">+ Yeni proje</button>` : ''}
-    <div class="spacer"></div>
+  /* İş oluşturma proje ekranlarında, yeni proje çalışma alanında, süre kaydı kartlarda ("Süre gir"); kısayollar c / w çalışır. */
+  return `<div class="spacer"></div>
     <span style="font-size:12px;color:var(--ink3)">${new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })}</span>`;
 }
 
@@ -9951,6 +10170,9 @@ const colKey = s => String(s ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCas
 const colsOf = pid => DB.statuses.filter(s => s.projectId === pid).sort((a, b) => (a.ord ?? 0) - (b.ord ?? 0));
 /* Kolonları ve türü değiştirebilen: yönetici ya da projenin üyesi olan Üye (izleyici hiçbir zaman). */
 const canEditCols = p => !!p && canEdit() && (isAdmin() || isMember(p));
+/* Proje yöneticiliği için tek kapı (sprint başlat/bitir, sprint süresi). Bugün: yönetici ya da proje üyesi (#12);
+   çalışma alanı rolleri gelince yalnız burası değişir. Sunucudaki karşılığı store.js → canConfigure. */
+const canManageProject = p => !!p && (isAdmin() || canEditCols(p));
 const typeTag = t => t === 'agile' ? `<span class="pt-type agile">${ic('sprint')}Agile</span>` : `<span class="pt-type">${ic('board')}Pano</span>`;
 const catOk = c => ['todo', 'inprogress', 'done'].includes(c) ? c : 'todo';
 function colNameErr(name, others) {
@@ -10578,10 +10800,8 @@ function deleteProject(pid) {
 }
 
 function wireProjects() {
-  const nb = $('#pNew') || $('#hNewProject');
-  $$('#pNew,#hNewProject').forEach(b => b.onclick = () => newProjectForm());
-  const hi = $('#hNewIssue'); if (hi) hi.onclick = () => newIssueForm();
-  const hw = $('#hLogWork'); if (hw) hw.onclick = () => logWorkForm();
+  const nb = $('#pNew');
+  $$('#pNew').forEach(b => b.onclick = () => newProjectForm());
   $$('[data-goproj]').forEach(b => b.onclick = () => {
     DB.ui.project = b.dataset.goproj;
     DB.ui.view = 'board'; DB.board.q = ''; DB.board.filterUser = ''; DB.board.filterType = '';
@@ -10749,39 +10969,35 @@ function ensureBilling() {
 }
 
 /* ============================================================
-   KOLON BAŞLIĞINDAN HIZLI GÖREV EKLEME
-   Seçimler yapışkan: bir kez seçilen tip/atanan/faturalama
-   sonraki eklemelerde hazır gelir.
+   KOLON BAŞLIĞINDAN HIZLI KART EKLEME
+   Tek satır başlık (Enter ekler, imleç kalır, Esc kapatır) + çipler:
+   tip · atanan · öncelik · bitiş · "Daha fazla…" (tam form bu değerlerle).
+   Çip seçimleri yapışkandır: bir sonraki eklemede aynı değerle gelir.
    ============================================================ */
+const qaTypes = () => ISSUE_TYPES().filter(t => t !== 'epic');
+function qaState() {
+  const q = DB.ui.qa, ts = qaTypes();
+  if (!ts.includes(q.type)) q.type = ts[0] || null;
+  q.priority = lvl(q.priority || 3);
+  if (q.due && q.due < TODAY) q.due = '';             // geçmiş bitiş hatırlanmaz
+  if (q.assignee && !memsOf(P()).some(u => u.id === q.assignee)) q.assignee = '';
+  return q;
+}
+const qaFri = () => { const d = new Date(), k = (5 - d.getDay() + 7) % 7; return iso(addD(d, k)); };
+function qaChips() {
+  const q = qaState(), t = TYPE[q.type] || ['?', q.type, q.type], u = user(q.assignee), [pc, pn] = PRI[lvl(q.priority)];
+  return `<button type="button" class="qa-chip qa-ty" id="qa_t" aria-haspopup="menu" aria-label="Tip: ${esc(t[2])} (değiştir)" title="Tip: ${esc(t[2])}">${tIcon(q.type)}</button>
+    <button type="button" class="qa-chip qa-as" id="qa_a" aria-haspopup="menu" aria-label="Atanan: ${u ? esc(u.name) : 'Atanmamış'} (değiştir)" title="${u ? esc(u.name) : 'Atanmamış'}">${
+      u ? `<span class="c-av" style="background:${safeColor(u.color)}">${esc(u.ini || '?')}</span>` : `<span class="c-av none">${ic('userx')}</span>`}</button>
+    <button type="button" class="qa-chip qa-pr" id="qa_p" aria-haspopup="menu" aria-label="Öncelik: ${pn} (değiştir)" title="Öncelik: ${pn}"><span class="prio ${pc}">${ic(pc)}${pn}</span></button>
+    <button type="button" class="qa-chip qa-du${q.due ? ' on' : ''}" id="qa_d" aria-haspopup="menu" aria-label="Bitiş: ${q.due ? esc(fmtDLong(q.due)) : 'yok'} (değiştir)" title="Bitiş">${ic('cal')}<span>${q.due ? (q.due === TODAY ? 'Bugün' : esc(fmtD(q.due))) : 'Bitiş'}</span></button>
+    <input type="date" class="qa-dn" id="qa_dn" value="${esc(q.due || '')}" min="${TODAY}" tabindex="-1" aria-hidden="true">
+    <button type="button" class="qa-chip qa-more" id="qa_more" title="Tam yeni iş formunu bu değerlerle aç (kapatmak için Esc)">Daha fazla…</button>`;
+}
 function quickAddForm(sid) {
-  const q = DB.ui.qa;
-  const fs = fieldsFor();
-  const sel = (id, val, list, f = x => [x, x]) => `<select class="inp" id="${id}">
-    ${list.map(x => { const [v, l] = f(x); return `<option value="${v}" ${String(val) === String(v) ? 'selected' : ''}>${esc(l)}</option>`; }).join('')}</select>`;
-  return `<div class="qadd">
-    <input class="inp" id="qa_s" placeholder="Görev başlığı — Enter ile ekle" autocomplete="off">
-    <div class="qa-row">
-      ${sel('qa_t', q.type || DB.cfg.types[0].id, DB.cfg.types, t => [t.id, t.name])}
-      ${sel('qa_a', q.assignee || SESSION, [{ id: '', name: 'Atanmamış' }, ...projUsers()], u => [u.id, u.name])}
-      ${sel('qa_p', lvl(q.priority), LVLS, p => [p, PRI[p][1]])}
-    </div>
-    <div class="qa-row">
-      ${sel('qa_b', q.billable, BILLABLE)}
-      ${sel('qa_bt', q.billType, BILLTYPE)}
-      <input class="inp" id="qa_e" value="${esc(q.estimate || '')}" placeholder="tahmin 4h" style="max-width:78px">
-    </div>
-    <div class="qa-row">
-      <input class="inp" type="date" id="qa_st" value="${q.start || ''}" title="Başlangıç">
-      <span style="color:var(--ink3);font-size:11px">→</span>
-      <input class="inp" type="date" id="qa_du" value="${q.due || ''}" title="Bitiş">
-      <input class="inp" id="qa_dd" value="${esc(q.dur || '')}" placeholder="gün" style="max-width:56px" title="İş günü — başlangıçtan itibaren bitişi hesaplar">
-    </div>
-    ${fs.length ? `<div class="qa-row">${fs.map(f => cfInput(f, '')).join('')}</div>` : ''}
-    <div class="qa-row" style="justify-content:flex-end">
-      <span class="qa-hint">Seçimler bir sonraki eklemede hatırlanır</span>
-      <button class="btn sm" id="qa_x">Kapat</button>
-      <button class="btn sm pri" id="qa_ok">Ekle</button>
-    </div>
+  return `<div class="qadd" role="group" aria-label="Hızlı kart ekle">
+    <input class="inp qa-in" id="qa_s" maxlength="200" placeholder="Kart başlığı yazın, Enter ile ekleyin" aria-label="Kart başlığı (Enter ekler, Esc kapatır)" autocomplete="off">
+    <div class="qa-chips">${qaChips()}</div>
   </div>`;
 }
 
@@ -10793,42 +11009,47 @@ function wireQuickAdd() {
     $('#qa_s')?.focus();
   });
   const box = $('.qadd'); if (!box) return;
-  const q = DB.ui.qa;
-  const grab = () => {
-    q.type = $('#qa_t').value; q.assignee = $('#qa_a').value; q.priority = +$('#qa_p').value;
-    q.billable = $('#qa_b').value; q.billType = $('#qa_bt').value; q.estimate = $('#qa_e').value;
-    q.start = $('#qa_st').value; q.due = $('#qa_du').value; q.dur = $('#qa_dd').value;
-    /* Gün sayısı girildiyse bitişi başlangıçtan türet. */
-    const nd = parseInt(q.dur, 10);
-    if (q.start && nd > 0) { q.due = addWorkdays(q.start, nd - 1); $('#qa_du').value = q.due; }
-    if (q.start && q.due && q.start > q.due) { q.due = q.start; $('#qa_du').value = q.due; }
-    /* Özel alanlar (Müşteri vb.) her görevde bilinçli seçilsin diye
-       hatırlanmaz; form her açılışta boş gelir. */
-    q.cf = {}; $$('[data-cf]', box).forEach(el => {
-      const f = DB.fields.find(x => x.id === el.dataset.cf);
-      q.cf[f.id] = f.type === 'checkbox' ? el.checked : el.value;
-    });
-  };
-  $$('select,input', box).forEach(el => el.onchange = grab);
+  const q = DB.ui.qa, pr = P();
+  const redraw = () => { box.querySelector('.qa-chips').innerHTML = qaChips(); wireChips(); };
+  const set = (k, v) => { q[k] = v; save(); redraw(); };
+  const menu = (btn, o) => pmOpen({ btn, sel: '#' + btn.id, ...o });
+  function wireChips() {
+    $('#qa_t').onclick = e => { e.stopPropagation(); menu(e.currentTarget, { kind: 'type', title: 'Tip',
+      list: () => qaTypes().map(t => pmOpt(t, q.type, tIcon(t), esc(TYPE[t][2]))).join(''), pick: v => set('type', v) }); };
+    $('#qa_a').onclick = e => { e.stopPropagation(); const fake = { projectId: pr?.id, assignee: q.assignee || '' };
+      menu(e.currentTarget, { kind: 'as', title: 'Atanan kişi', search: issueUsers(fake).length > 8,
+        list: s => qmAsList(fake, s), pick: v => set('assignee', v || '') }); };
+    $('#qa_p').onclick = e => { e.stopPropagation(); menu(e.currentTarget, { kind: 'pri', title: 'Öncelik',
+      list: () => qmPriList({ priority: q.priority }), pick: v => set('priority', lvl(+v)) }); };
+    $('#qa_d').onclick = e => { e.stopPropagation();
+      const opts = [['Bugün', TODAY], ['Yarın', iso(addD(new Date(), 1))], ['Bu cuma', qaFri()], ['Haftaya', iso(addD(new Date(), 7))]];
+      menu(e.currentTarget, { kind: 'due', title: 'Bitiş', list: () => opts.map(([l, d]) => pmOpt(d, q.due, ic('cal'), l, esc(fmtD(d)))).join('')
+        + pmOpt('__pick', '', ic('cal'), 'Tarih seç…') + (q.due ? '<hr>' + pmOpt('', 'x', ic('x'), 'Bitiş yok') : ''),
+        pick: v => { if (v !== '__pick') return set('due', v);
+          const inp = $('#qa_dn'); try { inp.showPicker(); } catch (_) { inp.focus(); } } }); };
+    $('#qa_dn').onchange = e => set('due', e.target.value >= TODAY ? e.target.value : '');
+    $('#qa_more').onclick = () => {
+      const summary = $('#qa_s').value.trim(), statusId = DB.ui.qaOpen;
+      DB.ui.qaOpen = null; save(); render();
+      newIssueForm({ summary, statusId, type: q.type, assignee: q.assignee || null, priority: q.priority, due: q.due || '' });
+    };
+  }
+  wireChips();
 
   const add = () => {
-    const s = $('#qa_s').value.trim();
-    if (!s) return $('#qa_s').focus();
-    grab();
-    const pr = P(); if (!pr) return toast('Önce bir proje seçin');
-    const it = createIssue(pr, { type: q.type, summary: s, statusId: DB.ui.qaOpen, assignee: q.assignee || null, priority: q.priority,
-      estimate: parseDur(q.estimate), cf: { ...q.cf }, sprintId: AGILE() ? (activeSprint()?.id || null) : null,
-      start: q.start || '', due: q.due || '', billable: q.billable, billType: q.billType }, pr.key);
-    q.cf = {};                       // müşteri vb. bir sonraki göreve taşınmaz
+    const inp = $('#qa_s'), s = inp.value.trim();
+    if (!s) return inp.focus();
+    if (!pr) return toast('Önce bir proje seçin');
+    qaState();
+    const it = createIssue(pr, { ...(q.type ? { type: q.type } : {}), summary: s, statusId: DB.ui.qaOpen, assignee: q.assignee || null, priority: q.priority,
+      sprintId: AGILE() ? (activeSprint()?.id || null) : null, due: q.due || '' }, pr.key);
     save(); render();
     $('#qa_s')?.focus();
     toast(it.key + ' eklendi');
   };
-  $('#qa_ok').onclick = add;
-  $('#qa_x').onclick = () => { DB.ui.qaOpen = null; render(); };
   $('#qa_s').onkeydown = e => {
-    if (e.key === 'Enter') { e.preventDefault(); add(); }
-    if (e.key === 'Escape') { DB.ui.qaOpen = null; render(); }
+    if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); add(); }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); DB.ui.qaOpen = null; render(); }
   };
   $('#qa_s').focus();
 }

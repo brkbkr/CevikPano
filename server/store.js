@@ -358,6 +358,9 @@ async function applyRecord(c, ctx, ch) {
   /* Üye listesini değiştiren yönetici olmayan kişi zaten üye olmalı (ya da liste boş olmalı). Yeni projede serbest. */
   if (ch.c === 'projects' && cur && !same(cur.members ?? [], data.members ?? []))
     await canConfigure(c, me, ch.id, 'Proje üyelerini yalnızca yönetici ya da proje üyesi değiştirebilir');
+  if (ch.c === 'projects' && cur && (cur.sprintWeeks ?? null) !== (data.sprintWeeks ?? null))
+    await canConfigure(c, me, ch.id, SPRINT_WEEKS_FORBIDDEN);
+  if (ch.c === 'sprints') await checkSprintState(c, me, data, cur);
   if (ch.c === 'sprints') await checkSprintStart(c, data, cur);
   if (ch.c === 'statuses') {
     if (cur) await canConfigure(c, me, cur.projectId);
@@ -423,6 +426,16 @@ async function checkProjectType(c, me, id, data, cur) {
   await canConfigure(c, me, id, TYPE_FORBIDDEN);
   if (to === 'board' && (await c.query(`SELECT 1 FROM sprints WHERE project_id=$1 AND state='active' LIMIT 1`, [id])).rowCount)
     throw new HttpError(409, 'Önce aktif sprinti tamamlayın');
+}
+
+/* Sprint başlatma (aktif olmayan → aktif, ya da aktif sprintin projesi değişir) ve tamamlama (aktif → kapalı)
+   proje yöneticisi ister (bugün canConfigure: yönetici ya da proje üyesi). İstemcideki canManageProject ile aynı. */
+const SPRINT_FORBIDDEN = 'Sprinti yalnızca proje yöneticisi başlatıp bitirebilir';
+const SPRINT_WEEKS_FORBIDDEN = 'Sprint süresini yalnızca proje yöneticisi değiştirebilir';
+async function checkSprintState(c, me, data, cur) {
+  if (data.state === 'active' && (cur?.state !== 'active' || cur?.projectId !== data.projectId))
+    await canConfigure(c, me, data.projectId, SPRINT_FORBIDDEN);
+  if (cur?.state === 'active' && data.state === 'closed') await canConfigure(c, me, cur.projectId, SPRINT_FORBIDDEN);
 }
 
 /* Türü açıkça Pano (type === 'board') olan projede sprint başlatılamaz (aktif olan ya da projesi değişen

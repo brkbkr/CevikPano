@@ -229,7 +229,7 @@ const XSS = '<img src=x onerror="window.__xss=1">';
     const n = [];
     newIssueForm(); n.push(document.querySelectorAll('#f_pri [data-pri]').length); closeModal();
     subTaskForm(DB.issues.find(i => i.projectId === 'p1' && !i.parentId).id); n.push(document.querySelectorAll('#sb_p option').length); closeModal();
-    DB.ui.qaOpen = stats()[0].id; render(); n.push(document.querySelectorAll('#qa_p option').length); DB.ui.qaOpen = null; render();
+    DB.ui.qaOpen = stats()[0].id; render(); document.querySelector('#qa_p').click(); n.push(document.querySelectorAll('.qm .qm-opt').length); closeQuick(false); DB.ui.qaOpen = null; render();
     return n;
   });
   ok('new issue / subtask / quick add selectors have 4 options', sels.join() === '4,4,4', sels.join());
