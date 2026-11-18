@@ -1272,13 +1272,232 @@ button.c-av::after{content:"";position:absolute;inset:-6px}
   .hm-list.ro .hm-row{grid-template-columns:40px minmax(0,1fr);grid-template-areas:"tick main" ". meta"}
 }
 @container hm (max-width:350px){ .hm-log span{display:none} }
+
+/* ==========================================================================
+   Çalışma alanları (issue #22, docs/tasarim/calisma-alanlari) — ws- sınıfları
+   ========================================================================== */
+:root{ --ws-arch-bg:#F1F4F8; --ws-info-bg:#EFF5FF; --ws-info-ln:#CFE0FB; --ws-info-ink:#1E3A8A; }
+:root[data-theme="dark"]{ --ws-arch-bg:#0A1220; --ws-info-bg:rgba(96,165,250,.10); --ws-info-ln:rgba(96,165,250,.28); --ws-info-ink:#BFDBFE; }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --ws-arch-bg:#0A1220; --ws-info-bg:rgba(96,165,250,.10); --ws-info-ln:rgba(96,165,250,.28); --ws-info-ink:#BFDBFE; }
+}
+.ws-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.ws-badge{width:24px;height:24px;border-radius:7px;display:inline-grid;place-items:center;flex-shrink:0;
+  background:var(--ws-c,#64748B);color:#fff;font-size:11.5px;font-weight:750;line-height:1;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.ws-badge.sm{width:18px;height:18px;border-radius:5px;font-size:9.5px}
+.ws-badge.lg{width:32px;height:32px;border-radius:9px;font-size:14px}
+.ws-badge.xl{width:44px;height:44px;border-radius:12px;font-size:19px}
+.ws-badge.is-arch{filter:saturate(.35);opacity:.8}
+.ws-badge.none{background:var(--surface3);color:var(--meta)}
+.ws-badge.none svg.i{width:14px;height:14px}
+
+/* sol menü: iki katlı seçici */
+.ws-switch{margin:4px 12px 10px;border-radius:12px;background:var(--rail-field);border:1px solid var(--rail-line);position:relative}
+.ws-cur{display:flex;align-items:center;gap:9px;width:100%;min-height:48px;padding:7px 6px 7px 9px;border:0;background:none;border-radius:11px 11px 0 0;text-align:left;color:var(--ink);cursor:pointer}
+.ws-cur:hover{background:var(--rail-hover)}
+.ws-cur[aria-expanded="true"]{background:var(--surface);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 40%,transparent)}
+.ws-cur .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.ws-cur .lb{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--rail-ink2)}
+.ws-cur .nm{font-size:13px;font-weight:650;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.ws-cur > svg.i{width:16px;height:16px;color:var(--meta)}
+.ws-proj{display:flex;align-items:center;gap:8px;height:40px;padding:0 6px 0 13px;border-top:1px solid var(--rail-line);position:relative;color:var(--ink);margin:0}
+.ws-proj > svg.i{width:16px;height:16px;color:var(--rail-icon)}
+.ws-proj select{appearance:none;-webkit-appearance:none;flex:1;min-width:0;width:auto;height:32px;border:0;background:none;padding:0 18px 0 0;font-size:13px;font-weight:600;
+  color:var(--ink);text-overflow:ellipsis;cursor:pointer;box-shadow:none}
+.ws-proj select:focus{outline:none}
+.ws-proj:focus-within{box-shadow:inset 0 0 0 2px var(--accent);border-radius:0 0 11px 11px}
+.ws-proj select option{color:#0B1B33}
+.ws-proj .chev{position:absolute;right:8px;pointer-events:none;width:15px;height:15px;color:var(--meta)}
+.ws-proj select:disabled{color:var(--meta);font-weight:500;cursor:default}
+.ws-menu{position:absolute;left:0;right:0;top:48px;z-index:30;background:var(--surface);border:1px solid var(--line);
+  border-radius:12px;box-shadow:var(--shadow-lg);padding:6px;max-height:min(420px,70vh);overflow:auto}
+.ws-menu-h{padding:6px 8px 6px 10px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta)}
+.ws-mi{display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:6px 10px;border:0;background:none;border-radius:8px;text-align:left;font-size:13px;color:var(--ink);cursor:pointer}
+.ws-mi:hover,.ws-mi:focus-visible{background:var(--surface2)}
+.ws-mi .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:550}
+.ws-mi .n{font-family:var(--mono);font-size:11px;color:var(--meta)}
+.ws-mi .ck{width:16px;height:16px;color:var(--accent);stroke-width:2.2}
+.ws-mi .ph{width:16px;flex-shrink:0}
+.ws-mi[aria-checked="true"]{background:var(--accent-soft)}
+.ws-mi[aria-checked="true"] .nm{font-weight:700;color:var(--accent-d)}
+.ws-mi.ws-act{color:var(--accent-d);font-weight:600}
+.ws-mi > svg.i{width:17px;height:17px;margin:0 2px;color:var(--ink2)}
+.ws-mi.ws-act > svg.i{color:var(--accent-d)}
+.ws-mi.danger,.ws-mi.danger > svg.i{color:var(--risk)}
+.ws-mi:disabled{cursor:not-allowed;color:var(--meta);background:none}
+.ws-mi:disabled > svg.i{color:var(--meta)}
+.ws-mi .two{flex:1;min-width:0;line-height:1.3}
+.ws-mi .why{display:block;font-size:11.5px;font-weight:500;color:var(--meta);margin-top:1px;white-space:normal}
+.ws-hr{height:1px;background:var(--line);margin:6px 4px}
+
+/* Projeler ekranı */
+.ws-grp{margin-bottom:26px}
+.ws-gh{display:flex;align-items:center;gap:12px;padding:0 2px 12px;position:relative}
+.ws-gh .tx{flex:1;min-width:0}
+.ws-gh h2{margin:0;display:flex;align-items:center;gap:8px;font-size:15.5px;font-weight:720;letter-spacing:-.015em;min-width:0}
+.ws-gh h2 span.t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ws-gh .cnt{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink2);background:var(--surface3);padding:2px 8px;border-radius:999px;white-space:nowrap}
+.ws-gh .ds{font-size:12px;color:var(--meta);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ws-gh .acts{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.ws-gh .btn.ghost{border-color:transparent;background:none;box-shadow:none;color:var(--accent-d);display:inline-flex;align-items:center;gap:6px}
+.ws-gh .btn.ghost:hover{background:var(--accent-soft)}
+.ws-gh .btn svg.i,.ws-gempty .btn svg.i,.ws-empty .btn svg.i,.ws-pf .btn svg.i,.ws-tb .btn svg.i{width:16px;height:16px}
+.ws-tb .btn{display:inline-flex;align-items:center;gap:6px}
+.ws-mw{position:relative}
+.ws-more{width:36px;height:36px;border-radius:9px;border:1px solid transparent;background:none;display:grid;place-items:center;color:var(--ink2);padding:0;cursor:pointer}
+.ws-more:hover,.ws-more[aria-expanded="true"]{background:var(--surface);border-color:var(--line2)}
+.ws-more svg.i{width:18px;height:18px}
+.ws-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+.ws-pcard{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 14px 12px 16px;box-shadow:var(--shadow-sm);
+  display:flex;flex-direction:column;gap:12px;min-width:0}
+.ws-pcard:hover{border-color:var(--line2)}
+.ws-pcard.is-cur{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.ws-ph{display:flex;align-items:center;gap:8px;min-width:0}
+.ws-key{font-family:var(--mono);font-size:11px;font-weight:650;color:var(--ink2);background:var(--surface3);border-radius:6px;padding:3px 7px;flex-shrink:0}
+.ws-pname.inp{flex:1;min-width:0;width:auto;height:32px;border:1px solid transparent;background:none;border-radius:8px;padding:0 6px;margin-left:-6px;
+  font-size:14px;font-weight:650;color:var(--ink);text-overflow:ellipsis;box-shadow:none}
+.ws-pname.inp:hover:not(:disabled){border-color:var(--line2)}
+.ws-pname.inp:focus{border-color:var(--accent);box-shadow:var(--ring);background:var(--surface)}
+.ws-pname.inp:disabled{color:var(--ink);opacity:1}
+.ws-pstats{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-size:12px;color:var(--ink2)}
+.ws-pstats span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.ws-pstats svg.i{width:13px;height:13px;color:var(--meta)}
+.ws-pstats b{font-family:var(--mono);font-weight:650;color:var(--ink)}
+.ws-plbl{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta);margin-bottom:6px}
+.ws-mems{display:flex;flex-wrap:wrap;gap:5px}
+.ws-pf{display:flex;align-items:center;gap:8px;padding-top:10px;border-top:1px solid var(--line);margin-top:auto}
+.ws-pf .lead2{flex:1;min-width:0;font-size:12px;color:var(--meta);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ws-pf .lead2 b{color:var(--ink2);font-weight:600}
+.ws-pf .btn{display:inline-flex;align-items:center;gap:6px}
+.ws-pop{position:absolute;right:0;top:calc(100% + 4px);z-index:12;min-width:250px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);padding:6px}
+.ws-pop[hidden]{display:none}
+.ws-gempty{display:flex;align-items:center;gap:12px;padding:16px 18px;border:1px dashed var(--line2);border-radius:12px;background:var(--surface);color:var(--ink2);font-size:13px}
+.ws-gempty > svg.i{width:20px;height:20px;color:var(--accent)}
+.ws-gempty .tx{flex:1;min-width:0}
+.ws-gempty .btn,.ws-empty .btn{display:inline-flex;align-items:center;gap:6px}
+.ws-archtog{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:0 14px;border:1px dashed var(--line2);border-radius:12px;background:none;color:var(--ink2);font-size:13px;font-weight:550;text-align:left;margin-bottom:14px;cursor:pointer}
+.ws-archtog:hover{background:var(--surface);color:var(--ink)}
+.ws-archtog svg.i{width:18px;height:18px;color:var(--meta)}
+.ws-archtog .n{font-family:var(--mono);font-size:11px;color:var(--meta)}
+.ws-sw{margin-left:auto;width:34px;height:20px;border-radius:999px;background:var(--line2);position:relative;flex-shrink:0}
+.ws-sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--surface);box-shadow:var(--shadow-sm)}
+.ws-archtog[aria-pressed="true"] .ws-sw{background:var(--accent)}
+.ws-archtog[aria-pressed="true"] .ws-sw::after{left:16px;background:#fff}
+.ws-grp.is-arch{background:var(--ws-arch-bg);border:1px solid var(--line);border-radius:14px;padding:14px}
+.ws-grp.is-arch .ws-gh h2 .t{color:var(--ink2)}
+.ws-grp.is-arch .ws-pcard{background:var(--surface2);box-shadow:none}
+.ws-chip{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:6px;font-size:11px;font-weight:650;white-space:nowrap;
+  border:1px solid var(--line);background:var(--surface2);color:var(--ink2)}
+.ws-chip.cur{background:var(--accent-soft);color:var(--accent-d);border-color:transparent}
+.ws-chip svg.i{width:12px;height:12px}
+
+/* pencereler */
+.ws-dlg .ws-b{padding:16px 18px 6px}
+.ws-dlg .ws-sub{font-size:12.5px;color:var(--ink2);margin:-4px 0 14px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ws-fld{margin-bottom:16px}
+.ws-fld > label,.ws-fld > .lb{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:6px}
+.ws-fld .opt,.ws-cnt{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--meta)}
+.ws-fld.has-err .inp{border-color:var(--risk);box-shadow:0 0 0 3px color-mix(in srgb,var(--risk) 16%,transparent)}
+.ws-err{display:flex;align-items:flex-start;gap:6px;margin-top:6px;font-size:12px;font-weight:550;color:var(--risk)}
+.ws-err:empty{display:none}
+.ws-err svg.i{width:15px;height:15px;margin-top:1px}
+.ws-prev{display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:16px;border-radius:12px;background:var(--surface2);border:1px solid var(--line)}
+.ws-prev .tx{min-width:0} .ws-prev b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ws-prev .tx span{font-size:11.5px;color:var(--meta)}
+.ws-colors{display:flex;flex-wrap:wrap;gap:8px}
+.ws-sw-c{position:relative;width:36px;height:36px;border-radius:10px;border:0;padding:0;background:var(--ws-c);display:grid;place-items:center;color:#fff;cursor:pointer}
+.ws-sw-c::after{content:"";position:absolute;inset:-4px;border-radius:13px;border:2px solid transparent}
+.ws-sw-c[aria-checked="true"]::after{border-color:var(--ws-c)}
+.ws-sw-c svg.i{width:18px;height:18px;stroke-width:2.6;opacity:0}
+.ws-sw-c[aria-checked="true"] svg.i{opacity:1}
+.ws-cname{font-size:11.5px;color:var(--meta);margin-top:7px}
+.ws-opts{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.ws-opt{display:flex;align-items:center;gap:11px;width:100%;min-height:48px;padding:7px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);text-align:left;color:var(--ink);cursor:pointer}
+.ws-opt:hover{border-color:var(--line2);background:var(--surface2)}
+.ws-opt .tx{flex:1;min-width:0}
+.ws-opt .nm{display:block;font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ws-opt .s{display:block;font-size:11.5px;color:var(--meta)}
+.ws-rad{width:18px;height:18px;border-radius:50%;border:1.6px solid var(--line2);flex-shrink:0;background:var(--surface)}
+.ws-opt[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.ws-opt[aria-checked="true"] .ws-rad{border-color:var(--accent);background:var(--accent);box-shadow:inset 0 0 0 3px var(--surface)}
+.ws-opt[aria-disabled="true"]{cursor:not-allowed;background:var(--surface2);color:var(--meta);border-style:dashed}
+.ws-opt[aria-disabled="true"] .nm{color:var(--ink2);font-weight:550}
+.ws-opt[aria-disabled="true"] .ws-rad{background:var(--surface3);border-color:var(--line)}
+.ws-opt > svg.i{width:16px;height:16px;color:var(--meta)}
+.ws-info{display:flex;gap:10px;padding:11px 12px;border-radius:10px;background:var(--ws-info-bg);border:1px solid var(--ws-info-ln);color:var(--ws-info-ink);font-size:12.5px;line-height:1.5;margin-bottom:14px}
+.ws-info svg.i{width:17px;height:17px;margin-top:1px}
+.ws-info .k{font-family:var(--mono);font-size:11.5px;font-weight:600}
+
+/* boş durumlar */
+.ws-empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:34px 20px 30px;background:var(--surface);border:1px dashed var(--line2);border-radius:14px;max-width:640px;margin:24px auto}
+.ws-empty-ic{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);margin-bottom:12px}
+.ws-empty-ic svg.i{width:24px;height:24px}
+.ws-empty h3{margin:0 0 4px;font-size:15px;font-weight:700;letter-spacing:-.01em}
+.ws-empty p{margin:0 0 16px;font-size:12.5px;color:var(--ink2);max-width:360px;line-height:1.5}
+.ws-empty p:last-child{margin-bottom:0}
+.ws-empty .acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.ws-empty .ctx{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--ink2);background:var(--surface2);border:1px solid var(--line);border-radius:999px;padding:3px 10px 3px 4px;margin-bottom:12px;max-width:100%;overflow-wrap:anywhere}
+
+/* Benim işlerim: iki katlı süzgeç */
+.ws-hf{display:grid;grid-template-columns:52px minmax(0,1fr);gap:8px;align-items:center;margin-bottom:14px}
+.ws-hf .lbl{font-size:12px;font-weight:600;color:var(--meta);background:none;border:0}
+.ws-hf .ws-row{display:flex;gap:6px;flex-wrap:wrap;min-width:0}
+.ws-hf .ws-row.r2{padding:6px;margin-left:-6px;border-radius:12px;background:color-mix(in srgb,var(--surface3) 55%,transparent)}
+.hm-pf.ws{padding-left:6px}
+
+/* dar ekran "Proje seç" penceresi */
+.ws-sheet .ws-b{padding:12px}
+.ws-sheet .ws-switch{margin:0 0 12px}
+.ws-sheet .ws-cur{min-height:52px;border-radius:11px}
+.ws-sheet .ws-list{margin:-6px 0 12px;padding:6px;border:1px solid var(--line);border-radius:12px}
+.ws-prow{display:flex;align-items:center;gap:10px;width:100%;min-height:48px;padding:0 12px;border:0;border-radius:10px;background:none;text-align:left;font-size:14px;font-weight:550;color:var(--ink);cursor:pointer}
+.ws-prow:hover{background:var(--surface2)}
+.ws-prow .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ws-prow[aria-current="true"]{background:var(--accent-soft);color:var(--accent-d);font-weight:700}
+.ws-prow svg.i{width:18px;height:18px;color:var(--accent)}
+.ws-sheet .ws-foot{border-top:1px solid var(--line);padding:8px 12px 12px}
+.ws-sheet .ws-foot .btn{width:100%;height:44px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+#vtabs [data-v="__proj"]{display:inline-flex;align-items:center;gap:6px;color:var(--ink);font-weight:600}
+#vtabs [data-v="__proj"] .t{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+@media (max-width:640px){
+  .ws-more{width:40px;height:40px}
+  .ws-grid{grid-template-columns:minmax(0,1fr)}
+  .ws-gh{flex-wrap:wrap;gap:10px}
+  .ws-gh .ds{white-space:normal}
+  .ws-gh h2{flex-wrap:wrap;row-gap:4px}
+  .ws-gh h2 span.t{white-space:normal;overflow-wrap:anywhere}
+  .ws-gh .acts{width:100%}
+  .ws-gh .acts .btn{flex:1;min-height:40px;justify-content:center}
+  .ws-grp.is-arch{padding:12px 10px}
+  .ws-pop{min-width:0;width:min(280px,calc(100vw - 48px))}
+  .ws-pname.inp{height:40px}
+  .ws-pcard .memchip{min-height:40px}
+  .ws-pf .btn{min-height:40px}
+  .ws-sw-c{width:40px;height:40px}
+  .ws-colors{gap:10px}
+  .ws-hf{grid-template-columns:minmax(0,1fr);gap:6px}
+  .ws-hf .lbl{margin-top:4px}
+  .ws-hf .ws-row.r2{margin-left:0}
+  .ws-gempty{flex-wrap:wrap}
+  .ws-gempty .btn{width:100%;min-height:40px;justify-content:center}
+  .ws-empty{margin:12px 0;padding:26px 14px 22px}
+  .ws-empty .acts .btn{min-height:40px}
+  .ws-dlg .m-f .btn{flex:1;min-height:40px}
+  .ws-dlg .ws-b{padding:14px 14px 4px}
+  .ws-dlg .inp{min-height:42px;font-size:15px}
+  .ws-tb .btn{min-height:40px;flex:1;justify-content:center}
+}
 </style>
 </head>
 <body>
 <div class="app">
   <aside class="rail">
     <div class="brand"><img src="/img/icon.svg" alt="" class="brand-ic"><b>ÇevikPano</b></div>
-    <div class="projsel"><select id="projSel" class="inp"></select></div>
+    <div class="ws-switch" id="wsSwitch">
+      <button type="button" class="ws-cur" id="wsCur" aria-haspopup="menu" aria-expanded="false"></button>
+      <label class="ws-proj"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg><span class="ws-sr">Proje</span><select id="projSel"></select><svg class="i chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></label>
+    </div>
     <nav class="nav" style="margin-top:6px">
       <a href="#home" data-v="home"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>Benim işlerim</a>
     </nav>
@@ -1428,8 +1647,10 @@ function diffSnap(a, b) {
   }
   for (const k of PREF_KEYS)
     if (a.pref[k] !== b.pref[k] && b.pref[k] !== undefined) out.push({ c: '_prefs', id: k, op: 'put', data: JSON.parse(b.pref[k]) });
-  /* Kullanıcılar önce gitsin (yeni bir iş yeni bir kullanıcıya atanmış olabilir). */
-  return out.sort((x, y) => (x.c === 'users' ? 0 : 1) - (y.c === 'users' ? 0 : 1));
+  /* Kullanıcılar önce gitsin (yeni bir iş yeni bir kullanıcıya atanmış olabilir); yeni çalışma alanı
+     ondan sonra (aynı gönderimde o alana proje açılmış olabilir); alan silme en sonda (önce projeler taşınır). */
+  const rank = x => x.c === 'users' ? 0 : x.c === 'workspaces' ? (x.op === 'del' ? 3 : 1) : 2;
+  return out.sort((x, y) => rank(x) - rank(y));
 }
 
 function setSync(st) {
@@ -1463,7 +1684,7 @@ async function flushSync() {
     let ch = diffSnap(SNAP, now);
     if (typeof canEdit === 'function' && !canEdit()) ch = ch.filter(x => x.c === '_prefs');
     else if (typeof isAdmin === 'function' && !isAdmin())
-      ch = ch.filter(x => !['statuses', 'fields', 'rules', '_settings'].includes(x.c) && !(x.c === 'projects' && x.op === 'del')
+      ch = ch.filter(x => !['statuses', 'fields', 'rules', '_settings'].includes(x.c) && !(['projects', 'workspaces'].includes(x.c) && x.op === 'del')
         && !(x.c === 'users' && x.id !== ME.id));
     if (!ch.length) { SNAP = now; setSync('ok'); return; }
     setSync('saving');
@@ -1554,6 +1775,7 @@ function tryRerender() {
   const busy = document.getElementById('scrim')?.classList.contains('on')
     || (typeof DRAG !== 'undefined' && DRAG)
     || (typeof QM !== 'undefined' && QM)
+    || document.querySelector('#wsMenu, .ws-pop:not([hidden])')
     || (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)
         && document.activeElement.id !== 'projSel');
   if (busy) return;
@@ -1995,14 +2217,15 @@ async function load() {
   if (ME.defaultPassword) DEFAULT_PW = ME.defaultPassword;
   const d = r.data || {};
   for (const k of ['users', 'projects', 'statuses', 'sprints', 'issues', 'worklogs', 'comments', 'history',
-                   'fields', 'rules', 'links', 'transitions', 'filters']) if (!Array.isArray(d[k])) d[k] = [];
+                   'fields', 'rules', 'links', 'transitions', 'filters', 'workspaces']) if (!Array.isArray(d[k])) d[k] = [];
   if (!d.cfg) d.cfg = { h: 8, d: 5, modules: { ...MODULE_DEFAULTS }, types: TYPE_DEFAULTS.map(t => ({ ...t })),
     defaultStatuses: STATUS_TEMPLATES.uyarlama[1].map(x => [...x]) };
   /* Sunucunun gördüğü hâl — kişisel tercihler varsayılanlardan ÖNCE alınır ki ilk kez kaydedilsin. */
   SNAP = snapOf(d);
   d.board ||= { swimlane: 'none', filterUser: '', filterType: '', q: '' };
   d.ui ||= { view: 'home', week: iso(monday(new Date())), tsMode: 'user' };
-  if (!d.projects.some(p => p.id === d.ui.project)) d.ui.project = d.projects[0]?.id || null;
+  /* Proje yoksa seçim ensureSel'de yapılır (seçili çalışma alanının ilk projesi; hiç yoksa boş). */
+  if (!d.projects.some(p => p.id === d.ui.project)) d.ui.project = null;
   return d;
 }
 let PENDING_EMB = null;
@@ -2086,6 +2309,21 @@ const SVG = {
   down: '<path d="m6 9 6 6 6-6"/>',
   inbox: '<path d="M3 13h5l1.5 2.5h5L16 13h5"/><path d="M5.5 5h13L21 13v5.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5V13z"/>',
   filter: '<path d="M4 5h16l-6 7.5V19l-4 1.5v-8z"/>',
+  /* Çalışma alanları (docs/tasarim/calisma-alanlari) */
+  updown: '<path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/>',
+  more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
+  pencil: '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+  archive: '<rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V9"/><path d="M10 13h4"/>',
+  unarchive: '<rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V9"/><path d="m9.5 15 2.5-2.5 2.5 2.5M12 12.5V18"/>',
+  trash: '<path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 12.5A1.5 1.5 0 0 0 8.5 21h7a1.5 1.5 0 0 0 1.5-1.5L18 7"/><path d="M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.8v.2"/>',
+  lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/>',
+  users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.3A6.5 6.5 0 0 1 21.5 20"/>',
+  move: '<path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/><path d="M8.5 13.5h7"/><path d="m12.5 10.5 3 3-3 3"/>',
+  folderplus: '<path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/><path d="M12 10.5v6M9 13.5h6"/>',
+  grid: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>',
+  issues: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
+  circle: '<circle cx="12" cy="12" r="8.5"/>',
 };
 const ic = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${SVG[n] || ''}</svg>`;
 const tIcon = t => { const x = TYPE[t] || ['?', t, t, '#7B8794'];
@@ -2558,7 +2796,8 @@ function wireBacklogAdd() {
   const box = $('.bladd'); if (!box) return;
   const add = () => {
     const s = $('#bl_s').value.trim(); if (!s) return $('#bl_s').focus();
-    const pr = P(), est = parseDur($('#bl_e').value);
+    const pr = P(); if (!pr) return toast('Önce bir proje seçin');
+    const est = parseDur($('#bl_e').value);
     const it = { id: uid('i'), key: `${pr.code || pr.key}-${++pr.counter}`, projectId: pr.id,
       type: $('#bl_t').value, summary: s, description: '', statusId: stats()[0].id,
       assignee: $('#bl_a').value || null, reporter: CU().id, priority: 3, points: null,
@@ -3087,6 +3326,7 @@ function openIssue(id) {
 
 /* ============================ FORMLAR ============================ */
 function newIssueForm(preset = {}) {
+  if (!P()) return toast('Önce bir proje seçin');
   const sp = preset.sprintId ?? (activeSprint()?.id || '');
   openModal(`
     <div class="m-h"><b>İş oluştur</b><span class="k" style="color:var(--ink3)">${P().key}</span><button class="x" data-close>×</button></div>
@@ -3148,6 +3388,7 @@ function newIssueForm(preset = {}) {
 }
 
 function sprintForm(id) {
+  if (!P()) return toast('Önce bir proje seçin');
   const s = id ? sprint(id) : null;
   openModal(`
     <div class="m-h"><b>${s ? 'Sprint düzenle' : 'Sprint oluştur'}</b><button class="x" data-close>×</button></div>
@@ -3182,13 +3423,24 @@ function nextRemaining(i, hours, mode, value) {
 
 const logWorkForm = (issueId, userId, date) => worklogForm({ issueId, date });
 
-/* ---- dar ekranda sol menünün karşılığı ---- */
-function projectMenu() {
-  openModal(`<div class="m-h"><b>Proje seç</b><button class="x" data-close>×</button></div>
-    <div style="padding:8px 0">${DB.projects.filter(p => canSeeProject(p)).map(p => `<div class="row" data-proj="${p.id}">
-      <span class="sum">${esc(p.name)}</span>
-      ${p.archived ? '<span class="chip lbl">arşiv</span>' : ''}
-      ${p.id === DB.ui.project ? '<span class="chip cat-done">seçili</span>' : ''}</div>`).join('')}</div>`, 'narrow');
+/* ---- dar ekranda sol menünün karşılığı: üstte alan seçici, altında o alanın projeleri (#22) ---- */
+function projectMenu(listOpen = false) {
+  const w = wsById(DB.ui.workspace), cur = P();
+  const rows = DB.ui.workspace ? selectableProjects(DB.ui.workspace) : [];
+  if (cur && !rows.includes(cur) && wsOf(cur) === DB.ui.workspace) rows.unshift(cur);
+  openModal(`<div class="m-h"><b id="pm_t">Proje seç</b><button class="x" data-close aria-label="Kapat">×</button></div>
+    <div class="ws-b">
+      <div class="ws-switch"><button type="button" class="ws-cur" id="pm_ws" aria-expanded="${listOpen}" aria-controls="pm_wsl">${w ? wsBadge(w) : `<span class="ws-badge none" aria-hidden="true">${ic('layers')}</span>`}
+        <span class="tx"><span class="lb">Çalışma alanı</span><span class="nm">${w ? esc(w.name) : 'Henüz alan yok'}</span></span>${ic('updown')}</button></div>
+      ${listOpen ? `<div class="ws-list" id="pm_wsl" role="group" aria-label="Çalışma alanları">${visibleWs().map(x => `<button type="button" class="ws-mi" data-wspick="${esc(x.id)}" data-wssheet
+          aria-pressed="${x.id === DB.ui.workspace}">${wsBadge(x)}<span class="nm">${esc(x.name)}</span><span class="n">${selectableProjects(x.id).length}</span></button>`).join('')
+        || '<div class="empty">Görebildiğin bir çalışma alanı yok</div>'}</div>` : ''}
+      ${rows.map(p => `<button type="button" class="ws-prow" data-proj="${esc(p.id)}" ${p === cur ? 'aria-current="true"' : ''}>${ic('folder')}<span class="t">${esc(p.name)}</span>${
+        p.archived ? '<span class="chip lbl">arşiv</span>' : ''}${p === cur ? ic('check') : ''}</button>`).join('')
+        || '<div class="empty">Bu çalışma alanında henüz proje yok</div>'}
+    </div>
+    ${canEdit() ? `<div class="ws-foot"><button type="button" class="btn" data-wsnew>${ic('plus')}Yeni çalışma alanı</button></div>` : ''}`, 'narrow ws-sheet ws-dlg');
+  $('#pm_ws').onclick = () => projectMenu(!listOpen);
 }
 function dataMenu() {
   openModal(`<div class="m-h"><b>Hesap ve veri</b><button class="x" data-close>×</button></div>
@@ -3226,10 +3478,14 @@ function render() {
   if (['admin', 'system', 'users'].includes(DB.ui.view) && !isAdmin()) DB.ui.view = 'board';
   const v = VIEWS[DB.ui.view] || VIEWS.board;
   if (location.hash.slice(1) !== DB.ui.view) try { history.replaceState(null, '', '#' + DB.ui.view); } catch (_) { }
-  $('#crumb').textContent = `${P().key} · ${v.c}`;
+  ensureSel(); renderSelectors();
+  const pr = P();
+  $('#crumb').textContent = `${pr ? pr.key : wsById(DB.ui.workspace)?.name || 'ÇevikPano'} · ${v.c}`;
   $('#title').textContent = v.t;
-  $('#toolrow').innerHTML = v.tb();
-  $('#view').innerHTML = v.r();
+  /* Seçili proje yokken projeye bağlı ekranlar çökmez: boş durum paneli (#22). */
+  const noProj = !pr && WS_PROJ_VIEWS.includes(DB.ui.view);
+  $('#toolrow').innerHTML = noProj ? '' : v.tb();
+  $('#view').innerHTML = noProj ? wsEmptyView() : v.r();
   syncNav();
   document.body.classList.toggle('readonly', !canEdit());
   const _u = CU(), _r = ROLES[_u.role || 'admin'];
@@ -3306,7 +3562,8 @@ function wireToolbar() {
 
 /* ============================ OLAYLAR ============================ */
 function wire() {
-  $('#projSel').onchange = e => { DB.ui.project = e.target.value; DB.board.q = ''; save(); render(); };
+  $('#projSel').onchange = e => { if (!e.target.value) return; DB.ui.project = e.target.value; DB.board.q = ''; save(); render(); };
+  wireWsSwitch();
   addEventListener('hashchange', () => {
     const v = location.hash.slice(1); if (VIEWS[v]) { DB.ui.view = v; save(); render(); }
   });
@@ -3482,8 +3739,7 @@ function wire() {
    çubuğundaki eski görünüm yeni seçimi ezmemeli. */
 function startApp(useHash) {
   ensureProjects();
-  $('#projSel').innerHTML = DB.projects.filter(p => canSeeProject(p) || p.id === DB.ui.project).map(p =>
-    `<option value="${p.id}" ${p.id === DB.ui.project ? 'selected' : ''}>${esc(p.name)}${p.archived ? ' (arşiv)' : ''}</option>`).join('');
+  ensureSel();
   if (useHash && location.hash.slice(1) in VIEWS) DB.ui.view = location.hash.slice(1);
   try { history.replaceState(null, '', '#' + DB.ui.view); } catch (_) {}
   render();
@@ -3500,8 +3756,7 @@ function boot() {
   if (location.hash.slice(1) in VIEWS) DB.ui.view = location.hash.slice(1);
   if (DB.cfg) { H_PER_DAY = DB.cfg.h || 8; D_PER_WEEK = DB.cfg.d || 5; }
   DB.issues.forEach(i => { if (i.remainingEst == null) i.remainingEst = Math.max(0, (i.estimate || 0) - (i.spent || 0)); });
-  $('#projSel').innerHTML = DB.projects.filter(p => canSeeProject(p) || p.id === DB.ui.project).map(p =>
-    `<option value="${p.id}" ${p.id === DB.ui.project ? 'selected' : ''}>${esc(p.name)}${p.archived ? ' (arşiv)' : ''}</option>`).join('');
+  ensureSel();
   if (location.hash.slice(1) in VIEWS) DB.ui.view = location.hash.slice(1);
   render();
 }
@@ -4535,7 +4790,9 @@ function palette() {
       { t: 'Yönetim', n: 'Sistem: yedekler ve veri', run: () => { location.hash = 'system'; } },
       { t: 'Yönetim', n: 'Veriyi dışa aktar (yedek indir)', run: () => $('#btnExport').click() },
     ] : []),
-    ...DB.projects.map(p => ({ t: 'Proje', n: `${p.key} — ${p.name}`, run: () => { DB.ui.project = p.id; save(); boot(); } })),
+    ...(canEdit() ? [{ t: 'Eylem', n: 'Yeni çalışma alanı', run: () => wsForm() }] : []),
+    ...visibleWs().map(w => ({ t: 'Alan', n: w.name, run: () => pickWs(w.id) })),
+    ...selectableProjects().map(p => ({ t: 'Proje', n: `${p.key} — ${p.name}`, run: () => { DB.ui.project = p.id; save(); boot(); } })),
     ...DB.issues.filter(i => MOD('epic') || i.type !== 'epic').map(i => ({ t: i.key, n: i.summary, run: () => openIssue(i.id) })),
   ];
   openModal(`<div class="m-h" style="padding:8px 12px">
@@ -5503,14 +5760,15 @@ const HM_MORE = new Set();                                 // "Tümünü göster
 const nextStatus = i => { const l = statsOf(i.projectId), k = l.findIndex(s => s.id === i.statusId);
   return k >= 0 && k < l.length - 1 ? l[k + 1] : null; };
 
-/* Saf hesap (DOM yok): kapsam, gruplar, engelleyenler, özet. proj görünmüyorsa '' (Tümü) sayılır. */
-function homeBuckets(meId, proj, today) {
+/* Saf hesap (DOM yok): kapsam, gruplar, engelleyenler, özet. proj görünmüyorsa '' (Tümü) sayılır.
+   ws (#22): seçili çalışma alanı; yoksa/arşivliyse '' (Tümü). proj seçili alanda değilse '' sayılır. */
+function homeBuckets(meId, proj, today, ws = '') {
   const week = homeWeek(today), sun = week[6];
   const byId = new Map(DB.issues.map(i => [i.id, i]));
   const sts = new Map(DB.statuses.map(s => [s.id, s]));
   const projs = new Map(DB.projects.map(p => [p.id, p]));
   const cat = i => sts.get(i.statusId)?.cat || 'todo';   // silinmiş durum stat() gibi "todo"
-  const visible = p => !!p && !p.archived && canSeeProject(p);
+  const visible = p => !!p && !p.archived && canSeeProject(p) && !wsArchived(wsOf(p));
   const all = DB.issues.filter(i => i.assignee === meId && i.type !== 'epic' && cat(i) !== 'done' && visible(projs.get(i.projectId)));
   /* Engelleme: links {from, to, type:'blocks'} — from açıkken to Beklemede. */
   const blocker = new Map();
@@ -5519,8 +5777,12 @@ function homeBuckets(meId, proj, today) {
     const f = byId.get(l.from);
     if (f && f.id !== l.to && cat(f) !== 'done') blocker.set(l.to, f);
   }
-  proj = proj && visible(projs.get(proj)) ? proj : '';
-  const list = proj ? all.filter(i => i.projectId === proj) : all;
+  const wsCounts = new Map();
+  all.forEach(i => { const w = wsOf(projs.get(i.projectId)); wsCounts.set(w, (wsCounts.get(w) || 0) + 1); });
+  ws = ws && wsById(ws) && !wsArchived(ws) ? ws : '';
+  const inWs = ws ? all.filter(i => wsOf(projs.get(i.projectId)) === ws) : all;
+  proj = proj && visible(projs.get(proj)) && (!ws || wsOf(projs.get(proj)) === ws) ? proj : '';
+  const list = proj ? inWs.filter(i => i.projectId === proj) : inWs;
   const groups = Object.fromEntries(HM_GROUPS.map(g => [g.id, []]));
   for (const i of list) {
     const due = day10(i.due), start = day10(i.start);
@@ -5537,11 +5799,12 @@ function homeBuckets(meId, proj, today) {
   Object.values(groups).forEach(g => g.sort(cmp));
   const days = new Set(week);
   const hours = DB.worklogs.filter(w => w.userId === meId && days.has(day10(w.date))
-    && (!proj || byId.get(w.issueId)?.projectId === proj)).reduce((a, w) => a + (+w.hours || 0), 0);
+    && (proj ? byId.get(w.issueId)?.projectId === proj
+      : !ws || wsOf(projs.get(byId.get(w.issueId)?.projectId)) === ws)).reduce((a, w) => a + (+w.hours || 0), 0);
   const counts = new Map();
-  all.forEach(i => counts.set(i.projectId, (counts.get(i.projectId) || 0) + 1));
+  inWs.forEach(i => counts.set(i.projectId, (counts.get(i.projectId) || 0) + 1));
   const lateMax = groups.late.reduce((m, i) => Math.max(m, workdaysBetween(day10(i.due), today)), 0);
-  return { all, list, proj, groups, blocker, week, hours, counts, lateMax, nProj: new Set(list.map(i => i.projectId)).size };
+  return { all, inWs, list, proj, ws, wsCounts, groups, blocker, week, hours, counts, lateMax, nProj: new Set(list.map(i => i.projectId)).size };
 }
 
 function homeRow(i, c) {
@@ -5579,17 +5842,26 @@ function homeRow(i, c) {
 
 function renderHome() {
   const me = CU(), today = iso(new Date()), edit = canEdit();
-  const B = homeBuckets(me.id, DB.ui.homeProj || '', today);
+  const B = homeBuckets(me.id, DB.ui.homeProj || '', today, DB.ui.homeWs || '');
   /* kayıtlı süzgeç artık görünmüyor (arşiv, üyelik, silme): Tümü'ye kalıcı düş, proje geri gelince kendiliğinden dönmesin */
   if (DB.ui.homeProj && !B.proj) { DB.ui.homeProj = ''; save(); }
+  if (DB.ui.homeWs && !B.ws) { DB.ui.homeWs = ''; save(); }
   const c = { today, edit, blocker: B.blocker };
   const pname = id => projName(id);
 
   const chipIds = DB.projects.filter(p => B.counts.has(p.id) || p.id === B.proj).map(p => p.id);
   const chip = (pid, label, n) => `<button type="button" class="hm-pf ${B.proj === pid ? 'on' : ''}" data-hmproj="${esc(pid)}" aria-pressed="${B.proj === pid}">
       <span class="t">${label}</span><span class="n">${n}</span></button>`;
-  const filter = chipIds.length > 1 || B.proj ? `<div class="hm-filter" role="group" aria-label="Proje süzgeci"><span class="lbl">Proje</span>
-      ${chip('', 'Tümü', B.all.length)}${chipIds.map(pid => chip(pid, esc(pname(pid)), B.counts.get(pid) || 0)).join('')}</div>` : '';
+  const pChips = chipIds.length > 1 || B.proj ? chip('', 'Tümü', B.inWs.length) + chipIds.map(pid => chip(pid, esc(pname(pid)), B.counts.get(pid) || 0)).join('') : '';
+  /* Alan satırı (#22): yalnız açık işim olan alanlar; tek alan varsa çizilmez (görünüm eskisi gibi). */
+  const wsIds = wsAll().filter(w => B.wsCounts.has(w.id) || w.id === B.ws).sort(wsSort);
+  const wchip = (w, n) => `<button type="button" class="hm-pf ${w ? 'ws' : ''} ${B.ws === (w?.id || '') ? 'on' : ''}" data-hmws="${esc(w?.id || '')}" aria-pressed="${B.ws === (w?.id || '')}">
+      ${w ? wsBadge(w, 'sm') : ''}<span class="t">${w ? esc(w.name) : 'Tümü'}</span><span class="n">${n}</span></button>`;
+  const filter = wsIds.length > 1 || B.ws
+    ? `<div class="ws-hf"><span class="lbl" id="hf-a">Alan</span>
+        <div class="ws-row" role="group" aria-labelledby="hf-a">${wchip(null, B.all.length)}${wsIds.map(w => wchip(w, B.wsCounts.get(w.id) || 0)).join('')}</div>
+        ${pChips ? `<span class="lbl" id="hf-p">Proje</span><div class="ws-row r2" role="group" aria-labelledby="hf-p">${pChips}</div>` : ''}</div>`
+    : pChips ? `<div class="hm-filter" role="group" aria-label="Proje süzgeci"><span class="lbl">Proje</span>${pChips}</div>` : '';
 
   const nLate = B.groups.late.length, cap = capOf(me);
   const pct = cap ? Math.round(B.hours / cap * 100) : 0;
@@ -5626,8 +5898,9 @@ function renderHome() {
       <div class="acts">${edit ? `<button type="button" class="btn pri" id="hmNew">${ic('plus')}İş oluştur</button>` : ''}
         <button type="button" class="btn" data-v="projects">${ic('folder')}Projelere git</button></div></div>`;
   else if (!B.list.length) body = `<div class="hm-empty"><span class="hm-empty-ic">${ic('filter')}</span>
-      <h3>Bu projede sana atanmış açık iş yok</h3><p>Süzgeç: <b>${esc(pname(B.proj))}</b>. Diğer projelerde ${B.all.length} açık işin var.</p>
-      <div class="acts"><button type="button" class="btn" data-hmproj="">Tüm projeleri göster</button></div></div>`;
+      ${B.proj ? `<h3>Bu projede sana atanmış açık iş yok</h3><p>Süzgeç: <b>${esc(pname(B.proj))}</b>. Diğer projelerde ${B.all.length} açık işin var.</p>`
+        : `<h3>Bu çalışma alanında sana atanmış açık iş yok</h3><p>Süzgeç: <b>${esc(wsById(B.ws)?.name || '')}</b>. Diğer alanlarda ${B.all.length} açık işin var.</p>`}
+      <div class="acts"><button type="button" class="btn" data-hmproj="" data-hmall>Tüm projeleri göster</button></div></div>`;
   else body = HM_GROUPS.map(grp).join('');
 
   return `<div class="hm-c" id="hmHome">
@@ -5683,7 +5956,8 @@ function homeUndo(msg, items) {
 }
 function wireHome() {
   if (DB.ui.view !== 'home') return;
-  $$('[data-hmproj]').forEach(b => b.onclick = () => { DB.ui.homeProj = b.dataset.hmproj; save(); render(); });
+  $$('[data-hmproj]').forEach(b => b.onclick = () => { DB.ui.homeProj = b.dataset.hmproj; if (b.hasAttribute('data-hmall')) DB.ui.homeWs = ''; save(); render(); });
+  $$('[data-hmws]').forEach(b => b.onclick = () => { DB.ui.homeWs = b.dataset.hmws; DB.ui.homeProj = ''; save(); render(); });
   $$('[data-hmmore]').forEach(b => b.onclick = () => { HM_MORE.add(b.dataset.hmmore); render(); });
   $$('[data-hmlog]').forEach(b => b.onclick = e => { e.stopPropagation(); if (canEdit()) worklogForm({ issueId: b.dataset.hmlog, all: true }); });
   $$('[data-hmadv]').forEach(b => b.onclick = e => { e.stopPropagation(); homeAdvance(b.dataset.hmadv, b.dataset.hmto); });
@@ -5692,54 +5966,451 @@ function wireHome() {
 /* efFmt bölüm 8'de tanımlı; ana menü ondan önce çağrılabilir diye güvenli sarmalayıcı */
 const efFmtSafe = h => (Math.round(h * 10) / 10).toString().replace(/\.0$/, '') + 'h';
 
+/* ============================ ÇALIŞMA ALANLARI (issue #22) ============================
+   Projelerin üstünde bir kat (docs/tasarim/calisma-alanlari). Yetki ve bütünlük sunucuda (store.js);
+   buradaki denetimler yalnız kullanıcı deneyimi içindir. Alanı olmayan (ya da olmayan bir alana bağlı)
+   proje "Genel" (ws1) sayılır — bu bilgi kayda YAZILMAZ. Açan kişiyi (createdBy) sunucu yazar. */
+const WS_DEFAULT = 'ws1';
+const WS_FALLBACK = { id: WS_DEFAULT, name: 'Genel', color: '#64748B', description: '', archived: false, createdBy: null };
+const WS_COLORS = [['#64748B', 'Arduvaz'], ['#2563EB', 'Mavi'], ['#4F46E5', 'Çivit'], ['#7C3AED', 'Mor'],
+  ['#BE185D', 'Pembe'], ['#C2410C', 'Turuncu'], ['#047857', 'Yeşil'], ['#0E7490', 'Deniz']];
+/* Seçili proje yokken boş durum paneli gösterilen (projeye bağlı) ekranlar. */
+const WS_PROJ_VIEWS = ['board', 'backlog', 'plan', 'roadmap', 'reports', 'admin', 'effort', 'timesheet'];
+/* Bu oturumda açtığım alanlar: sunucu createdBy'yi yazıp poll ile geri gönderene kadar "benim" sayılır. */
+const WS_MINE = new Set();
+const wsAll = () => { const l = (DB.workspaces || []).filter(w => w && w.id);
+  return l.some(w => w.id === WS_DEFAULT) ? l : [WS_FALLBACK, ...l]; };
+const wsById = id => id ? wsAll().find(w => w.id === id) : undefined;
+const wsOf = p => { const id = p?.workspaceId; return id && (DB.workspaces || []).some(w => w?.id === id) ? id : WS_DEFAULT; };
+/* Sunucudaki ad kıyasıyla aynı: kırp, boşlukları teke indir, Türkçe küçük harf. */
+const wsKey = s => String(s ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr');
+const wsArchived = id => wsById(id)?.archived === true;
+const wsMine = w => !!w && ((w.createdBy != null && w.createdBy === SESSION) || WS_MINE.has(w.id));
+/* Ad/renk/açıklama ve arşiv: alanı açan ya da yönetici (Genel'in açanı yok: yalnız yönetici). */
+const canManageWs = w => !!w && canEdit() && (isAdmin() || wsMine(w));
+const wsSort = (a, b) => (a.id === WS_DEFAULT ? -1 : 0) - (b.id === WS_DEFAULT ? -1 : 0)
+  || String(a.name || '').localeCompare(String(b.name || ''), 'tr');
+const wsInitial = n => ([...String(n ?? '').trim()][0] || '?').toLocaleUpperCase('tr');
+/* Rozet harfi: açık bir renk elle girilmişse koyu harf (okunabilirlik). */
+function wsInk(c) {
+  const h = safeColor(c).slice(1), f = h.length < 6 ? [...h.slice(0, 3)].map(x => x + x).join('') : h.slice(0, 6);
+  const [r, g, b] = [0, 2, 4].map(i => parseInt(f.slice(i, i + 2), 16) / 255).map(v => v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4);
+  return .2126 * r + .7152 * g + .0722 * b > .2 ? '#0B1B33' : '#FFFFFF';
+}
+const wsBadge = (w, cls = '') => `<span class="ws-badge ${cls}" style="--ws-c:${safeColor(w?.color)};color:${wsInk(w?.color)}" aria-hidden="true">${esc(wsInitial(w?.name))}</span>`;
+
+/* Görünen (etkin ya da arşivli) alanlar: yönetici hepsini; diğerleri üyesi olduğu arşivsiz bir projesi olanları
+   ve kendi açtıklarını. Genel önce, sonra ada göre. */
+function visibleWs(archived = false) {
+  const admin = isAdmin();
+  return wsAll().filter(w => (w.archived === true) === archived && (admin || wsMine(w)
+    || DB.projects.some(p => wsOf(p) === w.id && !p.archived && isMember(p)))).sort(wsSort);
+}
+/* Seçicilerde görünen projeler: görebildiği ve alanı arşivli olmayanlar (ws verilirse yalnız o alanınkiler). */
+const selectableProjects = (ws = '') => DB.projects.filter(p => canSeeProject(p) && !wsArchived(wsOf(p)) && (!ws || wsOf(p) === ws));
+
+/* Seçimi tutarlı kıl (her çizimde): seçili proje duruyorsa alan ona uyar; yoksa kayıtlı alan geçerliyse kalır,
+   değilse projesi olan ilk görünür alan; proje = alanın ilk projesi ya da hiç (boş durum). */
+function ensureSel() {
+  if (!DB) return;
+  DB.ui ||= {};
+  const p = P();
+  if (p && !wsArchived(wsOf(p))) { DB.ui.workspace = wsOf(p); return; }
+  const vis = visibleWs();
+  if (!vis.some(w => w.id === DB.ui.workspace))
+    DB.ui.workspace = (vis.find(w => wsFirstProj(w.id)) || vis[0])?.id || null;
+  DB.ui.project = DB.ui.workspace ? wsFirstProj(DB.ui.workspace)?.id || null : null;
+}
+/* Alanın açılacak ilk projesi. Yönetici üyesi olmadığı projeye de geçebildiği için (eski davranış: ilk proje)
+   alanda seçilebilir proje yoksa arşivsiz ilk projeye düşer. */
+const wsFirstProj = ws => selectableProjects(ws)[0]
+  || (isAdmin() ? DB.projects.find(p => wsOf(p) === ws && !p.archived) : undefined);
+
+function pickWs(id) {
+  const w = wsById(id); if (!w || w.archived) return;
+  if (DB.ui.workspace !== id || !P() || wsOf(P()) !== id) {
+    DB.ui.workspace = id; DB.ui.project = wsFirstProj(id)?.id || null; DB.board.q = '';
+  }
+  save(); render();
+}
+
+/* Sol menüdeki iki katlı seçici (alan + #projSel). Değişmediyse DOM'a dokunulmaz (açık seçici kapanmasın). */
+let WS_SEL_KEY = '';
+function renderSelectors() {
+  const w = wsById(DB.ui.workspace), cur = P();
+  const inWs = DB.ui.workspace ? selectableProjects(DB.ui.workspace) : [];
+  const rows = DB.projects.filter(p => p === cur || inWs.includes(p));        // seçili olan görünmese de listede (eski davranış)
+  const opts = rows.length ? rows.map(p => `<option value="${esc(p.id)}" ${p === cur ? 'selected' : ''}>${esc(p.name)}${p.archived ? ' (arşiv)' : ''}</option>`).join('')
+    : '<option value="">Proje yok</option>';
+  const head = `${w ? wsBadge(w) : `<span class="ws-badge none" aria-hidden="true">${ic('layers')}</span>`}
+    <span class="tx"><span class="lb">Çalışma alanı</span><span class="nm">${w ? esc(w.name) : 'Henüz alan yok'}</span></span>${ic('updown')}`;
+  const key = head + '|' + opts + '|' + (cur?.id || '');
+  if (key === WS_SEL_KEY) return;
+  WS_SEL_KEY = key;
+  const b = $('#wsCur'); b.innerHTML = head; b.setAttribute('aria-label', `Çalışma alanı: ${w ? w.name : 'yok'} (değiştir)`);
+  const sel = $('#projSel'); sel.innerHTML = opts; sel.disabled = !rows.length; sel.value = cur?.id || '';
+  const mb = $('#vtabs [data-v="__proj"]');
+  if (mb) mb.innerHTML = `${w ? wsBadge(w, 'sm') : ''}<span class="t">${esc(cur?.name || 'Proje')}</span> ▾`;
+}
+
+/* ---- açılır menüler: ↑↓ Home End ile gezinme, Esc kapatır ve odağı düğmeye verir, Tab kapatır ---- */
+function menuKeys(m, close) {
+  m.onkeydown = e => {
+    const items = [...m.querySelectorAll('button:not(:disabled)')], k = items.indexOf(document.activeElement);
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); return close(true); }
+    if (e.key === 'Tab') return close(false);
+    const to = { ArrowDown: k + 1, ArrowUp: k - 1, Home: 0, End: items.length - 1 }[e.key];
+    if (to === undefined || !items.length) return;
+    e.preventDefault(); items[(to + items.length) % items.length].focus();
+  };
+}
+function wsMenuClose(focus) {
+  const m = $('#wsMenu'); if (!m) return;
+  m.remove(); $('#wsCur').setAttribute('aria-expanded', 'false');
+  if (focus) $('#wsCur').focus();
+  if (RERENDER) setTimeout(tryRerender, 0);
+}
+function wsMenuOpen() {
+  if ($('#wsMenu')) return wsMenuClose(true);
+  const cur = DB.ui.workspace;
+  $('#wsSwitch').insertAdjacentHTML('beforeend', `<div class="ws-menu" id="wsMenu" role="menu" aria-label="Çalışma alanları">
+    <div class="ws-menu-h" aria-hidden="true">Çalışma alanları</div>
+    ${visibleWs().map(w => { const n = selectableProjects(w.id).length;
+      return `<button type="button" class="ws-mi" role="menuitemradio" aria-checked="${w.id === cur}" data-wspick="${esc(w.id)}">${wsBadge(w)}<span class="nm">${esc(w.name)}</span>
+        <span class="n" aria-label="${n} proje">${n}</span>${w.id === cur ? ic('check').replace('class="i"', 'class="i ck"') : '<span class="ph"></span>'}</button>`; }).join('')
+      || '<div class="ws-mi" style="cursor:default;color:var(--meta)">Görebildiğin bir çalışma alanı yok</div>'}
+    <div class="ws-hr" role="separator"></div>
+    ${canEdit() ? `<button type="button" class="ws-mi ws-act" role="menuitem" data-wsnew>${ic('plus')}Yeni çalışma alanı</button>` : ''}
+    <button type="button" class="ws-mi" role="menuitem" data-wsmanage>${ic('grid')}Projeleri ve alanları yönet</button>
+  </div>`);
+  $('#wsCur').setAttribute('aria-expanded', 'true');
+  const m = $('#wsMenu');
+  menuKeys(m, f => wsMenuClose(f));
+  (m.querySelector('[aria-checked="true"]') || m.querySelector('button'))?.focus();
+}
+function wsPopClose(pop, focus) {
+  if (!pop || pop.hidden) return;
+  pop.hidden = true;
+  const b = pop.previousElementSibling; b?.setAttribute('aria-expanded', 'false');
+  if (focus) b?.focus();
+  if (RERENDER) setTimeout(tryRerender, 0);
+}
+function wsPopToggle(btn) {
+  const pop = btn.nextElementSibling; if (!pop) return;
+  if (!pop.hidden) return wsPopClose(pop, true);
+  $$('.ws-pop:not([hidden])').forEach(x => wsPopClose(x));
+  pop.hidden = false; btn.setAttribute('aria-expanded', 'true');
+  menuKeys(pop, f => wsPopClose(pop, f));
+  pop.querySelector('button:not(:disabled)')?.focus();
+}
+
+function wireWsSwitch() {
+  $('#wsCur').onclick = () => wsMenuOpen();
+  $('#wsCur').addEventListener('keydown', e => { if (e.key === 'ArrowDown' && !$('#wsMenu')) { e.preventDefault(); wsMenuOpen(); } });
+  document.addEventListener('mousedown', e => {
+    if ($('#wsMenu') && !e.target.closest?.('#wsSwitch')) wsMenuClose();
+    const open = document.querySelector('.ws-pop:not([hidden])');
+    if (open && !open.parentElement.contains(e.target)) wsPopClose(open);
+  });
+  document.addEventListener('click', wsClick);
+}
+
+/* Alan işlemleri tek yerden (olay devri): Projeler ekranı, boş durumlar, sol menü, dar ekran penceresi. */
+function wsClick(e) {
+  const t = e.target; if (!(t instanceof Element)) return;
+  const mi = t.closest('.ws-pop .ws-mi');
+  if (mi && !mi.disabled) wsPopClose(mi.closest('.ws-pop'));
+  const more = t.closest('[data-wsmore]'); if (more) return wsPopToggle(more);
+  const b = t.closest('[data-wsnew],[data-wsnewproj],[data-wsedit],[data-wsarch],[data-wsunarch],[data-wsdel],[data-movproj],[data-wsarchtog],[data-wspick],[data-wsmanage]');
+  if (!b || b.disabled) return;
+  const d = b.dataset;
+  if (b.closest('#wsMenu')) wsMenuClose();
+  if ('wspick' in d) {
+    const sheet = 'wssheet' in d;
+    pickWs(d.wspick);
+    if (sheet) projectMenu(); else $('#wsCur').focus();
+    return;
+  }
+  if ('wsmanage' in d) { DB.ui.view = 'projects'; save(); return render(); }
+  if ('wsnew' in d) { closeModal(); return wsForm(); }
+  if ('wsnewproj' in d) return newProjectForm({ workspaceId: d.wsnewproj });
+  if ('wsedit' in d) return wsForm(d.wsedit);
+  if ('wsarch' in d) return wsSetArchived(d.wsarch, true);
+  if ('wsunarch' in d) return wsSetArchived(d.wsunarch, false);
+  if ('wsdel' in d) return wsDelete(d.wsdel);
+  if ('movproj' in d) return moveProjectForm(d.movproj);
+  if ('wsarchtog' in d) { DB.ui.showArchivedWs = !DB.ui.showArchivedWs; save(); render(); $('[data-wsarchtog]')?.focus(); }
+}
+
+const wsDialog = (labelId) => { const m = $('#scrim .modal'); if (!m) return;
+  m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-labelledby', labelId); };
+
+/* Yeni çalışma alanı / düzenleme penceresi. Ad: zorunlu, ≤60, etkin alanlar arasında tekil (tr). */
+function wsForm(id) {
+  if (!canEdit()) return toast('İzleyiciler çalışma alanı oluşturamaz');
+  const w = id ? (DB.workspaces || []).find(x => x.id === id) : null;
+  if (id && !w) return toast('Çalışma alanı bulunamadı');
+  if (w && !canManageWs(w)) return toast('Bu çalışma alanını yalnızca açan kişi ya da yönetici değiştirebilir');
+  let color = w ? safeColor(w.color) : WS_COLORS[1][0];
+  const tab0 = WS_COLORS.some(([c]) => c === color) ? color : WS_COLORS[0][0];
+  openModal(`<div class="m-h"><b id="wsf_t">${w ? 'Çalışma alanını düzenle' : 'Yeni çalışma alanı'}</b><button class="x" data-close aria-label="Kapat">×</button></div>
+    <div class="ws-b">
+      <div class="ws-prev" id="wsf_prev"></div>
+      <div class="ws-fld" id="wsf_nf"><label for="wsf_n">Ad <span class="ws-cnt" id="wsf_nc">0/60</span></label>
+        <input class="inp" id="wsf_n" maxlength="60" value="${esc(w?.name || '')}" aria-describedby="wsf_ne" autocomplete="off" placeholder="Örn. Müşteri: Oyak">
+        <div class="ws-err" id="wsf_ne" aria-live="polite"></div></div>
+      <div class="ws-fld"><div class="lb" id="wsf_cl">Renk</div>
+        <div class="ws-colors" role="radiogroup" aria-labelledby="wsf_cl">${WS_COLORS.map(([c, n]) =>
+          `<button type="button" class="ws-sw-c" role="radio" aria-checked="${c === color}" tabindex="${c === tab0 ? 0 : -1}" aria-label="${n}" title="${n}"
+            data-wsc="${c}" style="--ws-c:${c}">${ic('check')}</button>`).join('')}</div>
+        <div class="ws-cname" id="wsf_cn"></div></div>
+      <div class="ws-fld"><label for="wsf_d">Açıklama <span class="opt" id="wsf_dc">isteğe bağlı · 0/500</span></label>
+        <textarea class="inp" id="wsf_d" rows="2" maxlength="500" placeholder="Bu alanda hangi projeler duracak?">${esc(w?.description || '')}</textarea></div>
+    </div>
+    <div class="m-f"><button class="btn" data-close>Vazgeç</button><button class="btn pri" id="wsf_ok">${w ? 'Kaydet' : 'Oluştur'}</button></div>`, 'narrow ws-dlg');
+  wsDialog('wsf_t');
+  const inp = $('#wsf_n'), desc = $('#wsf_d');
+  let shown = false;
+  const check = () => {
+    const n = inp.value, k = wsKey(n);
+    if (!k || n.trim().length > 60) return 'Çalışma alanı adı gerekli (en fazla 60 karakter)';
+    if (wsAll().some(x => x.id !== id && !x.archived && wsKey(x.name) === k)) return 'Bu adla etkin bir çalışma alanı zaten var';
+    return '';
+  };
+  const setErr = msg => {
+    shown = !!msg;
+    $('#wsf_ne').innerHTML = msg ? ic('alert') + esc(msg) : '';
+    $('#wsf_nf').classList.toggle('has-err', !!msg);
+    inp.setAttribute('aria-invalid', msg ? 'true' : 'false');
+  };
+  const paint = () => {
+    const n = inp.value.trim();
+    $('#wsf_prev').innerHTML = `${wsBadge({ name: n || '?', color }, 'xl')}<div class="tx"><b>${esc(n || 'Çalışma alanı adı')}</b><span>Önizleme · sol menüde böyle görünür</span></div>`;
+    $('#wsf_nc').textContent = `${inp.value.length}/60`;
+    $('#wsf_dc').textContent = `isteğe bağlı · ${desc.value.length}/500`;
+    $('#wsf_cn').textContent = 'Seçili: ' + (WS_COLORS.find(([c]) => c === color)?.[1] || color);
+    $$('[data-wsc]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.wsc === color)));
+  };
+  inp.oninput = () => { paint(); if (shown) setErr(check()); };
+  inp.onblur = () => { if (inp.value.trim() || shown) setErr(check()); };
+  desc.oninput = paint;
+  const sw = $$('[data-wsc]');
+  const pick = (b, focus) => { color = b.dataset.wsc; sw.forEach(x => x.tabIndex = x === b ? 0 : -1); if (focus) b.focus(); paint(); };
+  sw.forEach((b, k) => {
+    b.onclick = () => pick(b);
+    b.onkeydown = e => {
+      const to = { ArrowRight: k + 1, ArrowDown: k + 1, ArrowLeft: k - 1, ArrowUp: k - 1, Home: 0, End: sw.length - 1 }[e.key];
+      if (to === undefined) return;
+      e.preventDefault(); pick(sw[(to + sw.length) % sw.length], true);
+    };
+  });
+  const submit = () => {
+    const msg = check(); if (msg) { setErr(msg); return inp.focus(); }
+    const name = inp.value.trim().replace(/\s+/g, ' '), description = desc.value.trim();
+    if (w) {
+      Object.assign(w, { name, color, description });
+      closeModal(); save(); render(); return toast(`${name} kaydedildi`);
+    }
+    const nid = uid('ws'); WS_MINE.add(nid);
+    (DB.workspaces ||= []).push({ id: nid, name, color, description, archived: false });
+    DB.ui.workspace = nid; DB.ui.project = null; DB.board.q = '';
+    closeModal(); save(); render(); toast(`${name} oluşturuldu`);
+  };
+  inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); submit(); } };
+  $('#wsf_ok').onclick = submit;
+  paint();
+}
+
+function wsSetArchived(id, on) {
+  const w = (DB.workspaces || []).find(x => x.id === id);
+  if (!w) return toast('Çalışma alanı bulunamadı');
+  if (!canManageWs(w)) return toast('Bu çalışma alanını yalnızca açan kişi ya da yönetici değiştirebilir');
+  if (on) {
+    if (id === WS_DEFAULT) return toast('Genel çalışma alanı arşivlenemez');
+    if (!wsAll().some(x => x.id !== id && !x.archived)) return toast('Son etkin çalışma alanı arşivlenemez');
+    const n = DB.projects.filter(p => wsOf(p) === id && !p.archived).length;
+    if (!confirm(`"${w.name}" arşivlensin mi?\n\n${n ? `Alandaki ${n} proje seçicilerden kalkar. ` : ''}Veri silinmez; Projeler ekranındaki "Arşivlenmiş çalışma alanlarını göster" ile geri alınabilir.`)) return;
+    w.archived = true; save(); render(); return toast(`${w.name} arşivlendi`);
+  }
+  if (wsAll().some(x => x.id !== id && !x.archived && wsKey(x.name) === wsKey(w.name))) return toast('Bu adla etkin bir çalışma alanı zaten var');
+  w.archived = false; save(); render(); toast(`${w.name} arşivden çıkarıldı`);
+}
+
+function wsDelete(id) {
+  if (!isAdmin()) return toast('Bu değişiklik için yönetici yetkisi gerekli');
+  if (id === WS_DEFAULT) return toast('Genel çalışma alanı silinemez');
+  const w = (DB.workspaces || []).find(x => x.id === id);
+  if (!w) return toast('Çalışma alanı bulunamadı');
+  if (DB.projects.some(p => wsOf(p) === id)) return toast('Önce projeleri taşıyın');
+  if (!confirm(`"${w.name}" çalışma alanı silinsin mi?\n\nAlanda proje yok. Gerekirse Sistem › Çöp kutusu'ndan geri yüklenebilir.`)) return;
+  DB.workspaces = DB.workspaces.filter(x => x.id !== id);
+  if (DB.ui.workspace === id) DB.ui.workspace = null;
+  save(); render(); toast(`${w.name} silindi`);
+}
+
+/* "Çalışma alanını değiştir": yalnız projenin workspaceId'si değişir; anahtarlar, sprintler, üyeler, süreler aynı. */
+function moveProjectForm(pid) {
+  const p = DB.projects.find(x => x.id === pid); if (!p) return;
+  if (!canEdit()) return toast('İzleyiciler projeyi taşıyamaz');
+  const from = wsOf(p);
+  const act = visibleWs(), arch = visibleWs(true);
+  if (!act.some(w => w.id === from) && !arch.some(w => w.id === from) && wsById(from)) (wsArchived(from) ? arch : act).push(wsById(from));
+  let to = from;
+  const opt = (w, dis) => { const n = DB.projects.filter(x => wsOf(x) === w.id && !x.archived).length;
+    return `<button type="button" class="ws-opt" role="radio" data-mvto="${esc(w.id)}" aria-checked="${w.id === from}" tabindex="${w.id === from ? 0 : -1}" ${dis ? 'aria-disabled="true"' : ''}>
+      ${wsBadge(w, dis ? 'is-arch' : '')}<span class="tx"><span class="nm">${esc(w.name)}</span><span class="s">${
+        dis ? 'Arşivli · proje taşınamaz' : w.id === from ? 'Şu anki alan' : `${n} proje`}</span></span>
+      ${dis ? ic('lock') : w.id === from ? '<span class="ws-chip">şu anki</span>' : ''}<span class="ws-rad"></span></button>`; };
+  const key = esc(p.key || p.code || '');
+  openModal(`<div class="m-h"><b id="wsm_t">Çalışma alanını değiştir</b><button class="x" data-close aria-label="Kapat">×</button></div>
+    <div class="ws-b">
+      <div class="ws-sub">Proje: <span class="ws-key">${key}</span><b style="color:var(--ink)">${esc(p.name)}</b></div>
+      <div class="ws-opts" role="radiogroup" aria-label="Hedef çalışma alanı">${act.map(w => opt(w, false)).join('')}${arch.map(w => opt(w, true)).join('')}</div>
+      <div class="ws-info">${ic('info')}<span>İş numaraları değişmez${p.counter > 0 ? ` (<span class="k">${key}-1 … ${key}-${+p.counter}</span>)` : ''}.
+        Sprintler, üyeler, bağlantılar ve süre kayıtları aynen kalır; diğer kullanıcılar birkaç saniye içinde yeni yerinde görür.</span></div>
+    </div>
+    <div class="m-f"><button class="btn" data-close>Vazgeç</button><button class="btn pri" id="wsm_ok" disabled>${ic('move')}Taşı</button></div>`, 'narrow ws-dlg');
+  wsDialog('wsm_t');
+  const opts = $$('[data-mvto]'), live = opts.filter(b => !b.hasAttribute('aria-disabled'));
+  const sel = (b, focus) => {
+    if (!b || b.hasAttribute('aria-disabled')) return;
+    to = b.dataset.mvto;
+    opts.forEach(x => { x.setAttribute('aria-checked', String(x === b)); x.tabIndex = x === b ? 0 : -1; });
+    if (focus) b.focus();
+    $('#wsm_ok').disabled = to === from;
+  };
+  opts.forEach(b => {
+    b.onclick = () => b.hasAttribute('aria-disabled') ? toast('Arşivlenmiş çalışma alanına proje taşınamaz') : sel(b);
+    b.onkeydown = e => {
+      const k = live.indexOf(b), to2 = { ArrowDown: k + 1, ArrowRight: k + 1, ArrowUp: k - 1, ArrowLeft: k - 1 }[e.key];
+      if (to2 === undefined || !live.length) return;
+      e.preventDefault(); sel(live[(to2 + live.length) % live.length], true);
+    };
+  });
+  setTimeout(() => (opts.find(b => b.tabIndex === 0) || live[0])?.focus(), 40);
+  $('#wsm_ok').onclick = () => {
+    const w = wsById(to);
+    if (!w) return toast('Çalışma alanı bulunamadı');
+    if (w.archived) return toast('Arşivlenmiş çalışma alanına proje taşınamaz');
+    if (to === from) return closeModal();
+    p.workspaceId = to;
+    closeModal(); save(); render(); toast(`${p.name}, ${w.name} alanına taşındı`);
+  };
+}
+
+/* Boş durumlar (Pano / Backlog / Zaman planı / Raporlar ...): (a) seçili alanda proje yok, (b) hiçbir projede üye değil. */
+function wsEmptyView() {
+  const ws = wsById(DB.ui.workspace), edit = canEdit();
+  const wsHasAny = ws && DB.projects.some(p => wsOf(p) === ws.id && !p.archived);
+  if (!selectableProjects().length && (!ws || wsHasAny))
+    return `<div class="ws-empty" data-wsempty="b"><span class="ws-empty-ic">${ic(edit ? 'users' : 'eye')}</span>
+      <h3>Henüz bir projeye eklenmedin</h3>${edit
+        ? `<p>Kendi çalışma alanını açıp ilk projeni oluşturabilirsin. Ekibin bir projesindeysen yöneticin seni üye olarak ekleyebilir.</p>
+           <div class="acts"><button type="button" class="btn pri" data-wsnew>${ic('layers')}Çalışma alanı oluştur</button></div>`
+        : '<p>Yöneticinden seni bir projeye eklemesini iste. Eklendiğinde projeler burada ve sol menüde görünür.</p>'}</div>`;
+  return `<div class="ws-empty" data-wsempty="a"><span class="ctx">${wsBadge(ws, 'sm')}${esc(ws?.name || '')}</span><span class="ws-empty-ic">${ic('folderplus')}</span>
+    <h3>Bu çalışma alanında henüz proje yok</h3>${edit
+      ? `<p>İlk projeyi ekleyince pano, backlog ve raporlar burada açılır. Başka bir alana sol menüden geçebilirsin.</p>
+         <div class="acts"><button type="button" class="btn pri" data-wsnewproj="${esc(ws?.id || '')}">${ic('plus')}Yeni proje</button></div>`
+      : '<p>Bir yönetici bu alana proje eklediğinde burada görünecek.</p>'}</div>`;
+}
+
 /* ============================ PROJELER ============================ */
 function toolbarProjects() {
-  return `${canEdit() ? '<button class="btn pri" id="pNew">+ Yeni proje</button>' : ''}
+  return `${canEdit() ? `<span class="ws-tb" style="display:contents"><button class="btn pri" id="pNew">${ic('plus')}Yeni proje</button>
+    <button class="btn" id="wsNewBtn" data-wsnew>${ic('layers')}Yeni çalışma alanı</button></span>` : ''}
     <div class="spacer"></div>
     <span style="font-size:12px;color:var(--ink3)">Proje oluşturma ve üye ekleme herkese açık · silme yalnızca yöneticide</span>`;
 }
 
+/* Projeler ekranı alan başlıkları altında gruplanır (#22). Proje listesi daraltılmaz: görünür alanlar ve
+   listelenen projelerin alanları çizilir; arşivli alanlar anahtar açıkken en altta. */
 function renderProjects() {
   const list = isSuper() || DB.ui.showArchived ? DB.projects : DB.projects.filter(p => !p.archived);
   const nArch = DB.projects.filter(p => p.archived).length;
-  return `${nArch ? `<label style="display:flex;align-items:center;gap:6px;font-size:12.5px;margin-bottom:10px">
+  const has = id => list.some(p => wsOf(p) === id);
+  const vis = new Set(visibleWs().map(w => w.id)), visA = new Set(visibleWs(true).map(w => w.id));
+  const groups = wsAll().filter(w => !w.archived && (vis.has(w.id) || has(w.id))).sort(wsSort);
+  const archWs = wsAll().filter(w => w.archived && (visA.has(w.id) || has(w.id))).sort(wsSort);
+  const showA = !!DB.ui.showArchivedWs;
+  return `${nArch ? `<label style="display:flex;align-items:center;gap:6px;font-size:12.5px;margin-bottom:14px">
       <input type="checkbox" id="showArch" ${DB.ui.showArchived || isSuper() ? 'checked' : ''} ${isSuper() ? 'disabled' : ''}>
       Arşivlenmiş projeleri göster (${nArch})</label>` : ''}
-    <div class="projgrid wide">${list.map(p => {
-    const all = DB.issues.filter(i => i.projectId === p.id);
-    const open = all.filter(i => stat(i.statusId).cat !== 'done').length;
-    const hours = DB.worklogs.filter(w => issue(w.issueId)?.projectId === p.id).reduce((a, w) => a + w.hours, 0);
-    return `<section class="panel">
-      <div style="display:flex;align-items:center;gap:9px;margin-bottom:4px">
-        <input class="inp" data-projname="${p.id}" value="${esc(p.name)}" style="flex:1;font-weight:600" ${canEdit() ? '' : 'disabled'}>
-        ${p.archived ? '<span class="chip lbl">arşiv</span>' : p.id === DB.ui.project ? '<span class="chip cat-done">aktif</span>' : ''}
-      </div>
-      <div class="sub">${all.length} iş · ${open} açık · ${efFmtSafe(hours)} kayıtlı efor ·
-        yürüten ${esc(user(p.lead)?.name || '—')}</div>
-
-      <div class="sec" style="margin-top:12px">Üyeler (${memsOf(p).length})</div>
-      <div style="display:flex;flex-wrap:wrap;gap:5px">
-        ${DB.users.filter(u => u.active).map(u => {
-          const on = isMember(p, u.id);
-          return `<button class="memchip ${on ? 'on' : ''}" data-mem="${p.id}" data-memu="${u.id}" ${canEdit() ? '' : 'disabled'}>
-            ${avat(u.id)}<span>${esc(u.name)}</span>${on ? '<em>✓</em>' : '<em>+</em>'}</button>`;
-        }).join('')}
-      </div>
-
-      <div style="display:flex;gap:8px;margin-top:14px;align-items:center">
-        <button class="btn" data-goproj="${p.id}">Projeye geç</button>
-        ${canAdmin() ? `<button class="btn" data-arch="${p.id}">${p.archived ? 'Yeniden etkinleştir' : 'Arşivle'}</button>` : ''}
-        ${isAdmin() ? `<span class="spacer"></span>
-          <button class="btn sm danger" data-delproj="${p.id}" ${DB.projects.length < 2 ? 'disabled title="Son proje silinemez"' : ''}>Projeyi sil</button>` : ''}
-      </div>
-    </section>`;
-  }).join('')}</div>`;
+    ${groups.map(w => wsGroup(w, list, false)).join('')}
+    ${archWs.length ? `<button type="button" class="ws-archtog" data-wsarchtog aria-pressed="${showA}">${ic('archive')}Arşivlenmiş çalışma alanlarını göster
+      <span class="n">(${archWs.length})</span><span class="ws-sw" aria-hidden="true"></span></button>
+      ${showA ? archWs.map(w => wsGroup(w, list, true)).join('') : ''}` : ''}`;
 }
 
-function newProjectForm() {
+function wsGroup(w, list, arch) {
+  const projs = list.filter(p => wsOf(p) === w.id), id = esc(w.id);
+  const all = DB.projects.filter(p => wsOf(p) === w.id), nA = all.filter(p => p.archived).length;
+  const manage = canManageWs(w);
+  const why = w.id === WS_DEFAULT ? 'Genel çalışma alanı silinemez'
+    : all.length ? `Önce projeleri taşıyın · ${all.length} proje${nA ? ` (${nA} arşivli)` : ''}` : '';
+  const items = [
+    manage && !arch ? `<button type="button" class="ws-mi" role="menuitem" data-wsedit="${id}">${ic('pencil')}Düzenle (ad, renk, açıklama)</button>` : '',
+    manage && !arch ? (w.id === WS_DEFAULT
+      ? `<button type="button" class="ws-mi" role="menuitem" disabled>${ic('archive')}<span class="two">Arşivle<span class="why">Genel çalışma alanı arşivlenemez</span></span></button>`
+      : `<button type="button" class="ws-mi" role="menuitem" data-wsarch="${id}">${ic('archive')}Arşivle</button>`) : '',
+    isAdmin() ? `${manage && !arch ? '<div class="ws-hr" role="separator"></div>' : ''}
+      <button type="button" class="ws-mi danger" role="menuitem" data-wsdel="${id}" ${why ? `disabled aria-describedby="wsdw-${id}"` : ''}>${ic('trash')}<span class="two">Sil${
+        why ? `<span class="why" id="wsdw-${id}">${esc(why)}</span>` : ''}</span></button>` : ''].join('');
+  const head = `<div class="ws-gh">${wsBadge(w, 'lg' + (arch ? ' is-arch' : ''))}
+    <div class="tx"><h2 id="wsg-${id}"><span class="t">${esc(w.name)}</span><span class="cnt">${all.length - nA} proje${nA ? ` · ${nA} arşivli` : ''}</span>${
+      arch ? `<span class="ws-chip">${ic('archive')}Arşivlendi</span>` : ''}</h2>
+      ${w.description ? `<div class="ds" title="${esc(w.description)}">${esc(w.description)}</div>` : ''}</div>
+    <div class="acts">${arch ? (manage ? `<button type="button" class="btn" data-wsunarch="${id}">${ic('unarchive')}Arşivden çıkar</button>` : '')
+      : canEdit() ? `<button type="button" class="btn ghost" data-wsnewproj="${id}" aria-label="${esc(w.name)} alanına proje ekle">${ic('plus')}Proje</button>` : ''}
+      ${items ? wsPopMenu(`${w.name}: alan işlemleri`, 'Alan işlemleri', items) : ''}</div></div>`;
+  return `<section class="ws-grp ${arch ? 'is-arch' : ''}" data-wsgrp="${id}" aria-labelledby="wsg-${id}">${head}
+    ${projs.length ? `<div class="ws-grid">${projs.map(p => wsProjCard(p, arch)).join('')}</div>`
+      : `<div class="ws-gempty">${ic('folderplus')}<span class="tx">Bu çalışma alanında henüz proje yok</span>${
+        canEdit() && !arch ? `<button type="button" class="btn" data-wsnewproj="${id}">${ic('plus')}Yeni proje</button>` : ''}</div>`}</section>`;
+}
+
+/* ⋯ düğmesi + açılır menü. Menü DOM'da gizli durur (data-arch / data-delproj işleyicileri bağlı kalsın). */
+const wsPopMenu = (label, title, items) => `<div class="ws-mw"><button type="button" class="ws-more" data-wsmore aria-haspopup="menu" aria-expanded="false"
+    aria-label="${esc(label)}" title="${esc(title)}">${ic('more')}</button><div class="ws-pop" role="menu" aria-label="${esc(title)}" hidden>${items}</div></div>`;
+
+function wsProjCard(p, arch) {
+  const all = DB.issues.filter(i => i.projectId === p.id);
+  const open = all.filter(i => stat(i.statusId).cat !== 'done').length;
+  const hours = DB.worklogs.filter(w => issue(w.issueId)?.projectId === p.id).reduce((a, w) => a + (+w.hours || 0), 0);
+  const cur = p.id === DB.ui.project, pid = esc(p.id);
+  const items = [
+    canEdit() ? `<button type="button" class="ws-mi" role="menuitem" data-movproj="${pid}">${ic('move')}Çalışma alanını değiştir…</button>` : '',
+    canAdmin() ? `<button type="button" class="ws-mi" role="menuitem" data-arch="${pid}">${ic(p.archived ? 'unarchive' : 'archive')}${p.archived ? 'Yeniden etkinleştir' : 'Arşivle'}</button>` : '',
+    isAdmin() ? `<div class="ws-hr" role="separator"></div><button type="button" class="ws-mi danger" role="menuitem" data-delproj="${pid}"
+      ${DB.projects.length < 2 ? 'disabled title="Son proje silinemez"' : ''}>${ic('trash')}Projeyi sil</button>` : ''].join('');
+  return `<article class="ws-pcard ${cur ? 'is-cur' : ''}" data-wsproj="${pid}">
+    <div class="ws-ph"><span class="ws-key">${esc(p.key)}</span>
+      <input class="inp ws-pname" data-projname="${pid}" value="${esc(p.name)}" aria-label="Proje adı" ${canEdit() ? '' : 'disabled'}>
+      ${p.archived ? `<span class="ws-chip">${ic('archive')}arşiv</span>` : cur ? `<span class="ws-chip cur">${ic('check')}seçili</span>` : ''}
+      ${items ? wsPopMenu(`${p.name}: işlemler`, 'Proje işlemleri', items) : ''}</div>
+    <div class="ws-pstats"><span>${ic('issues')}<b>${all.length}</b> iş</span><span>${ic('circle')}<b>${open}</b> açık</span><span>${ic('hour')}<b>${efFmtSafe(hours)}</b> efor</span></div>
+    <div><div class="ws-plbl">Üyeler (${memsOf(p).length})</div>
+      <div class="ws-mems">${DB.users.filter(u => u.active).map(u => {
+        const on = isMember(p, u.id);
+        return `<button class="memchip ${on ? 'on' : ''}" data-mem="${pid}" data-memu="${esc(u.id)}" aria-pressed="${on}" ${canEdit() ? '' : 'disabled'}>
+          ${avat(u.id)}<span>${esc(u.name)}</span>${on ? '<em>✓</em>' : '<em>+</em>'}</button>`;
+      }).join('')}</div></div>
+    <div class="ws-pf"><span class="lead2">Yürüten <b>${esc(user(p.lead)?.name || '—')}</b></span>
+      ${arch ? '' : `<button class="btn" data-goproj="${pid}">Projeye geç${ic('arrow')}</button>`}</div>
+  </article>`;
+}
+
+function newProjectForm(preset = {}) {
+  if (!canEdit()) return toast('İzleyiciler proje oluşturamaz');
+  /* Alan seçimi (#22): grubun "+ Proje"si o alanı, diğer girişler seçili alanı önerir. */
+  const def = [preset.workspaceId, DB.ui.workspace, WS_DEFAULT].find(id => wsById(id) && !wsArchived(id)) || WS_DEFAULT;
+  const wsl = visibleWs();
+  if (!wsl.some(w => w.id === def) && wsById(def)) wsl.unshift(wsById(def));
   openModal(`<div class="m-h"><b>Yeni proje</b><button class="x" data-close>×</button></div>
     <div style="padding:16px 18px">
-      <div class="form-row"><label class="field">Proje adı</label><input class="inp" id="np_n" placeholder="Mobil Uygulama"></div>
+      <div class="form-row"><label class="field" for="np_n">Proje adı</label><input class="inp" id="np_n" placeholder="Mobil Uygulama"></div>
+      <div class="form-row"><label class="field" for="np_ws">Çalışma alanı</label><select class="inp" id="np_ws">
+        ${wsl.map(w => `<option value="${esc(w.id)}" ${w.id === def ? 'selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
       <div class="form-row"><label class="field">İş akışı şablonu</label><select class="inp" id="np_w">
         <option value="default">Varsayılan akış</option>
         ${Object.entries(STATUS_TEMPLATES).map(([k, [l, r]]) => `<option value="${k}">${l} — ${r.map(x => x[0]).join(' · ')}</option>`).join('')}
@@ -5780,6 +6451,9 @@ function newProjectForm() {
     if (!name) return $('#np_err').textContent = 'Proje adı gerekli.';
     if (DB.projects.some(p => p.name.toLowerCase() === name.toLowerCase()))
       return $('#np_err').textContent = 'Bu adda bir proje zaten var.';
+    const ws = $('#np_ws').value;
+    if (!wsById(ws)) return $('#np_err').textContent = 'Çalışma alanı bulunamadı';
+    if (wsArchived(ws)) return $('#np_err').textContent = 'Arşivlenmiş çalışma alanına proje taşınamaz';
     const key = projCode(name, new Set(DB.projects.map(p => p.code || p.key)));
     const clean = flow.filter(r => r[0].trim());
     if (!clean.length) return $('#np_err').textContent = 'En az bir durum gerekli.';
@@ -5787,7 +6461,7 @@ function newProjectForm() {
     clean.forEach(([n, c], k) => DB.statuses.push({ id: uid('st'), projectId: pid, name: n.trim(), cat: c, wip: 0, ord: k }));
     if ($('#np_def').checked) DB.cfg.defaultStatuses = clean.map(r => [r[0].trim(), r[1]]);
     picked.add(SESSION);
-    DB.projects.push({ id: pid, key, code: key, name, lead: SESSION, counter: 0, members: [...picked], archived: false });
+    DB.projects.push({ id: pid, key, code: key, name, lead: SESSION, counter: 0, members: [...picked], archived: false, workspaceId: ws });
     DB.ui.project = pid; DB.ui.view = 'board';
     closeModal(); save(); startApp(); toast(`${name} oluşturuldu`);
   };
@@ -5826,7 +6500,7 @@ function deleteProject(pid) {
     DB.rules = DB.rules.filter(r => r.projectId !== pid);
     DB.fields = DB.fields.filter(f => f.projectId !== pid);
     DB.projects = DB.projects.filter(x => x.id !== pid);
-    if (DB.ui.project === pid) DB.ui.project = DB.projects[0].id;
+    if (DB.ui.project === pid) DB.ui.project = null;          // ensureSel alanın ilk projesini seçer
     closeModal(); save(); startApp(); toast(`${p.name} silindi`);
   };
 }
@@ -6069,7 +6743,7 @@ function wireQuickAdd() {
     const s = $('#qa_s').value.trim();
     if (!s) return $('#qa_s').focus();
     grab();
-    const pr = P();
+    const pr = P(); if (!pr) return toast('Önce bir proje seçin');
     const it = {
       id: uid('i'), key: `${pr.key}-${++pr.counter}`, projectId: pr.id, type: q.type,
       summary: s, description: '', statusId: DB.ui.qaOpen,
@@ -6442,7 +7116,7 @@ function toggleArchive(pid) {
   if (p.archived) { p.archived = false; save(); render(); return toast(p.name + ' yeniden etkinleştirildi'); }
   if (liveProjects().filter(x => !x.archived).length < 2) return toast('Son etkin proje arşivlenemez');
   p.archived = true;
-  if (DB.ui.project === pid) DB.ui.project = DB.projects.find(x => !x.archived).id;
+  if (DB.ui.project === pid) DB.ui.project = null;            // ensureSel alanın ilk projesini seçer
   save(); startApp(); toast(p.name + ' arşivlendi');
 }
 
@@ -6589,7 +7263,7 @@ function worklogForm(opts = {}) {
   const edit = opts.edit ? DB.worklogs.find(w => w.id === opts.edit) : null;
   /* Çizelge "tüm projeler" kapsamındaysa iş listesi de tüm görünür
      projeleri kapsar; aksi halde yalnızca aktif proje. */
-  const wide = opts.all || (DB.ui.view === 'timesheet' && tsAllMode());
+  const wide = opts.all || !P() || (DB.ui.view === 'timesheet' && tsAllMode());
   const pool = wide
     ? DB.issues.filter(i => { const p = DB.projects.find(x => x.id === i.projectId); return p && canSeeProject(p); })
     : issuesOf();
@@ -6598,7 +7272,7 @@ function worklogForm(opts = {}) {
   if (!list.length && !edit) {
     openModal(`<div class="m-h"><b>Süre kaydet</b><button class="x" data-close>×</button></div>
       <div style="padding:18px"><p style="margin:0;color:var(--ink2)">
-        <b>${esc(P().name)}</b> projesinde henüz iş yok. Süre bir işe kaydedilir;
+        ${P() ? `<b>${esc(P().name)}</b> projesinde henüz iş yok.` : 'Görebildiğin projelerde henüz iş yok.'} Süre bir işe kaydedilir;
         önce bir iş oluşturun ya da başka bir projeye geçin.</p></div>
       <div class="m-f"><button class="btn" data-close>Kapat</button>
         ${canEdit() ? '<button class="btn pri" id="lw_new">+ İş oluştur</button>' : ''}</div>`, 'narrow');

@@ -59,6 +59,8 @@ jobs:
         run: node test/e2e/kart.cjs
       - name: Benim işlerim testi
         run: node test/e2e/benim-islerim.cjs
+      - name: Çalışma alanları testi
+        run: node test/e2e/calisma-alanlari.cjs
       - name: Sunucu günlüğü
         if: failure()
         run: cat server.log
