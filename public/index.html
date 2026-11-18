@@ -4017,6 +4017,8 @@ function openSub(html, cls = '') {
 function closeSub() {
   const s = $('#scrim2'); if (!s || !s.classList.contains('on')) return false;
   s.classList.remove('on'); s.innerHTML = '';
+  /* Alttaki iş bu arada silindiyse (başka kullanıcı) detay da kapanır. */
+  if (OPEN_ISSUE && !issue(OPEN_ISSUE) && $('#scrim .modal.id-dlg')) { closeModal(); return true; }
   if (OPEN_ISSUE && issue(OPEN_ISSUE)) { refreshIssue(['all']); setTimeout(() => $('#scrim .modal.id-dlg')?.focus({ preventScroll: true }), 0); }
   return true;
 }
