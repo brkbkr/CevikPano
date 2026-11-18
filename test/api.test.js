@@ -180,6 +180,35 @@ t('yetki (#9 Benim işlerim): izleyici durum/öncelik/atanan değiştiremez, sü
   assert.equal((await a.state()).json.data.ui?.homeProj, undefined);
 });
 
+t('gezinme (A2): sol menü tercihleri (nav, wsOpen, recentProj, recentWs) kişisel; izleyici de yazar, şema değişmez', async () => {
+  const a = client();
+  await a.login('admin', 'test-admin-pw');
+  const v = client();
+  await v.login('izci', 'IzciYeni12345');
+  const ui = { view: 'board', project: 'p1', nav: { order: ['customers', 'recent', 'projects', 'users', 'system'], hidden: ['projects'] },
+    wsOpen: { ws1: false }, recentProj: ['p1'], recentWs: ['ws1'] };
+  const r = await v.sync([{ c: '_prefs', id: 'ui', op: 'put', data: ui }]);
+  assert.equal(r.json.applied, 1);
+  assert.deepEqual(r.json.rejected, []);
+  const v2 = client();
+  await v2.login('izci', 'IzciYeni12345');
+  const got = (await v2.state()).json.data.ui;
+  assert.deepEqual(got.nav, ui.nav);
+  assert.deepEqual(got.wsOpen, ui.wsOpen);
+  assert.deepEqual(got.recentProj, ['p1']);
+  assert.deepEqual(got.recentWs, ['ws1']);
+  /* varsayılana dönünce nav silinir: ui bütün olarak yazılır, eski nav kalmaz */
+  await v.sync([{ c: '_prefs', id: 'ui', op: 'put', data: { ...ui, nav: undefined } }]);
+  assert.equal((await v2.state()).json.data.ui.nav, undefined);
+  /* başkasına gitmez */
+  const au = (await a.state()).json.data.ui;
+  assert.equal(au?.nav, undefined);
+  assert.equal(au?.recentProj, undefined);
+  /* izleyici yine de veri değiştiremez (yetki sunucuda aynen) */
+  const rj = await v.sync([{ c: 'projects', id: 'p_izci', op: 'put', data: { name: 'İzci projesi', key: 'IZC' } }]);
+  assert.equal(rj.json.applied, 0);
+});
+
 t('son aktif yönetici pasifleştirilemez; kendi hesabını silemez', async () => {
   const a = client();
   await a.login('admin', 'test-admin-pw');
