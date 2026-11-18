@@ -2118,6 +2118,7 @@ button.id-pv:hover{background:var(--surface);border-color:var(--line)}
 .id-dnat{position:absolute;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0;padding:0}
 .id-late{display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:6px;border:1px solid var(--id-late-ln);background:var(--id-late-bg);color:var(--id-late);font-size:11.5px;font-weight:650;white-space:nowrap}
 .id-late svg.i{width:12px;height:12px}
+.id-dlate{margin-top:5px}
 .id-dq{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
 .id-dq button{min-height:28px;padding:0 9px;border-radius:7px;border:1px solid var(--line);background:var(--surface);font-size:12px;color:var(--ink2)}
 .id-dq button:hover{border-color:var(--line2);color:var(--ink)}
@@ -3958,12 +3959,12 @@ function dateField(o) {
     <div class="id-date${v ? '' : ' empty'}${o.late ? ' late' : ''}">
       <button type="button" class="id-dbtn" data-dfbtn="${esc(o.id)}" aria-label="${esc(o.label || 'Tarih')}: ${v ? esc(fmtDLong(v)) : 'seçilmedi'}">${ic('cal')}
         <span class="t">${v ? esc(fmtDLong(v).replace(/ (\S+)$/, '')) + `<span class="wd">${esc(fmtDLong(v).split(' ').pop())}</span>` : esc(o.ph || 'Tarih seçin')}</span></button>
-      ${o.late ? `<span class="id-late">${ic('alert')}${o.late} gün gecikti</span>` : ''}
       <input type="date" class="id-dnat" id="${esc(o.id)}" ${o.f ? `data-f="${esc(o.f)}"` : ''} value="${v}" tabindex="-1" aria-hidden="true"
         ${o.min ? `min="${esc(o.min)}"` : ''} ${o.max ? `max="${esc(o.max)}"` : ''}>
     </div>
     ${q.length || o.clear !== false ? `<div class="id-dq">${q.map(([l, d]) => `<button type="button" data-dfq="${d}" aria-pressed="${v === d}">${l}</button>`).join('')}
       ${o.clear !== false ? `<button type="button" data-dfq="" class="clr">Temizle</button>` : ''}</div>` : ''}
+    ${o.late ? `<div class="id-dlate"><span class="id-late">${ic('alert')}${o.late} gün gecikti</span></div>` : ''}
     <div class="id-err" id="${esc(o.id)}_e" role="alert">${err ? ic('alert') + esc(err) : ''}</div></div>`;
 }
 /* Tarih alanı olayları belge düzeyinde: düğme yerel seçiciyi açar, kısayollar değeri yazar ("change" olayı). */
@@ -4098,7 +4099,7 @@ function issueDelete(ids) {
       const recs = [...ids.map(id => ['issues', issue(id)]), ...cm.map(x => ['comments', x]), ...wl.map(x => ['worklogs', x]),
         ...ln.map(x => ['links', x]), ...hs.map(x => ['history', x]), ...tr.map(x => ['transitions', x]),
         ...kids.map(x => ['issues', x]), ...ekids.filter(x => !kids.includes(x)).map(x => ['issues', x])];
-      const keys = ids.map(id => issue(id).key);
+      const keys = ids.map(id => issue(id).key), before = holdBefore(recs);   // kopya, bağlar koparılmadan önce
       DB.issues = DB.issues.filter(x => !set.has(x.id));
       DB.comments = DB.comments.filter(x => !set.has(x.issueId)); DB.worklogs = DB.worklogs.filter(x => !set.has(x.issueId));
       DB.history = DB.history.filter(x => !set.has(x.issueId)); DB.transitions = DB.transitions.filter(x => !set.has(x.issueId));
@@ -4108,7 +4109,7 @@ function issueDelete(ids) {
       if (set.has(OPEN_ISSUE)) closeModal();
       save(); render();
       const parts = [cm.length && `${cm.length} yorum`, wl.length && `${wl.length} süre kaydı`, ln.length && `${ln.length} bağlantı`].filter(Boolean);
-      holdStart(recs, `${keys.length > 1 ? keys.length + ' iş' : keys[0]} silindi.${parts.length ? ' ' + parts.join(', ') + ' ile birlikte' : ''}`);
+      holdStart(before, `${keys.length > 1 ? keys.length + ' iş' : keys[0]} silindi.${parts.length ? ' ' + parts.join(', ') + ' ile birlikte' : ''}`);
     },
   });
 }
@@ -4715,8 +4716,7 @@ function newIssueForm(preset = {}, keep) {
       const r = [...g.querySelectorAll('[role=radio]')], k = r.indexOf(e.target); if (k < 0) return;
       e.preventDefault(); const n = r[(k + (e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 1) + r.length) % r.length]; n.focus(); n.click();
     }
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); $('#doCreate').click(); }
-    if (e.key === 'Enter' && e.target === sum) { e.preventDefault(); $('#doCreate').click(); }
+    else if (e.key === 'Enter' && ((e.ctrlKey || e.metaKey) || e.target === sum)) { e.preventDefault(); $('#doCreate')?.click(); }
   });
   $('#f_me').onclick = () => { setAs(CU().id); $('#f_asBtn').focus(); };
   $('#f_asBtn').onclick = e => { e.stopPropagation();

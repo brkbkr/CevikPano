@@ -19,7 +19,7 @@ const XSS = '<img src=x onerror="window.__xss=1">';
   const mk = async (name, vp = { width: 1440, height: 900 }, colorScheme = 'light') => {
     const ctx = await b.newContext({ viewport: vp, colorScheme });
     const p = await ctx.newPage();
-    p.on('pageerror', e => errs.push(name + ' PAGEERR ' + e.message));
+    p.on('pageerror', e => errs.push(name + ' PAGEERR ' + e.message + ' @ ' + String(e.stack || '').split('\n').slice(1, 3).join(' | ')));
     /* confirm() kalktı: herhangi bir tarayıcı penceresi açılırsa hata sayılır. */
     p.on('dialog', d => { errs.push(name + ' DIALOG ' + d.type() + ' ' + d.message()); d.dismiss(); });
     return p;
@@ -216,7 +216,7 @@ const XSS = '<img src=x onerror="window.__xss=1">';
   const dc = await A.evaluate(() => ({ t: document.querySelector('#scrim2 .id-delc')?.textContent.replace(/\s+/g, ' '), w: document.querySelector('#scrim2 .id-delw')?.textContent || '',
     item: document.querySelector('#scrim2 .id-delitem')?.textContent || '', foc: document.activeElement?.id }));
   ok('delete confirm: counts (1 yorum, 1 süre kaydı · 3h, 1 bağlantı), 1 alt iş bağı, focus Vazgeç',
-    /1 yorum/.test(dc.t) && /1 süre kaydı · 3h/.test(dc.t) && /1 bağlantı/.test(dc.t) && /1 alt işin üst iş bağı kopar/.test(dc.w) && dc.foc === 'delNo', JSON.stringify(dc));
+    /1\s*yorum/.test(dc.t) && /1\s*süre kaydı · 3h/.test(dc.t) && /1\s*bağlantı/.test(dc.t) && /1 alt işin üst iş bağı kopar/.test(dc.w) && dc.foc === 'delNo', JSON.stringify(dc));
   await A.keyboard.press('Enter'); await sleep(200);
   ok('Enter on focused Vazgeç does not delete', await A.evaluate(id => !!issue(id), ID('del')) && await A.evaluate(() => !document.querySelector('#scrim2.on')));
   await A.click('#idMore'); await sleep(200); await A.click('.qm [data-qv="del"]'); await sleep(300); await A.click('#delOk'); await sleep(300);
@@ -290,6 +290,17 @@ const XSS = '<img src=x onerror="window.__xss=1">';
   ok('new issue: due before start blocks creation', await A.evaluate(run => !DB.issues.some(i => i.summary === `KD-T${run} tarih`) && /önce olamaz/.test(document.getElementById('f_due_e').textContent), RUN));
   await A.screenshot({ path: SS + 'new.png' });
   await A.keyboard.press('Escape'); await sleep(150);
+
+  // 15b) toplu silme: aynı onay + Geri al (confirm() yok)
+  await A.evaluate(() => { location.hash = 'search'; }); await sleep(500);
+  const bulk = await A.evaluate(run => DB.issues.filter(i => i.summary === `KD-T${run} yeni 1` || i.summary === `KD-T${run} yeni 2`).map(i => i.id), RUN);
+  await A.evaluate(ids => { SEL.clear(); ids.forEach(id => SEL.add(id)); render(); }, bulk); await sleep(300);
+  await A.click('#bk_del'); await sleep(250);
+  ok('bulk delete: confirm dialog "2 iş silinsin mi?"', await A.evaluate(() => document.getElementById('delTitle')?.textContent === '2 iş silinsin mi?'));
+  await A.click('#delOk'); await sleep(250);
+  ok('bulk delete: removed locally + Geri al', await A.evaluate(ids => ids.every(id => !issue(id)) && !!document.querySelector('#toast .toast-undo'), bulk));
+  await A.click('#toast .toast-undo'); await sleep(300);
+  ok('bulk delete: undo restores both', await A.evaluate(ids => ids.every(id => !!issue(id)), bulk));
 
   // 16) mobil 390px: tam ekran, taşma yok, özellikler başlık altında, dokunma ≥ 44px, menü alt sayfa
   const Mo = await mk('mobile', { width: 390, height: 844 }); await login(Mo, 'admin', 'admin12345');

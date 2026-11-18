@@ -67,6 +67,8 @@ jobs:
         run: node test/e2e/proje-turu.cjs
       - name: Gezinme testi (proje sekmeleri, hesap menüsü)
         run: node test/e2e/gezinme.cjs
+      - name: İş detayı, yeni iş ve alt pencereler testi
+        run: node test/e2e/kart-detay.cjs
       - name: Sunucu günlüğü
         if: failure()
         run: cat server.log
