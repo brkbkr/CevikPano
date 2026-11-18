@@ -87,6 +87,8 @@ jobs:
         run: node test/e2e/pano-iyilestirme.cjs
       - name: Çalışma alanı üyelikleri ve rolleri testi (alan sayfası, menü, yetkiler)
         run: node test/e2e/alan-rolleri.cjs
+      - name: Okuma süzmesi testi (erişimi olmayan alanın verisi gelmez, üyelikte canlı yenileme)
+        run: node test/e2e/okuma-suzme.cjs
       - name: Sunucu günlüğü
         if: failure()
         run: cat server.log

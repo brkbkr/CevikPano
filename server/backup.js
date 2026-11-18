@@ -231,7 +231,7 @@ export async function activity(pool, limit = 200) {
        LEFT JOIN users us ON ch.collection='users' AND us.id = ch.record_id
        LEFT JOIN LATERAL (SELECT data FROM deleted_records dr WHERE ch.op='del' AND dr.collection=ch.collection
                           AND dr.record_id=ch.record_id ORDER BY dr.id DESC LIMIT 1) d ON true
-      WHERE ch.collection NOT IN ('_settings','transitions','history','_reload')
+      WHERE ch.collection NOT IN ('_settings','transitions','history','_reload','_access')
       ORDER BY ch.seq DESC LIMIT $1`, [limit])).rows;
 }
 

@@ -2827,3 +2827,133 @@ describe('alan rolleri', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     assert.equal((await C.A.req('POST', '/api/customers/c_rl/contacts', { name: 'Kişi' })).status, 200);
   });
 });
+
+/* Okuma süzmesi (18): her kullanıcı yalnız rolü olduğu alanların verisini alır (ilk yükleme ve değişiklik akışı);
+   sistem yöneticisi her şeyi görür; üyelik değişince etkilenen kullanıcıya tam yeniden yükleme sinyali gider. */
+describe('okuma süzmesi', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  const ok = r => { assert.equal(r.status, 200, JSON.stringify(r.json)); assert.deepEqual(r.json.rejected, []); return r; };
+  const put = (c, id, data, base) => ({ c, id, op: 'put', data, ...(base ? { base } : {}) });
+  const row = async (table, id) => (await pool.query(`SELECT data FROM ${table} WHERE id=$1`, [id])).rows[0]?.data;
+  const ids = (d, c) => (d[c] || []).map(x => x.id);
+  const changes = async (k, since) => (await k.req('GET', `/api/changes?since=${since}`)).json;
+  const seq = async () => Number((await pool.query('SELECT coalesce(max(seq),0) AS s FROM changes')).rows[0].s);
+  const C = {};
+  const newUser = async (id, username, role = 'member') => {
+    ok(await C.A.sync([put('users', id, { username, name: username, role, active: true })]));
+    const k = client(); await k.login(username, 'Start12345');
+    assert.equal((await k.req('POST', '/api/auth/password', { newPassword: 'OkumaYeni123' })).status, 200);
+    return k;
+  };
+  /* Gizli alan (ws_ob) kayıtları: hiçbiri u_oa'ya gitmemeli. */
+  const HIDDEN = { workspaces: ['ws_ob'], projects: ['pob'], statuses: ['pob_s0'], sprints: ['sp_ob'], issues: ['i_ob1'],
+    worklogs: ['w_ob1'], comments: ['c_ob1'], history: ['h_ob1'], links: ['l_ob1'], fields: ['f_ob'] };
+
+  before(async () => {
+    C.A = client(); await C.A.login('admin', 'test-admin-pw');
+    C.U = await newUser('u_oa', 'okuyan');       // ws_oa üyesi, ws_ob'de yok
+    C.B = await newUser('u_ob', 'obsahip');      // ws_ob üyesi
+    ok(await C.A.sync([
+      put('workspaces', 'ws_oa', { name: 'Okuma A', members: [{ userId: 'u_oa', role: 'member' }] }),
+      put('workspaces', 'ws_ob', { name: 'Okuma B', members: [{ userId: 'u_ob', role: 'member' }] }),
+      put('projects', 'poa', { name: 'Okuma A projesi', key: 'POA', counter: 0, workspaceId: 'ws_oa' }),
+      put('projects', 'pob', { name: 'Okuma B projesi', key: 'POB', counter: 0, workspaceId: 'ws_ob' }),
+      put('statuses', 'poa_s0', { projectId: 'poa', name: 'Yapılacak', cat: 'todo', ord: 0 }),
+      put('statuses', 'pob_s0', { projectId: 'pob', name: 'Yapılacak', cat: 'todo', ord: 0 }),
+      put('sprints', 'sp_ob', { projectId: 'pob', name: 'S1', state: 'future' }),
+      put('issues', 'i_oa1', { projectId: 'poa', key: 'POA-1', summary: 'görünen', statusId: 'poa_s0' }),
+      put('issues', 'i_ob1', { projectId: 'pob', key: 'POB-1', summary: 'gizli iş', statusId: 'pob_s0' }),
+      put('worklogs', 'w_ob1', { issueId: 'i_ob1', userId: 'u_admin', date: '2026-11-02', hours: 1 }),
+      put('comments', 'c_ob1', { issueId: 'i_ob1', userId: 'u_admin', body: 'gizli yorum' }),
+      put('history', 'h_ob1', { issueId: 'i_ob1', field: 'summary', from: 'a', to: 'b' }),
+      put('links', 'l_ob1', { from: 'i_ob1', to: 'i_ob1', type: 'relates' }),
+      put('fields', 'f_ob', { projectId: 'pob', key: 'gizli', name: 'Gizli alan', type: 'text' }),
+    ]));
+  });
+
+  test('ilk yükleme: üye başka alanın projesini, işini, süre kaydını, yorumunu, geçmişini görmez; admin görür', async () => {
+    const d = (await C.U.state()).json.data;
+    for (const [c, list] of Object.entries(HIDDEN)) for (const id of list) assert.ok(!ids(d, c).includes(id), `${c}/${id} sızdı`);
+    assert.ok(ids(d, 'projects').includes('poa')); assert.ok(ids(d, 'issues').includes('i_oa1'));
+    assert.ok(ids(d, 'workspaces').includes('ws_oa'));
+    assert.ok(!JSON.stringify(d).includes('gizli yorum'));
+    /* Proje bağımsız tablolar olduğu gibi: kullanıcı listesi. */
+    assert.ok(ids(d, 'users').includes('u_ob'));
+    const a = (await C.A.state()).json.data;
+    for (const [c, list] of Object.entries(HIDDEN)) for (const id of list) assert.ok(ids(a, c).includes(id), `admin ${c}/${id} görmüyor`);
+    const b = (await C.B.state()).json.data;
+    assert.ok(ids(b, 'issues').includes('i_ob1')); assert.ok(!ids(b, 'issues').includes('i_oa1'));
+  });
+
+  test('değişiklik akışı: başka alandaki yeni iş/süre/yorum üyeye gitmez; kendi alanındaki gider; admin hepsini alır', async () => {
+    const s0 = await seq();
+    ok(await C.B.sync([
+      put('issues', 'i_ob2', { projectId: 'pob', key: 'POB-2', summary: 'gizli iş 2', statusId: 'pob_s0' }),
+      put('worklogs', 'w_ob2', { issueId: 'i_ob1', userId: 'u_ob', date: '2026-11-03', hours: 2 }),
+      put('comments', 'c_ob2', { issueId: 'i_ob1', userId: 'u_ob', body: 'gizli yorum 2' })]));
+    ok(await C.A.sync([put('issues', 'i_oa2', { projectId: 'poa', key: 'POA-2', summary: 'görünen 2', statusId: 'poa_s0' })]));
+    const ch = await changes(C.U, s0);
+    assert.ok(!ch.reload);
+    const got = ch.items.filter(i => i.op === 'put').map(i => `${i.c}/${i.id}`);
+    for (const k of ['issues/i_ob2', 'worklogs/w_ob2', 'comments/c_ob2', 'issues/i_ob1', 'projects/pob']) assert.ok(!got.includes(k), `${k} sızdı`);
+    assert.ok(got.includes('issues/i_oa2'));
+    assert.ok(!JSON.stringify(ch).includes('gizli'));
+    const ca = await changes(C.A, s0);
+    const ga = ca.items.map(i => `${i.c}/${i.id}`);
+    for (const k of ['issues/i_ob2', 'worklogs/w_ob2', 'comments/c_ob2', 'issues/i_oa2']) assert.ok(ga.includes(k), `admin ${k} almadı`);
+    /* Okunamayan şey yazılamaz da: gizli işe yorum 403. */
+    const r = await C.U.sync([put('comments', 'c_oa_x', { issueId: 'i_ob1', userId: 'u_oa', body: 'x' })]);
+    assert.deepEqual(r.json.rejected.map(x => x.reason), ['Bu çalışma alanına erişiminiz yok']);
+  });
+
+  test('üyeliğe eklenince yeniden yükleme sinyali gelir ve alanın verisi görünür; çıkarılınca yine sinyal ve veri kaybolur', async () => {
+    const s0 = await seq();
+    const w = await row('workspaces', 'ws_ob');
+    ok(await C.A.sync([put('workspaces', 'ws_ob', { ...w, members: [...w.members, { userId: 'u_oa', role: 'viewer' }] }, w)]));
+    const ch = await changes(C.U, s0);
+    assert.equal(ch.reload, true); assert.equal(ch.access, true); assert.deepEqual(ch.items, []);
+    /* Erişimi değişmeyen kullanıcı ve admin sinyal almaz. */
+    assert.ok(!(await changes(C.B, s0)).reload);
+    assert.ok(!(await changes(C.A, s0)).reload);
+    let d = (await C.U.state()).json.data;
+    for (const [c, list] of Object.entries(HIDDEN)) for (const id of list) assert.ok(ids(d, c).includes(id), `eklenince ${c}/${id} yok`);
+    assert.ok(ids(d, 'worklogs').includes('w_ob2'));
+    /* Artık değişiklik akışında da gelir. */
+    const s1 = await seq();
+    ok(await C.B.sync([put('comments', 'c_ob3', { issueId: 'i_ob1', userId: 'u_ob', body: 'artık görünür' })]));
+    assert.ok((await changes(C.U, s1)).items.some(i => i.c === 'comments' && i.id === 'c_ob3'));
+    /* Çıkarılınca: sinyal, veri yok. */
+    const s2 = await seq();
+    const w2 = await row('workspaces', 'ws_ob');
+    ok(await C.A.sync([put('workspaces', 'ws_ob', { ...w2, members: w2.members.filter(m => m.userId !== 'u_oa') }, w2)]));
+    assert.equal((await changes(C.U, s2)).reload, true);
+    d = (await C.U.state()).json.data;
+    for (const [c, list] of Object.entries(HIDDEN)) for (const id of list) assert.ok(!ids(d, c).includes(id), `çıkarılınca ${c}/${id} sızdı`);
+    /* Yalnız rol değişimi (görünürlük aynı) sinyal üretmez. */
+    const s3 = await seq();
+    const w3 = await row('workspaces', 'ws_ob');
+    ok(await C.A.sync([put('workspaces', 'ws_ob', { ...w3, members: w3.members.map(m => m.userId === 'u_ob' ? { ...m, role: 'viewer' } : m) }, w3)]));
+    assert.ok(!(await changes(C.B, s3)).reload);
+  });
+
+  test('proje başka alana taşınınca yeniden yükleme sinyali; yönetici yapılan kullanıcı her şeyi görür', async () => {
+    const s0 = await seq();
+    const p = await row('projects', 'pob');
+    ok(await C.A.sync([put('projects', 'pob', { ...p, workspaceId: 'ws_oa' }, p)]));
+    assert.equal((await changes(C.U, s0)).reload, true);
+    let d = (await C.U.state()).json.data;
+    assert.ok(ids(d, 'issues').includes('i_ob1'));
+    const p2 = await row('projects', 'pob');
+    ok(await C.A.sync([put('projects', 'pob', { ...p2, workspaceId: 'ws_ob' }, p2)]));
+    d = (await C.U.state()).json.data;
+    assert.ok(!ids(d, 'issues').includes('i_ob1'));
+    /* Genel rol yönetici: sinyal ve tam veri. */
+    const s1 = await seq();
+    const u = (await C.A.state()).json.data.users.find(x => x.id === 'u_oa');
+    ok(await C.A.sync([put('users', 'u_oa', { ...u, role: 'admin' })]));
+    assert.equal((await changes(C.U, s1)).reload, true);
+    d = (await C.U.state()).json.data;
+    for (const [c, list] of Object.entries(HIDDEN)) for (const id of list) assert.ok(ids(d, c).includes(id), `yönetici ${c}/${id} görmüyor`);
+    ok(await C.A.sync([put('users', 'u_oa', { ...u, role: 'member' })]));
+    assert.ok(!ids((await C.U.state()).json.data, 'issues').includes('i_ob1'));
+  });
+});
