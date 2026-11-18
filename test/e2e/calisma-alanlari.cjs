@@ -266,7 +266,8 @@ const WSA = `Alan A ${RUN} ${XSS}`;                       // 60 karakterin altı
   const mo = await Mo.evaluate(() => ({ sw: document.documentElement.scrollWidth, cols: new Set([...document.querySelectorAll('.ws-pcard')].slice(0, 6).map(c => Math.round(c.getBoundingClientRect().left))).size,
     more: Math.min(...[...document.querySelectorAll('.ws-more')].map(x => x.getBoundingClientRect().height)) }));
   ok('mobile projects: no horizontal scroll, single column, ≥40px buttons', mo.sw <= 376 && mo.cols === 1 && mo.more >= 40, JSON.stringify(mo));
-  await Mo.click('#vtabs [data-v="__proj"]'); await sleep(250);
+  /* "Proje ▾" proje sekmelerinin başında (#projPick, sekme listesinin dışında) */
+  await view(Mo, 'board'); await Mo.click('#projPick'); await sleep(250);
   const sh = await Mo.evaluate(() => { const m = document.querySelector('#scrim .modal'); const r = m.getBoundingClientRect();
     return { cur: document.querySelector('#pm_ws')?.getBoundingClientRect().height, rows: Math.min(...[...m.querySelectorAll('.ws-prow')].map(x => x.getBoundingClientRect().height)),
       l: r.left, r: r.right, sw: document.documentElement.scrollWidth }; });

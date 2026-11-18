@@ -89,7 +89,7 @@ export function createApp(pool) {
     presence.set(req.user.id, { at: Date.now(), view: String(req.query.view || '').slice(0, 30),
       issue: String(req.query.issue || '').slice(0, 200) });
     res.setHeader('Cache-Control', 'no-store');
-    res.json({ ...(await readChanges(pool, since)), unread: await unreadCount(pool, req.user.id), online: online() });
+    res.json({ ...(await readChanges(pool, since, req.user)), unread: await unreadCount(pool, req.user.id), online: online() });
   });
 
   app.get('/api/notifications', requireUser, async (req, res) => {
@@ -145,7 +145,13 @@ export function createApp(pool) {
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, _next) => {
     const status = err.status || (err.type === 'entity.too.large' ? 413 : 500);
-    if (status >= 500) console.error('[hata]', req.method, req.url, err);
+    /* Veritabanı hatasının `detail` alanı satırdaki değeri taşır (ör. vergi no / T.C. kimlik no):
+       günlüğe yalnız kod, ileti ve kısıt adı yazılır. */
+    if (status >= 500) {
+      if (err?.severity && typeof err.code === 'string')
+        console.error('[hata]', req.method, req.url, { code: err.code, message: err.message, constraint: err.constraint });
+      else console.error('[hata]', req.method, req.url, err);
+    }
     res.status(status).json({ error: status >= 500 ? 'Sunucu hatası' : err.message });
   });
   return app;

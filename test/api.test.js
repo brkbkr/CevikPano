@@ -497,7 +497,7 @@ t('zorunlu parola değişimi sunucuda uygulanır', async () => {
 t('yetki: üye proje yapılandırmasını ve başkasının süre kaydını değiştiremez', async () => {
   const a = client(); await a.login('admin', 'test-admin-pw');
   await a.sync([
-    { c: 'projects', id: 'p_y', op: 'put', data: { key: 'YT', name: 'Yetki', counter: 0 } },
+    { c: 'projects', id: 'p_y', op: 'put', data: { key: 'YT', name: 'Yetki', counter: 0, members: ['u_admin'] } },
     { c: 'issues', id: 'i_y', op: 'put', data: { projectId: 'p_y', key: 'YT-1', summary: 'y' } },
     { c: 'worklogs', id: 'w_adm', op: 'put', data: { issueId: 'i_y', userId: 'u_admin', date: '2026-02-02', hours: 3 } },
   ]);
@@ -1001,5 +1001,658 @@ describe('çalışma alanları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () =
     const pre = (await A.req('GET', '/api/backups')).json.find(b => b.kind === 'pre-import');
     assert.equal((await A.req('POST', `/api/backups/${pre.id}/restore`, {})).status, 200);
     assert.ok((await A.state()).json.data.workspaces.some(x => x.id === 'ws_a'));
+  });
+});
+
+/* ---------------- cariler (#11) ----------------
+   Test verileri uydurmadır (gerçek kişi/firma/kimlik numarası değildir). */
+describe('cariler', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  const cu = (id, data, base) => ({ c: 'customers', id, op: 'put', data, ...(base ? { base } : {}) });
+  const del = (c, id) => ({ c, id, op: 'del' });
+  const row = async (table, id) => (await pool.query(`SELECT * FROM ${table} WHERE id=$1`, [id])).rows[0];
+  const reasons = r => r.json.rejected.map(x => x.reason);
+  const ok = r => { assert.equal(r.status, 200); assert.equal(r.json.rejected.length, 0, JSON.stringify(r.json.rejected)); };
+  const rejectedWith = (r, msg) => { assert.equal(r.status, 200); assert.equal(r.json.applied, 0); assert.deepEqual(reasons(r), [msg]); };
+  /* snapshots (yedek) hariç tüm tabloların metin dökümü */
+  const dump = async () => {
+    const ts = (await pool.query(`SELECT table_name FROM information_schema.tables
+      WHERE table_schema='public' AND table_type='BASE TABLE' AND table_name <> 'snapshots'`)).rows.map(r => r.table_name);
+    let out = '';
+    for (const t of ts) out += (await pool.query(`SELECT t::text AS x FROM "${t}" t`)).rows.map(r => r.x).join('\n') + '\n';
+    return out;
+  };
+  let A, U, V;
+  const newUser = async (id, username, role) => {
+    await A.sync([{ c: 'users', id, op: 'put', data: { username, name: username, role, active: true } }]);
+    const k = client(); await k.login(username, 'Start12345');
+    assert.equal((await k.req('POST', '/api/auth/password', { newPassword: 'CuYeni123456' })).status, 200);
+    return k;
+  };
+  const firm = (name, extra = {}) => ({ name, kind: 'customer', ...extra });
+  const firmWith = (id, name, taxNo) => ({ id, name, kind: 'supplier', taxNo });
+
+  before(async () => {
+    A = client(); await A.login('admin', 'test-admin-pw');
+    U = await newUser('u_cu1', 'cuuye', 'member');
+    V = await newUser('u_cuv', 'cuizci', 'viewer');
+    ok(await A.sync([{ c: 'projects', id: 'p_cu1', op: 'put', data: { name: 'Cari projesi', key: 'CUA', counter: 0, workspaceId: 'ws1' } },
+      { c: 'projects', id: 'p_cu2', op: 'put', data: { name: 'Cari arşiv', key: 'CUB', counter: 0, workspaceId: 'ws1', archived: true } }]));
+  });
+
+  test('göç: 004 tekrar çalışır; tablo, kısmi tekil indeks ve projects.customer_id var; veri korunur', async () => {
+    ok(await A.sync([cu('c_g1', firm('Göç Deneme A.Ş.', { taxNo: '1111111111' }))]));
+    await pool.query(`DELETE FROM schema_migrations WHERE id='004_cariler.sql'`);
+    await migrate(pool);
+    assert.equal((await pool.query(`SELECT count(*) n FROM schema_migrations WHERE id='004_cariler.sql'`)).rows[0].n, '1');
+    const r = await row('customers', 'c_g1');
+    assert.equal(r.name, 'Göç Deneme A.Ş.'); assert.equal(r.tax_no, '1111111111'); assert.equal(r.kind, 'customer'); assert.equal(r.active, true);
+    const idx = (await pool.query(`SELECT indexdef FROM pg_indexes WHERE indexname='customers_tax_no_uq'`)).rows[0].indexdef;
+    assert.match(idx, /UNIQUE/); assert.match(idx, /WHERE \(tax_no IS NOT NULL\)/);
+    assert.equal((await row('projects', 'p_cu1')).customer_id, null);
+    ok(await A.sync([del('customers', 'c_g1')]));
+  });
+
+  test('normalleştirme: vergi no boşluk/tire temizlenir, unvan ve e-postalar kırpılır (adjusted)', async () => {
+    const r = await A.sync([cu('c_n1', firm('  Boşluklu Ltd.  ', { kind: 'both', taxNo: '123 456-7890', email: ' info@ornek.test ',
+      contacts: [{ id: 'ct_n1', name: ' Deneme Kişi ', email: ' kisi@ornek.test ' }] }))]);
+    ok(r);
+    assert.deepEqual(r.json.adjusted, [{ c: 'customers', id: 'c_n1' }]);
+    const d = (await row('customers', 'c_n1')).data;
+    assert.equal(d.taxNo, '1234567890'); assert.equal(d.name, 'Boşluklu Ltd.'); assert.equal(d.email, 'info@ornek.test');
+    assert.deepEqual(d.contacts, [{ id: 'ct_n1', name: 'Deneme Kişi', email: 'kisi@ornek.test' }]);
+    assert.equal(d.active, undefined);
+    assert.equal((await row('customers', 'c_n1')).active, true);        // yeni = Etkin
+    /* zaten düzgün kayıtta adjusted yok */
+    const r2 = await A.sync([cu('c_n2', firm('Düzgün Ltd.', { taxNo: '1234567891' }))]);
+    ok(r2); assert.deepEqual(r2.json.adjusted, []);
+    for (const id of ['c_n1', 'c_n2']) ok(await A.sync([del('customers', id)]));
+  });
+
+  test('doğrulama: hatalı kayıt yazılmaz; iletilerde değer yok', async () => {
+    const cases = [
+      [{ kind: 'customer' }, 'Unvan gerekli (en fazla 200 karakter)'],
+      [{ name: '   ', kind: 'customer' }, 'Unvan gerekli (en fazla 200 karakter)'],
+      [{ name: 'x'.repeat(201), kind: 'customer' }, 'Unvan gerekli (en fazla 200 karakter)'],
+      [{ name: 'Türsüz' }, 'Tür müşteri, tedarikçi ya da ikisi olmalı'],
+      [firm('Tür', { kind: 'rakip' }), 'Tür müşteri, tedarikçi ya da ikisi olmalı'],
+      [firm('Dokuz', { taxNo: '987654321' }), 'Vergi numarası 10 ya da 11 haneli olmalı'],
+      [firm('Oniki', { taxNo: '987654321098' }), 'Vergi numarası 10 ya da 11 haneli olmalı'],
+      [firm('Harfli', { taxNo: '98765A3210' }), 'Vergi numarası 10 ya da 11 haneli olmalı'],
+      [firm('Sayı', { taxNo: 9876543210 }), 'Vergi numarası 10 ya da 11 haneli olmalı'],
+      [firm('Posta', { email: 'gizli-posta@' }), 'E-posta adresi geçersiz'],
+      [firm('Tel', { phone: '9'.repeat(31) }), 'Telefon en fazla 30 karakter'],
+      [firm('Kısa', { shortName: 'k'.repeat(61) }), 'Kısa ad en fazla 60 karakter'],
+      [firm('Daire', { taxOffice: 'd'.repeat(101) }), 'Vergi dairesi en fazla 100 karakter'],
+      [firm('Adres', { address: 'a'.repeat(501) }), 'Adres en fazla 500 karakter'],
+      [firm('Not', { notes: 'n'.repeat(2001) }), 'Notlar en fazla 2000 karakter'],
+      [firm('Etkin', { active: 'x' }), 'Durum (etkin) true ya da false olmalı'],
+      [firm('Kişiler', { contacts: 'gizli-kisi' }), 'Yetkili kişiler en fazla 200 kişilik bir liste olmalı'],
+      [firm('Çok kişi', { contacts: Array.from({ length: 201 }, (_, i) => ({ id: 'ct' + i, name: 'K' + i })) }),
+        'Yetkili kişiler en fazla 200 kişilik bir liste olmalı'],
+      [firm('Adsız', { contacts: [{ id: 'ct_1', email: 'adsiz@ornek.test' }] }), 'Yetkili kişinin adı gerekli (en fazla 120 karakter)'],
+      [firm('Kimliksiz', { contacts: [{ id: '<b>', name: 'K' }] }), 'Yetkili kişinin kimliği geçersiz'],
+      [firm('Çift', { contacts: [{ id: 'ct_1', name: 'K' }, { id: 'ct_1', name: 'L' }] }), 'Yetkili kişi kimlikleri tekil olmalı'],
+      [firm('Görev', { contacts: [{ id: 'ct_1', name: 'K', title: 'g'.repeat(121) }] }), 'Yetkili kişinin görevi en fazla 120 karakter'],
+      [firm('KP', { contacts: [{ id: 'ct_1', name: 'K', email: 'gizli@' }] }), 'Yetkili kişinin e-posta adresi geçersiz'],
+      [firm('KT', { contacts: [{ id: 'ct_1', name: 'K', phone: '5'.repeat(31) }] }), 'Yetkili kişinin telefonu en fazla 30 karakter'],
+    ];
+    for (const [data, msg] of cases) {
+      const r = await A.sync([cu('c_bad', data)]);
+      rejectedWith(r, msg);
+      for (const v of ['987654321', 'gizli', 'adsiz@', '9'.repeat(31)]) assert.ok(!reasons(r)[0].includes(v), msg);
+    }
+    assert.equal(await row('customers', 'c_bad'), undefined);
+    /* 200 kişi ve en uzun geçerli değerler kabul edilir */
+    ok(await A.sync([cu('c_max', firm('u'.repeat(200), { shortName: 'k'.repeat(60), taxNo: '', phone: '9'.repeat(30), active: false,
+      contacts: Array.from({ length: 200 }, (_, i) => ({ id: 'ct' + i, name: 'K' + i, title: '', email: '', phone: '' })) }))]));
+    ok(await A.sync([del('customers', 'c_max')]));
+  });
+
+  test('vergi no tekil (pasif dahil, yalnız kimlik iletilir); boş vergi no denetlenmez', async () => {
+    ok(await A.sync([cu('c_t1', firm('Tekil Bir A.Ş.', { taxNo: '2222222222', active: false }))]));
+    let r = await A.sync([cu('c_t2', firm('Tekil İki A.Ş.', { taxNo: '222-222 2222' }))]);
+    assert.equal(r.status, 200);
+    assert.deepEqual(reasons(r), ['Bu vergi numarasıyla kayıtlı cari var (#c_t1)']);
+    assert.equal(await row('customers', 'c_t2'), undefined);
+    ok(await A.sync([cu('c_t2', firm('Tekil İki A.Ş.', { taxNo: '' }))]));
+    ok(await A.sync([cu('c_t3', firm('Tekil Üç A.Ş.'))]));               // iki boş vergi no
+    /* var olan carinin vergi numarasını başkasınınkiyle değiştirmek de reddedilir */
+    r = await A.sync([cu('c_t2', firm('Tekil İki A.Ş.', { taxNo: '2222222222' }))]);
+    assert.deepEqual(reasons(r), ['Bu vergi numarasıyla kayıtlı cari var (#c_t1)']);
+    /* kendi vergi numarasıyla güncelleme serbest */
+    ok(await A.sync([cu('c_t1', firm('Tekil Bir A.Ş. (yeni)', { taxNo: '2222222222', active: false }))]));
+    assert.equal((await row('customers', 'c_t1')).name, 'Tekil Bir A.Ş. (yeni)');
+    for (const id of ['c_t1', 'c_t2', 'c_t3']) ok(await A.sync([del('customers', id)]));
+  });
+
+  test('vergi no tekilliği eşzamanlı yazmada da korunur (500 yok, aynı ileti)', async () => {
+    const [r1, r2] = await Promise.all([
+      A.sync([cu('c_y1', firm('Yarış Bir', { taxNo: '3333333333' }))]),
+      A.sync([cu('c_y2', firm('Yarış İki', { taxNo: '3333333333' }))]),
+    ]);
+    assert.equal(r1.status, 200); assert.equal(r2.status, 200);
+    assert.equal(r1.json.applied + r2.json.applied, 1);
+    const lost = r1.json.applied ? r2 : r1, won = r1.json.applied ? 'c_y1' : 'c_y2';
+    assert.deepEqual(reasons(lost), [`Bu vergi numarasıyla kayıtlı cari var (#${won})`]);
+    assert.equal((await pool.query(`SELECT count(*) n FROM customers WHERE tax_no='3333333333'`)).rows[0].n, '1');
+    ok(await A.sync([del('customers', won)]));
+    /* Kesin yarış: ön denetim diğer işlemin henüz onaylanmamış kaydını görmez, indeks (23505) yakalar. */
+    const c = await pool.connect();
+    try {
+      await c.query('BEGIN');
+      await c.query(`INSERT INTO customers (id, data) VALUES ('c_y3', '{"id":"c_y3","name":"Yarış Üç","kind":"customer","taxNo":"3333333334"}')`);
+      const pending = A.sync([cu('c_y4', firm('Yarış Dört', { taxNo: '3333333334' }))]);
+      await new Promise(r => setTimeout(r, 300));
+      await c.query('COMMIT');
+      const r = await pending;
+      assert.equal(r.status, 200);
+      rejectedWith(r, 'Bu vergi numarasıyla kayıtlı cari var (#c_y3)');
+    } finally { c.release(); }
+    ok(await A.sync([del('customers', 'c_y3')]));
+  });
+
+  test('vergi no: aynı numaraya yazmalar danışma kilidiyle sıralanır; ikincisi ön denetimde 409 alır (23505 değil)', async () => {
+    const TN = '3333333335';
+    const c = await pool.connect();
+    try {
+      await c.query('BEGIN');
+      await c.query('SELECT pg_advisory_xact_lock(727277, hashtext($1))', [TN]);
+      const pending = A.sync([cu('c_k2', firm('Kilit İki', { taxNo: TN }))]);
+      await new Promise(r => setTimeout(r, 300));
+      const waiting = (await pool.query(`SELECT count(*) n FROM pg_locks WHERE locktype='advisory' AND classid=727277 AND NOT granted`)).rows[0].n;
+      assert.equal(waiting, '1');                                          // senkron kilidi bekliyor
+      await c.query(`INSERT INTO customers (id, data) VALUES ('c_k1', $1::jsonb)`,
+        [JSON.stringify({ id: 'c_k1', name: 'Kilit Bir', kind: 'customer', taxNo: TN })]);
+      await c.query('COMMIT');
+      rejectedWith(await pending, 'Bu vergi numarasıyla kayıtlı cari var (#c_k1)');
+    } finally { c.release(); }
+    assert.equal(await row('customers', 'c_k2'), undefined);
+    ok(await A.sync([del('customers', 'c_k1')]));
+  });
+
+  test('aynı kimlikle eşzamanlı cari oluşturma: ikincisi üzerine yazmaz (409)', async () => {
+    const c = await pool.connect();
+    try {
+      await c.query('BEGIN');
+      await c.query(`INSERT INTO customers (id, data) VALUES ('c_ay', '{"id":"c_ay","name":"İlk Yazan","kind":"customer"}')`);
+      const pending = A.sync([cu('c_ay', firm('İkinci Yazan'))]);
+      await new Promise(r => setTimeout(r, 300));
+      await c.query('COMMIT');
+      rejectedWith(await pending, 'Kayıt aynı anda oluşturuldu, yeniden deneyin');
+    } finally { c.release(); }
+    assert.equal((await row('customers', 'c_ay')).name, 'İlk Yazan');
+    ok(await A.sync([del('customers', 'c_ay')]));
+  });
+
+  test('yetki: üye ve izleyici cari ekleyemez, değiştiremez, silemez; yönetici yönetir', async () => {
+    ok(await A.sync([cu('c_y', firm('Yetki A.Ş.'))]));
+    for (const k of [U, V]) {
+      const msg = k === U ? 'Bu değişiklik için yönetici yetkisi gerekli' : 'salt okunur kullanıcı';
+      rejectedWith(await k.sync([cu('c_yeni', firm('Yeni'))]), msg);
+      rejectedWith(await k.sync([cu('c_y', firm('Yetki A.Ş. değişti'))]), msg);
+      rejectedWith(await k.sync([del('customers', 'c_y')]), msg);
+    }
+    assert.equal(await row('customers', 'c_yeni'), undefined);
+    assert.equal((await row('customers', 'c_y')).name, 'Yetki A.Ş.');
+    /* süper olmayan yönetici de ekler, pasife alır, siler */
+    await A.sync([{ c: 'users', id: 'u_cua', op: 'put', data: { username: 'cuyon', name: 'cuyon', role: 'admin', active: true } }]);
+    const Y = client(); await Y.login('cuyon', 'Start12345');
+    await Y.req('POST', '/api/auth/password', { newPassword: 'CuYeni123456' });
+    ok(await Y.sync([cu('c_y', firm('Yetki A.Ş.', { active: false }))]));
+    assert.equal((await row('customers', 'c_y')).active, false);
+    ok(await Y.sync([del('customers', 'c_y')]));
+  });
+
+  test('projeye bağlama: üye etkin cariyi bağlar; pasif/olmayan ret; pasifleşen bağ korunur; kaldırma serbest; izleyici bağlayamaz', async () => {
+    ok(await A.sync([cu('c_e', firm('Etkin Müşteri')), cu('c_p', firm('Pasif Müşteri', { active: false }))]));
+    const p = (await row('projects', 'p_cu1')).data;
+    const put = (k, data, base) => k.sync([{ c: 'projects', id: 'p_cu1', op: 'put', data, ...(base ? { base } : {}) }]);
+    rejectedWith(await put(V, { ...p, customerId: 'c_e' }), 'salt okunur kullanıcı');
+    rejectedWith(await put(U, { ...p, customerId: 'c_p' }), 'Pasif cari projeye bağlanamaz');
+    rejectedWith(await put(U, { ...p, customerId: 'c_yok' }), 'Cari bulunamadı');
+    rejectedWith(await put(U, { ...p, customerId: '<x>' }), 'Geçersiz cari');
+    rejectedWith(await U.sync([{ c: 'projects', id: 'p_cu_new', op: 'put', data: { name: 'Yeni', key: 'CUN', workspaceId: 'ws1', customerId: 'c_p' } }]),
+      'Pasif cari projeye bağlanamaz');
+    ok(await put(U, { ...p, customerId: 'c_e' }));
+    assert.equal((await row('projects', 'p_cu1')).customer_id, 'c_e');
+    /* cari pasife alınır: bağ korunur, proje düzenlenebilir (eski base ile de) */
+    ok(await A.sync([cu('c_e', firm('Etkin Müşteri', { active: false }))]));
+    const p2 = (await row('projects', 'p_cu1')).data;
+    ok(await put(U, { ...p2, name: 'Cari projesi 2' }, p2));
+    ok(await put(U, { ...p, name: 'Cari projesi 3' }, p));                // eski hâl (carisiz) base: bağ birleşmede korunur
+    const d = (await row('projects', 'p_cu1')).data;
+    assert.equal(d.customerId, 'c_e'); assert.equal(d.name, 'Cari projesi 3');
+    /* bağı kaldırma serbest; tekrar pasife bağlanamaz */
+    const { customerId: _drop, ...noCu } = d;
+    ok(await put(U, noCu, d));
+    assert.equal((await row('projects', 'p_cu1')).customer_id, null);
+    rejectedWith(await put(U, { ...noCu, customerId: 'c_e' }), 'Pasif cari projeye bağlanamaz');
+    for (const id of ['c_e', 'c_p']) ok(await A.sync([del('customers', id)]));
+  });
+
+  test('silme: bağlı projesi (arşivli dahil) olan cari silinmez (409 + N), bağsızsa kalıcı silinir ve iz kalmaz', async () => {
+    const NAME = 'Kvkk Deneme Ticaret A.Ş.', TCKN = '10000000146', MAIL = 'yetkili.kvkk@ornek.test', CMAIL = 'firma.kvkk@ornek.test';
+    ok(await A.sync([cu('c_s', firm(NAME, { taxNo: TCKN, email: CMAIL, notes: 'deneme notu', contacts: [{ id: 'ct_s1', name: 'Deneme Yetkili', email: MAIL }] }))]));
+    const pa = (await row('projects', 'p_cu1')).data, pb = (await row('projects', 'p_cu2')).data;
+    ok(await A.sync([{ c: 'projects', id: 'p_cu1', op: 'put', data: { ...pa, customerId: 'c_s' } },
+      { c: 'projects', id: 'p_cu2', op: 'put', data: { ...pb, customerId: 'c_s' } }]));
+    let r = await A.sync([del('customers', 'c_s')]);
+    rejectedWith(r, 'Bu cariye bağlı 2 proje var; silmek yerine pasife alın');
+    ok(await A.sync([{ c: 'projects', id: 'p_cu1', op: 'put', data: pa }]));
+    rejectedWith(await A.sync([del('customers', 'c_s')]), 'Bu cariye bağlı 1 proje var; silmek yerine pasife alın');   // yalnız arşivli
+    ok(await A.sync([{ c: 'projects', id: 'p_cu2', op: 'put', data: pb }]));
+    const s0 = (await A.state()).json.seq;
+    r = await A.sync([del('customers', 'c_s')]);
+    ok(r); assert.equal(r.json.applied, 1);
+    assert.equal(await row('customers', 'c_s'), undefined);
+    assert.equal((await pool.query(`SELECT count(*) n FROM deleted_records WHERE collection='customers'`)).rows[0].n, '0');
+    const ch = (await U.req('GET', `/api/changes?since=${s0}`)).json;
+    assert.deepEqual(ch.items.map(i => [i.c, i.id, i.op, i.data]), [['customers', 'c_s', 'del', undefined]]);
+    assert.ok(!(await A.state()).json.data.customers.some(x => x.id === 'c_s'));
+    const all = await dump();
+    for (const v of [NAME, TCKN, MAIL, CMAIL]) assert.ok(!all.includes(v), v);
+    assert.equal((await A.req('GET', '/api/trash')).json.some(x => x.collection === 'customers'), false);
+    /* olmayan cariyi silmek değişiklik değildir */
+    r = await A.sync([del('customers', 'c_s')]);
+    assert.equal(r.json.applied, 0); assert.equal(r.json.rejected.length, 0);
+  });
+
+  test('silme: silinen cari yedeklerden de çıkar (unvan/TCKN kalmaz), diğer cariler ve sayım güncel', async () => {
+    const NAME = 'Yedek Silme Deneme Ltd.', TCKN = '10000000278', KEEP = 'Yedekte Kalan A.Ş.';
+    ok(await A.sync([cu('c_ys', firm(NAME, { taxNo: TCKN, contacts: [{ id: 'ct_ys', name: 'Yedek Yetkili' }] })), cu('c_yk', firm(KEEP))]));
+    const b1 = (await A.req('POST', '/api/backups', { label: 'cari silme öncesi' })).json;
+    const b2 = (await A.req('POST', '/api/backups', { label: 'cari silme öncesi 2' })).json;
+    const before = (await A.req('GET', '/api/backups')).json.find(b => b.id === b1.id);
+    const r = await A.sync([del('customers', 'c_ys')]);
+    ok(r); assert.equal(r.json.applied, 1);
+    for (const b of [b1, b2]) {
+      const g = await A.req('GET', `/api/backups/${b.id}`);
+      assert.equal(g.status, 200);
+      const txt = JSON.stringify(g.json);
+      for (const v of [NAME, TCKN, 'Yedek Yetkili']) assert.ok(!txt.includes(v), v);
+      assert.ok(g.json.customers.some(x => x.name === KEEP));
+      assert.ok(Array.isArray(g.json.projects) && Array.isArray(g.json.issues));   // yedeğin geri kalanı aynı
+    }
+    const after = (await A.req('GET', '/api/backups')).json.find(b => b.id === b1.id);
+    assert.equal(after.counts.customers, before.counts.customers - 1);
+    assert.equal(after.counts.projects, before.counts.projects);
+    const raw = (await pool.query(`SELECT count(*) n FROM snapshots WHERE data::text LIKE '%' || $1 || '%'`, [TCKN])).rows[0].n;
+    assert.equal(raw, '0');
+    /* silme reddedilirse (bağlı proje) yedeklere dokunulmaz */
+    const pa = (await row('projects', 'p_cu1')).data;
+    ok(await A.sync([{ c: 'projects', id: 'p_cu1', op: 'put', data: { ...pa, customerId: 'c_yk' } }]));
+    rejectedWith(await A.sync([del('customers', 'c_yk')]), 'Bu cariye bağlı 1 proje var; silmek yerine pasife alın');
+    assert.ok((await A.req('GET', `/api/backups/${b1.id}`)).json.customers.some(x => x.name === KEEP));
+    ok(await A.sync([{ c: 'projects', id: 'p_cu1', op: 'put', data: pa }]));
+    ok(await A.sync([del('customers', 'c_yk')]));
+  });
+
+  test('yetkili kişi: silinen kişi hiçbir tabloda kalmaz; eski base ile geri gelmez; silinmiş cariye base ile yazılamaz', async () => {
+    const MAIL = 'silinecek.kisi@ornek.test';
+    ok(await A.sync([cu('c_k', firm('Kişi A.Ş.', { contacts: [{ id: 'ct_k1', name: 'Silinecek Kişi', email: MAIL }, { id: 'ct_k2', name: 'Kalan Kişi' }] }))]));
+    const old = (await row('customers', 'c_k')).data;
+    ok(await A.sync([cu('c_k', { ...old, contacts: [old.contacts[1]] }, old)]));
+    assert.ok(!(await dump()).includes(MAIL));
+    /* başka bir yönetici eski hâlle (silinen kişi içinde) kişi ekler ve kalan kişiyi değiştirir */
+    const r = await A.sync([cu('c_k', { ...old, contacts: [old.contacts[0], { id: 'ct_k2', name: 'Kalan Kişi', title: 'Müdür' }, { id: 'ct_k3', name: 'Yeni Kişi' }] }, old)]);
+    ok(r); assert.deepEqual(r.json.adjusted, [{ c: 'customers', id: 'c_k' }]);
+    assert.deepEqual((await row('customers', 'c_k')).data.contacts,
+      [{ id: 'ct_k2', name: 'Kalan Kişi', title: 'Müdür' }, { id: 'ct_k3', name: 'Yeni Kişi' }]);
+    assert.ok(!(await dump()).includes(MAIL));
+    /* eşzamanlı iki ekleme ikisi de kalır; değiştirdiğim kişide benimki kazanır; sildiğim çıkar */
+    const b = (await row('customers', 'c_k')).data;
+    ok(await A.sync([cu('c_k', { ...b, contacts: [...b.contacts, { id: 'ct_k4', name: 'Dört' }] }, b)]));
+    ok(await A.sync([cu('c_k', { ...b, contacts: [{ ...b.contacts[0], phone: '0000' }, { id: 'ct_k5', name: 'Beş' }] }, b)]));
+    assert.deepEqual((await row('customers', 'c_k')).data.contacts.map(x => [x.id, x.phone]),
+      [['ct_k2', '0000'], ['ct_k4', undefined], ['ct_k5', undefined]]);
+    /* silinmiş cari eski hâliyle diriltilemez */
+    const last = (await row('customers', 'c_k')).data;
+    ok(await A.sync([del('customers', 'c_k')]));
+    rejectedWith(await A.sync([cu('c_k', { ...last, name: 'Diriltme' }, last)]), 'Cari silinmiş');
+    assert.equal(await row('customers', 'c_k'), undefined);
+  });
+
+  test('eşzamanlı düzenleme: biri telefonu, öteki notu değiştirir — ikisi de korunur', async () => {
+    ok(await A.sync([cu('c_m', firm('Birleşme A.Ş.', { phone: '1', notes: 'ilk' }))]));
+    const b = (await row('customers', 'c_m')).data;
+    ok(await A.sync([cu('c_m', { ...b, phone: '0212 000 00 00' }, b)]));
+    const r = await A.sync([cu('c_m', { ...b, notes: 'güncel not' }, b)]);
+    ok(r); assert.deepEqual(r.json.adjusted, [{ c: 'customers', id: 'c_m' }]);
+    const d = (await row('customers', 'c_m')).data;
+    assert.equal(d.phone, '0212 000 00 00'); assert.equal(d.notes, 'güncel not');
+    ok(await A.sync([del('customers', 'c_m')]));
+  });
+
+  test('izleyiciye 11 haneli vergi no (T.C. kimlik no) maskeli; üye/yönetici tam görür; 10 hane maskesiz', async () => {
+    const s0 = (await A.state()).json.seq;
+    ok(await A.sync([cu('c_tc', firm('Şahıs Deneme', { taxNo: '12345678901' })), cu('c_vk', firm('Tüzel Deneme', { taxNo: '4444444444' }))]));
+    const pick = (list, id) => list.find(x => x.id === id).taxNo;
+    const vs = (await V.state()).json.data.customers, us = (await U.state()).json.data.customers, as = (await A.state()).json.data.customers;
+    assert.equal(pick(vs, 'c_tc'), '*********01'); assert.equal(pick(vs, 'c_vk'), '4444444444');
+    assert.equal(pick(us, 'c_tc'), '12345678901'); assert.equal(pick(as, 'c_tc'), '12345678901');
+    const items = async k => (await k.req('GET', `/api/changes?since=${s0}`)).json.items.filter(i => i.c === 'customers').map(i => i.data);
+    const vc = await items(V), uc = await items(U);
+    assert.equal(pick(vc, 'c_tc'), '*********01'); assert.equal(pick(vc, 'c_vk'), '4444444444');
+    assert.equal(pick(uc, 'c_tc'), '12345678901');
+    assert.ok(!JSON.stringify((await V.state()).json).includes('12345678901'));
+    assert.ok(!JSON.stringify((await V.state()).json).includes('123*'));      // ilk haneler de görünmez
+    /* dışa aktarma (yönetici) maskesiz; izleyici dışa aktaramaz */
+    assert.equal(pick((await A.req('GET', '/api/export')).json.customers, 'c_tc'), '12345678901');
+    assert.equal((await V.req('GET', '/api/export')).status, 403);
+    assert.equal((await row('customers', 'c_tc')).tax_no, '12345678901');   // veritabanında tam değer
+  });
+
+  test('veritabanı hatasında günlüğe yalnız kod/ileti/kısıt yazılır (detail yok)', async () => {
+    await pool.query(`CREATE OR REPLACE FUNCTION pano_test_hata() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN IF NEW.collection = 'gunlukdeneme' THEN RAISE EXCEPTION 'deneme hatası' USING DETAIL = 'GIZLI-DETAY-12345678901'; END IF; RETURN NEW; END $$`);
+    await pool.query(`CREATE TRIGGER pano_test_hata BEFORE INSERT ON misc_records FOR EACH ROW EXECUTE FUNCTION pano_test_hata()`);
+    const orig = console.error, lines = [];
+    console.error = (...a) => lines.push(a.map(x => (typeof x === 'string' ? x : JSON.stringify(x) + String(x?.stack || ''))).join(' '));
+    try {
+      const r = await A.sync([{ c: 'gunlukdeneme', id: 'g1', op: 'put', data: { a: 1 } }]);
+      assert.equal(r.status, 500); assert.equal(r.json.error, 'Sunucu hatası');
+    } finally {
+      console.error = orig;
+      await pool.query('DROP TRIGGER pano_test_hata ON misc_records; DROP FUNCTION pano_test_hata()');
+    }
+    const log = lines.join('\n');
+    assert.match(log, /\[hata\]/); assert.match(log, /P0001/); assert.match(log, /deneme hatası/);
+    assert.ok(!log.includes('GIZLI-DETAY'), log);
+  });
+
+  test('yedek: dışa → içe aktarmada cariler ve proje bağı aynı kalır; çift vergi nolu cari atlanır; carisiz eski yedek çalışır', async () => {
+    const pa = (await row('projects', 'p_cu1')).data;
+    ok(await A.sync([{ c: 'projects', id: 'p_cu1', op: 'put', data: { ...pa, customerId: 'c_vk' } }]));
+    const exp = (await A.req('GET', '/api/export')).json;
+    assert.ok(exp.customers.length >= 2);
+    let r = await A.req('POST', '/api/import', { data: exp });
+    assert.equal(r.status, 200); assert.equal(r.json.customers, exp.customers.length); assert.equal(r.json.skipped, undefined);
+    const st = (await A.state()).json.data;
+    assert.deepEqual(st.customers, exp.customers);
+    assert.equal(st.projects.find(p => p.id === 'p_cu1').customerId, 'c_vk');
+    /* çift vergi no: ilki kalır, ikincisi atlanır; boşluklu/tireli numara düzeltilir; geçersiz kayıt atlanır */
+    r = await A.req('POST', '/api/import', { data: { ...exp, customers: [
+      firmWith('c_i1', 'İçe Bir', '555 555-5555'), firmWith('c_i2', 'İçe İki', '5555555555'),
+      firmWith('c_i3', 'İçe Üç', ''), firmWith('c_i4', 'İçe Dört', ''), { id: 'c_i5', name: 'Türsüz' }] } });
+    assert.equal(r.status, 200); assert.equal(r.json.customers, 3); assert.equal(r.json.skipped, 2);
+    const st2 = (await A.state()).json.data.customers;
+    assert.deepEqual(st2.map(x => [x.id, x.taxNo]), [['c_i1', '5555555555'], ['c_i3', ''], ['c_i4', '']]);
+    /* carisiz (eski) yedek: içe aktarma çalışır, cariler boşalır */
+    const { customers: _c, ...oldBackup } = exp;
+    r = await A.req('POST', '/api/import', { data: oldBackup });
+    assert.equal(r.status, 200); assert.equal(r.json.customers, undefined);
+    assert.deepEqual((await A.state()).json.data.customers, []);
+  });
+});
+
+/* ---------------- proje türü ve kolonlar (#12) ---------------- */
+describe('proje türü ve kolonlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  const P = (id, data) => ({ c: 'projects', id, op: 'put', data: { key: id.toUpperCase().replace(/[^A-Z0-9]/g, ''), counter: 0, ...data, name: data.name || id } });
+  const S = (id, pid, name, cat = 'inprogress', ord = 0, extra = {}) => ({ c: 'statuses', id, op: 'put', data: { projectId: pid, name, cat, wip: 0, ord, ...extra } });
+  const D = (c, id) => ({ c, id, op: 'del' });
+  const I = (id, pid, statusId, extra = {}) => ({ c: 'issues', id, op: 'put', data: { projectId: pid, summary: id, statusId, ...extra } });
+  const reasons = r => r.json.rejected.map(x => x.reason);
+  const row = async (table, id) => (await pool.query(`SELECT data FROM ${table} WHERE id=$1`, [id])).rows[0]?.data;
+  const cols = async pid => (await pool.query(`SELECT id, data FROM statuses WHERE project_id=$1 ORDER BY id`, [pid])).rows.map(r => r.data);
+  const ok = r => { assert.equal(r.status, 200, JSON.stringify(r.json)); assert.deepEqual(r.json.rejected, []); return r; };
+  const conflict = (r, msg) => { assert.equal(r.status, 409, JSON.stringify(r.json)); assert.equal(r.json.error, msg); };
+  let A, M, N, V;
+  const newUser = async (id, username, role) => {
+    await A.sync([{ c: 'users', id, op: 'put', data: { username, name: username, role, active: true } }]);
+    const k = client(); await k.login(username, 'Start12345');
+    assert.equal((await k.req('POST', '/api/auth/password', { newPassword: 'KolYeni123456' })).status, 200);
+    return k;
+  };
+  const flow = pid => [S(pid + '_a', pid, 'Yapılacak', 'todo', 0), S(pid + '_b', pid, 'Devam ediyor', 'inprogress', 1), S(pid + '_c', pid, 'Bitti', 'done', 2)];
+  const setSprintModule = async on => {
+    const cur = (await pool.query(`SELECT value FROM settings WHERE key='cfg'`)).rows[0]?.value || {};
+    ok(await A.sync([{ c: '_settings', id: 'cfg', op: 'put', data: { ...cur, modules: { ...(cur.modules || {}), sprint: on } } }]));
+  };
+
+  before(async () => {
+    A = client(); await A.login('admin', 'test-admin-pw');
+    M = await newUser('u_k_m', 'kolonuye', 'member');
+    N = await newUser('u_k_n', 'kolondisi', 'member');
+    V = await newUser('u_k_v', 'kolonizci', 'viewer');
+    ok(await A.sync([P('pk1', { members: ['u_admin', 'u_k_m'] }), ...flow('pk1'), P('pk_bos', { members: [] }), ...flow('pk_bos')]));
+  });
+
+  test('üye olan Üye kolon ekler, adını/kategorisini değiştirir, sıralar ve boş kolonu siler', async () => {
+    ok(await M.sync([S('pk1_x', 'pk1', 'İnceleme', 'inprogress', 3)]));
+    ok(await M.sync([S('pk1_x', 'pk1', 'Kod incelemesi', 'todo', 3)]));
+    ok(await M.sync([S('pk1_x', 'pk1', 'Kod incelemesi', 'todo', 1), S('pk1_b', 'pk1', 'Devam ediyor', 'inprogress', 3)]));
+    assert.equal((await row('statuses', 'pk1_x')).ord, 1);
+    assert.equal((await row('statuses', 'pk1_x')).cat, 'todo');
+    ok(await M.sync([D('statuses', 'pk1_x')]));
+    assert.equal(await row('statuses', 'pk1_x'), undefined);
+  });
+
+  test('üye listesi boş projede her Üye kolon değiştirebilir', async () => {
+    ok(await N.sync([S('pk_bos_x', 'pk_bos', 'Test', 'inprogress', 3)]));
+    ok(await N.sync([D('statuses', 'pk_bos_x')]));
+  });
+
+  test('izleyici ret: salt okunur kullanıcı', async () => {
+    const r = await V.sync([S('pk1_v', 'pk1', 'İzleyici', 'todo', 5)]);
+    assert.deepEqual(reasons(r), ['salt okunur kullanıcı']);
+    assert.equal(await row('statuses', 'pk1_v'), undefined);
+  });
+
+  test('üye olmayan Üye kolon ekleyemez, değiştiremez, silemez (403); başka projeye taşıyamaz', async () => {
+    const r = await N.sync([S('pk1_n', 'pk1', 'Yabancı', 'todo', 5), S('pk1_a', 'pk1', 'Değişti', 'todo', 0),
+      D('statuses', 'pk1_b'), S('pk1_c', 'pk_bos', 'Bitti 2', 'done', 9)]);
+    assert.deepEqual(reasons(r), Array(4).fill('Kolonları yalnızca yönetici ya da proje üyesi değiştirebilir'));
+    assert.equal(r.json.applied, 0);
+    assert.equal((await row('statuses', 'pk1_a')).name, 'Yapılacak');
+    /* projesi olmayan kolon */
+    assert.deepEqual(reasons(await N.sync([S('pk_yok_s', 'pk_yok', 'X')])), ['Durumun projesi yok']);
+  });
+
+  test('içinde iş kalan kolon silinmez (409); işler aynı gönderimde taşınınca (silme dizide önce gelse de) silinir', async () => {
+    ok(await M.sync([S('pk1_t', 'pk1', 'Geçici', 'inprogress', 4), I('i_k1', 'pk1', 'pk1_t'), I('i_k2', 'pk1', 'pk1_t')]));
+    let r = await M.sync([D('statuses', 'pk1_t'), I('i_k1', 'pk1', 'pk1_b')]);
+    assert.deepEqual(reasons(r), ['Önce içindeki işleri taşıyın']);
+    assert.ok(await row('statuses', 'pk1_t'));
+    r = await M.sync([D('statuses', 'pk1_t'), I('i_k2', 'pk1', 'pk1_a')]);
+    ok(r);
+    assert.equal(await row('statuses', 'pk1_t'), undefined);
+    assert.equal((await row('issues', 'i_k2')).statusId, 'pk1_a');
+  });
+
+  test('Üye yeni projeyi kolonlarıyla tek gönderimde açar (kolonlar dizide önce gelse de)', async () => {
+    const r = await M.sync([...flow('pk_m'), P('pk_m', { members: ['u_k_m'], type: 'board' })]);
+    ok(r);
+    assert.equal(r.json.applied, 4);
+    assert.deepEqual((await cols('pk_m')).map(s => s.name), ['Yapılacak', 'Devam ediyor', 'Bitti']);
+    const st = (await M.state()).json.data;
+    assert.equal(st.statuses.filter(s => s.projectId === 'pk_m').length, 3);
+    assert.equal(st.projects.find(p => p.id === 'pk_m').type, 'board');
+  });
+
+  test('son kolon ve son Bitti kolonu silinemez, son Bitti kategorisi değişemez; iki Bitti\'den biri silinir', async () => {
+    ok(await A.sync([P('pk_tek', {}), S('pk_tek_a', 'pk_tek', 'Tek', 'todo', 0)]));
+    conflict(await A.sync([D('statuses', 'pk_tek_a')]), 'Projenin son kolonu silinemez');
+    assert.ok(await row('statuses', 'pk_tek_a'));
+    conflict(await M.sync([D('statuses', 'pk1_c')]), 'Projede en az bir Bitti kolonu kalmalı');
+    conflict(await M.sync([S('pk1_c', 'pk1', 'Bitti', 'inprogress', 2)]), 'Projede en az bir Bitti kolonu kalmalı');
+    assert.equal((await row('statuses', 'pk1_c')).cat, 'done');
+    ok(await M.sync([S('pk1_c2', 'pk1', 'Yayında', 'done', 5)]));
+    ok(await M.sync([D('statuses', 'pk1_c2')]));
+    /* ihlal tüm gönderimi geri alır (ilgisiz değişiklik dahil) */
+    conflict(await M.sync([I('i_k1', 'pk1', 'pk1_a'), D('statuses', 'pk1_c')]), 'Projede en az bir Bitti kolonu kalmalı');
+    assert.equal((await row('issues', 'i_k1')).statusId, 'pk1_b');
+    /* eski projede Bitti hiç yoksa kural işlemez */
+    ok(await A.sync([S('pk_tek_b', 'pk_tek', 'İkinci', 'todo', 1)]));
+    ok(await A.sync([D('statuses', 'pk_tek_b')]));
+  });
+
+  test('şablon uygulama (yeniden adlandır + kategori + fazlaları taşıyıp sil) tek gönderimde kabul', async () => {
+    ok(await M.sync([S('pk1_e1', 'pk1', 'Ek 1', 'inprogress', 6), S('pk1_e2', 'pk1', 'Ek 2', 'inprogress', 7), I('i_k3', 'pk1', 'pk1_e2')]));
+    /* Basit: Yapılacak / Bitti (pk1_b "Bitti" olur, eski Bitti silinir) */
+    const r = await M.sync([
+      S('pk1_a', 'pk1', 'Yapılacak', 'todo', 0), S('pk1_b', 'pk1', 'Bitti', 'done', 1),
+      I('i_k1', 'pk1', 'pk1_b'), I('i_k3', 'pk1', 'pk1_b'),
+      D('statuses', 'pk1_c'), D('statuses', 'pk1_e1'), D('statuses', 'pk1_e2')]);
+    ok(r);
+    assert.deepEqual((await cols('pk1')).map(s => [s.id, s.name, s.cat]), [['pk1_a', 'Yapılacak', 'todo'], ['pk1_b', 'Bitti', 'done']]);
+    /* eski akışa dön */
+    ok(await M.sync([S('pk1_b', 'pk1', 'Devam ediyor', 'inprogress', 1), S('pk1_c', 'pk1', 'Bitti', 'done', 2)]));
+  });
+
+  test('yönetici projeyi kolonları ve işleriyle siler: kolon kuralları engellemez', async () => {
+    ok(await A.sync([P('pk_sil', {}), ...flow('pk_sil'), I('i_ks', 'pk_sil', 'pk_sil_c')]));
+    const r = await A.sync([D('projects', 'pk_sil'), D('issues', 'i_ks'), ...flow('pk_sil').map(s => D('statuses', s.id))]);
+    ok(r);
+    assert.equal((await cols('pk_sil')).length, 0);
+  });
+
+  test('kolon adı: 31 karakter ve boş ret, tr harf duyarsız tekil (IŞIK = ışık), eski uzun adlı kolon sıralanabilir', async () => {
+    assert.deepEqual(reasons(await M.sync([S('pk1_l', 'pk1', 'x'.repeat(31))])), ['Kolon adı 1 ile 30 karakter arasında olmalı']);
+    assert.deepEqual(reasons(await M.sync([S('pk1_l', 'pk1', '   ')])), ['Durum adı gerekli']);
+    ok(await M.sync([S('pk1_l', 'pk1', 'x'.repeat(30), 'inprogress', 8)]));
+    ok(await M.sync([S('pk1_i', 'pk1', 'ışık', 'inprogress', 9)]));
+    conflict(await M.sync([S('pk1_i2', 'pk1', 'IŞIK', 'inprogress', 10)]), 'Bu adla bir kolon zaten var');
+    conflict(await M.sync([S('pk1_l', 'pk1', '  Işık ', 'inprogress', 8)]), 'Bu adla bir kolon zaten var');
+    ok(await M.sync([S('pk1_i', 'pk1', 'IŞIK', 'inprogress', 9)]));          // kendi adının büyük harfi
+    ok(await M.sync([S('pk_bos_i', 'pk_bos', 'Işık', 'inprogress', 9)]));    // başka projede aynı ad serbest
+    /* eski (40 karakterlik) ad: yalnız sıra değişince kabul, ad değişince 1–30 */
+    await pool.query(`UPDATE statuses SET data = jsonb_set(data, '{name}', to_jsonb($2::text)) WHERE id=$1`, ['pk1_l', 'u'.repeat(40)]);
+    ok(await M.sync([S('pk1_l', 'pk1', 'u'.repeat(40), 'inprogress', 11)]));
+    assert.deepEqual(reasons(await M.sync([S('pk1_l', 'pk1', 'u'.repeat(41), 'inprogress', 11)])), ['Kolon adı 1 ile 30 karakter arasında olmalı']);
+    ok(await M.sync([D('statuses', 'pk1_l'), D('statuses', 'pk1_i'), D('statuses', 'pk_bos_i')]));
+  });
+
+  test('bir projede en fazla 12 kolon: 13. kolon ret', async () => {
+    ok(await A.sync([P('pk_12', {}), ...Array.from({ length: 12 }, (_, k) => S('pk_12_' + k, 'pk_12', 'K' + k, k === 11 ? 'done' : 'todo', k))]));
+    conflict(await A.sync([S('pk_12_x', 'pk_12', 'On üç', 'todo', 12)]), 'Bir projede en fazla 12 kolon olabilir');
+    /* birini silip birini eklemek serbest */
+    ok(await A.sync([D('statuses', 'pk_12_0'), S('pk_12_x', 'pk_12', 'Yeni', 'todo', 0)]));
+    assert.equal((await cols('pk_12')).length, 12);
+  });
+
+  test('proje türü: board/agile/boş kabul, "x" 400', async () => {
+    assert.deepEqual(reasons(await A.sync([P('pk_tx', { type: 'x' })])), ['Geçersiz proje türü']);
+    ok(await A.sync([P('pk_tb', { type: 'board' }), P('pk_ta', { type: 'agile' }), P('pk_tn', { type: '' })]));
+  });
+
+  test('tür değişimi: aktif sprintte Agile→Pano 409 (türsüz + modules.sprint:true dahil); sprint yoksa kabul; üye olmayan 403; türsüz kalır', async () => {
+    ok(await A.sync([P('pk_ag', { type: 'agile', members: ['u_admin', 'u_k_m'] }), ...flow('pk_ag'),
+      { c: 'sprints', id: 'sp_k1', op: 'put', data: { projectId: 'pk_ag', name: 'S1', state: 'active' } }]));
+    assert.deepEqual(reasons(await M.sync([P('pk_ag', { type: 'board', members: ['u_admin', 'u_k_m'] })])), ['Önce aktif sprinti tamamlayın']);
+    assert.deepEqual(reasons(await N.sync([P('pk_ag', { type: 'board', members: ['u_admin', 'u_k_m'] })])),
+      ['Proje türünü yalnızca yönetici ya da proje üyesi değiştirebilir']);
+    assert.equal((await row('projects', 'pk_ag')).type, 'agile');
+    /* türsüz proje + genel sprint açık → agile sayılır */
+    await setSprintModule(true);
+    try {
+      ok(await A.sync([P('pk_ts', { members: [] }), { c: 'sprints', id: 'sp_k2', op: 'put', data: { projectId: 'pk_ts', name: 'S', state: 'active' } }]));
+      assert.deepEqual(reasons(await A.sync([P('pk_ts', { members: [], type: 'board' })])), ['Önce aktif sprinti tamamlayın']);
+      ok(await A.sync([P('pk_ts', { members: [], name: 'Yeni ad' })]));     // türsüz kalır
+      assert.equal(Object.hasOwn(await row('projects', 'pk_ts'), 'type'), false);
+      ok(await N.sync([P('pk_ts', { members: [], name: 'Yeni ad', type: 'agile' })]));   // hesaplanan tür aynı: denetim yok
+    } finally { await setSprintModule(false); }
+    /* sprint tamamlanınca Agile→Pano kabul; Pano→Agile her zaman */
+    ok(await M.sync([{ c: 'sprints', id: 'sp_k1', op: 'put', data: { projectId: 'pk_ag', name: 'S1', state: 'closed' } }]));
+    ok(await M.sync([P('pk_ag', { type: 'board', members: ['u_admin', 'u_k_m'] })]));
+    ok(await M.sync([P('pk_ag', { type: 'agile', members: ['u_admin', 'u_k_m'] })]));
+    ok(await M.sync([P('pk_ag', { type: 'board', members: ['u_admin', 'u_k_m'] })]));
+  });
+
+  test('türü açıkça Pano olan projede sprint başlatılamaz; türsüz (genel sprint kapalı) projede ve Agile\'da başlar', async () => {
+    assert.equal((await pool.query(`SELECT value FROM settings WHERE key='cfg'`)).rows[0]?.value?.modules?.sprint, false);
+    const r = await M.sync([{ c: 'sprints', id: 'sp_k3', op: 'put', data: { projectId: 'pk_ag', name: 'S3', state: 'active' } },
+      { c: 'sprints', id: 'sp_k4', op: 'put', data: { projectId: 'pk_bos', name: 'S4', state: 'active' } },
+      { c: 'sprints', id: 'sp_k5', op: 'put', data: { projectId: 'pk_ag', name: 'S5', state: 'future' } }]);
+    assert.deepEqual(reasons(r), ['Pano türündeki projede sprint başlatılamaz']);
+    assert.equal((await row('projects', 'pk_ag')).type, 'board');
+    assert.equal(await row('sprints', 'sp_k3'), undefined);
+    assert.equal((await row('sprints', 'sp_k4')).state, 'active');        // türsüz eski proje: kural yok
+    assert.equal((await row('sprints', 'sp_k5')).state, 'future');
+    /* future → active geçişi de Pano'da ret */
+    assert.deepEqual(reasons(await A.sync([{ c: 'sprints', id: 'sp_k5', op: 'put', data: { projectId: 'pk_ag', name: 'S5', state: 'active' } }])),
+      ['Pano türündeki projede sprint başlatılamaz']);
+    assert.deepEqual(reasons(await A.sync([{ c: 'sprints', id: 'sp_k7', op: 'put', data: { projectId: 'pk_tb', name: 'S7', state: 'active' } }])),
+      ['Pano türündeki projede sprint başlatılamaz']);
+    ok(await M.sync([{ c: 'sprints', id: 'sp_k4', op: 'put', data: { projectId: 'pk_bos', name: 'S4', state: 'closed' } }]));
+    ok(await A.sync([{ c: 'sprints', id: 'sp_k6', op: 'put', data: { projectId: 'pk_ta', name: 'S6', state: 'active' } }]));
+  });
+
+  test('işin kolonu var olan bir kolon olmalı (yeni iş dahil); kolon değişmediyse denetlenmez', async () => {
+    assert.deepEqual(reasons(await M.sync([I('i_k9', 'pk1', 'kolon_yok')])), ['Kolon bulunamadı']);
+    ok(await M.sync([I('i_k9', 'pk1', 'pk1_a')]));
+    assert.deepEqual(reasons(await M.sync([I('i_k9', 'pk1', 'kolon_yok')])), ['Kolon bulunamadı']);
+    await pool.query(`UPDATE issues SET data = jsonb_set(data, '{statusId}', '"eski_kolon"') WHERE id='i_k9'`);
+    ok(await M.sync([I('i_k9', 'pk1', 'eski_kolon', { summary: 'özet değişti' })]));
+    ok(await M.sync([I('i_k9', 'pk1', 'pk1_a')]));
+  });
+
+  test('silinmiş kolon eski hâliyle (base) yeniden doğmaz', async () => {
+    ok(await M.sync([S('pk1_r', 'pk1', 'Geri', 'todo', 6)]));
+    const base = await row('statuses', 'pk1_r');
+    ok(await A.sync([D('statuses', 'pk1_r')]));
+    const r = await M.sync([{ ...S('pk1_r', 'pk1', 'Geri 2', 'todo', 6), base }]);
+    assert.deepEqual(reasons(r), ['Kolon silinmiş']);
+    assert.equal(await row('statuses', 'pk1_r'), undefined);
+  });
+
+  test('XSS: <script> kolon adı metin olarak saklanır', async () => {
+    const name = '<script>alert(1)</script>';
+    ok(await M.sync([S('pk1_xss', 'pk1', name, 'todo', 7)]));
+    assert.equal((await M.state()).json.data.statuses.find(s => s.id === 'pk1_xss').name, name);
+    ok(await M.sync([D('statuses', 'pk1_xss')]));
+  });
+
+  test('eşzamanlı: iki Üye aynı anda iki Bitti kolonundan birer tanesini siler → biri 409, bir Bitti kalır', async () => {
+    ok(await M.sync([S('pk1_c3', 'pk1', 'Yayında', 'done', 5)]));
+    const M2 = client(); await M2.login('kolonuye', 'KolYeni123456');
+    const [r1, r2] = await Promise.all([M.sync([D('statuses', 'pk1_c')]), M2.sync([D('statuses', 'pk1_c3')])]);
+    assert.deepEqual([r1.status, r2.status].sort(), [200, 409]);
+    assert.equal((await cols('pk1')).filter(s => s.cat === 'done').length, 1);
+  });
+  test('gruplama: yeni çalışma alanı + o alanda proje ve yeni cari + ona bağlı proje tek gönderimde (proje dizide önce gelse de)', async () => {
+    ok(await M.sync([P('pk_wsp', { workspaceId: 'ws_k1', members: ['u_k_m'] }),
+      { c: 'workspaces', id: 'ws_k1', op: 'put', data: { name: 'Kolon alanı', color: '#3E7BC4' } }]));
+    assert.equal((await row('projects', 'pk_wsp')).workspaceId, 'ws_k1');
+    assert.ok(await row('workspaces', 'ws_k1'));
+    ok(await A.sync([P('pk_cup', { customerId: 'c_k1' }),
+      { c: 'customers', id: 'c_k1', op: 'put', data: { name: 'Kolon Carisi', kind: 'customer' } }]));
+    assert.equal((await row('projects', 'pk_cup')).customerId, 'c_k1');
+    /* silmeler gönderim sırasıyla: önce proje, sonra alanı */
+    ok(await A.sync([D('projects', 'pk_wsp'), D('workspaces', 'ws_k1')]));
+    assert.equal(await row('workspaces', 'ws_k1'), undefined);
+  });
+
+  test('kilitlenme yok: ters sıralı eşzamanlı kolon gönderimleri 500 vermez', async () => {
+    ok(await A.sync([P('pk_dl1', {}), ...flow('pk_dl1'), P('pk_dl2', {}), ...flow('pk_dl2')]));
+    const A2 = client(); await A2.login('admin', 'test-admin-pw');
+    for (let k = 0; k < 5; k++) {
+      const rs = await Promise.all([
+        A.sync([S('pk_dl1_b', 'pk_dl1', 'Ara ' + k, 'inprogress', 1), S('pk_dl2_b', 'pk_dl2', 'Ara ' + k, 'inprogress', 1)]),
+        A2.sync([S('pk_dl2_b', 'pk_dl2', 'Orta ' + k, 'inprogress', 1), S('pk_dl1_b', 'pk_dl1', 'Orta ' + k, 'inprogress', 1)])]);
+      for (const r of rs) { assert.equal(r.status, 200, JSON.stringify(r.json)); assert.deepEqual(r.json.rejected, []); }
+    }
+  });
+
+  test('işin kolonu işin projesine ait olmalı: başka projenin kolonu "Kolon bulunamadı"', async () => {
+    assert.deepEqual(reasons(await M.sync([I('i_k9', 'pk1', 'pk_bos_a')])), ['Kolon bulunamadı']);
+    assert.deepEqual(reasons(await M.sync([I('i_k10', 'pk1', 'pk_bos_a')])), ['Kolon bulunamadı']);
+    assert.equal((await row('issues', 'i_k9')).statusId, 'pk1_a');
+  });
+
+  test('üye listesi: üye olmayan değiştiremez (403); üye ve yönetici değiştirir; boş listeye kendini ekleyebilir; yeni projede serbest', async () => {
+    const pk1 = await row('projects', 'pk1');
+    assert.deepEqual(reasons(await N.sync([P('pk1', { ...pk1, members: [...pk1.members, 'u_k_n'] })])),
+      ['Proje üyelerini yalnızca yönetici ya da proje üyesi değiştirebilir']);
+    assert.deepEqual((await row('projects', 'pk1')).members, ['u_admin', 'u_k_m']);
+    ok(await N.sync([P('pk1', { ...pk1, name: 'pk1 yeni ad' })]));                // üye listesine dokunmayan düzenleme serbest
+    ok(await M.sync([P('pk1', { ...pk1, members: ['u_admin', 'u_k_m', 'u_k_n'] })]));
+    ok(await N.sync([P('pk1', { ...pk1, members: ['u_admin', 'u_k_m'] })]));      // artık üye: değiştirebilir
+    ok(await A.sync([P('pk1', { ...pk1, members: ['u_admin', 'u_k_m'] })]));
+    const bos = await row('projects', 'pk_bos');
+    ok(await N.sync([P('pk_bos', { ...bos, members: ['u_k_n'] })]));               // liste boştu: kendini ekler
+    assert.deepEqual(reasons(await M.sync([P('pk_bos', { ...bos, members: [] })])),
+      ['Proje üyelerini yalnızca yönetici ya da proje üyesi değiştirebilir']);
+    ok(await N.sync([P('pk_bos', { ...bos, members: [] })]));
+    ok(await N.sync([P('pk_yeni_n', { members: ['u_admin'] })]));                  // yeni proje: serbest
   });
 });

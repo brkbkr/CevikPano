@@ -1,0 +1,818 @@
+<!doctype html>
+<html lang="tr" data-theme="light"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Genel raporlar taslağı: Süre (pivot) ve Faturalanabilir saat (Grup D1)</title>
+<script>if (/theme=dark/.test(location.search)) document.documentElement.dataset.theme = 'dark';</script>
+<style>
+/* ---- uygulamadan kopyalanan token'lar (tasarım dili v3 + sol menü + nv- gezinme) ---- */
+:root{
+  --paper:#F3F6FB; --surface:#FFFFFF; --surface2:#F6F9FD; --surface3:#EBF1F9;
+  --line:#E1E8F2; --line2:#CCD7E6;
+  --ink:#0B1B33; --ink2:#43546E; --ink3:#7E8CA3;
+  --accent:#2563EB; --accent-d:#1D4ED8; --accent-soft:#EAF1FE; --accent-ink:#FFFFFF;
+  --btn-grad:linear-gradient(180deg,#3B82F6,#2563EB);
+  --ring:0 0 0 3px rgba(37,99,235,.20);
+  --shadow-sm:0 1px 2px rgba(11,27,51,.05);
+  --shadow:0 1px 2px rgba(11,27,51,.04),0 8px 20px -6px rgba(11,27,51,.10);
+  --shadow-lg:0 30px 60px -15px rgba(11,27,51,.30),0 2px 6px rgba(11,27,51,.06);
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --sans:Inter,system-ui,sans-serif;
+  --done:#059669; --prog:#C2610C;
+  --rail-bg:#FFFFFF; --rail-ink:#334155; --rail-ink2:#94A3B8; --rail-line:#E5EAF2;
+  --rail-hover:#F3F7FD; --rail-on:#EAF2FF; --rail-on-ink:#1D4ED8; --rail-icon:#3B82F6; --rail-bar:#2563EB;
+  --meta:#64748B; --ok:#15803D;
+  --ws-badge-ink:#FFFFFF;
+  --nv-rail-w:248px; --nv-guide:#E5EAF2; --nv-sec-ink:#64748B;
+  --nv-tab-ink:#43546E; --nv-tab-on:#1D4ED8; --nv-tab-bar:#2563EB; --nv-tab-hover:#F3F7FD;
+  --nv-av:#2563EB; --nv-av-ink:#FFFFFF;
+  /* ---- yeni: genel raporlar (gr-) ---- */
+  --gr-heat:#2563EB;                  /* hücre ısı tonu: değer/en büyük × %12, metin her zaman --ink */
+  --gr-bar:#2563EB; --gr-bar-bg:#E3EAF5;   /* oran çubuğu */
+  --gr-sub-bg:#F9FBFE;                /* açılmış satırın alt satırları */
+  --gr-toast:#0B1B33; --gr-toast-ink:#FFFFFF;
+}
+[data-theme="dark"]{
+  --paper:#060B16; --surface:#0C1424; --surface2:#101A2E; --surface3:#16223A;
+  --line:#1B2842; --line2:#273857;
+  --ink:#E6EDF8; --ink2:#A3B2CB; --ink3:#6B7C99;
+  --accent:#60A5FA; --accent-d:#93C5FD; --accent-soft:rgba(96,165,250,.14); --accent-ink:#06101F;
+  --btn-grad:linear-gradient(180deg,#60A5FA,#3B82F6);
+  --ring:0 0 0 3px rgba(96,165,250,.28);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 20px -6px rgba(0,0,0,.55);
+  --shadow-lg:0 30px 60px -15px rgba(0,0,0,.75),0 2px 6px rgba(0,0,0,.4);
+  --done:#34D399; --prog:#F0A040;
+  --rail-bg:#0C1424; --rail-ink:#C3CEE0; --rail-ink2:#5F6F8C; --rail-line:#1B2842;
+  --rail-hover:#121D33; --rail-on:rgba(96,165,250,.14); --rail-on-ink:#BFDBFE; --rail-icon:#60A5FA; --rail-bar:#60A5FA;
+  --meta:#8494AE; --ok:#34D399;
+  --nv-guide:#1B2842; --nv-sec-ink:#8494AE;
+  --nv-tab-ink:#A3B2CB; --nv-tab-on:#BFDBFE; --nv-tab-bar:#60A5FA; --nv-tab-hover:#121D33;
+  --gr-heat:#60A5FA; --gr-bar:#60A5FA; --gr-bar-bg:#1E2B45; --gr-sub-bg:#0E1729;
+  --gr-toast:#E6EDF8; --gr-toast-ink:#0B1B33;
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:var(--sans);background:var(--paper);color:var(--ink);padding:24px;-webkit-font-smoothing:antialiased;font-size:13px}
+button,input,select{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,[role="tab"]:focus-visible{outline:none;box-shadow:var(--ring)}
+svg.i{width:14px;height:14px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+ul{list-style:none;margin:0;padding:0}
+.doc-h{font-size:20px;margin:0 0 4px;letter-spacing:-.02em}
+.lead{color:var(--ink2);font-size:13px;margin:0 0 18px;max-width:1100px;line-height:1.5}
+.sec-t{font-size:13px;font-weight:700;margin:30px 0 10px;color:var(--ink2)}
+.sec-t small{font-weight:500;color:var(--meta)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.num,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ================= uygulama çerçevesi (gezinme taslağından) ================= */
+.appwrap{container:app / inline-size}
+.app{position:relative;display:grid;grid-template-columns:var(--nv-rail-w) minmax(0,1fr);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow);background:var(--paper)}
+.rail{background:var(--rail-bg);border-right:1px solid var(--rail-line);display:flex;flex-direction:column;padding:16px 10px 12px;gap:2px;color:var(--rail-ink);min-width:0}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 12px}
+.brand-ic,.tb-logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#38BDF8 0%,#2563EB 52%,#1E3A8A 100%);box-shadow:0 4px 12px rgba(37,99,235,.35);flex-shrink:0}
+.brand b{font-size:15.5px;letter-spacing:-.02em;color:var(--ink)}
+.ws-badge{width:20px;height:20px;border-radius:6px;display:inline-grid;place-items:center;flex-shrink:0;background:var(--ws-c,#64748B);color:var(--ws-badge-ink);font-size:10.5px;font-weight:750;line-height:1}
+.c-av{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:9px;flex-shrink:0}
+.c-av.unk{background:var(--surface3);color:var(--ink2)}
+.c-av.unk svg.i{width:13px;height:13px}
+.nv-list{display:flex;flex-direction:column;gap:1px}
+.nv-item{display:flex;align-items:center;gap:11px;width:100%;min-height:36px;padding:7px 10px;border:0;border-radius:10px;background:none;font-size:13.2px;font-weight:500;color:var(--rail-ink);text-decoration:none;text-align:left;position:relative}
+.nv-item > svg.i{width:18px;height:18px;color:var(--rail-icon)}
+.nv-item > .tx{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nv-item > .end{width:16px;height:16px;color:var(--meta)}
+.nv-item:hover{background:var(--rail-hover)}
+.nv-item[aria-current="page"]{background:var(--rail-on);color:var(--rail-on-ink);box-shadow:inset 3px 0 0 var(--rail-bar);font-weight:600}
+.nv-item .n{font-family:var(--mono);font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--surface3);color:var(--ink2)}
+.nv-hr{height:1px;background:var(--rail-line);margin:8px 6px}
+.nv-sech{display:flex;align-items:center;gap:2px;min-height:36px;padding:0 2px 0 10px;margin-top:2px}
+.nv-sech .l{flex:1;display:flex;align-items:center;gap:11px;font-size:13.2px;font-weight:650;color:var(--ink)}
+.nv-sech .l svg.i{width:18px;height:18px;color:var(--rail-icon)}
+.nv-ib{position:relative;width:30px;height:30px;border-radius:8px;border:0;background:none;display:grid;place-items:center;color:var(--ink2);padding:0}
+.nv-ib svg.i{width:17px;height:17px}
+.nv-tree{display:flex;flex-direction:column;gap:1px}
+.nv-ws{display:flex;align-items:center;gap:9px;width:100%;min-height:36px;padding:6px 8px 6px 12px;border:0;border-radius:10px;background:none;text-align:left;font-size:13px;font-weight:600;color:var(--ink)}
+.nv-ws .tx{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nv-ws .chev{width:16px;height:16px;color:var(--meta)}
+.nv-ws[aria-expanded="false"] .chev{transform:rotate(-90deg)}
+.nv-projs{position:relative;display:flex;flex-direction:column;gap:1px;margin:1px 0 4px 21px;padding-left:8px}
+.nv-projs::before{content:"";position:absolute;left:0;top:2px;bottom:2px;width:1px;background:var(--nv-guide)}
+.nv-proj{display:flex;align-items:center;gap:9px;min-height:34px;padding:6px 8px;border-radius:9px;font-size:13px;font-weight:500;color:var(--rail-ink);text-decoration:none}
+.nv-proj > svg.i{width:16px;height:16px;color:var(--rail-icon)}
+.nv-proj .tx{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nv-proj .k{font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--meta)}
+.nv-proj.is-last{font-weight:650;color:var(--ink)}
+.nv-other{color:var(--nv-sec-ink);font-weight:550;padding-left:12px}
+.nv-more{margin-top:auto}
+
+.main{min-width:0;display:flex;flex-direction:column;background:radial-gradient(900px 420px at 100% -10%,color-mix(in srgb,var(--accent) 7%,transparent),transparent 70%),var(--paper)}
+.topbar{background:color-mix(in srgb,var(--surface) 78%,transparent);border-bottom:1px solid var(--line);padding:14px 20px 0}
+.nv-mtop{display:none}
+.tb-head{display:flex;align-items:center;gap:12px}
+.tb-title{flex:1;min-width:0}
+.topbar h1{margin:0;font-size:22px;font-weight:750;letter-spacing:-.025em}
+.tb-sub{font-size:12.5px;color:var(--ink2);margin-top:3px}
+.tb-actions{display:flex;align-items:center;gap:6px}
+.iconbtn{position:relative;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:var(--ink2);border:1px solid var(--line);background:var(--surface);padding:0;flex-shrink:0}
+.iconbtn svg.i{width:18px;height:18px}
+.iconbtn.bare{border-color:transparent;background:none}
+.badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#DC2626;color:#fff;font-size:10.5px;font-weight:700;display:grid;place-items:center;box-shadow:0 0 0 2px var(--surface)}
+.cmdk{display:flex;align-items:center;gap:8px;height:36px;width:250px;padding:0 8px 0 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--meta);font-size:13px}
+.cmdk svg.i{width:16px;height:16px} .cmdk span{flex:1;text-align:left}
+.cmdk kbd{font-family:var(--sans);font-size:10.5px;font-weight:600;padding:2px 6px;border-radius:6px;border:1px solid var(--line);background:var(--surface2);color:var(--ink2)}
+.nv-avbtn{width:36px;height:36px;border-radius:50%;border:0;padding:0;display:grid;place-items:center;background:var(--nv-av);color:var(--nv-av-ink);font-size:12.5px;font-weight:700;box-shadow:0 0 0 2px var(--surface),0 0 0 3px var(--line2);flex-shrink:0}
+.content{padding:16px 20px 24px;min-width:0;display:flex;flex-direction:column;gap:14px}
+
+/* ortak denetimler (v3) */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 12px;border-radius:9px;font-size:13px;font-weight:550;border:1px solid var(--line2);background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm);white-space:nowrap}
+.btn:hover{background:var(--surface2)}
+.btn.pri{background:var(--btn-grad);border-color:transparent;color:var(--accent-ink)}
+.btn.ghost{border-color:transparent;background:none;box-shadow:none;color:var(--accent-d)}
+.btn.ghost:hover{background:var(--accent-soft)}
+.btn svg.i{width:16px;height:16px}
+.inp{display:block;width:100%;height:36px;border:1px solid var(--line2);background:var(--surface);padding:0 11px;border-radius:9px;font-size:13px}
+select.inp{width:auto;appearance:none;-webkit-appearance:none;padding-right:30px;background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 9px center/14px}
+.cu-seg{display:inline-flex;gap:2px;padding:1px;border-radius:10px;background:var(--surface2);border:1px solid var(--line)}
+.cu-seg button{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border:0;border-radius:8px;background:none;font-size:12.5px;font-weight:550;color:var(--ink2);white-space:nowrap}
+.cu-seg button[aria-checked="true"]{background:var(--surface);color:var(--accent-d);box-shadow:var(--shadow-sm),inset 0 0 0 1px color-mix(in srgb,var(--accent) 35%,transparent);font-weight:650}
+.hm-empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:40px 20px 36px;background:var(--surface);border:1px dashed var(--line2);border-radius:14px}
+.hm-empty-ic{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);margin-bottom:12px}
+.hm-empty-ic svg.i{width:24px;height:24px}
+.hm-empty h3{margin:0 0 4px;font-size:15px;font-weight:700;letter-spacing:-.01em}
+.hm-empty p{margin:0 0 16px;font-size:12.5px;color:var(--ink2);max-width:420px;line-height:1.5}
+.hm-empty p b{color:var(--ink);font-weight:600}
+.hm-empty .acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+
+/* ================= YENİ: genel raporlar (gr-) ================= */
+/* rapor sekmeleri: nv-tab dilinde, başlığın altında (proje sekme satırı yok) */
+.gr-tabs{display:flex;gap:2px;margin:12px -20px 0;padding:0 14px}
+.gr-tab{display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 12px;border:0;background:none;border-radius:8px 8px 0 0;font-size:13px;font-weight:550;color:var(--nv-tab-ink);white-space:nowrap;position:relative;margin-bottom:-1px;text-decoration:none}
+.gr-tab svg.i{width:16px;height:16px;color:var(--meta)}
+.gr-tab:hover{background:var(--nv-tab-hover);color:var(--ink)}
+.gr-tab[aria-selected="true"]{color:var(--nv-tab-on);font-weight:650}
+.gr-tab[aria-selected="true"] svg.i{color:var(--nv-tab-bar)}
+.gr-tab[aria-selected="true"]::after{content:"";position:absolute;left:8px;right:8px;bottom:0;height:3px;border-radius:3px 3px 0 0;background:var(--nv-tab-bar)}
+
+/* süzgeç çubuğu */
+.gr-fbar{display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:var(--shadow-sm)}
+.gr-frow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.gr-per{display:inline-flex;align-items:center;gap:4px}
+.gr-step{display:inline-flex;align-items:center;height:36px;border:1px solid var(--line2);border-radius:9px;background:var(--surface);overflow:hidden}
+.gr-step button{width:32px;height:34px;border:0;background:none;display:grid;place-items:center;color:var(--ink2);padding:0}
+.gr-step button:hover{background:var(--surface2)}
+.gr-step button svg.i{width:16px;height:16px}
+.gr-step b{min-width:118px;text-align:center;font-size:13px;font-weight:650;padding:0 4px;border-left:1px solid var(--line);border-right:1px solid var(--line);height:34px;display:grid;place-items:center}
+.gr-range{display:inline-flex;align-items:center;gap:6px}
+.gr-range .inp{width:132px;font-family:var(--mono);font-size:12.5px}
+.gr-range span{color:var(--meta)}
+.gr-fhint{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--meta)}
+.gr-fhint svg.i{width:14px;height:14px}
+.gr-fgrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.gr-fb{display:flex;align-items:center;gap:6px;height:36px;padding:0 9px 0 11px;border:1px solid var(--line2);border-radius:9px;background:var(--surface);font-size:13px;white-space:nowrap;min-width:0;text-align:left}
+.gr-fb > svg.i:last-child{margin-left:auto}
+.gr-fb .lb{color:var(--meta);font-weight:550}
+.gr-fb .v{color:var(--ink);font-weight:600;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.gr-fb > svg.i{width:14px;height:14px;color:var(--meta)}
+.gr-fb:hover{background:var(--surface2)}
+.gr-fb.on{border-color:color-mix(in srgb,var(--accent) 55%,transparent);background:var(--accent-soft)}
+.gr-fb.on .v{color:var(--accent-d)}
+.gr-fb.on .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0}
+.gr-fbtn{display:none}
+.gr-chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-top:10px;border-top:1px dashed var(--line)}
+.gr-chips .lbl{font-size:12px;color:var(--meta);margin-right:2px}
+.gr-chip{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 4px 0 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent-d);font-size:12px;font-weight:600;max-width:100%}
+.gr-chip .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gr-chip .t span{color:var(--ink2);font-weight:550}
+.gr-chip button{width:22px;height:22px;border:0;border-radius:50%;background:none;display:grid;place-items:center;color:var(--accent-d);padding:0;position:relative}
+.gr-chip button::before{content:"";position:absolute;inset:-7px}
+.gr-chip button:hover{background:color-mix(in srgb,var(--accent) 18%,transparent)}
+.gr-chip button svg.i{width:13px;height:13px;stroke-width:2.2}
+.gr-clear{height:28px;padding:0 8px;font-size:12.5px}
+
+/* özet kutuları (benim işlerim dilinden, sade) */
+.gr-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.gr-kpi{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-sm);min-width:0}
+.gr-kpi .ic{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);flex-shrink:0}
+.gr-kpi .ic svg.i{width:18px;height:18px}
+.gr-kpi .tx{min-width:0}
+.gr-kpi .l{display:block;font-size:12px;color:var(--ink2);font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gr-kpi b{display:block;font-family:var(--mono);font-size:20px;font-weight:700;letter-spacing:-.02em;margin-top:1px;font-variant-numeric:tabular-nums}
+.gr-kpi b small{font-family:var(--sans);font-size:12px;font-weight:550;color:var(--meta);margin-left:3px;letter-spacing:0}
+.gr-kpi .s{display:block;font-size:11.5px;color:var(--meta);margin-top:1px}
+
+/* rapor kartı (pivot / fatura) */
+.gr-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-sm);min-width:0}
+.gr-card-h{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.gr-card-h .spacer{flex:1}
+.gr-card-h .meta{font-size:12px;color:var(--meta)}
+.gr-card-h .meta b{font-family:var(--mono);color:var(--ink2);font-weight:650}
+.gr-dim{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink2);font-weight:550}
+.gr-dim select.inp{font-weight:600;color:var(--ink);min-width:132px}
+.gr-swap{width:36px;height:36px;border-radius:9px;border:1px solid var(--line);background:var(--surface2);display:grid;place-items:center;color:var(--ink2);padding:0}
+.gr-swap svg.i{width:16px;height:16px}
+.gr-xls svg.i{color:var(--ok)}
+.gr-pv-wrap{overflow-x:auto;border-radius:0 0 12px 12px}
+.gr-pv{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
+.gr-pv th{font-size:12px;font-weight:600;color:var(--ink2);background:var(--surface2);padding:8px 12px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.gr-pv th.dimh{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta)}
+.gr-pv th.dimh span{color:var(--ink3);font-weight:600;margin:0 4px}
+.gr-pv th .ph{display:inline-flex;align-items:center;gap:7px;justify-content:flex-end}
+.gr-pv td{border-bottom:1px solid var(--line);padding:0;text-align:right;white-space:nowrap}
+.gr-pv tbody tr:last-child td{border-bottom:0}
+.gr-pv .rh{position:sticky;left:0;z-index:1;background:var(--surface);text-align:left;padding:8px 12px;min-width:240px;border-right:1px solid var(--line)}
+.gr-pv th.rh{background:var(--surface2);z-index:2}
+.gr-pv tfoot .rh,.gr-pv tfoot td{background:var(--surface2)}
+.gr-rn{display:flex;align-items:center;gap:8px;min-width:0}
+.gr-rn .nm{font-weight:650;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gr-rn .sub{display:block;font-size:11.5px;color:var(--meta);font-weight:500;margin-top:1px}
+.gr-rn.none .nm{color:var(--ink2);font-weight:600}
+.gr-rn.none > svg.i{width:16px;height:16px;color:var(--meta)}
+.gr-c{display:flex;align-items:center;justify-content:flex-end;width:100%;min-width:96px;height:44px;padding:0 12px;border:0;background:none;font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--ink);border-radius:0}
+.gr-c:hover{box-shadow:inset 0 0 0 2px var(--accent)}
+.gr-c:focus-visible{box-shadow:inset 0 0 0 2px var(--accent),var(--ring)}
+.gr-c.z{color:var(--ink3)}
+.gr-c[aria-pressed="true"]{background:var(--accent)!important;color:var(--accent-ink);font-weight:700}
+.gr-pv .tot{background:var(--surface2)}
+.gr-pv .tot .gr-c{font-weight:700}
+.gr-pv tfoot td{border-top:1px solid var(--line2);border-bottom:0}
+.gr-pv tfoot .rh{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);border-top:1px solid var(--line2)}
+.gr-pv tfoot .gr-c{font-weight:700}
+.gr-pv tfoot .grand .gr-c{color:var(--accent-d)}
+.gr-foot{display:flex;align-items:center;gap:6px;padding:9px 12px;border-top:1px solid var(--line);font-size:11.5px;color:var(--meta)}
+.gr-foot svg.i{width:14px;height:14px}
+
+/* etiketler: arşivli proje / pasif cari (ikon + metin, yalnız renge dayanmaz) */
+.gr-tag{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px 0 5px;border-radius:6px;border:1px dashed var(--line2);background:var(--surface);color:var(--ink2);font-size:11px;font-weight:650;white-space:nowrap;flex-shrink:0}
+.gr-tag svg.i{width:12px;height:12px}
+
+/* hücre kayıt listesi */
+.gr-drill{overflow:hidden;border:1px solid color-mix(in srgb,var(--accent) 40%,var(--line));box-shadow:var(--shadow-sm),0 0 0 3px color-mix(in srgb,var(--accent) 8%,transparent)}
+.gr-drill .gr-card-h{background:color-mix(in srgb,var(--accent) 5%,var(--surface));border-radius:12px 12px 0 0}
+.gr-dt{flex:1;min-width:0}
+.gr-dt b{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;letter-spacing:-.01em;flex-wrap:wrap}
+.gr-dt b .x{color:var(--meta);font-weight:500}
+.gr-dt .s{display:block;font-size:12px;color:var(--meta);margin-top:2px}
+.gr-dsum{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--accent-d);white-space:nowrap}
+.gr-dsum small{font-family:var(--sans);font-size:12px;font-weight:550;color:var(--meta);margin-left:3px}
+.gr-dl{width:100%;border-collapse:collapse;font-size:13px}
+.gr-dl th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta);background:var(--surface2);padding:8px 12px;border-bottom:1px solid var(--line)}
+.gr-dl td{padding:9px 12px;border-bottom:1px solid var(--line);color:var(--ink2);vertical-align:middle}
+.gr-dl th.r,.gr-dl td.r{text-align:right}
+.gr-dl td.d{font-family:var(--mono);font-size:12px;color:var(--ink2);white-space:nowrap}
+.gr-dl td.h{font-family:var(--mono);font-size:12.5px;color:var(--ink);font-weight:600;white-space:nowrap}
+.gr-dl .who{display:flex;align-items:center;gap:7px;color:var(--ink);white-space:nowrap}
+.gr-is{display:flex;align-items:center;gap:8px;min-width:0}
+.gr-is a{font-family:var(--mono);font-size:11.5px;font-weight:650;color:var(--accent-d);text-decoration:none;white-space:nowrap}
+.gr-is a:hover{text-decoration:underline}
+.gr-is span{color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gr-dl tfoot td{background:var(--surface2);border-bottom:0;font-weight:700;color:var(--ink)}
+.gr-dl tfoot td.lbl{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2)}
+.gr-dl tfoot .eq{font-family:var(--sans);font-size:11.5px;font-weight:550;color:var(--ok);margin-right:8px}
+.gr-dl tfoot .eq svg.i{width:13px;height:13px;vertical-align:-2px;margin-right:3px}
+
+/* faturalanabilir saat tablosu */
+.gr-ft{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+.gr-ft th{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta);background:var(--surface2);padding:9px 12px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.gr-ft th:first-child{text-align:left}
+.gr-ft td{padding:0 12px;height:52px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--ink);white-space:nowrap}
+.gr-ft td:first-child{text-align:left;font-family:var(--sans);font-size:13px;padding-left:6px}
+.gr-ft td.t{font-weight:700}
+.gr-ft tbody tr.top:hover td{background:var(--surface2)}
+.gr-ft tr.sub td{background:var(--gr-sub-bg);height:44px;color:var(--ink2)}
+.gr-ft tr.sub td:first-child{padding-left:50px;position:relative}
+.gr-ft tr.sub td:first-child::before{content:"";position:absolute;left:24px;top:0;bottom:0;width:1px;background:var(--line2)}
+.gr-ft tr.sub td:first-child::after{content:"";position:absolute;left:24px;top:50%;width:14px;height:1px;background:var(--line2)}
+.gr-ft tr.sub.last td:first-child::before{bottom:50%}
+.gr-ft tfoot td{background:var(--surface2);font-weight:700;border-bottom:0;border-top:1px solid var(--line2)}
+.gr-ft tfoot td:first-child{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);padding-left:50px}
+.gr-ft tfoot td.grand{color:var(--accent-d)}
+.gr-xr{display:flex;align-items:center;gap:6px;min-width:0}
+.gr-tg{width:36px;height:36px;border:0;border-radius:8px;background:none;display:grid;place-items:center;color:var(--ink2);padding:0;flex-shrink:0}
+.gr-tg:hover{background:var(--surface3)}
+.gr-tg svg.i{width:16px;height:16px;transition:transform .15s}
+.gr-tg[aria-expanded="false"] svg.i{transform:rotate(-90deg)}
+.gr-xr .nm{font-weight:650;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gr-xr .sub{font-size:11.5px;color:var(--meta);white-space:nowrap}
+.gr-xr .nmw{display:flex;flex-direction:column;min-width:0}
+.gr-xr .nmr{display:flex;align-items:center;gap:6px;min-width:0}
+.gr-pk{font-family:var(--mono);font-size:11px;font-weight:650;color:var(--meta);flex-shrink:0;width:34px}
+.gr-pn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);font-weight:550}
+.gr-rate{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end}
+.gr-rate i{display:block;width:64px;height:6px;border-radius:3px;background:var(--gr-bar-bg);overflow:hidden}
+.gr-rate i b{display:block;height:100%;background:var(--gr-bar);border-radius:3px}
+.gr-rate span{min-width:38px;text-align:right}
+.gr-fc-list{display:none} .gr-fcw{display:none}
+
+/* bildirim */
+.gr-toast{display:inline-flex;align-items:center;gap:10px;padding:10px 8px 10px 14px;border-radius:12px;background:var(--gr-toast);color:var(--gr-toast-ink);box-shadow:var(--shadow-lg);font-size:13px;font-weight:550;max-width:100%}
+.gr-toast > svg.i{width:17px;height:17px;flex-shrink:0}
+.gr-toast button{width:32px;height:32px;border:0;border-radius:8px;background:none;color:inherit;display:grid;place-items:center;opacity:.8;padding:0}
+.gr-toast-pos{position:absolute;left:calc(var(--nv-rail-w) + 20px);right:20px;bottom:18px;display:flex;justify-content:center;z-index:5}
+
+/* açılır liste örnekleri */
+.gr-pop{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);padding:6px;width:300px;max-width:100%}
+.gr-pop .srch{position:relative;margin:2px 2px 6px}
+.gr-pop .srch svg.i{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--meta)}
+.gr-pop .srch .inp{padding-left:32px}
+.gr-pop-h{padding:8px 10px 4px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta);display:flex;align-items:center;gap:6px}
+.gr-opt{display:flex;align-items:center;gap:9px;width:100%;min-height:38px;padding:6px 10px;border:0;background:none;border-radius:8px;text-align:left;font-size:13px;color:var(--ink)}
+.gr-opt:hover,.gr-opt.hl{background:var(--surface2)}
+.gr-opt .k{font-family:var(--mono);font-size:11px;font-weight:650;color:var(--meta);width:34px}
+.gr-opt .tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gr-opt .ck{width:16px;height:16px;color:var(--accent)}
+.gr-opt[aria-selected="true"]{color:var(--accent-d);font-weight:650}
+.gr-opt .hint{font-size:11px;color:var(--meta)}
+.gr-pop-hr{height:1px;background:var(--line);margin:4px}
+.gr-pop-note{display:flex;gap:6px;padding:6px 10px 4px;font-size:11.5px;color:var(--meta);line-height:1.45}
+.gr-pop-note svg.i{width:14px;height:14px;margin-top:1px}
+
+/* mobil süzgeç paneli */
+.gr-sheet{background:var(--surface);border:1px solid var(--line);border-radius:18px 18px 0 0;box-shadow:var(--shadow-lg);width:390px;max-width:100%;display:flex;flex-direction:column}
+.gr-sheet .hd{display:flex;align-items:center;gap:8px;padding:8px 6px 8px 16px;border-bottom:1px solid var(--line)}
+.gr-sheet .hd b{flex:1;font-size:16px;font-weight:700}
+.gr-sheet .hd .iconbtn{width:44px;height:44px}
+.gr-sheet .bd{padding:14px 16px 4px;display:flex;flex-direction:column;gap:12px}
+.gr-fld label{display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:6px}
+.gr-fld label .opt{font-weight:500;color:var(--meta)}
+.gr-fld select.inp{width:100%;height:44px;font-size:15px}
+.gr-fld.on select.inp{border-color:color-mix(in srgb,var(--accent) 55%,transparent);background-color:var(--accent-soft);color:var(--accent-d);font-weight:600}
+.gr-fld .hint{display:flex;gap:6px;font-size:12px;color:var(--meta);margin-top:6px}
+.gr-fld .hint svg.i{width:14px;height:14px;margin-top:1px}
+.gr-fld .cu-seg{display:flex}
+.gr-fld .cu-seg button{flex:1;justify-content:center;height:42px}
+.gr-sheet .ft{display:flex;gap:8px;padding:12px 16px 16px;border-top:1px solid var(--line);background:var(--surface2);margin-top:12px}
+.gr-sheet .ft .btn{flex:1;height:44px}
+.gr-sheet .ft .btn.pri{flex:1.6}
+
+/* efor bağlantısı (proje Efor sekmesi) */
+.gr-eflink{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.gr-eflink .spacer{flex:1}
+.gr-eflink a.btn{text-decoration:none}
+
+/* ================= sunum yardımcıları ================= */
+.states{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.panel{background:var(--surface2);border:1px solid var(--line);border-radius:14px;padding:16px;min-width:0}
+.panel.w2{grid-column:span 2} .panel.w3{grid-column:1 / -1}
+.panel > h2{font-size:13px;font-weight:700;margin:0 0 12px;color:var(--ink2)}
+.panel > h2 small{font-weight:500;color:var(--meta)}
+.panel p.note{font-size:12px;color:var(--ink2);margin:12px 0 0;line-height:1.5}
+.panel code,.legend code{font-family:var(--mono);font-size:11.5px;color:var(--ink)}
+.legend{margin-top:28px;font-size:12.5px;color:var(--ink2);background:var(--surface);border-radius:14px;padding:14px 18px;border:1px solid var(--line);line-height:1.6}
+.legend b{color:var(--ink)} .legend ol{margin:6px 0 0;padding-left:18px} .legend li{margin:3px 0}
+.sheet-stage{display:flex;justify-content:center;align-items:flex-end;background:color-mix(in srgb,var(--ink) 40%,transparent);border-radius:14px;padding:40px 0 0;overflow:hidden}
+.pops{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+
+/* ================= dar uygulama (< 768px konteyner): mobil düzen ================= */
+@container app (max-width:767px){
+  .app{grid-template-columns:minmax(0,1fr);border-radius:0}
+  .app > .rail{display:none}
+  .topbar{padding:0}
+  .nv-mtop{display:flex;align-items:center;gap:4px;height:56px;padding:0 6px;border-bottom:1px solid var(--line)}
+  .nv-mtop .iconbtn{width:44px;height:44px;border-color:transparent;background:none}
+  .nv-mtop .iconbtn svg.i{width:20px;height:20px}
+  .nv-mtop .brandm{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;letter-spacing:-.02em;flex:1;min-width:0}
+  .nv-mtop .tb-logo{width:28px;height:28px;box-shadow:none}
+  .nv-mtop .avw{width:44px;height:44px;display:grid;place-items:center;border:0;background:none;padding:0;border-radius:50%}
+  .tb-actions{display:none}
+  .tb-head{padding:12px 14px 0}
+  .topbar h1{font-size:19px}
+  .gr-tabs{margin:8px 0 0;padding:0 6px}
+  .gr-tab{flex:1;justify-content:center;height:44px;padding:0 6px}
+  .content{padding:12px 12px 20px;gap:12px}
+
+  .gr-fbar{padding:10px;gap:8px}
+  .gr-frow{flex-wrap:nowrap}
+  .gr-fgrid,.gr-fhint,.gr-frow .gr-seg-per{display:none}
+  .gr-fbtn{display:inline-flex;height:44px;flex-shrink:0;padding:0 12px}
+  .gr-fbtn .n{font-family:var(--mono);font-size:11px;font-weight:700;min-width:20px;height:20px;border-radius:10px;display:grid;place-items:center;background:var(--accent);color:var(--accent-ink);padding:0 5px}
+  .gr-per{flex:1;min-width:0}
+  .gr-step{height:46px;flex:1;min-width:0}
+  .gr-step button{width:44px;height:44px}
+  .gr-step b{flex:1;min-width:0;height:44px;font-size:13px}
+  .gr-step .now{display:none}
+  .gr-range{flex:1;min-width:0}
+  .gr-range .inp{width:auto;flex:1;min-width:0;height:44px;padding:0 8px;font-size:12px}
+  .gr-chips{gap:6px}
+  .gr-chips .lbl{display:none}
+  .gr-chip{height:36px;padding-right:2px}
+  .gr-chip button{width:32px;height:32px}
+  .gr-chip button::before{inset:-6px}
+  .gr-is a{display:inline-flex;align-items:center;min-height:44px;margin:-10px 0}
+  .gr-clear{height:44px}
+
+  .gr-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .gr-kpi{padding:10px 12px;gap:10px}
+  .gr-kpi .ic{display:none}
+  .gr-kpi b{font-size:17px}
+
+  .gr-card-h{padding:10px;gap:8px}
+  .gr-card-h .meta{order:5;flex:1 1 100%}
+  .gr-dims{display:grid!important;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);gap:6px;flex:1 1 100%;align-items:end}
+  .gr-dim{flex-direction:column;align-items:stretch;gap:4px;font-size:11.5px;min-width:0}
+  .gr-dim select.inp{min-width:0;width:100%;height:44px;font-size:14px}
+  .gr-swap{width:44px;height:44px}
+  .gr-card-h .spacer{display:none}
+  .gr-xls{height:44px;flex:1 1 100%}
+  .gr-pv .rh{min-width:150px;max-width:150px;box-shadow:6px 0 8px -6px rgba(11,27,51,.25)}
+  .gr-rn .sub{display:none}
+  .gr-rn{flex-wrap:wrap;gap:4px 8px}
+  .gr-rn .nm{white-space:normal;line-height:1.25;font-size:12.5px}
+  .gr-c{min-width:84px;height:48px;padding:0 10px}
+  .gr-pv th{padding:8px 10px}
+  .gr-pv th .ph .c-av{display:none}
+
+  .gr-dt b{font-size:13.5px}
+  .gr-close{width:44px;height:44px}
+  .gr-dl thead{display:none}
+  .gr-dl,.gr-dl tbody,.gr-dl tfoot{display:block}
+  .gr-dl tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:10px 12px;border-bottom:1px solid var(--line)}
+  .gr-dl td{padding:0;border:0}
+  .gr-dl td.d{grid-column:1;grid-row:1;font-size:11.5px;color:var(--meta)}
+  .gr-dl td.p{display:none}
+  .gr-dl td.i{grid-column:1 / -1;grid-row:2}
+  .gr-dl td.a{grid-column:1 / -1;grid-row:3;font-size:12.5px;white-space:normal}
+  .gr-dl td.h{grid-column:2;grid-row:1;text-align:right}
+  .gr-dl tfoot tr{background:var(--surface2);border-bottom:0;border-radius:0 0 12px 12px}
+  .gr-dl tfoot td{background:none}
+  .gr-dl tfoot td.lbl{grid-column:1;grid-row:1}
+  .gr-dl tfoot td.sp{display:none}
+  .gr-dl tfoot td.h{grid-column:2;grid-row:1}
+  .gr-dl tfoot .eq{display:none}
+
+  .gr-ftwrap{display:none}
+  .gr-fc-list{display:flex;flex-direction:column;gap:10px} .gr-fcw{display:block}
+  .gr-foot{padding:9px 2px 0;border:0}
+  .gr-toast-pos{left:12px;right:12px}
+}
+/* fatura kartı (mobil) */
+.gr-fc{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-sm);overflow:hidden}
+.gr-fc.tot{background:var(--surface2)}
+.gr-fc-h{display:flex;align-items:flex-start;gap:8px;padding:12px 12px 0}
+.gr-fc-h .nmw{flex:1;min-width:0}
+.gr-fc-h .nm{display:block;font-weight:700;font-size:14px;color:var(--ink);line-height:1.3}
+.gr-fc-h .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;font-size:11.5px;color:var(--meta);align-items:center}
+.gr-fc-h .pct{font-family:var(--mono);font-weight:700;font-size:15px;color:var(--ink)}
+.gr-fc-n{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:10px 12px 8px}
+.gr-fc-n div{min-width:0}
+.gr-fc-n span{display:block;font-size:11px;color:var(--meta);font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gr-fc-n b{display:block;font-family:var(--mono);font-size:13.5px;font-weight:650;margin-top:1px;font-variant-numeric:tabular-nums}
+.gr-fc-n div.t b{font-weight:800}
+.gr-fc-bar{display:block;height:6px;margin:0 12px 12px;border-radius:3px;background:var(--gr-bar-bg);overflow:hidden}
+.gr-fc-bar b{display:block;height:100%;background:var(--gr-bar);border-radius:3px}
+.gr-fc-tg{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:0 12px;border:0;border-top:1px solid var(--line);background:none;font-size:13px;font-weight:600;color:var(--accent-d);text-align:left}
+.gr-fc-tg svg.i{width:16px;height:16px;margin-left:auto;transition:transform .15s}
+.gr-fc-tg[aria-expanded="true"] svg.i{transform:rotate(180deg)}
+.gr-fc-p{border-top:1px solid var(--line);background:var(--gr-sub-bg)}
+.gr-fc-p li{padding:10px 12px;border-bottom:1px solid var(--line)}
+.gr-fc-p li:last-child{border-bottom:0}
+.gr-fc-p .r1{display:flex;align-items:center;gap:6px;min-width:0}
+.gr-fc-p .r2{display:flex;gap:12px;margin-top:4px;font-family:var(--mono);font-size:12px;color:var(--ink2);flex-wrap:wrap}
+.gr-fc-p .r2 em{font-style:normal;font-family:var(--sans);color:var(--meta);font-size:11px;margin-right:3px}
+
+@media (max-width:1100px){ .states{grid-template-columns:repeat(2,minmax(0,1fr))} .panel.w2{grid-column:1 / -1} }
+@media (max-width:767px){
+  body{padding:0}
+  .doc-h,.lead,.sec-t,.legend{margin-left:12px;margin-right:12px}
+  .doc-h{margin-top:16px}
+  .states{grid-template-columns:minmax(0,1fr);margin:0 12px}
+  .panel.w2,.panel.w3{grid-column:auto}
+  .appwrap > .app{border-left:0;border-right:0;box-shadow:none}
+  .desk-only{display:none}
+  .gr-pop{width:100%}
+  .gr-opt{min-height:44px}
+  .sheet-stage{margin:0 -16px -16px;border-radius:0}
+}
+</style></head><body>
+
+<h1 class="doc-h">Genel raporlar: Süre ve Faturalanabilir saat (taslak)</h1>
+<p class="lead">Grup D1. Sol menü "Genel ekranlar" altındaki <b>Raporlar</b> → "Genel raporlar" (kendi adresi, proje sekme satırı yok). İki sekme: <b>Süre</b> (satır/sütun boyutu seçilebilen pivot) ve <b>Faturalanabilir saat</b> (cari başına).
+  Süzgeçler iki sekmede ortak ve kişisel olarak hatırlanır. Örnek oturum: Ayşe Demir (yönetici), bugün 18.11.2026. Tüm veriler uydurmadır; saatler iki ondalık, Türkçe binlik ayraçla.</p>
+
+<h2 class="sec-t">1 · Süre <small>· satır Cari, sütun Kişi; "Örnek Lojistik A.Ş. × Mehmet Kaya" hücresi açık</small></h2>
+<div id="shotSure"><div id="appSure"></div></div>
+
+<h2 class="sec-t">2 · Faturalanabilir saat <small>· tarih aralığı; "Örnek Lojistik A.Ş." satırı projeleriyle açık</small></h2>
+<div id="shotFatura"><div id="appFatura"></div></div>
+
+<h2 class="sec-t">3 · Boş durum <small>· süzgeçlerle kayıt yok; Excel'e aktar uyarı verir</small></h2>
+<div id="shotBos"><div id="appBos"></div></div>
+
+<h2 class="sec-t">4 · Ayrıntılar</h2>
+<div class="states" id="shotDurum">
+  <div class="panel"><h2>Proje süzgeci <small>· alan seçili, liste daralmış</small></h2><div class="pops" id="popProj"></div>
+    <p class="note">Alan seçilince Proje listesinde yalnız o alanın projeleri kalır. Seçili proje bu alanda değilse süzgeç kaldırılır ve altta bildirim çıkar. Arşivli projeler listenin sonunda, etiketiyle.</p></div>
+  <div class="panel"><h2>Boyut seçici <small>· Satır ve Sütun aynı listeden</small></h2><div class="pops" id="popDim"></div>
+    <p class="note">Epik ve Sprint yalnız modül açıksa listelenir. Sütunda "Yok" seçilebilir; o zaman yalnız satır toplamı kalır. Satır ile sütun aynı olamaz; aynısı seçilirse ikisi yer değiştirir.</p></div>
+  <div class="panel"><h2>Bildirimler</h2>
+    <div style="display:flex;flex-direction:column;gap:10px;align-items:flex-start" id="toasts"></div>
+    <p class="note"><code>role="status"</code>, 5 sn. Excel uyarısında indirme başlamaz.</p></div>
+  <div class="panel w2"><h2>Proje Efor sekmesi <small>· yalnız bağlantı eklenir, ekranın geri kalanı aynen kalır</small></h2><div id="efLink"></div>
+    <p class="note">Bağlantı genel rapora, o anki proje ve dönem süzgeciyle gider (Proje = bu proje). Böylece iki ekranın toplamı birebir karşılaştırılabilir.</p></div>
+  <div class="panel"><h2>Mobil süzgeç paneli <small>· "Süzgeçler (3)" ile açılır</small></h2><div class="sheet-stage" id="sheet"></div></div>
+</div>
+
+<div class="legend">
+  <b>Tasarım kararları</b>
+  <ol>
+    <li><b>Yer:</b> sol menü "Genel ekranlar" bölümünde Projeler, Cariler, <b>Raporlar</b>, Kullanıcılar sırası. Raporlar seçiliyken mavi zemin bu satırda; hatırlanan proje (PANO) ağaçta yalnız kalın. Başlık "Genel raporlar"; altında iki sekme (<code>#/raporlar/sure</code>, <code>#/raporlar/fatura</code>), geri tuşu sekmeler arasında da çalışır.</li>
+    <li><b>Süzgeç çubuğu:</b> beyaz kutu. Solda dönem (Ay / Aralık + ‹ ay ›), dikey ayraç, sonra Alan, Proje, Cari, Kişi, İş tipi, Faturalama düğmeleri ("etiket: değer"). Etkin düğme mavi zemin + nokta + değer. Altta etkin süzgeç çipleri (× ile tek tek kaldırılır) ve "Süzgeçleri temizle". Dönem çip sayılmaz.</li>
+    <li><b>Özet kutuları:</b> 4 sade kutu (Toplam süre, Adam-gün, Kayıt, İş). Faturalanabilir sekmede Faturalanacak, Faturalanmayacak, Toplam, Oran.</li>
+    <li><b>Pivot:</b> köşe hücrede "Cari / Kişi". Sayılar mono, sağa yaslı, iki ondalık, Türkçe ayraç (<code>1.254,00</code>). Boş hücre <code>·</code>. Hücre zemini değerle çok hafif maviye döner (en fazla %12); metin her zaman koyu. Son sütun ve son satır toplam (gri zemin, kalın), genel toplam mavi. Her hücre bir düğme; açık hücre dolu mavi + <code>aria-pressed</code>.</li>
+    <li><b>Kayıt listesi:</b> pivotun hemen altında mavi kenarlı kart: başlık "Satır × Sütun", dönem, kayıt sayısı, sağda toplam ve kapat. Sütunlar Tarih, Kişi, İş, Açıklama, Saat. Altta "Toplam" ve "hücreyle aynı" işareti. Salt okunur; iş anahtarı işi açar. Yenilemede açık kalır.</li>
+    <li><b>Faturalanabilir saat:</b> cari satırı açılır (‹ düğme, <code>aria-expanded</code>) ve altında ağaç çizgisiyle projeler. Oran = Faturalanacak / Toplam; 64 px çubuk + "%85". "Cari bağlı değil" her zaman en altta, bağlantı kesik ikonuyla. Arşivli proje ve pasif cari kesik kenarlı gri etiket + ikonla.</li>
+    <li><b>Bilinmeyen kişi:</b> silinmiş kullanıcı "Bilinmeyen" sütunu/satırı, soru işaretli gri avatar; toplama dahil.</li>
+    <li><b>Excel'e aktar:</b> kartın sağ üstünde, yeşil tablo ikonlu ikincil düğme. Boşken uyarı bildirimi verir.</li>
+    <li><b>Mobil (&lt; 768 px):</b> süzgeç düğmeleri yerine "Süzgeçler (3)" + dönem adımlayıcı; çipler satıra sarılır. Satır/Sütun seçicileri 2 sütun + 44 px değiştir düğmesi. Pivot kendi kutusunda yatay kayar, ilk sütun sabit (gölgeli). Kayıt listesi satırları 3 satırlık bloklara döner. Faturalanabilir saat kart listesi; "Projeler (n)" ile açılır. Tüm hedefler ≥ 44 px, sayfa yatay taşmaz.</li>
+  </ol>
+</div>
+
+<script>
+/* ---- ikonlar (Lucide tarzı, 1.8 çizgi) ---- */
+const I = {
+  home:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/>',
+  recent:'<path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
+  layers:'<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>',
+  folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  building:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 21v-4h6v4M8 7h2M14 7h2M8 11h2M14 11h2"/>',
+  users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6"/>',
+  reports:'<path d="M3 3v18h18"/><path d="M8 16v-5M12 16V8M16 16v-3"/>',
+  more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  down:'<path d="m6 9 6 6 6-6"/>', right:'<path d="m9 6 6 6-6 6"/>', left:'<path d="m15 6-6 6 6 6"/>',
+  x:'<path d="M18 6 6 18M6 6l12 12"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  moon:'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  bell:'<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  receipt:'<path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/>',
+  filter:'<path d="M3 5h18l-7 8.5V19l-4 2v-7.5z"/>',
+  sheet:'<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h8M12 11v8"/>',
+  swap:'<path d="M7 4 3 8l4 4"/><path d="M3 8h14"/><path d="m17 20 4-4-4-4"/><path d="M21 16H7"/>',
+  archive:'<rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/>',
+  pause:'<circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/>',
+  unlink:'<path d="M9 17H7a5 5 0 0 1 0-10h2"/><path d="M15 7h2a5 5 0 0 1 4 8"/><path d="M8 12h3"/><path d="m3 3 18 18"/>',
+  unk:'<path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
+  cal:'<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.8v.2"/>',
+  alert:'<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16.2v.3"/>',
+  sprint:'<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/>',
+  board:'<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18M15 3v12"/>',
+  check:'<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  eq:'<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  hash:'<path d="M5 9h14M5 15h14M10 3 8 21M16 3l-2 18"/>',
+  list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  percent:'<path d="M19 5 5 19"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/>',
+  ban:'<circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/>',
+  arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+  pin:'<path d="M12 17v5"/><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3z"/>',
+  effort:'<path d="M3.3 19a9 9 0 1 1 17.4 0"/><path d="m12 14 4-4"/>',
+};
+const ic = (n, s = '') => `<svg ${/class=/.test(s) ? '' : 'class="i"'} viewBox="0 0 24 24" aria-hidden="true" ${s}>${I[n]}</svg>`;
+const $ = s => document.querySelector(s);
+const set = (s, h) => { $(s).innerHTML = h; };
+const f2 = h => h.toLocaleString('tr-TR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+const pct = (a, b) => b ? '%' + Math.round(a / b * 100) : '—';
+
+/* ---- veri ---- */
+const WS = { bnx:{ n:'Bnexify Danışmanlık', c:'#2563EB' }, gen:{ n:'Genel', c:'#64748B' }, oyk:{ n:'Müşteri: Oyak', c:'#0E7490' } };
+const PEOPLE = [['AD','Ayşe Demir','#6D28D9'],['MK','Mehmet Kaya','#0E7490'],['BR','Burcu Rüzgar','#047857'],['İB','İlker Bayram','#B45309'],['?','Bilinmeyen','']];
+const av = p => p[0] === '?' ? `<span class="c-av unk" title="Silinmiş kullanıcı">${ic('unk')}</span>` : `<span class="c-av" style="background:${p[2]}">${p[0]}</span>`;
+const PIVOT = [
+  { n:'Örnek Lojistik A.Ş.', sub:'3 proje', v:[42.5, 18.5, 31, 12, 0] },
+  { n:'Deneme Yazılım Ltd.', sub:'2 proje', v:[26, 22.5, 38.25, 0, 3] },
+  { n:'Oyak Grup', sub:'1 proje', v:[14, 0, 27.5, 19, 0] },
+  { n:'Kale Yapı Market', sub:'1 proje', v:[0, 4.5, 0, 2, 0], off:1 },
+  { n:'Cari bağlı değil', sub:'2 proje', v:[9.5, 6, 0, 11.75, 0], none:1 },
+];
+const DRILL = [
+  ['03.11.2026','LJS-41','Sevkiyat ekranı filtreleri','Filtre bileşeni ve tarih aralığı',3.5],
+  ['05.11.2026','LJS-41','Sevkiyat ekranı filtreleri','Kod incelemesi düzeltmeleri',2],
+  ['10.11.2026','DEP-12','Depo stok aktarım betiği','Aktarım betiği ilk sürüm',4.5],
+  ['12.11.2026','DEP-12','Depo stok aktarım betiği','Test verisiyle deneme ve hata ayıklama',3],
+  ['16.11.2026','LJS-44','Araç takip haritası','Harita katmanı araştırması',2.5],
+  ['17.11.2026','LJS-44','Araç takip haritası','Müşteriyle toplantı ve notlar',3],
+];
+const FATURA = [
+  { n:'Örnek Lojistik A.Ş.', open:1, P:[['LJS','Lojistik Portalı',286.5,22],['DEP','Depo Yönetimi Geçişi',142,8.5],['SZL','2025 Sözleşme Yenileme',18,0,'arch']] },
+  { n:'Deneme Yazılım Ltd.', P:[['DYZ','Deneme ERP Entegrasyonu',224.25,30],['DYW','Kurumsal Web Sitesi',88,11.5]] },
+  { n:'Oyak Grup', P:[['OYL','Oyak Liman Bordro',198,12]] },
+  { n:'Kale Yapı Market', off:1, P:[['KYM','Mağaza Kiosk Uygulaması',26.5,4]] },
+  { n:'Cari bağlı değil', none:1, P:[['GD','Genel Destek',14,96.75],['EGT','İç Eğitimler',0,72]] },
+].map(r => ({ ...r, F:r.P.reduce((a, p) => a + p[2], 0), FY:r.P.reduce((a, p) => a + p[3], 0) }));
+const tagArch = `<span class="gr-tag">${ic('archive')}Arşivli</span>`;
+const tagOff = `<span class="gr-tag">${ic('pause')}Pasif</span>`;
+
+/* ---- sol menü (gezinme taslağı; Genel ekranlar: Projeler, Cariler, Raporlar, Kullanıcılar) ---- */
+const item = (icn, t, o = {}) => `<a href="#${o.h || ''}" class="nv-item" ${o.cur ? 'aria-current="page"' : ''}>${ic(icn)}<span class="tx">${t}</span>${o.n ? `<span class="n">${o.n}</span>` : ''}${o.end ? ic(o.end, 'class="i end"') : ''}</a>`;
+const badge = w => `<span class="ws-badge" style="--ws-c:${w.c}" aria-hidden="true">${w.n.replace(/^Müşteri: /, '')[0]}</span>`;
+const rail = () => `<div class="brand"><span class="brand-ic"></span><b>ÇevikPano</b></div>
+  <nav class="nv-list" aria-label="Ana menü">${item('home', 'Benim işlerim', { h:'home', n:12 })}${item('recent', 'Son kullanılanlar', { end:'right' })}</nav>
+  <div class="nv-sech"><span class="l">${ic('layers')}Çalışma alanları</span><button class="nv-ib" aria-label="Yeni çalışma alanı">${ic('plus')}</button><button class="nv-ib" aria-label="Çalışma alanı seçenekleri">${ic('more')}</button></div>
+  <ul class="nv-tree">
+    <li><button class="nv-ws" aria-expanded="true">${badge(WS.bnx)}<span class="tx">Bnexify Danışmanlık</span>${ic('down', 'class="i chev"')}</button>
+      <ul class="nv-projs">
+        <li><a href="#" class="nv-proj is-last">${ic('sprint')}<span class="tx">Ürün Platformu</span><span class="k">PANO</span></a></li>
+        <li><a href="#" class="nv-proj">${ic('board')}<span class="tx">Lojistik Portalı</span><span class="k">LJS</span></a></li>
+        <li><a href="#" class="nv-proj">${ic('sprint')}<span class="tx">Depo Yönetimi Geçişi</span><span class="k">DEP</span></a></li></ul></li>
+    <li><button class="nv-ws" aria-expanded="false">${badge(WS.gen)}<span class="tx">Genel</span>${ic('down', 'class="i chev"')}</button></li>
+    <li><button class="nv-ws" aria-expanded="false">${badge(WS.oyk)}<span class="tx">Müşteri: Oyak</span>${ic('down', 'class="i chev"')}</button></li>
+    <li><button class="nv-item nv-other" aria-expanded="false"><span class="tx">Diğer çalışma alanları (2)</span>${ic('right', 'class="i end"')}</button></li>
+  </ul>
+  <div class="nv-hr" role="separator"></div>
+  <nav class="nv-list" aria-label="Genel ekranlar">
+    ${item('folder', 'Projeler', { h:'projects' })}${item('building', 'Cariler', { h:'customers' })}
+    ${item('reports', 'Raporlar', { h:'/raporlar/sure', cur:1 })}${item('users', 'Kullanıcılar', { h:'users' })}</nav>
+  <div class="nv-more">${item('more', 'Daha fazla')}</div>`;
+
+const actions = `<div class="tb-actions">
+  <button class="cmdk" aria-label="Ara veya komut çalıştır">${ic('search')}<span>Ara veya komut…</span><kbd>Ctrl K</kbd></button>
+  <button class="iconbtn" aria-label="Tema değiştir">${ic('moon')}</button>
+  <button class="iconbtn" aria-label="Bildirimler, 2 okunmamış">${ic('bell')}<span class="badge" aria-hidden="true">2</span></button>
+  <button class="nv-avbtn" aria-haspopup="menu" aria-label="Hesap: Ayşe Demir">AD</button></div>`;
+const mtop = `<div class="nv-mtop"><button class="iconbtn" aria-label="Menüyü aç">${ic('menu')}</button>
+  <span class="brandm"><span class="tb-logo"></span>ÇevikPano</span>
+  <button class="iconbtn" aria-label="Ara veya komut">${ic('search')}</button>
+  <button class="iconbtn" aria-label="Bildirimler, 2 okunmamış">${ic('bell')}<span class="badge" aria-hidden="true" style="top:5px;right:5px">2</span></button>
+  <button class="avw" aria-label="Hesap: Ayşe Demir"><span class="nv-avbtn" aria-hidden="true">AD</span></button></div>`;
+
+/* ---- süzgeç çubuğu ---- */
+const FB = [['Alan','Tümü'],['Proje','Tümü'],['Cari','Tümü'],['Kişi','Herkes'],['İş tipi','Tümü'],['Faturalama','Tümü']];
+const fbar = (o = {}) => {
+  const act = o.act || {};
+  const n = Object.keys(act).length;
+  const per = o.range
+    ? `<div class="gr-range"><input class="inp" value="01.09.2026" aria-label="Başlangıç tarihi"><span aria-hidden="true">–</span><input class="inp" value="30.11.2026" aria-label="Bitiş tarihi"></div>`
+    : `<div class="gr-step" role="group" aria-label="Ay"><button aria-label="Önceki ay">${ic('left')}</button><b aria-live="polite">${o.month || 'Kasım 2026'}</b><button aria-label="Sonraki ay">${ic('right')}</button></div>`;
+  return `<section class="gr-fbar" aria-label="Süzgeçler">
+    <div class="gr-frow">
+      <button class="btn gr-fbtn" aria-haspopup="dialog" aria-label="Süzgeçler, ${n} etkin">${ic('filter')}Süzgeçler${n ? `<span class="n">${n}</span>` : ''}</button>
+      <div class="cu-seg gr-seg-per" role="radiogroup" aria-label="Dönem türü"><button role="radio" aria-checked="${!o.range}">Ay</button><button role="radio" aria-checked="${!!o.range}">Aralık</button></div>
+      <div class="gr-per">${per}</div>
+      ${o.range ? '' : '<button class="btn ghost gr-seg-per" style="padding:0 10px">Bu ay</button>'}
+      <span class="gr-fhint">${ic('pin')}Süzgeçler sana özel hatırlanır</span>
+    </div>
+    <div class="gr-fgrid">
+      ${FB.map(([l, d]) => { const v = act[l]; return `<button class="gr-fb ${v ? 'on' : ''}" aria-haspopup="listbox" aria-label="${l}: ${v || d}">${v ? '<span class="dot" aria-hidden="true"></span>' : ''}<span class="lb">${l}</span><span class="v">${v || d}</span>${ic('down')}</button>`; }).join('')}
+    </div>
+    ${n ? `<div class="gr-chips" aria-label="Etkin süzgeçler"><span class="lbl">${n} süzgeç etkin:</span>
+      ${Object.entries(act).map(([l, v]) => `<span class="gr-chip"><span class="t"><span>${l}:</span> ${v}</span><button aria-label="${l} süzgecini kaldır">${ic('x')}</button></span>`).join('')}
+      <button class="btn ghost gr-clear">Süzgeçleri temizle</button></div>` : ''}
+  </section>`;
+};
+const kpis = arr => `<div class="gr-kpis">${arr.map(([icn, l, v, u, s]) => `<div class="gr-kpi"><span class="ic">${ic(icn)}</span><div class="tx"><span class="l">${l}</span><b>${v}${u ? `<small>${u}</small>` : ''}</b>${s ? `<span class="s">${s}</span>` : ''}</div></div>`).join('')}</div>`;
+const xls = `<button class="btn gr-xls" title="genel-rapor-sure-2026-11.xlsx">${ic('sheet')}Excel'e aktar</button>`;
+
+/* ---- Süre: pivot ---- */
+const rowName = r => r.none
+  ? `<div class="gr-rn none">${ic('unlink')}<div style="min-width:0"><span class="nm">Cari bağlı değil</span><span class="sub">${r.sub}</span></div></div>`
+  : `<div class="gr-rn"><div style="min-width:0"><span class="nm">${r.n}</span><span class="sub">${r.sub}</span></div>${r.off ? tagOff : ''}</div>`;
+const pivot = (o = {}) => {
+  const all = PIVOT.flatMap(r => r.v), max = Math.max(...all);
+  const colT = PEOPLE.map((_, j) => PIVOT.reduce((a, r) => a + r.v[j], 0));
+  const grand = colT.reduce((a, b) => a + b, 0);
+  const heat = v => v ? `background:color-mix(in srgb,var(--gr-heat) ${Math.round(2 + v / max * 10)}%,transparent)` : '';
+  return `<section class="gr-card" aria-label="Süre tablosu">
+    <div class="gr-card-h">
+      <div class="gr-dims" style="display:flex;align-items:center;gap:8px">
+        <label class="gr-dim">Satır<select class="inp"><option>Cari</option></select></label>
+        <button class="gr-swap" aria-label="Satır ve sütunu değiştir" title="Satır ve sütunu değiştir">${ic('swap')}</button>
+        <label class="gr-dim">Sütun<select class="inp"><option>Kişi</option></select></label></div>
+      <span class="meta"><b>5</b> cari × <b>5</b> kişi · Kasım 2026</span>
+      <span class="spacer"></span>${xls}</div>
+    <div class="gr-pv-wrap" tabindex="0" aria-label="Süre tablosu, yatay kaydırılabilir">
+    <table class="gr-pv"><thead><tr><th class="rh dimh" scope="col">Cari<span>/</span>Kişi</th>
+      ${PEOPLE.map(p => `<th scope="col"><span class="ph">${av(p)}${p[1]}</span></th>`).join('')}<th class="tot" scope="col">Toplam</th></tr></thead>
+    <tbody>${PIVOT.map((r, i) => { const t = r.v.reduce((a, b) => a + b, 0); return `<tr><th class="rh" scope="row" style="font-weight:inherit">${rowName(r)}</th>
+      ${r.v.map((v, j) => `<td><button class="gr-c ${v ? '' : 'z'}" style="${heat(v)}" ${o.sel && i === 0 && j === 1 ? 'aria-pressed="true"' : ''} aria-label="${r.n}, ${PEOPLE[j][1]}: ${f2(v)} saat">${v ? f2(v) : '·'}</button></td>`).join('')}
+      <td class="tot"><button class="gr-c" aria-label="${r.n} toplam: ${f2(t)} saat">${f2(t)}</button></td></tr>`; }).join('')}</tbody>
+    <tfoot><tr><th class="rh" scope="row">Toplam</th>${colT.map((v, j) => `<td><button class="gr-c" aria-label="${PEOPLE[j][1]} toplam">${f2(v)}</button></td>`).join('')}
+      <td class="tot grand"><button class="gr-c" aria-label="Genel toplam: ${f2(grand)} saat">${f2(grand)}</button></td></tr></tfoot></table></div>
+    <div class="gr-foot">${ic('info')}Bir hücreye tıkla ya da Enter'a bas: o kesitin süre kayıtları altta açılır.</div>
+  </section>`;
+};
+const drill = () => {
+  const t = DRILL.reduce((a, d) => a + d[4], 0);
+  return `<section class="gr-card gr-drill" aria-labelledby="drT">
+    <div class="gr-card-h"><div class="gr-dt"><b id="drT">Örnek Lojistik A.Ş. <span class="x">×</span> ${av(PEOPLE[1])}Mehmet Kaya</b>
+      <span class="s">Kasım 2026 · ${DRILL.length} kayıt · 3 iş</span></div>
+      <span class="gr-dsum">${f2(t)}<small>sa</small></span>
+      <button class="iconbtn bare gr-close" aria-label="Kayıt listesini kapat">${ic('x')}</button></div>
+    <table class="gr-dl"><thead><tr><th style="width:120px">Tarih</th><th style="width:170px" class="pcol">Kişi</th><th>İş</th><th>Açıklama</th><th class="r" style="width:110px">Saat</th></tr></thead>
+    <tbody>${DRILL.map(([d, k, s, a, h]) => `<tr><td class="d">${d}</td><td class="p"><span class="who">${av(PEOPLE[1])}Mehmet Kaya</span></td>
+      <td class="i"><span class="gr-is"><a href="#">${k}</a><span>${s}</span></span></td><td class="a">${a}</td><td class="h r">${f2(h)}</td></tr>`).join('')}</tbody>
+    <tfoot><tr><td class="lbl">Toplam</td><td class="sp"></td><td class="sp"></td><td class="sp"></td><td class="h r"><span class="eq">${ic('eq')}hücreyle aynı</span>${f2(t)}</td></tr></tfoot></table>
+  </section>`;
+};
+
+/* ---- Faturalanabilir saat ---- */
+const rate = (f, t) => `<span class="gr-rate"><i aria-hidden="true"><b style="width:${t ? f / t * 100 : 0}%"></b></i><span>${pct(f, t)}</span></span>`;
+const fatTable = () => {
+  const F = FATURA.reduce((a, r) => a + r.F, 0), FY = FATURA.reduce((a, r) => a + r.FY, 0);
+  return `<div class="gr-ftwrap"><table class="gr-ft"><colgroup><col><col style="width:160px"><col style="width:170px"><col style="width:140px"><col style="width:150px"></colgroup>
+    <thead><tr><th scope="col">Cari</th><th scope="col">Faturalanacak</th><th scope="col">Faturalanmayacak</th><th scope="col">Toplam</th><th scope="col">Oran</th></tr></thead>
+    <tbody>${FATURA.map(r => { const T = r.F + r.FY; return `<tr class="top"><td><div class="gr-xr">
+        <button class="gr-tg" aria-expanded="${!!r.open}" aria-label="${r.n}: projeleri ${r.open ? 'gizle' : 'göster'}">${ic('down')}</button>
+        ${r.none ? `<span style="color:var(--meta);display:grid">${ic('unlink', 'class="i" style="width:16px;height:16px"')}</span>` : ''}
+        <div class="nmw"><span class="nmr"><span class="nm" ${r.none ? 'style="color:var(--ink2)"' : ''}>${r.n}</span>${r.off ? tagOff : ''}</span><span class="sub">${r.P.length} proje</span></div></div></td>
+        <td>${f2(r.F)}</td><td>${f2(r.FY)}</td><td class="t">${f2(T)}</td><td>${rate(r.F, T)}</td></tr>
+        ${r.open ? r.P.map(([k, n, f, fy, a], i) => `<tr class="sub ${i === r.P.length - 1 ? 'last' : ''}"><td><div class="gr-xr"><span class="gr-pk">${k}</span><span class="gr-pn">${n}</span>${a ? tagArch : ''}</div></td>
+          <td>${f2(f)}</td><td>${f2(fy)}</td><td class="t">${f2(f + fy)}</td><td>${rate(f, f + fy)}</td></tr>`).join('') : ''}`; }).join('')}</tbody>
+    <tfoot><tr><td>Toplam</td><td>${f2(F)}</td><td>${f2(FY)}</td><td class="grand">${f2(F + FY)}</td><td>${rate(F, F + FY)}</td></tr></tfoot></table></div>`;
+};
+const fatCards = () => {
+  const F = FATURA.reduce((a, r) => a + r.F, 0), FY = FATURA.reduce((a, r) => a + r.FY, 0);
+  const nums = (f, fy) => `<div class="gr-fc-n"><div><span>Faturalanacak</span><b>${f2(f)}</b></div><div><span>Faturalanmayacak</span><b>${f2(fy)}</b></div><div class="t"><span>Toplam</span><b>${f2(f + fy)}</b></div></div>
+    <span class="gr-fc-bar" aria-hidden="true"><b style="width:${(f + fy) ? f / (f + fy) * 100 : 0}%"></b></span>`;
+  return `<ul class="gr-fc-list">${FATURA.map(r => `<li class="gr-fc">
+      <div class="gr-fc-h">${r.none ? `<span style="color:var(--meta);display:grid;margin-top:2px">${ic('unlink', 'class="i" style="width:16px;height:16px"')}</span>` : ''}
+        <div class="nmw"><span class="nm" ${r.none ? 'style="color:var(--ink2)"' : ''}>${r.n}</span><span class="tags">${r.off ? tagOff : ''}${r.P.length} proje</span></div>
+        <span class="pct" aria-label="Oran ${pct(r.F, r.F + r.FY)}">${pct(r.F, r.F + r.FY)}</span></div>
+      ${nums(r.F, r.FY)}
+      <button class="gr-fc-tg" aria-expanded="${!!r.open}">${r.open ? 'Projeleri gizle' : `Projeler (${r.P.length})`}${ic('down')}</button>
+      ${r.open ? `<ul class="gr-fc-p">${r.P.map(([k, n, f, fy, a]) => `<li><div class="r1"><span class="gr-pk">${k}</span><span class="gr-pn">${n}</span>${a ? tagArch : ''}</div>
+        <div class="r2"><span><em>F</em>${f2(f)}</span><span><em>FY</em>${f2(fy)}</span><span><em>T</em><b>${f2(f + fy)}</b></span><span><em>Oran</em>${pct(f, f + fy)}</span></div></li>`).join('')}</ul>` : ''}
+    </li>`).join('')}
+    <li class="gr-fc tot"><div class="gr-fc-h"><div class="nmw"><span class="nm">Toplam</span><span class="tags">5 cari · 9 proje</span></div><span class="pct">${pct(F, F + FY)}</span></div>${nums(F, FY)}</li></ul>`;
+};
+const fatura = () => `<section class="gr-card" aria-label="Faturalanabilir saat">
+  <div class="gr-card-h"><span class="meta"><b>5</b> satır · 01.09.2026 – 30.11.2026 · cari = projenin carisi</span><span class="spacer"></span>
+    <button class="btn gr-xls" title="genel-rapor-fatura-2026-09-2026-11.xlsx">${ic('sheet')}Excel'e aktar</button></div>
+  ${fatTable()}<div style="padding:0 10px 10px" class="gr-fcw">${fatCards()}</div>
+  <div class="gr-foot">${ic('info')}Faturalama işin alanından gelir; alanı boş işler "Faturalanacak" sayılır. Faturalanacak + Faturalanmayacak = Toplam.</div></section>`;
+
+/* ---- boş durum ---- */
+const empty = () => `<div class="hm-empty"><span class="hm-empty-ic">${ic('filter')}</span>
+  <h3>Bu süzgeçlerle süre kaydı yok</h3>
+  <p><b>Ekim 2026</b> · Alan: <b>İç Projeler</b> · Kişi: <b>İlker Bayram</b> için kayıt bulunamadı. Dönemi değiştir ya da süzgeçleri temizle.</p>
+  <div class="acts"><button class="btn pri">${ic('x')}Süzgeçleri temizle</button><button class="btn">${ic('cal')}Bu aya git</button></div></div>`;
+const toastXls = `<div class="gr-toast" role="status">${ic('alert')}Aktarılacak süre kaydı yok. Süzgeçleri değiştirip yeniden dene.<button aria-label="Kapat">${ic('x')}</button></div>`;
+
+/* ---- uygulama ---- */
+const app = (o = {}) => {
+  const tab = o.tab || 'sure';
+  let body;
+  if (tab === 'fatura') body = fbar({ range:1, act:{ 'Alan':'Bnexify Danışmanlık' } })
+    + kpis([['receipt','Faturalanacak', f2(FATURA.reduce((a, r) => a + r.F, 0)), 'sa'], ['ban','Faturalanmayacak', f2(FATURA.reduce((a, r) => a + r.FY, 0)), 'sa'], ['clock','Toplam', f2(FATURA.reduce((a, r) => a + r.F + r.FY, 0)), 'sa'], ['percent','Faturalanabilir oran', pct(FATURA.reduce((a, r) => a + r.F, 0), FATURA.reduce((a, r) => a + r.F + r.FY, 0)), '', '5 cari · 9 proje']])
+    + fatura();
+  else if (o.empty) body = fbar({ month:'Ekim 2026', act:{ 'Alan':'İç Projeler', 'Kişi':'İlker Bayram' } })
+    + `<section class="gr-card"><div class="gr-card-h"><div class="gr-dims" style="display:flex;align-items:center;gap:8px"><label class="gr-dim">Satır<select class="inp"><option>Cari</option></select></label>
+      <button class="gr-swap" aria-label="Satır ve sütunu değiştir">${ic('swap')}</button><label class="gr-dim">Sütun<select class="inp"><option>Kişi</option></select></label></div>
+      <span class="meta"><b>0</b> kayıt · Ekim 2026</span><span class="spacer"></span>${xls}</div><div style="padding:12px">${empty()}</div></section>`;
+  else {
+    const g = PIVOT.reduce((a, r) => a + r.v.reduce((x, y) => x + y, 0), 0);
+    body = fbar({ act:{ 'Alan':'Bnexify Danışmanlık', 'İş tipi':'Görev', 'Faturalama':'Faturalanacak' } })
+      + kpis([['clock','Toplam süre', f2(g), 'sa'], ['cal','Adam-gün', f2(g / 8), '', '8 saatlik gün'], ['list','Kayıt', '96'], ['hash','İş', '34', '', '9 projede']])
+      + pivot({ sel:1 }) + drill();
+  }
+  return `<div class="appwrap"><div class="app">
+  <aside class="rail" aria-label="Kenar çubuğu">${rail()}</aside>
+  <main class="main"><header class="topbar">${mtop}
+    <div class="tb-head"><div class="tb-title"><h1>Genel raporlar</h1><div class="tb-sub">Tüm projeler · 14 proje · 4 çalışma alanı</div></div>${actions}</div>
+    <div class="gr-tabs" role="tablist" aria-label="Rapor türü">
+      <a href="#/raporlar/sure" class="gr-tab" role="tab" aria-selected="${tab === 'sure'}">${ic('clock')}Süre</a>
+      <a href="#/raporlar/fatura" class="gr-tab" role="tab" aria-selected="${tab === 'fatura'}">${ic('receipt')}Faturalanabilir saat</a></div></header>
+    <div class="content" role="tabpanel" ${o.empty ? 'style="padding-bottom:84px"' : ''}>${body}</div></main>
+  ${o.empty ? `<div class="gr-toast-pos">${toastXls}</div>` : ''}
+  </div></div>`;
+};
+
+set('#appSure', app());
+set('#appFatura', app({ tab:'fatura' }));
+set('#appBos', app({ empty:1 }));
+
+/* ---- ayrıntılar ---- */
+set('#popProj', `<div class="gr-pop" role="listbox" aria-label="Proje">
+  <div class="srch">${ic('search')}<input class="inp" placeholder="Proje ara…" aria-label="Proje ara"></div>
+  <button class="gr-opt" role="option" aria-selected="true"><span class="k"></span><span class="tx">Tüm projeler</span>${ic('check', 'class="i ck"')}</button>
+  <div class="gr-pop-h" style="text-transform:none;letter-spacing:0;font-size:12px">${badge(WS.bnx)}Bnexify Danışmanlık · 5</div>
+  ${[['PANO','Ürün Platformu'],['LJS','Lojistik Portalı'],['DEP','Depo Yönetimi Geçişi'],['DYZ','Deneme ERP Entegrasyonu']].map(([k, n], i) => `<button class="gr-opt ${i === 1 ? 'hl' : ''}" role="option" aria-selected="false"><span class="k">${k}</span><span class="tx">${n}</span></button>`).join('')}
+  <button class="gr-opt" role="option" aria-selected="false"><span class="k">SZL</span><span class="tx">2025 Sözleşme Yenileme</span>${tagArch}</button>
+  <div class="gr-pop-hr"></div>
+  <div class="gr-pop-note">${ic('info')}Yalnız "Bnexify Danışmanlık" alanının projeleri. Tüm alanlar için Alan süzgecini kaldır.</div></div>`);
+const DIMLIST = ['Kişi','Proje','Cari','Müşteri (iş alanı)','Çalışma alanı','Ay','Hafta','İş tipi','Faturalama','Fatura türü','Epik','Sprint'];
+set('#popDim', `<div class="gr-pop" role="listbox" aria-label="Sütun boyutu">
+  <div class="gr-pop-h">Sütun</div>
+  <button class="gr-opt" role="option" aria-selected="false"><span class="tx" style="color:var(--ink2)">Yok (yalnız toplam)</span></button>
+  ${DIMLIST.map(d => `<button class="gr-opt" role="option" aria-selected="${d === 'Kişi'}" ${d === 'Cari' ? 'aria-disabled="true" style="color:var(--meta)"' : ''}><span class="tx">${d}</span>${d === 'Kişi' ? ic('check', 'class="i ck"') : d === 'Cari' ? '<span class="hint">satırda</span>' : ''}</button>`).join('')}</div>`);
+set('#toasts', `<div class="gr-toast" role="status">${ic('info')}Proje süzgeci kaldırıldı: OYL seçili alanda değil.<button aria-label="Kapat">${ic('x')}</button></div>${toastXls}`);
+set('#efLink', `<div class="gr-eflink"><div class="cu-seg" role="radiogroup" aria-label="Dönem türü"><button role="radio" aria-checked="true">Ay</button><button role="radio" aria-checked="false">Tarih aralığı</button></div>
+  <div class="gr-step"><button aria-label="Önceki ay">${ic('left')}</button><b>Kasım 2026</b><button aria-label="Sonraki ay">${ic('right')}</button></div>
+  <span class="spacer"></span><a href="#/raporlar/sure" class="btn ghost">${ic('reports')}Tüm projeler: Genel raporlar${ic('arrow')}</a><button class="btn">Aylık genel özet</button><button class="btn pri">Excel raporu</button></div>`);
+set('#sheet', `<div class="gr-sheet" role="dialog" aria-modal="true" aria-labelledby="shT">
+  <div class="hd"><b id="shT">Süzgeçler</b><button class="iconbtn bare" aria-label="Kapat">${ic('x')}</button></div>
+  <div class="bd">
+    <div class="gr-fld"><label>Dönem</label><div class="cu-seg" role="radiogroup"><button role="radio" aria-checked="true">Ay</button><button role="radio" aria-checked="false">Aralık</button></div></div>
+    <div class="gr-fld on"><label>Alan</label><select class="inp"><option>Bnexify Danışmanlık</option></select></div>
+    <div class="gr-fld"><label>Proje <span class="opt">5 proje</span></label><select class="inp"><option>Tüm projeler</option></select>
+      <div class="hint">${ic('info')}Liste seçili alana göre daraldı.</div></div>
+    <div class="gr-fld"><label>Cari</label><select class="inp"><option>Tüm cariler</option></select></div>
+    <div class="gr-fld"><label>Kişi</label><select class="inp"><option>Herkes</option></select></div>
+    <div class="gr-fld on"><label>İş tipi</label><select class="inp"><option>Görev</option></select></div>
+    <div class="gr-fld on"><label>Faturalama</label><select class="inp"><option>Faturalanacak</option></select></div>
+  </div>
+  <div class="ft"><button class="btn">Temizle</button><button class="btn pri">96 kaydı göster</button></div></div>`);
+</script>
+</body></html>

@@ -156,8 +156,11 @@ const XSS = '<img src=x onerror="window.__xss=1">';
   await A.keyboard.press('Escape'); await sleep(150);
   await A.click(`.card[data-id="${ID(6)}"] .sum`); await sleep(400);
   ok('card body click opens issue detail', await scrimOn(A) && await A.evaluate(id => OPEN_ISSUE === id, ID(6)));
+  /* İş detayında öncelik artık düğme + menü (görev 6): 4 seçenek, alanı olmayan iş Orta. */
+  await A.click('#idSide [data-f="priority"]'); await sleep(200);
   ok('detail priority selector has 4 options, Orta for missing', await A.evaluate(() => {
-    const s = document.querySelector('[data-f="priority"]'); return s.options.length === 4 && s.value === '3'; }));
+    const m = document.querySelector('.qm'); return !!m && m.querySelectorAll('[data-qv]').length === 4 && m.querySelector('[aria-checked="true"]')?.dataset.qv === '3'; }));
+  await A.keyboard.press('Escape'); await sleep(150);
   await A.evaluate(() => closeModal()); await sleep(200);
 
   // 8) avatar menüsü ile atama: geçmişte ad, "Atanan değişince" otomasyonu çalışır
@@ -196,16 +199,17 @@ const XSS = '<img src=x onerror="window.__xss=1">';
 
   // 9) iş detayında atanan/öncelik: adla geçmiş + otomasyon
   await A.evaluate(id => openIssue(id), ID(1)); await sleep(300);
-  await A.selectOption('[data-f="assignee"]', users[1].id); await sleep(300);
-  await A.selectOption('[data-f="priority"]', '2'); await sleep(300);
+  await A.click('#idSide [data-f="assignee"]'); await sleep(200); await A.click(`.qm [data-qv="${users[1].id}"]`); await sleep(300);
+  await A.click('#idSide [data-f="priority"]'); await sleep(200); await A.click('.qm [data-qv="2"]'); await sleep(300);
   await A.evaluate(() => closeModal());
   ok('detail assign: history by name + rule', (await hist(A, ID(1), 'Atanan')).join() === `— → ${users[1].name}`
     && await A.evaluate(id => issue(id).labels.includes('atandi'), ID(1)), (await hist(A, ID(1), 'Atanan')).join());
   ok('detail priority: history by name', (await hist(A, ID(1), 'Öncelik')).join() === 'Acil → Yüksek', (await hist(A, ID(1), 'Öncelik')).join());
   /* 5 olan iş detayında Düşük seçili; Düşük'ü tekrar seçmek yazmaz. */
   await A.evaluate(id => openIssue(id), ID(5)); await sleep(300);
-  const d5 = await A.$eval('[data-f="priority"]', s => s.value);
-  await A.evaluate(() => { const s = document.querySelector('[data-f="priority"]'); s.value = '4'; s.onchange(); }); await sleep(200);
+  await A.click('#idSide [data-f="priority"]'); await sleep(200);
+  const d5 = await A.evaluate(() => document.querySelector('.qm [aria-checked="true"]')?.dataset.qv);
+  await A.click('.qm [data-qv="4"]'); await sleep(200);
   await A.evaluate(() => closeModal());
   ok('detail: priority 5 shown as Düşük and kept', d5 === '4' && await A.evaluate(id => issue(id).priority === 5 && !DB.history.some(h => h.issueId === id && h.field === 'Öncelik'), ID(5)));
 
@@ -223,7 +227,7 @@ const XSS = '<img src=x onerror="window.__xss=1">';
   await board(A);
   const sels = await A.evaluate(() => {
     const n = [];
-    newIssueForm(); n.push(document.querySelectorAll('#f_pri option').length); closeModal();
+    newIssueForm(); n.push(document.querySelectorAll('#f_pri [data-pri]').length); closeModal();
     subTaskForm(DB.issues.find(i => i.projectId === 'p1' && !i.parentId).id); n.push(document.querySelectorAll('#sb_p option').length); closeModal();
     DB.ui.qaOpen = stats()[0].id; render(); n.push(document.querySelectorAll('#qa_p option').length); DB.ui.qaOpen = null; render();
     return n;

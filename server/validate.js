@@ -31,6 +31,37 @@ export function stripBadKeys(v, depth = 0) {
   return n;
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const optEmail = v => v == null || v === '' || (typeof v === 'string' && v.length <= 200 && EMAIL_RE.test(v));
+export const CUSTOMER_KINDS = ['customer', 'supplier', 'both'];
+const TAX_NO_RE = /^\d{10,11}$/;
+const MAX_CONTACTS = 200;
+
+/* Yetkili kişiler: dizi; her biri güvenli kimlik ve ad taşır. İlk hata döner (yoksa boş). */
+function contactRules(list) {
+  if (list == null) return [];
+  if (!Array.isArray(list) || list.length > MAX_CONTACTS) return [[false, `Yetkili kişiler en fazla ${MAX_CONTACTS} kişilik bir liste olmalı`]];
+  const ids = new Set();
+  for (const p of list) {
+    if (!p || typeof p !== 'object' || Array.isArray(p) || !validId(p.id)) return [[false, 'Yetkili kişinin kimliği geçersiz']];
+    if (ids.has(p.id)) return [[false, 'Yetkili kişi kimlikleri tekil olmalı']];
+    ids.add(p.id);
+    const checks = [
+      [typeof p.name === 'string' && p.name.trim().length >= 1 && p.name.length <= 120, 'Yetkili kişinin adı gerekli (en fazla 120 karakter)'],
+      [optStr(p.title, 120), 'Yetkili kişinin görevi en fazla 120 karakter'],
+      [optEmail(p.email), 'Yetkili kişinin e-posta adresi geçersiz'],
+      [optStr(p.phone, 30), 'Yetkili kişinin telefonu en fazla 30 karakter'],
+    ];
+    const bad = checks.find(([ok]) => !ok);
+    if (bad) return [bad];
+  }
+  return [];
+}
+
+/* Proje türü (#12): boş/yok = genel sprint ayarından hesaplanır (kayda yazılmaz). */
+export const PROJECT_TYPES = ['board', 'agile'];
+export const COL_NAME_MAX = 30;
+
 const RULES = {
   projects: d => [
     [str(d.name, 200) && d.name.trim(), 'Proje adı gerekli'],
@@ -38,6 +69,23 @@ const RULES = {
     [optKey(d.code, KEY_RE), 'Proje kodu geçersiz'],
     [d.workspaceId == null || d.workspaceId === '' || validId(d.workspaceId), 'Geçersiz çalışma alanı'],
     [optBool(d.archived), 'Arşiv bilgisi true ya da false olmalı'],
+    [d.customerId == null || d.customerId === '' || validId(d.customerId), 'Geçersiz cari'],
+    [d.type == null || d.type === '' || PROJECT_TYPES.includes(d.type), 'Geçersiz proje türü'],
+  ],
+  /* Cariler (#11). İletilerde değer YOK: kişisel veri (T.C. kimlik no, e-posta) günlüğe/yanıta düşmesin. */
+  customers: d => [
+    [typeof d.name === 'string' && d.name.trim().length >= 1 && d.name.length <= 200, 'Unvan gerekli (en fazla 200 karakter)'],
+    [CUSTOMER_KINDS.includes(d.kind), 'Tür müşteri, tedarikçi ya da ikisi olmalı'],
+    [optStr(d.shortName, 60), 'Kısa ad en fazla 60 karakter'],
+    [optStr(d.taxOffice, 100), 'Vergi dairesi en fazla 100 karakter'],
+    [d.taxNo == null || d.taxNo === '' || (typeof d.taxNo === 'string' && TAX_NO_RE.test(d.taxNo)),
+      'Vergi numarası 10 ya da 11 haneli olmalı'],
+    [optStr(d.address, 500), 'Adres en fazla 500 karakter'],
+    [optEmail(d.email), 'E-posta adresi geçersiz'],
+    [optStr(d.phone, 30), 'Telefon en fazla 30 karakter'],
+    [optStr(d.notes, 2000), 'Notlar en fazla 2000 karakter'],
+    [optBool(d.active), 'Durum (etkin) true ya da false olmalı'],
+    ...contactRules(d.contacts),
   ],
   workspaces: d => [
     [str(d.name, 100) && d.name.trim().length >= 1 && d.name.trim().length <= 60,
@@ -46,9 +94,13 @@ const RULES = {
     [optStr(d.description, 500), 'Açıklama en fazla 500 karakter'],
     [optBool(d.archived), 'Arşiv bilgisi true ya da false olmalı'],
   ],
-  statuses: d => [
+  /* Kolon adı 1–30 karakter: yalnız canlı yazmada (opts.live), yeni kolonda ya da ad değişince.
+     Eski uzun adlı kolon sıralanabilir; içe aktarma/geri yükleme eski veriyi reddetmez. */
+  statuses: (d, opts) => [
     [str(d.projectId, 200), 'Durumun projesi yok'],
     [str(d.name, 100) && d.name.trim(), 'Durum adı gerekli'],
+    [!opts.live || typeof d.name !== 'string' || (opts.cur && opts.cur.name === d.name) || (d.name.trim().length >= 1 && d.name.length <= COL_NAME_MAX),
+      `Kolon adı 1 ile ${COL_NAME_MAX} karakter arasında olmalı`],
     [d.cat == null || ['todo', 'inprogress', 'done'].includes(d.cat), 'Geçersiz durum kategorisi'],
   ],
   sprints: d => [[str(d.projectId, 200), 'Sprintin projesi yok'], [optStr(d.name, 200), 'Sprint adı çok uzun']],
@@ -101,6 +153,23 @@ export function normalizeArchived(d) {
   return true;
 }
 
+/* Cari: vergi numarasındaki boşluk/tire silinir; unvan, e-posta (cari ve yetkili kişi) ve kişi adı kırpılır.
+   Değer değiştiyse true döner (istemci sunucudaki hâli yeniden alır). */
+export function normalizeCustomer(d) {
+  if (!d || typeof d !== 'object') return false;
+  let changed = false;
+  const set = (o, k, v) => { if (o[k] !== v) { o[k] = v; changed = true; } };
+  if (typeof d.taxNo === 'string') set(d, 'taxNo', d.taxNo.replace(/[\s-]/g, ''));
+  for (const k of ['name', 'email']) if (typeof d[k] === 'string') set(d, k, d[k].trim());
+  if (Array.isArray(d.contacts)) {
+    for (const p of d.contacts) {
+      if (!p || typeof p !== 'object') continue;
+      for (const k of ['name', 'email']) if (typeof p[k] === 'string') set(p, k, p[k].trim());
+    }
+  }
+  return changed;
+}
+
 /* Genel ayar `cfg`: iş tipleri kartta rozet olarak basılır (harf, ad, renk). */
 export function validateCfg(v) {
   if (v == null || typeof v !== 'object' || Array.isArray(v)) throw new HttpError(400, 'Geçersiz ayar');
@@ -113,9 +182,10 @@ export function validateCfg(v) {
   if (!ok) throw new HttpError(400, 'Geçersiz iş tipi ayarı (kimlik, ad, harf ve #RRGGBB renk gerekli)');
 }
 
-export function validate(collection, data) {
+/* opts: { live: true, cur } → /api/sync yazması (cur: veritabanındaki güncel hâl); içe aktarmada verilmez. */
+export function validate(collection, data, opts = {}) {
   if (JSON.stringify(data).length > MAX_RECORD) throw new HttpError(400, 'Kayıt çok büyük');
   const r = Object.hasOwn(RULES, collection) ? RULES[collection] : undefined;   // `constructor` kural değildir
   if (!r) return;
-  for (const [ok, msg] of r(data)) if (!ok) throw new HttpError(400, msg);
+  for (const [ok, msg] of r(data, opts)) if (!ok) throw new HttpError(400, msg);
 }
