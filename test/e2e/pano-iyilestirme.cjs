@@ -34,6 +34,17 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
   };
   const A = await mk('admin'); await login(A, 'admin', 'admin12345');
 
+  /* ===== 0) Benim işlerim: üst araç satırında oluştur / süre / yeni proje düğmeleri yok; c ve w kısayolları çalışır ===== */
+  await A.evaluate(() => { DB.ui.project = DB.ui.project || 'p1'; location.hash = 'home'; }); await sleep(500);
+  ok('home toolbar: no "+ İş oluştur", "Süre kaydet", "+ Yeni proje"', await A.evaluate(() => DB.ui.view === 'home'
+    && !document.querySelector('#hNewIssue,#hLogWork,#hNewProject') && ![...document.querySelectorAll('#toolrow button, .toolbar button')].some(b => /İş oluştur|Süre kaydet|Yeni proje/.test(b.textContent))));
+  await A.evaluate(() => document.activeElement?.blur()); await A.keyboard.press('c'); await sleep(400);
+  ok('home: "c" shortcut opens new issue form', await A.evaluate(() => !!document.querySelector('#scrim.on #f_sum')));
+  await A.evaluate(() => closeModal()); await sleep(200);
+  await A.keyboard.press('w'); await sleep(400);
+  ok('home: "w" shortcut opens work log', await A.evaluate(() => document.getElementById('scrim').classList.contains('on') && !document.querySelector('#f_sum')));
+  await A.evaluate(() => closeModal()); await sleep(200);
+
   /* ---- test verisi: agile proje (üyeler: admin + u2), 3 kolon, gelecek sprint, üst iş + alt iş, üye olmayan kullanıcı ---- */
   const MU = 'piuye' + RUN, MID = 'u_pi' + RUN, VU = 'piizl' + RUN, VID = 'u_piv' + RUN;
   const seed = await A.evaluate(async ([pid, key, mid, mu, vid, vu]) => {
@@ -45,7 +56,8 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
       { c: 'users', id: vid, op: 'put', data: { username: vu, name: 'PI İzleyici', role: 'viewer', active: true, ini: 'Pİ', color: '#64748B' } },
       { c: 'projects', id: pid, op: 'put', data: { name: 'Pano iyileştirme ' + key, key, counter: 2, type: 'agile', members: [ME.id, 'u2', vid], workspaceId: 'ws1' } },
       ...st.map(s => ({ c: 'statuses', id: s.id, op: 'put', data: s })),
-      { c: 'sprints', id: pid + '_sp', op: 'put', data: { projectId: pid, name: key + ' Sprint 1', state: 'future', goal: '', start: '2026-11-09', end: '2026-11-15' } },
+      { c: 'projects', id: pid + 'b', op: 'put', data: { name: 'PI Pano ' + key, key: key + 'B', counter: 0, type: 'board', members: [ME.id], workspaceId: 'ws1' } },
+      { c: 'sprints', id: pid + '_sp', op: 'put', data: { projectId: pid, name: key + ' Sprint 1', state: 'future', goal: 'Panoyu <b>hızlandır</b>', start: '2026-11-09', end: '2026-11-15' } },
       { c: 'issues', id: pid + '_par', op: 'put', data: I(pid + '_par', 1, st[0].id, { sprintId: pid + '_sp' }) },
       { c: 'issues', id: pid + '_sub', op: 'put', data: I(pid + '_sub', 2, st[1].id, { parentId: pid + '_par', sprintId: pid + '_sp' }) },
     ] });
@@ -62,12 +74,13 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
   const shape = await A.evaluate(() => ({
     selects: document.querySelectorAll('.qadd select').length,
     old: ['#qa_b', '#qa_bt', '#qa_e', '#qa_st', '#qa_du', '#qa_dd', '#qa_ok', '.qa-hint'].filter(s => document.querySelector(s)).length,
-    chips: ['#qa_t', '#qa_a', '#qa_p', '#qa_d', '#qa_more', '#qa_x'].filter(s => document.querySelector(s)).length,
+    chips: ['#qa_t', '#qa_a', '#qa_p', '#qa_d', '#qa_more'].filter(s => document.querySelector(s)).length,
     inputs: [...document.querySelectorAll('.qadd input:not([type=date])')].length,
+    row: new Set(['#qa_t', '#qa_a', '#qa_p', '#qa_d', '#qa_more'].map(s => Math.round(document.querySelector(s)?.getBoundingClientRect().top))).size === 1,
     focus: document.activeElement?.id,
   }));
   ok('quick add: single title input, no selects / old fields', shape.selects === 0 && shape.old === 0 && shape.inputs === 1, JSON.stringify(shape));
-  ok('quick add: chips (type, assignee, priority, due, more, close)', shape.chips === 6, JSON.stringify(shape));
+  ok('quick add: chips (type, assignee, priority, due, more) on one row', shape.chips === 5 && shape.row, JSON.stringify(shape));
   ok('quick add: title focused on open', shape.focus === 'qa_s', shape.focus);
 
   // çipler: tip, öncelik (Acil), atanan (ben), bitiş (Bugün)
@@ -117,7 +130,7 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
   const Mb = await mk('mobile', { width: 390, height: 844 }, 'dark'); await login(Mb, 'admin', 'admin12345');
   await go(Mb, 'board');
   await Mb.evaluate(s0 => { DB.ui.qaOpen = s0; render(); }, S0); await sleep(300);
-  const tgt = await Mb.evaluate(() => ['#qa_s', '#qa_t', '#qa_a', '#qa_p', '#qa_d', '#qa_more', '#qa_x'].map(s => { const r = document.querySelector(s)?.getBoundingClientRect(); return r ? Math.min(r.height, r.width) : 0; }));
+  const tgt = await Mb.evaluate(() => ['#qa_s', '#qa_t', '#qa_a', '#qa_p', '#qa_d', '#qa_more'].map(s => { const r = document.querySelector(s)?.getBoundingClientRect(); return r ? Math.min(r.height, r.width) : 0; }));
   ok('mobile: quick add targets ≥44px', tgt.every(h => h >= 44), tgt.join());
   await Mb.screenshot({ path: SS + 'qadd_mobile_dark.png' });
   await Mb.evaluate(() => { DB.ui.qaOpen = null; render(); });
@@ -172,14 +185,68 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
     && (await API.get('/api/state')).data.projects.find(p => p.id === pid)?.sprintWeeks === 2, PID));
   await go(A, 'backlog');
   await A.click('#newSprint'); await sleep(400);
-  const sd = await A.evaluate(() => ({ s: $('#s_start').value, e: $('#s_end').value }));
+  const sd = await A.evaluate(() => ({ s: $('#s_start').value, e: $('#s_end').value, name: $('#s_name').value, dlg: !!document.querySelector('#scrim.on .id-m.sp-m'),
+    df: !!document.querySelector('[data-df="s_start"]') && !!document.querySelector('[data-df="s_end"]'), days: $('#s_days')?.textContent, stats: document.querySelectorAll('#s_sum .sp-stat').length }));
   const days = (Date.parse(sd.e) - Date.parse(sd.s)) / 864e5 + 1;
-  ok('new sprint: starts day after previous end, 14 days', sd.s === '2026-11-16' && days === 14, JSON.stringify(sd));
+  ok('new sprint: starts day after previous end, 14 days', sd.s === '2026-11-16' && days === 14 && sd.days === '14', JSON.stringify(sd));
+  ok('create dialog: id- window, auto name "Sprint N", dateFields, scope summary', sd.dlg && /^Sprint \d+$/.test(sd.name) && sd.df && sd.stats === 3, JSON.stringify(sd));
+  await A.evaluate(() => { const i = $('#s_start'); i.value = '2026-12-07'; i.dispatchEvent(new Event('change', { bubbles: true })); });
+  ok('create dialog: changing start recomputes end from sprint length', await A.evaluate(() => $('#s_end').value === '2026-12-20' && $('#s_days').textContent === '14'));
+  await A.evaluate(([s]) => { const i = $('#s_start'); i.value = s; i.dispatchEvent(new Event('change', { bubbles: true })); }, [sd.s]);
   await A.click('#doSprint'); await sleep(400);
-  ok('new sprint saved with dates', await A.evaluate(([pid, s]) => DB.sprints.some(x => x.projectId === pid && x.id !== pid + '_sp' && x.start === s.s && x.end === s.e && x.state === 'future'), [PID, sd]));
-  await A.click(`[data-start="${PID}_sp"]`); await sleep(1500);
+  ok('new sprint saved with dates', await A.evaluate(([pid, s]) => DB.sprints.some(x => x.projectId === pid && x.id !== pid + '_sp' && x.name === s.name && x.start === s.s && x.end === s.e && x.state === 'future'), [PID, sd]));
+
+  // Aktif sprint sekmesi: agile projede Pano'dan sonra; aktif sprint yokken boş durum
+  await go(A, 'sprint');
+  const t0 = await A.evaluate(() => ({ tabs: [...document.querySelectorAll('#vtabs [role=tab]')].map(t => t.dataset.v), v: DB.ui.view, h: location.hash,
+    empty: !!document.querySelector('.as-empty'), plan: !!document.querySelector('#asPlan') }));
+  ok('agile: "Aktif sprint" tab right after Pano, #sprint opens it', t0.tabs[0] === 'board' && t0.tabs[1] === 'sprint' && t0.v === 'sprint' && t0.h === '#sprint', JSON.stringify(t0));
+  ok('no active sprint: empty state + "Sprint planla" (manager)', t0.empty && t0.plan, JSON.stringify(t0));
+  await go(V, 'sprint');
+  ok('no active sprint: viewer sees empty state without "Sprint planla"', await V.evaluate(() => !!document.querySelector('.as-empty') && !document.querySelector('#asPlan')));
+  await A.click('#asPlan'); await sleep(400);
+  ok('"Sprint planla" goes to backlog', await A.evaluate(() => DB.ui.view === 'backlog'));
+
+  // Başlat penceresi
+  await A.click(`[data-start="${PID}_sp"]`); await sleep(400);
+  const sw = await A.evaluate(() => ({ dlg: !!document.querySelector('#scrim.on .sp-m'), n: document.querySelector('.sp-stats .sp-stat b')?.textContent,
+    cap: !!document.querySelector('.sp-cap [role=progressbar]'), btn: $('#doStart')?.textContent.trim() }));
+  ok('start dialog: summary (2 issues), capacity comparison, primary "Sprinti başlat"', sw.dlg && sw.n === '2' && sw.cap && sw.btn === 'Sprinti başlat', JSON.stringify(sw));
+  await A.screenshot({ path: SS + 'sprint_start.png' });
+  await A.click('#doStart'); await sleep(1500);
   ok('manager starts sprint', await A.evaluate(async pid => (await API.get('/api/state')).data.sprints.find(s => s.id === pid + '_sp')?.state === 'active', PID));
   ok('manager sees "complete sprint"', await A.evaluate(pid => !!document.querySelector(`[data-spcomplete="${pid}_sp"]`), PID));
+
+  // Aktif sprint panosu: başlık şeridi + yalnız sprint işleri
+  await A.evaluate(([pid, s2]) => { const i = issue(pid + '_sub'); i.statusId = s2; save(); }, [PID, PID + '_s2']); await sleep(400);
+  await go(A, 'sprint');
+  const ah = await A.evaluate(pid => ({ h: document.querySelector('.as-head h2')?.textContent, goal: document.querySelector('.as-goal')?.textContent.trim(),
+    goalB: !!document.querySelector('.as-goal b'), left: document.querySelector('.as-left')?.textContent, dates: !!document.querySelector('.as-dates'),
+    prog: document.querySelector('.as-pl')?.textContent.replace(/\s+/g, ' ').trim(), bars: document.querySelectorAll('.as-head [role=progressbar]').length,
+    done: !!document.querySelector(`.as-head [data-spcomplete="${pid}_sp"]`), cards: [...document.querySelectorAll('.board .card')].map(c => c.dataset.id),
+    scope: !!document.querySelector('#scope'), sel: document.querySelector('#tab-sprint')?.getAttribute('aria-selected') }), PID);
+  ok('sprint strip: name, goal (text), dates, days left, progress', ah.h === KEY + ' Sprint 1' && ah.goal === 'Panoyu <b>hızlandır</b>' && !ah.goalB && ah.dates && /gün kaldı|Son gün|gecikti/.test(ah.left || '')
+    && /1\/2/.test(ah.prog) && ah.bars >= 1 && ah.done && ah.sel === 'true', JSON.stringify(ah));
+  ok('sprint board: only sprint issues, no scope switch', ah.cards.includes(PID + '_par') && !ah.cards.some(id => !id.startsWith(PID + '_')) && !ah.scope, JSON.stringify(ah.cards));
+  await A.screenshot({ path: SS + 'sprint_tab.png' });
+  await go(V, 'sprint');
+  ok('viewer: active sprint strip without "Sprinti tamamla"', await V.evaluate(() => !!document.querySelector('.as-head') && !document.querySelector('[data-spcomplete]')));
+
+  // Tamamla penceresi: sayılar, oran, hedef seçimi
+  await A.click(`.as-head [data-spcomplete="${PID}_sp"]`); await sleep(400);
+  const cw = await A.evaluate(() => ({ st: [...document.querySelectorAll('.sp-stats .sp-stat b')].map(b => b.textContent), bar: document.querySelector('.sp-cap [role=progressbar]')?.getAttribute('aria-valuenow'),
+    dest: [...document.querySelectorAll('.sp-dest [data-dest]')].map(b => [b.dataset.dest ? 'sprint' : 'backlog', b.getAttribute('aria-checked')]), btn: $('#doComplete')?.textContent.trim() }));
+  ok('complete dialog: done/not done, success bar, destination (next sprint first / backlog)', cw.st[0] === '1' && cw.st[1] === '1' && cw.bar === '50'
+    && JSON.stringify(cw.dest) === JSON.stringify([['sprint', 'true'], ['backlog', 'false']]) && cw.btn === 'Sprinti tamamla', JSON.stringify(cw));
+  await A.click('.sp-dest [data-dest=""]'); await A.click('#doComplete'); await sleep(1500);
+  ok('complete: open issue to backlog, sprint closed (server)', await A.evaluate(async pid => { const d = (await API.get('/api/state')).data;
+    return d.sprints.find(s => s.id === pid + '_sp')?.state === 'closed' && d.issues.find(i => i.id === pid + '_par')?.sprintId == null
+      && d.issues.find(i => i.id === pid + '_sub')?.sprintId === pid + '_sp'; }, PID));
+
+  // Pano türündeki projede sekme yok, #sprint → Pano
+  await A.evaluate(pb => { DB.ui.project = pb; DB.ui.view = 'board'; save(); render(); }, PID + 'b'); await sleep(300);
+  await A.evaluate(() => { location.hash = 'sprint'; }); await sleep(400);
+  ok('board-type project: no sprint tab, #sprint falls back to Pano', await A.evaluate(() => !document.querySelector('#tab-sprint') && DB.ui.view === 'board'));
 
   /* temizlik: tercihler eski hâline */
   await A.evaluate(() => { DB.board.subs = true; DB.ui.project = 'p1'; save(); }); await sleep(1200);

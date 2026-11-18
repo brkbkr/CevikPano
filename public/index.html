@@ -1008,6 +1008,53 @@ button.c-av::after{content:"";position:absolute;inset:-6px}
 .c-par:hover{color:var(--accent-d);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
 .c-par:focus-visible{outline:none;box-shadow:var(--ring)}
 .row .c-par{margin:0}
+/* sprint pencereleri (id- dili) */
+.sp-m .id-mb{display:flex;flex-direction:column}
+.sp-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}
+.sp-stat{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface2);min-width:0}
+.sp-stat b{font-size:19px;font-weight:700;letter-spacing:-.01em;color:var(--ink)}
+.sp-stat small{font-size:11.5px;color:var(--ink2);overflow-wrap:anywhere}
+.sp-stat.ok b{color:var(--ok)} .sp-stat.warn b{color:var(--over)}
+.sp-cap{margin-top:14px;display:flex;flex-direction:column;gap:7px}
+.sp-capl{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--ink2)}
+.sp-capl b{color:var(--ink)} .sp-capl .bad,.sp-capl .bad b{color:var(--risk)}
+.sp-bar{height:8px;border-radius:6px;background:var(--c-track,var(--track));overflow:hidden}
+.sp-bar i{display:block;height:100%;border-radius:6px;background:var(--accent);transition:width .3s}
+.sp-bar.done i{background:var(--ok)} .sp-bar.warn i{background:var(--over)} .sp-bar.over i{background:var(--risk)}
+.sp-bar.hrs{height:5px} .sp-bar.hrs i{background:var(--accent)}
+.sp-goal{display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:11px;background:var(--accent-soft);color:var(--accent-d);font-size:13px;line-height:1.5}
+.sp-goal svg.i{width:15px;height:15px;flex-shrink:0;margin-top:2px}
+.sp-goal.ok{margin-top:14px;background:color-mix(in srgb,var(--ok) 12%,transparent);color:var(--ok)}
+.sp-note{display:flex;align-items:center;gap:6px;margin-top:12px}
+.sp-note svg.i{width:14px;height:14px;flex-shrink:0}
+.sp-dest{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
+.id-mic.sm{width:30px;height:30px;border-radius:9px} .id-mic.sm svg.i{width:16px;height:16px}
+/* Aktif sprint sekmesi */
+.as-head{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:14px 16px;margin-bottom:14px;border:1px solid var(--line);border-radius:14px;
+  background:radial-gradient(600px 160px at 0 0,color-mix(in srgb,var(--accent) 9%,transparent),transparent 70%),var(--surface);box-shadow:var(--shadow-sm)}
+.as-main{flex:1 1 280px;min-width:0}
+.as-t{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.as-t h2{margin:0;font-size:17px;font-weight:700;letter-spacing:-.01em;overflow-wrap:anywhere}
+.as-dot{width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 4px color-mix(in srgb,var(--ok) 20%,transparent)}
+.as-dates{font-family:var(--mono);font-size:12px;color:var(--meta)}
+.as-left{font-size:11.5px;font-weight:650;padding:2px 8px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);color:var(--ink2)}
+.as-left.soon{color:var(--over);border-color:color-mix(in srgb,var(--over) 40%,transparent)}
+.as-left.late{color:var(--risk);border-color:color-mix(in srgb,var(--risk) 40%,transparent)}
+.as-goal{display:flex;align-items:center;gap:6px;margin:6px 0 0;font-size:13px;color:var(--ink2);overflow-wrap:anywhere}
+.as-goal svg.i{width:14px;height:14px;flex-shrink:0;color:var(--accent)}
+.as-prog{flex:1 1 240px;max-width:380px;display:flex;flex-direction:column;gap:6px}
+.as-pl{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--ink2)} .as-pl b{color:var(--ink)}
+.as-empty{max-width:460px;margin:48px auto;text-align:center;padding:32px 24px;border:1px dashed var(--line2);border-radius:16px;background:var(--surface)}
+.as-eic{display:inline-grid;place-items:center;width:56px;height:56px;border-radius:16px;background:var(--accent-soft);color:var(--accent)}
+.as-eic svg.i{width:26px;height:26px}
+.as-empty h3{margin:14px 0 6px;font-size:17px}
+.as-empty p{margin:0 0 16px;color:var(--ink2);font-size:13.5px;line-height:1.55}
+.as-empty .btn{display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+@media (max-width:900px){
+  .sp-stats{grid-template-columns:1fr 1fr}
+  .as-head .btn{min-height:44px}
+  .as-prog{max-width:none}
+}
 .b-subs{display:inline-flex;align-items:center;gap:7px}
 .b-subs svg.i{width:14px;height:14px}
 .b-sw{position:relative;width:26px;height:14px;border-radius:8px;background:var(--line2);transition:background .15s;flex-shrink:0}
@@ -1019,8 +1066,8 @@ button.c-av::after{content:"";position:absolute;inset:-6px}
 .qadd{border-radius:11px;padding:10px;gap:8px;border:1px solid color-mix(in srgb,var(--accent) 55%,var(--line));
   box-shadow:var(--shadow-sm),0 0 0 3px color-mix(in srgb,var(--accent) 12%,transparent)}
 .qadd .qa-in{height:36px;padding:0 10px;font-size:13.2px;font-weight:550;border-radius:8px}
-.qa-chips{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
-.qa-chip{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-width:32px;height:32px;padding:0 6px;
+.qa-chips{display:flex;align-items:center;gap:2px;flex-wrap:nowrap;min-width:0}
+.qa-chip{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-width:32px;height:32px;padding:0 5px;flex-shrink:0;
   border-radius:8px;border:1px solid transparent;background:none;color:var(--ink2);font-size:12px;font-weight:550;font-family:inherit;cursor:pointer}
 .qa-chip:hover{background:var(--surface2);border-color:var(--line)}
 .qa-chip:focus-visible{outline:none;box-shadow:var(--ring)}
@@ -1031,10 +1078,10 @@ button.c-av::after{content:"";position:absolute;inset:-6px}
 .qa-du svg.i{width:13px;height:13px}
 .qa-du.on{color:var(--accent-d)}
 .qa-dn{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
-.qa-more{color:var(--accent-d);padding:0 8px}
-.qa-x svg.i{width:14px;height:14px}
+.qa-more{color:var(--accent-d);margin-left:auto;padding:0 6px;white-space:nowrap}
 @media (max-width:900px),(pointer:coarse){
   .qadd .qa-in{height:44px;font-size:16px}
+  .qa-chips{flex-wrap:wrap}
   .qa-chip{min-width:44px;height:44px}
   .c-par{min-height:32px;padding:0 9px}
 }
@@ -3672,6 +3719,7 @@ const SVG = {
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
   checkc: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
+  flag: '<path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/>',
   subs: '<path d="M5 4v12a2 2 0 0 0 2 2h3"/><path d="M5 9h5"/><rect x="12" y="6" width="8" height="5" rx="1.5"/><rect x="12" y="15" width="8" height="5" rx="1.5"/>',
   userplus: '<circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 11.5-4.2"/><path d="M19 14v6M16 17h6"/>',
   userx: '<circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 11.5-4.2"/><path d="m17 15 4 4M21 15l-4 4"/>',
@@ -3861,20 +3909,20 @@ function dropIndexRank(container, y, sel) {
 
 /* ============================ PANO ============================ */
 /* Alt işler kendi durum kolonunda kart olarak görünür; "Alt işler" anahtarı kişisel tercihtir (DB.board.subs, varsayılan göster). */
-function boardIssues() {
-  const scope = AGILE() ? (DB.board.scope || 'sprint') : 'all';
+function boardIssues(only) {
+  const scope = only || (AGILE() ? (DB.board.scope || 'sprint') : 'all');
   const act = activeSprint();
   return issuesOf().filter(i => i.type !== 'epic' && (!i.parentId || DB.board.subs !== false) && matches(i) &&
     (scope === 'all' || (act && i.sprintId === act.id)))
     .sort((a, b) => a.rank - b.rank);
 }
 
-function toolbarBoard() {
+function toolbarBoard(sprintView) {
   const act = activeSprint();
   if (!stats().length) return '';                 // kolonsuz proje: iş açılacak kolon yok (#12)
   return `
     <div class="search"><input class="inp" id="q" placeholder="Kart ara…" value="${esc(DB.board.q)}"></div>
-    ${AGILE() ? `<div class="seg" id="scope">
+    ${AGILE() && !sprintView ? `<div class="seg" id="scope">
       <button data-s="sprint" class="${DB.board.scope !== 'all' ? 'on' : ''}">${act ? esc(act.name) : 'Aktif sprint'}</button>
       <button data-s="all" class="${DB.board.scope === 'all' ? 'on' : ''}">Tüm işler</button>
     </div>` : ''}
@@ -4101,10 +4149,11 @@ function columns(list) {
   }).join('')}</div>`;
 }
 
-function renderBoard() {
+/* only === 'sprint': Aktif sprint sekmesi (kapsam seçimi yok, yalnız aktif sprintin işleri). */
+function renderBoard(only) {
   if (!stats().length) return noColsView();
-  const list = boardIssues();
-  if (AGILE() && !activeSprint() && DB.board.scope !== 'all')
+  const list = boardIssues(only);
+  if (AGILE() && !activeSprint() && (only || DB.board.scope) !== 'all')
     return `<div class="panel"><h3>Aktif sprint yok</h3>
       <div class="sub">Pano, aktif sprintteki işleri gösterir. Backlog'a gidip bir sprint başlatın
       ya da “Tüm işler” kapsamına geçin.</div>
@@ -4129,7 +4178,7 @@ function toolbarBacklog() {
     <select class="inp" id="fUser" style="width:auto"><option value="">Herkes</option>
       ${DB.users.map(u => `<option value="${u.id}" ${DB.board.filterUser === u.id ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select>
     <div class="spacer"></div>
-    ${canEdit() && AGILE() ? '<button class="btn" id="newSprint">+ Sprint oluştur</button>' : ''}
+    ${canManageProject(P()) && AGILE() ? '<button class="btn" id="newSprint">+ Sprint oluştur</button>' : ''}
     ${canEdit() ? '<button class="btn pri" id="newIssue">+ İş oluştur</button>' : ''}`;
 }
 
@@ -4257,41 +4306,123 @@ function sprintRange(p) {
   const start = last ? iso(addD(last + 'T12:00', 1)) : iso(mon);
   return { start, end: sprintEnd(start, p) };
 }
+/* Sprint özetleri (pencereler ve Aktif sprint sekmesi): iş sayısı, tamamlanan, tahmin saatleri. */
+function sprintStats(sid) {
+  const items = issuesOf().filter(i => i.sprintId === sid && i.type !== 'epic');
+  const done = items.filter(isDone);
+  const est = items.reduce((a, i) => a + (i.estimate || 0), 0), estDone = done.reduce((a, i) => a + (i.estimate || 0), 0);
+  return { items, n: items.length, done: done.length, open: items.length - done.length, est, estDone, noEst: items.filter(i => !i.estimate).length };
+}
+const spDays = (a, b) => (a && b ? Math.round((hmDay(b) - hmDay(a)) / 864e5) + 1 : 0);
+const spStat = (v, l, cls = '') => `<div class="sp-stat ${cls}"><b class="num">${v}</b><small>${l}</small></div>`;
+const spBar = (pct, cls = '', label = '') => `<div class="sp-bar ${cls}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.min(100, pct))}"${label ? ` aria-label="${esc(label)}"` : ''}><i style="width:${Math.max(0, Math.min(100, pct))}%"></i></div>`;
+const spHead = (icon, id, title, sub) => `<div class="id-mh"><span class="id-mic">${ic(icon)}</span>
+    <div class="tx"><b id="${id}">${title}</b><div class="sub">${sub}</div></div>
+    <button type="button" class="id-ib" data-close aria-label="Kapat">${ic('x')}</button></div>`;
+const spDlg = (tid) => { const m = $('#scrim .modal'); m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-labelledby', tid); return m; };
+
 function startSprint(id) {
-  const s = sprint(id);
-  if (!canManageProject(P())) return toast(SPRINT_FORBIDDEN);
+  const s = sprint(id), pr = P();
+  if (!s) return;
+  if (!canManageProject(pr)) return toast(SPRINT_FORBIDDEN);
   if (activeSprint()) return toast('Zaten aktif bir sprint var. Önce onu tamamlayın.');
-  s.state = 'active';
-  if (!s.start) { s.start = TODAY; s.end = sprintEnd(TODAY, P()); }
-  save(); render(); toast(s.name + ' başlatıldı');
+  const st = sprintStats(id);
+  if (!st.n) return toast('Sprintte iş yok. Önce backlog\'dan iş taşıyın.');
+  const start = s.start || TODAY, end = s.start ? (s.end || sprintEnd(start, pr)) : sprintEnd(TODAY, pr);
+  const days = spDays(start, end), wk = Math.max(1, days) / 7;
+  const cap = projUsers().reduce((a, u) => a + capOf(u) * wk, 0);
+  const load = cap ? st.est / cap * 100 : 0;
+  openModal(`${spHead('sprint', 'spStartT', 'Sprinti başlat', `<span class="k">${esc(pr.key)}</span> ${esc(s.name)}`)}
+    <div class="id-mb">
+      ${s.goal ? `<div class="sp-goal">${ic('flag')}<span>${esc(s.goal)}</span></div>` : ''}
+      <div class="sp-stats">
+        ${spStat(st.n, 'iş')}${spStat(fmtDur(st.est), 'tahmin')}${spStat(days, 'gün · ' + esc(fmtD(start)) + ' → ' + esc(fmtD(end)))}
+      </div>
+      ${cap ? `<div class="sp-cap">
+        <div class="sp-capl"><span>Ekip kapasitesi <b class="num">${fmtDur(cap)}</b></span><span class="${load > 100 ? 'bad' : ''}">${load > 100 ? 'Kapasite aşılıyor · doluluk' : 'Doluluk'} <b class="num">%${Math.round(load)}</b></span></div>
+        ${spBar(load, load > 100 ? 'over' : load > 85 ? 'warn' : '', 'Tahmin / kapasite')}</div>` : ''}
+      ${st.noEst ? `<div class="id-hint sp-note">${ic('alert')}${st.noEst} işin tahmini yok; toplam eksik görünebilir.</div>` : ''}
+    </div>
+    <div class="m-f"><span class="spacer"></span><button type="button" class="btn" data-close>Vazgeç</button>
+      <button type="button" class="btn pri" id="doStart">${ic('sprint')}Sprinti başlat</button></div>`, 'id-m narrow sp-m id-trap');
+  spDlg('spStartT');
+  $('#doStart').onclick = () => {
+    if (activeSprint()) { closeModal(); return toast('Zaten aktif bir sprint var. Önce onu tamamlayın.'); }
+    s.state = 'active'; s.start = start; s.end = end;
+    closeModal(); save(); render(); toast(s.name + ' başlatıldı');
+  };
+  setTimeout(() => $('#doStart')?.focus(), 40);
 }
 function completeSprint(id) {
-  const s = sprint(id);
-  if (!canManageProject(P())) return toast(SPRINT_FORBIDDEN);
-  const items = issuesOf().filter(i => i.sprintId === id);
-  const open = items.filter(i => stat(i.statusId).cat !== 'done');
-  const next = sprintsOf().find(x => x.state === 'future');
-  openModal(`
-    <div class="m-h"><b>Sprint'i tamamla</b><button class="x" data-close>×</button></div>
-    <div style="padding:18px">
-      <p style="margin:0 0 12px">
-        <b>${esc(s.name)}</b> kapatılıyor.<br>
-        <span class="num">${items.length - open.length}</span> iş tamamlandı,
-        <span class="num">${open.length}</span> iş açık kaldı.</p>
-      <label class="field">Açık işler nereye taşınsın?</label>
-      <select class="inp" id="moveTo">
-        ${next ? `<option value="${next.id}">${esc(next.name)}</option>` : ''}
-        <option value="">Backlog</option>
-      </select>
+  const s = sprint(id), pr = P();
+  if (!s) return;
+  if (!canManageProject(pr)) return toast(SPRINT_FORBIDDEN);
+  const st = sprintStats(id);
+  const open = st.items.filter(i => !isDone(i));
+  const nexts = sprintsOf().filter(x => x.state === 'future');
+  const pct = st.n ? st.done / st.n * 100 : 0;
+  const dests = [...nexts.map(x => [x.id, x.name, x.start ? `${fmtD(x.start)} → ${fmtD(x.end)}` : 'Sonraki sprint']), ['', 'Backlog', 'Planlanmamış işler']];
+  openModal(`${spHead('checkc', 'spDoneT', 'Sprinti tamamla', `<span class="k">${esc(pr.key)}</span> ${esc(s.name)}`)}
+    <div class="id-mb">
+      <div class="sp-stats">
+        ${spStat(st.done, 'tamamlandı', 'ok')}${spStat(st.open, 'tamamlanmadı', st.open ? 'warn' : '')}${spStat(fmtDur(st.estDone), 'tamamlanan tahmin')}
+      </div>
+      <div class="sp-cap">
+        <div class="sp-capl"><span>Başarı</span><span><b class="num">%${Math.round(pct)}</b> · ${st.done}/${st.n} iş</span></div>
+        ${spBar(pct, 'done', 'Tamamlanan iş oranı')}</div>
+      ${open.length ? `<div class="id-fl">Tamamlanmayan ${open.length} iş nereye taşınsın?</div>
+        <div class="id-types sp-dest" role="radiogroup" aria-label="Tamamlanmayan işlerin hedefi">${dests.map(([v, n, sub], k) =>
+          `<button type="button" class="id-tcard" role="radio" data-dest="${esc(v)}" aria-checked="${k === 0}">
+            <span class="id-mic sm">${ic(v ? 'sprint' : 'backlog')}</span><span class="tx"><b>${esc(n)}</b><small>${esc(sub)}</small></span></button>`).join('')}</div>`
+        : `<div class="sp-goal ok">${ic('checkc')}<span>Tüm işler tamamlandı. Tebrikler!</span></div>`}
     </div>
-    <div class="m-f"><button class="btn" data-close>Vazgeç</button>
-      <button class="btn pri" id="doComplete">Tamamla</button></div>`, 'narrow');
+    <div class="m-f"><span class="spacer"></span><button type="button" class="btn" data-close>Vazgeç</button>
+      <button type="button" class="btn pri" id="doComplete">${ic('check')}Sprinti tamamla</button></div>`, 'id-m narrow sp-m id-trap');
+  const m = spDlg('spDoneT');
+  const g = m.querySelector('.sp-dest');
+  if (g) {
+    g.onclick = e => { const b = e.target.closest('[data-dest]'); if (!b) return; g.querySelectorAll('[data-dest]').forEach(x => x.setAttribute('aria-checked', String(x === b))); };
+    g.onkeydown = e => { if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+      const r = [...g.querySelectorAll('[role=radio]')], k = r.indexOf(e.target); if (k < 0) return;
+      e.preventDefault(); const n = r[(k + (e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 1) + r.length) % r.length]; n.focus(); n.click(); };
+  }
   $('#doComplete').onclick = () => {
-    const to = $('#moveTo').value || null;
+    const to = m.querySelector('.sp-dest [aria-checked="true"]')?.dataset.dest || null;
     open.forEach(i => { i.sprintId = to; logHist(i, 'Sprint', s.name, to ? sprint(to).name : 'Backlog'); });
     s.state = 'closed'; s.end = TODAY;
-    closeModal(); save(); render(); toast('Sprint tamamlandı');
+    closeModal(); save(); render(); toast(`${s.name} tamamlandı · %${Math.round(pct)} başarı`);
   };
+  setTimeout(() => $('#doComplete')?.focus(), 40);
+}
+
+/* ============================ AKTİF SPRİNT ============================
+   Agile projede aktif sprintin panosu: başlık şeridi (ad, hedef, tarih, kalan gün, ilerleme) + yalnız sprint işleriyle pano. */
+function renderSprint() {
+  if (!stats().length) return noColsView();
+  const s = activeSprint(), man = canManageProject(P());
+  if (!s) return `<div class="as-empty">
+      <span class="as-eic">${ic('sprint')}</span>
+      <h3>Aktif sprint yok</h3>
+      <p>Bir sprint başladığında işleri burada kolonlarıyla, ilerlemesi ve kalan günüyle görürsünüz.</p>
+      ${man ? `<a class="btn pri" id="asPlan" href="#backlog">${ic('backlog')}Sprint planla</a>` : '<p class="sub">Sprinti proje yöneticisi başlatır.</p>'}</div>`;
+  const st = sprintStats(s.id);
+  const left = s.end ? Math.round((hmDay(s.end) - hmDay(TODAY)) / 864e5) : null;
+  const pct = st.n ? st.done / st.n * 100 : 0, hp = st.est ? st.estDone / st.est * 100 : 0;
+  return `<section class="as-head" aria-label="Aktif sprint">
+      <div class="as-main">
+        <div class="as-t"><span class="as-dot" aria-hidden="true"></span><h2>${esc(s.name)}</h2>
+          ${s.start ? `<span class="as-dates">${esc(fmtD(s.start))} → ${esc(fmtD(s.end))}</span>` : ''}
+          ${left != null ? `<span class="as-left ${left < 0 ? 'late' : left <= 1 ? 'soon' : ''}">${left < 0 ? `${-left} gün gecikti` : left === 0 ? 'Son gün' : `${left} gün kaldı`}</span>` : ''}</div>
+        ${s.goal ? `<p class="as-goal">${ic('flag')}${esc(s.goal)}</p>` : ''}
+      </div>
+      <div class="as-prog">
+        <div class="as-pl"><span>İşler <b class="num">${st.done}/${st.n}</b></span><span>Saat <b class="num">${fmtDur(st.estDone)} / ${fmtDur(st.est)}</b></span></div>
+        ${spBar(pct, 'done', 'Tamamlanan iş oranı')}
+        ${st.est ? spBar(hp, 'hrs', 'Tamamlanan tahmin oranı') : ''}
+      </div>
+      ${man ? `<button type="button" class="btn" data-spcomplete="${esc(s.id)}">${ic('checkc')}Sprinti tamamla</button>` : ''}
+    </section>
+    ${renderBoard('sprint')}`;
 }
 
 /* ============================================================
@@ -5536,32 +5667,56 @@ function newIssueForm(preset = {}, keep) {
   $('#doCreateMore').onclick = () => create(true);
 }
 
+/* Sprint oluştur / düzenle (id- pencere dili). Yeni sprint: ad "Sprint N", tarihler proje sprint süresinden (sprintRange). */
 function sprintForm(id) {
-  if (!P()) return toast('Önce bir proje seçin');
+  const pr = P();
+  if (!pr) return toast('Önce bir proje seçin');
   const s = id ? sprint(id) : null;
-  const def = s ? { start: s.start || '', end: s.end || '' } : sprintRange(P());   // yeni sprint: proje sprint süresiyle
-  openModal(`
-    <div class="m-h"><b>${s ? 'Sprint düzenle' : 'Sprint oluştur'}</b><button class="x" data-close>×</button></div>
-    <div style="padding:16px 18px">
-      <div class="form-row"><label class="field">Ad</label><input class="inp" id="s_name" value="${s ? esc(s.name) : esc(P().key + ' Sprint ' + (sprintsOf().length + 1))}"></div>
-      <div class="form-row"><label class="field">Sprint hedefi</label><input class="inp" id="s_goal" value="${s ? esc(s.goal) : ''}" placeholder="Bu sprintte neyi kanıtlıyoruz?"></div>
-      <div class="form-2">
-        <div class="form-row"><label class="field">Başlangıç</label><input class="inp" type="date" id="s_start" value="${esc(def.start)}"></div>
-        <div class="form-row"><label class="field">Bitiş</label><input class="inp" type="date" id="s_end" value="${esc(def.end)}"></div>
+  if (!s && !canManageProject(pr)) return toast('Sprinti yalnızca proje yöneticisi oluşturabilir');
+  const def = s ? { start: s.start || '', end: s.end || '' } : sprintRange(pr);
+  const bl = issuesOf().filter(i => !i.sprintId && i.type !== 'epic' && !isDone(i));
+  const scope = s ? sprintStats(s.id) : { n: 0, est: 0 };
+  const nm = s ? s.name : `Sprint ${sprintsOf().length + 1}`;
+  openModal(`${spHead('sprint', 'spFormT', s ? 'Sprinti düzenle' : 'Sprint oluştur', `<span class="k">${esc(pr.key)}</span> ${esc(pr.name)} · ${sprintWeeks(pr)} haftalık sprint`)}
+    <div class="id-mb">
+      <div class="id-fl"><label for="s_name">Ad <span class="req">*</span></label></div>
+      <input class="inp" id="s_name" maxlength="200" value="${esc(nm)}" autocomplete="off" aria-describedby="s_name_e">
+      <div class="id-err" id="s_name_e" role="alert"></div>
+      <div class="id-fl"><label for="s_goal">Sprint hedefi <span class="opt">(isteğe bağlı)</span></label></div>
+      <input class="inp" id="s_goal" maxlength="300" value="${esc(s?.goal || '')}" placeholder="Bu sprintte neyi kanıtlıyoruz?" autocomplete="off">
+      <div class="id-g2">
+        <div><div class="id-fl">Başlangıç</div>${dateField({ id: 's_start', label: 'Başlangıç', clear: false, value: def.start })}</div>
+        <div><div class="id-fl">Bitiş</div>${dateField({ id: 's_end', label: 'Bitiş', clear: false, quick: false, value: def.end })}</div>
       </div>
+      <div class="sp-stats" id="s_sum">
+        ${spStat(`<span id="s_days">${spDays(def.start, def.end)}</span>`, 'gün')}
+        ${s ? spStat(scope.n, 'kapsamdaki iş') + spStat(fmtDur(scope.est), 'tahmini toplam')
+            : spStat(bl.length, 'backlog\'da açık iş') + spStat(fmtDur(bl.reduce((a, i) => a + (i.estimate || 0), 0)), 'backlog tahmini')}
+      </div>
+      ${s ? '' : `<div class="id-hint sp-note">${ic('backlog')}Oluşturduktan sonra backlog'dan işleri sprinte sürükleyin.</div>`}
     </div>
-    <div class="m-f">${s ? `<button class="btn danger" data-delsprint="${s.id}">Sil</button>` : ''}
-      <span class="spacer"></span><button class="btn" data-close>Vazgeç</button>
-      <button class="btn pri" id="doSprint">Kaydet</button></div>`, 'narrow');
-  /* Yeni sprintte başlangıç değişince bitiş sprint süresine göre yeniden hesaplanır. */
-  if (!s) $('#s_start').onchange = e => { if (e.target.value) $('#s_end').value = sprintEnd(e.target.value, P()); };
+    <div class="m-f">${s ? `<button type="button" class="btn danger" data-delsprint="${esc(s.id)}">Sil</button>` : ''}
+      <span class="spacer"></span><button type="button" class="btn" data-close>Vazgeç</button>
+      <button type="button" class="btn pri" id="doSprint">${ic(s ? 'check' : 'plus')}${s ? 'Kaydet' : 'Sprint oluştur'}</button></div>`, 'id-m narrow sp-m id-trap');
+  spDlg('spFormT');
+  const days = () => { $('#s_days').textContent = spDays($('#s_start').value, $('#s_end').value); };
+  const chk = () => { const msg = dateOrderErr($('#s_start').value, $('#s_end').value); dfErr('s_end', msg); return !msg; };
+  /* Başlangıç değişince bitiş sprint süresine göre yeniden hesaplanır (yeni sprintte; düzenlemede bitiş boşsa). */
+  $('#s_start').addEventListener('change', e => {
+    if (e.target.value && (!s || !$('#s_end').value)) { const en = $('#s_end'); en.value = sprintEnd(e.target.value, pr); en.dispatchEvent(new Event('change', { bubbles: true })); }
+    days(); chk(); });
+  $('#s_end').addEventListener('change', () => { days(); chk(); });
+  $('#s_name').oninput = () => { if ($('#s_name').value.trim()) $('#s_name_e').innerHTML = ''; };
   $('#doSprint').onclick = () => {
     const o = { name: $('#s_name').value.trim(), goal: $('#s_goal').value.trim(), start: $('#s_start').value, end: $('#s_end').value };
-    if (!o.name) return toast('Ad gerekli');
+    if (!o.name) { $('#s_name_e').innerHTML = ic('alert') + 'Ad gerekli.'; return $('#s_name').focus(); }
+    if (!chk()) return;
     if (s) Object.assign(s, o);
     else DB.sprints.push(Object.assign({ id: uid('sp'), projectId: DB.ui.project, state: 'future' }, o));
-    closeModal(); save(); render();
+    closeModal(); save(); render(); toast(s ? 'Sprint kaydedildi' : `${o.name} oluşturuldu`);
   };
+  $('#scrim .modal').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey || e.target.id === 's_name' || e.target.id === 's_goal')) { e.preventDefault(); $('#doSprint').click(); } });
+  setTimeout(() => $('#s_name')?.select(), 40);
 }
 
 /* Kalan tahminin süre kaydından sonraki değeri */
@@ -5853,6 +6008,7 @@ const VIEWS = {
   greports:  { s: 'global', t: 'Genel raporlar',    c: 'Tüm projeler',      r: renderGr,        tb: () => '' },
   pool:      { s: 'global', t: 'Talep havuzu',      c: 'Genel bakış',       r: renderPool,      tb: () => '' },
   board:     { s: 'proj',   t: 'Pano',              c: 'Çevik pano',        r: renderBoard,     tb: toolbarBoard },
+  sprint:    { s: 'proj',   t: 'Aktif sprint',      c: 'Sprint panosu',     r: renderSprint,    tb: () => (activeSprint() ? toolbarBoard(true) : '') },
   backlog:   { s: 'proj',   t: 'Backlog',           c: 'Planlama',          r: renderBacklog,   tb: toolbarBacklog },
   plan:      { s: 'proj',   t: 'Zaman planı',       c: 'Planlama',          r: renderPlan,      tb: toolbarPlan },
   roadmap:   { s: 'proj',   t: 'Yol haritası',      c: 'Epik zaman çizelgesi', r: renderRoadmap, tb: () => '' },
@@ -5866,14 +6022,15 @@ const VIEWS = {
 };
 
 /* Proje sekmeleri, soldan sağa (docs/tasarim/gezinme). Hangisinin görüneceğine viewAllowed karar verir. */
-const PROJ_TABS = ['board', 'backlog', 'plan', 'roadmap', 'timesheet', 'effort', 'reports', 'search', 'admin'];
-const TAB_IC = { board: 'board', backlog: 'backlog', plan: 'plan', roadmap: 'roadmap', timesheet: 'clock', effort: 'effort',
+const PROJ_TABS = ['board', 'sprint', 'backlog', 'plan', 'roadmap', 'timesheet', 'effort', 'reports', 'search', 'admin'];
+const TAB_IC = { board: 'board', sprint: 'sprint', backlog: 'backlog', plan: 'plan', roadmap: 'roadmap', timesheet: 'clock', effort: 'effort',
   reports: 'reports', search: 'search', admin: 'settings' };
 /* Görünürlük için tek kural: render (adres elle yazılsa da), sekmeler, sol menü ve hesap menüsü bunu kullanır.
    Yetki sunucuda; bu yalnız kullanıcı deneyimi içindir. */
 function viewAllowed(v) {
   if (!VIEWS[v]) return false;
   if (v === 'roadmap') return MOD('epic');
+  if (v === 'sprint') return AGILE();                             // Pano türündeki projede sekme yok
   if (v === 'pool') return poolProjects().length > 0;            // talep projesi yoksa havuz yok (görev 12)
   if (v === 'admin' || v === 'users' || v === 'system') return isAdmin();
   return true;
@@ -10835,9 +10992,7 @@ function qaChips() {
     <button type="button" class="qa-chip qa-pr" id="qa_p" aria-haspopup="menu" aria-label="Öncelik: ${pn} (değiştir)" title="Öncelik: ${pn}"><span class="prio ${pc}">${ic(pc)}${pn}</span></button>
     <button type="button" class="qa-chip qa-du${q.due ? ' on' : ''}" id="qa_d" aria-haspopup="menu" aria-label="Bitiş: ${q.due ? esc(fmtDLong(q.due)) : 'yok'} (değiştir)" title="Bitiş">${ic('cal')}<span>${q.due ? (q.due === TODAY ? 'Bugün' : esc(fmtD(q.due))) : 'Bitiş'}</span></button>
     <input type="date" class="qa-dn" id="qa_dn" value="${esc(q.due || '')}" min="${TODAY}" tabindex="-1" aria-hidden="true">
-    <span class="spacer"></span>
-    <button type="button" class="qa-chip qa-more" id="qa_more" title="Tam yeni iş formunu bu değerlerle aç">Daha fazla…</button>
-    <button type="button" class="qa-chip qa-x" id="qa_x" aria-label="Kapat (Esc)" title="Kapat (Esc)">${ic('x')}</button>`;
+    <button type="button" class="qa-chip qa-more" id="qa_more" title="Tam yeni iş formunu bu değerlerle aç (kapatmak için Esc)">Daha fazla…</button>`;
 }
 function quickAddForm(sid) {
   return `<div class="qadd" role="group" aria-label="Hızlı kart ekle">
@@ -10878,7 +11033,6 @@ function wireQuickAdd() {
       DB.ui.qaOpen = null; save(); render();
       newIssueForm({ summary, statusId, type: q.type, assignee: q.assignee || null, priority: q.priority, due: q.due || '' });
     };
-    $('#qa_x').onclick = () => { DB.ui.qaOpen = null; render(); };
   }
   wireChips();
 
