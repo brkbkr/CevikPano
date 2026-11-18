@@ -1931,6 +1931,295 @@ button.cu-prj:hover{background:var(--surface2)}
   .rail .nav a{min-height:44px}
   .rail .ws-cur,.rail .ws-proj{min-height:44px}
 }
+/* ==========================================================================
+   Kart detayı — iş detayı, yeni iş, süre kaydet, silme onayı (görev 6, 7, 9; docs/tasarim/kart-detay) — id- sınıfları
+   ========================================================================== */
+:root{ --id-dlg-w:1200px; --id-side-w:320px; --id-field-hover:var(--surface2); --id-old:#64748B; --id-saved:#15803D;
+  --id-flash:#EAF1FE; --id-danger:#DC2626; --id-danger-ink:#FFFFFF; --id-late-ln:#FECACA; --id-late-bg:#FEF2F2; --id-late:#B91C1C; }
+:root[data-theme="dark"]{ --id-old:#8494AE; --id-saved:#34D399; --id-flash:rgba(96,165,250,.16); --id-danger:#F87171; --id-danger-ink:#1F0707;
+  --id-late-ln:rgba(248,113,113,.32); --id-late-bg:rgba(248,113,113,.12); --id-late:#F87171; }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --id-old:#8494AE; --id-saved:#34D399; --id-flash:rgba(96,165,250,.16); --id-danger:#F87171; --id-danger-ink:#1F0707;
+    --id-late-ln:rgba(248,113,113,.32); --id-late-bg:rgba(248,113,113,.12); --id-late:#F87171; }
+}
+.modal.id-dlg{max-width:var(--id-dlg-w);overflow:clip;outline:none}
+.id-head{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;min-height:58px;padding:8px 12px 8px 20px;
+  background:var(--surface);border-bottom:1px solid var(--line)}
+.id-crumb{display:flex;align-items:center;gap:6px;min-width:0;font-size:12.5px;color:var(--meta)}
+.id-crumb .id-proj{font-weight:550;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+.id-crumb > svg.i{width:14px;height:14px;color:var(--line2);flex-shrink:0}
+.id-key{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 9px;border:1px solid var(--line);border-radius:8px;background:var(--surface2);
+  font-family:var(--mono);font-size:12.5px;font-weight:650;color:var(--ink);white-space:nowrap}
+.id-key svg.i{width:14px;height:14px;color:var(--meta)}
+.id-key:hover{color:var(--accent-d);border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
+.id-head #watchers{margin-left:6px;min-width:0}
+.id-hact{margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0}
+.id-stbtn{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 10px 0 12px;border-radius:9px;font-weight:650;font-size:13px;white-space:nowrap;
+  border:1px solid var(--line2);background:var(--surface2);color:var(--ink)}
+.id-stbtn.inprogress{border-color:color-mix(in srgb,var(--prog) 35%,var(--line2));background:color-mix(in srgb,var(--prog) 9%,var(--surface))}
+.id-stbtn.done{border-color:color-mix(in srgb,var(--done) 35%,var(--line2));background:color-mix(in srgb,var(--done) 9%,var(--surface))}
+.id-stbtn svg.i{width:15px;height:15px;color:var(--meta)}
+.id-stbtn.ro{cursor:default}
+.id-hb{display:inline-flex;align-items:center;gap:6px;min-height:36px}
+.id-hb svg.i{width:16px;height:16px}
+.id-ib{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:9px;border:1px solid transparent;background:none;color:var(--ink2);flex-shrink:0}
+.id-ib:hover{background:var(--surface2);border-color:var(--line)}
+.id-ib svg.i{width:18px;height:18px}
+.id-ib.sm{width:30px;height:30px}
+.id-ib.sm svg.i{width:15px;height:15px}
+.id-ib.open,.id-pv.open,.id-stbtn.open{box-shadow:var(--ring)}
+.id-body{display:grid;grid-template-columns:minmax(0,1fr) var(--id-side-w);column-gap:28px;padding:20px 24px 28px 28px}
+.id-main{min-width:0}
+.id-side{min-width:0;align-self:start;border:1px solid var(--line);border-radius:14px;background:var(--surface2);overflow:hidden}
+.id-title{margin:0 -8px;padding:4px 8px;font-size:23px;font-weight:720;letter-spacing:-.022em;line-height:1.3;color:var(--ink);overflow-wrap:anywhere}
+.id-ed{cursor:text;border-radius:9px;outline-offset:2px}
+.id-title .id-ed{display:block;margin:-4px -8px;padding:4px 8px;border:1px solid transparent}
+.id-title .id-ed:hover,.id-desc.id-ed:hover{background:var(--id-field-hover);border-color:var(--line)}
+.id-tin{font-size:21px;font-weight:700;letter-spacing:-.02em;padding:6px 10px}
+.id-tin[aria-invalid="true"]{border-color:var(--id-late);box-shadow:0 0 0 3px color-mix(in srgb,var(--id-late) 18%,transparent)}
+.id-meta{margin-top:6px;font-size:12px;color:var(--meta)}
+.id-meta b{font-weight:600;color:var(--ink2)}
+.id-sec{margin-top:22px}
+.id-sh{display:flex;align-items:center;gap:10px;min-height:32px;margin-bottom:8px}
+.id-sh h3{margin:0;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}
+.id-sh h3 svg.i{width:17px;height:17px;color:var(--accent)}
+.id-sh .id-link{margin-left:auto}
+.id-cnt{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink2);background:var(--surface3);padding:1px 7px;border-radius:999px}
+.id-sort{margin-left:auto;font-size:11.5px;color:var(--meta)}
+.id-link{position:relative;display:inline-flex;align-items:center;gap:5px;border:0;background:none;padding:2px 4px;min-height:28px;font-size:12.5px;font-weight:650;color:var(--accent-d);border-radius:6px}
+.id-link svg.i{width:14px;height:14px}
+.id-link:hover{background:var(--accent-soft)}
+.id-link.del{color:var(--id-late)}
+.id-link.del:hover{background:var(--id-late-bg)}
+.id-desc{display:block;width:100%;text-align:left;margin:0 -10px;padding:8px 10px;border-radius:10px;border:1px solid transparent;background:none;font-size:13.5px;line-height:1.65;
+  color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere}
+.id-desc.empty{color:var(--meta);border:1px dashed var(--line2);margin:0}
+.id-empty{font-size:12.5px;color:var(--meta);padding:8px 2px}
+.id-box{flex:1;min-width:0;border:1px solid var(--line2);border-radius:10px;background:var(--surface);overflow:hidden}
+.id-box textarea{display:block;width:100%;border:0;border-radius:0;box-shadow:none!important;resize:vertical;font-size:13.5px;line-height:1.6;padding:9px 12px}
+.id-box:focus-within{border-color:var(--accent);box-shadow:var(--ring)}
+.id-boxf{display:flex;align-items:center;gap:8px;padding:7px 10px;border-top:1px solid var(--line);background:var(--surface2)}
+.id-boxf .id-hint{flex:1;margin:0}
+.id-cnew .id-boxf{display:none}
+.id-cnew.open .id-boxf{display:flex}
+.id-hint{font-size:11.5px;color:var(--meta);margin-top:6px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.kbd{font-family:var(--mono);font-size:10.5px;color:var(--ink2);border:1px solid var(--line2);border-radius:5px;padding:0 5px;line-height:17px;background:var(--surface)}
+.id-stalebox{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:8px 0 0;padding:8px 10px;border-radius:9px;font-size:12.5px;
+  background:var(--ws-info-bg);border:1px solid var(--ws-info-ln);color:var(--ws-info-ink)}
+.id-stalebox[hidden]{display:none}
+.id-stalebox > svg.i{width:15px;height:15px}
+.id-stalebox span{flex:1;min-width:160px}
+.id-err{font-size:12px;color:var(--id-late);min-height:0;margin-top:5px;display:flex;align-items:center;gap:5px}
+.id-err:empty{margin:0}
+.id-err svg.i{width:14px;height:14px;flex-shrink:0}
+.id-prog{display:inline-block;width:96px;height:6px;border-radius:6px;background:var(--track);overflow:hidden}
+.id-prog i{display:block;height:100%;background:var(--done);border-radius:6px}
+.id-list{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
+.id-srow,.id-lrow{display:flex;align-items:center;gap:10px;min-height:44px;padding:4px 10px;border-top:1px solid var(--line);font-size:13px}
+.id-list > :first-child{border-top:0}
+.id-srow .k,.id-lrow .k{font-family:var(--mono);font-size:11.5px;color:var(--meta);white-space:nowrap}
+.id-srow .t,.id-lrow .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.id-srow .t:hover,.id-lrow .t:hover{color:var(--accent-d);text-decoration:underline}
+.id-srow.done .t,.id-lrow.done .t{text-decoration:line-through;color:var(--meta)}
+.id-srow.new{background:var(--id-flash)}
+.id-est{font-size:11.5px;color:var(--ink2);min-width:34px;text-align:right}
+.id-chk{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line2);background:var(--surface);color:#fff;flex-shrink:0;position:relative}
+.id-chk::after{content:"";position:absolute;inset:-11px}
+.id-chk.on{background:var(--done);border-color:var(--done)}
+.id-chk svg.i{width:13px;height:13px;stroke-width:2.6}
+.id-chk.ro::after{display:none}
+.id-sadd{display:flex;align-items:center;gap:8px;padding:8px 10px;border-top:1px solid var(--line);background:var(--surface2)}
+.id-sadd > svg.i{width:16px;height:16px;color:var(--accent);flex-shrink:0}
+.id-sadd #subIn{flex:1;min-width:0}
+.id-sadd .btn{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.id-sadd .btn svg.i{width:14px;height:14px}
+.id-sest{width:84px;flex-shrink:0}
+.id-lg{font-family:var(--mono);font-size:10.5px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--meta);padding:8px 12px 4px;border-top:1px solid var(--line)}
+.id-feedf{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--surface2);width:max-content;max-width:100%}
+.id-feedf button{min-height:32px;padding:0 10px;border-radius:7px;border:1px solid transparent;background:none;font-size:12.5px;color:var(--ink2)}
+.id-feedf button .num{font-size:11px;color:var(--meta)}
+.id-feedf button[aria-pressed="true"]{background:var(--surface);color:var(--ink);font-weight:650;border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.id-cnew{display:flex;gap:10px;align-items:flex-start;margin-bottom:14px}
+.id-feed{display:flex;flex-direction:column;gap:14px}
+.id-ev{display:flex;gap:10px;align-items:flex-start}
+.id-ev > .av{margin-top:1px;flex-shrink:0}
+.id-ev .bd{flex:1;min-width:0}
+.id-ev .hd{display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;font-size:12.5px;color:var(--ink2);min-height:24px}
+.id-ev .hd b{color:var(--ink)}
+.id-evact{margin-left:auto;display:inline-flex;gap:4px}
+.id-ago{color:var(--meta);font-size:11.5px}
+.id-edited{color:var(--meta);font-size:11.5px}
+.id-cbody{margin-top:4px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-size:13.5px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.id-wbody,.id-hbody{margin-top:4px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface2);font-size:12.5px}
+.id-wbody > b{font-size:14px;color:var(--accent-d)}
+.id-wbody span{flex:1;min-width:0;overflow-wrap:anywhere;color:var(--ink2)}
+.id-hbody .f{font-weight:600;min-width:84px;color:var(--ink)}
+.id-hbody svg.i{width:13px;height:13px;color:var(--meta)}
+.id-old{color:var(--id-old)}
+.id-more{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:40px;margin-top:12px;border:1px dashed var(--line2);border-radius:10px;background:none;
+  font-weight:650;font-size:12.5px;color:var(--accent-d)}
+.id-more svg.i{width:15px;height:15px}
+/* sağ panel */
+.id-grp{padding:12px 14px;border-top:1px solid var(--line)}
+.id-grp:first-child{border-top:0}
+.id-gh{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10.5px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;color:var(--meta);margin-bottom:8px}
+.id-gh svg.i{width:13px;height:13px}
+.id-prow{display:grid;grid-template-columns:92px minmax(0,1fr);align-items:center;gap:8px;min-height:36px}
+.id-prow.date{align-items:start}
+.id-prow.date .id-pl{padding-top:9px}
+.id-pl{font-size:12.5px;color:var(--ink2)}
+.id-pvw{min-width:0;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.id-pv{display:inline-flex;align-items:center;gap:7px;min-height:32px;max-width:100%;padding:0 8px;margin-left:-8px;border-radius:8px;border:1px solid transparent;background:none;
+  font-size:13px;color:var(--ink);text-align:left}
+.id-pv .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.id-pv small{color:var(--meta);font-size:11px}
+.id-pv .muted,.id-side .muted{color:var(--meta)}
+button.id-pv{cursor:pointer}
+button.id-pv:hover{background:var(--surface);border-color:var(--line)}
+.id-pv.ro{cursor:default}
+.id-pv svg.i{width:14px;height:14px}
+.id-pv .lock,.id-pv.ro > svg.i{color:var(--meta)}
+.id-pv .av{width:22px;height:22px;font-size:8.5px}
+.id-pv .c-av{width:22px;height:22px}
+.id-ie{height:32px;padding:4px 8px;font-family:var(--mono);font-size:13px}
+.id-epic{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:650;color:#6D28D9;background:#F1EBFE}
+:root[data-theme="dark"] .id-epic{color:#C4B5FD;background:rgba(167,139,250,.16)}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .id-epic{color:#C4B5FD;background:rgba(167,139,250,.16)} }
+.id-epic svg.i{width:13px;height:13px}
+.id-steps{display:flex;gap:4px;margin-bottom:10px}
+.id-steps i{flex:1;height:4px;border-radius:4px;background:var(--track)}
+.id-steps i.todo{background:var(--todo)} .id-steps i.inprogress{background:var(--prog)} .id-steps i.done{background:var(--done)}
+.id-stline{display:flex;align-items:center;gap:8px;justify-content:space-between;font-size:12.5px;color:var(--ink2);margin-bottom:6px;min-height:32px}
+.id-stline b{color:var(--ink)}
+.id-stline .btn{display:inline-flex;align-items:center;gap:5px}
+.id-stline .btn svg.i{width:13px;height:13px}
+.id-saved{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;color:var(--id-saved);white-space:nowrap}
+.id-saved svg.i{width:13px;height:13px;stroke-width:2.2}
+.id-over{font-size:12px;color:var(--id-late);background:var(--id-late-bg);border-radius:6px;padding:2px 8px;margin:4px 0;display:inline-block}
+.id-tags{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.id-tag{display:inline-flex;align-items:center;gap:6px;min-height:26px;padding:0 4px 0 8px;border-radius:7px;border:1px solid var(--line);background:var(--surface);font-size:12px;color:var(--ink);max-width:100%}
+.id-tag i{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.id-tag button{position:relative;display:inline-grid;place-items:center;width:18px;height:18px;border:0;background:none;color:var(--meta);border-radius:4px}
+.id-tag button::after{content:"";position:absolute;inset:-6px}
+.id-tag button svg.i{width:12px;height:12px}
+.id-tagin{width:110px;height:28px;padding:2px 8px;font-size:12px}
+.id-foot{padding:10px 14px;border-top:1px solid var(--line);font-size:11.5px;color:var(--meta);line-height:1.7}
+.id-foot b{color:var(--ink2);font-weight:600}
+/* tarih bileşeni */
+.id-df{min-width:0;width:100%}
+.id-date{position:relative;display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-height:36px;border:1px solid var(--line2);border-radius:9px;background:var(--surface);padding:0 6px 0 0}
+.id-df.bad .id-date{border-color:var(--id-late);box-shadow:0 0 0 3px color-mix(in srgb,var(--id-late) 15%,transparent)}
+.id-dbtn{display:flex;align-items:center;gap:8px;flex:1;min-width:0;min-height:34px;padding:0 8px 0 10px;border:0;background:none;text-align:left;font-size:13px;color:var(--ink)}
+.id-dbtn svg.i{width:15px;height:15px;color:var(--meta);flex-shrink:0}
+.id-dbtn .t{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.id-dbtn .wd{color:var(--meta);margin-left:5px}
+.id-date.empty .id-dbtn .t{color:var(--meta)}
+.id-date.late .id-dbtn .t{color:var(--id-late);font-weight:650}
+.id-dnat{position:absolute;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0;padding:0}
+.id-late{display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:6px;border:1px solid var(--id-late-ln);background:var(--id-late-bg);color:var(--id-late);font-size:11.5px;font-weight:650;white-space:nowrap}
+.id-late svg.i{width:12px;height:12px}
+.id-dq{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.id-dq button{min-height:28px;padding:0 9px;border-radius:7px;border:1px solid var(--line);background:var(--surface);font-size:12px;color:var(--ink2)}
+.id-dq button:hover{border-color:var(--line2);color:var(--ink)}
+.id-dq button[aria-pressed="true"]{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:var(--accent-soft);color:var(--accent-d);font-weight:650}
+.id-dq .clr{color:var(--id-late)}
+/* ortak pencere: yeni iş, süre kaydet, silme onayı, alt iş */
+#scrim2{z-index:60}
+.modal.id-m{max-width:720px}
+.modal.id-m.narrow{max-width:520px}
+.id-mh{display:flex;align-items:center;gap:12px;padding:16px 16px 14px 20px;border-bottom:1px solid var(--line)}
+.id-mh .tx{flex:1;min-width:0}
+.id-mh b{font-size:16px;font-weight:700;letter-spacing:-.01em}
+.id-mh .sub{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink2);margin-top:2px;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.id-mh .sub .k{font-family:var(--mono);font-size:11.5px;color:var(--meta)}
+.id-mic{display:grid;place-items:center;width:40px;height:40px;border-radius:11px;background:var(--accent-soft);color:var(--accent);flex-shrink:0}
+.id-mic svg.i{width:20px;height:20px}
+.id-mic.del{background:var(--id-late-bg);color:var(--id-late)}
+.id-mb{padding:14px 20px 18px}
+.id-fl{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:14px 0 6px;font-size:12.5px;font-weight:600;color:var(--ink)}
+.id-mb > .id-fl:first-child{margin-top:0}
+.id-fl .opt{font-weight:400;color:var(--meta)}
+.id-fl .req{color:var(--id-late)}
+.id-cc{font-size:11px;color:var(--meta);font-weight:400}
+.id-g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px}
+.id-types{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.id-tcard{position:relative;display:flex;align-items:center;gap:10px;min-height:54px;padding:8px 10px;border:1px solid var(--line2);border-radius:11px;background:var(--surface);text-align:left;color:var(--ink)}
+.id-tcard .ti{width:28px;height:28px;border-radius:8px;font-size:12px}
+.id-tcard .tx{min-width:0}
+.id-tcard b{display:block;font-size:13px}
+.id-tcard small{display:block;font-size:11.5px;color:var(--ink2)}
+.id-tcard[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.id-seg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;padding:3px;border:1px solid var(--line2);border-radius:10px;background:var(--surface2)}
+.id-seg button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;border-radius:7px;border:1px solid transparent;background:none;font-size:13px;color:var(--ink2)}
+.id-seg button .prio{border:0;background:none;padding:0}
+.id-seg button[aria-checked="true"]{background:var(--surface);color:var(--ink);font-weight:650;border-color:color-mix(in srgb,var(--accent) 45%,transparent);box-shadow:var(--shadow-sm)}
+.id-pick{display:flex;align-items:center;gap:9px;width:100%;min-height:38px;padding:0 10px;border:1px solid var(--line2);border-radius:9px;background:var(--surface);text-align:left;font-size:13.5px;color:var(--ink)}
+.id-pick .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.id-pick.empty .t{color:var(--meta)}
+.id-pick > svg.i{width:15px;height:15px;color:var(--meta)}
+.id-pick .av,.id-pick .c-av{width:22px;height:22px;font-size:8.5px}
+.id-morebtn{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;margin-top:16px;padding:0 12px;border:1px dashed var(--line2);border-radius:10px;background:none;text-align:left;color:var(--ink2);font-size:12.5px}
+.id-morebtn b{color:var(--accent-d);font-size:13px}
+.id-morebtn span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.id-morebtn svg.i{width:15px;height:15px;color:var(--accent);transition:transform .12s}
+.id-morebtn[aria-expanded="true"] svg.i{transform:rotate(90deg)}
+.modal.id-m .m-f{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.modal.id-m .m-f .btn{display:inline-flex;align-items:center;gap:6px;min-height:38px}
+.modal.id-m .m-f .btn svg.i{width:15px;height:15px}
+.modal.id-m .m-f .id-hint{margin:0}
+.btn.id-danger{background:var(--id-danger);border-color:transparent;color:var(--id-danger-ink)}
+.btn.id-danger:hover{filter:brightness(.95)}
+.id-wdur{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.id-wdur #w_h{width:120px;font-size:16px;font-weight:650;text-align:center;font-family:var(--mono)}
+.id-chips{display:flex;flex-wrap:wrap;gap:4px}
+.id-chips button{min-height:34px;min-width:44px;padding:0 9px;border-radius:8px;border:1px solid var(--line2);background:var(--surface);font-family:var(--mono);font-size:12px;color:var(--ink2)}
+.id-chips button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-d);font-weight:650}
+.id-wprev{margin-top:12px;padding:10px 12px;border:1px solid var(--ws-info-ln);border-radius:10px;background:var(--ws-info-bg);font-size:12.5px;color:var(--ink2)}
+.id-wprev:empty{display:none}
+.id-wprev > div{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:24px}
+.id-wprev > div > span:first-child{display:inline-flex;align-items:center;gap:6px}
+.id-wprev svg.i{width:13px;height:13px}
+.id-wprev s{color:var(--id-old);margin-right:4px}
+.id-wprev b{color:var(--ink)}
+.id-wprev small{display:block;margin-top:4px;color:var(--meta)}
+.id-delitem{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface2);font-size:13px;min-width:0}
+.id-delitem .k{font-family:var(--mono);font-size:12px;color:var(--ink2)}
+.id-delitem .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.id-sec2{font-family:var(--mono);font-size:10.5px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;color:var(--meta);margin:14px 0 6px}
+.id-delc{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.id-delc > div{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:12px;color:var(--ink2)}
+.id-delc svg.i{width:15px;height:15px;color:var(--meta)}
+.id-delc b{font-size:18px;color:var(--ink)}
+.id-delw,.id-deli{display:flex;gap:8px;align-items:flex-start;margin-top:10px;padding:10px 12px;border-radius:10px;font-size:12.5px;line-height:1.5}
+.id-delw{border:1px solid var(--id-late-ln);background:var(--id-late-bg);color:var(--ink)}
+.id-delw svg.i{color:var(--id-late)}
+.id-deli{border:1px solid var(--ws-info-ln);background:var(--ws-info-bg);color:var(--ws-info-ink)}
+.id-delw svg.i,.id-deli svg.i{width:15px;height:15px;flex-shrink:0;margin-top:2px}
+.qm-opt.danger{color:var(--id-late)}
+.qm .cat-dot{margin:0 4px}
+@media (max-width:1099px){ .id-body{grid-template-columns:minmax(0,1fr) 300px;column-gap:20px} }
+@media (max-width:900px){
+  #scrim.on:has(.id-dlg),#scrim2.on{padding:0}
+  .modal.id-dlg,#scrim2 .modal,.modal.id-new{max-width:none;min-height:100dvh;border-radius:0;border:0;margin:0}
+  .id-head{padding:6px 8px 6px 12px;flex-wrap:nowrap}
+  .id-head .id-hb .lbl,.id-crumb .id-proj,.id-crumb > svg.i,.id-head #watchers{display:none}
+  .id-body{display:flex;flex-direction:column;padding:14px 14px 28px}
+  .id-main{display:contents}
+  #idT{order:1} .id-side{order:2;margin-top:14px} #idD{order:3} #idS{order:4} #idL{order:5} #idA{order:6}
+  .id-ib,.id-stbtn,.id-hb,.id-key{min-height:44px;min-width:44px}
+  .id-pv,.id-dbtn,.id-dq button,.id-feedf button,.id-link,.id-chips button,.id-seg button,.id-tcard{min-height:44px}
+  .id-chk{width:26px;height:26px}
+  .id-srow{flex-wrap:wrap;min-height:48px}
+  .id-srow .t{flex-basis:50%}
+  .id-srow .chip,.id-srow .pr{display:none}
+  .id-sadd{flex-wrap:wrap}
+  .id-sadd #subIn{flex-basis:100%;min-height:44px}
+  .id-g2{grid-template-columns:minmax(0,1fr)}
+  .id-delc{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .id-title{font-size:20px}
+  .modal.id-m .m-f{position:sticky;bottom:0}
+}
+@media (prefers-reduced-motion:reduce){ .id-morebtn svg.i{transition:none} }
 </style>
 </head>
 <body>
@@ -2081,6 +2370,16 @@ function setSync(st) {
 }
 
 let syncT = null, syncing = null, syncAgain = false, retryT = null;
+/* Silmede 8 sn "Geri al" (HOLD): bekletilen kayıtların SNAP'teki değeri korunur, böylece süre dolana
+   kadar sunucuya hiçbir şey gitmez; süre dolunca normal fark gönderimiyle silinir. */
+const HOLDS = [];
+function holdMask(now) {
+  for (const h of HOLDS) for (const k of h.keys) {
+    const [c, id] = k.split('\u0001'), old = SNAP?.rec[c]?.get(id), m = (now.rec[c] ||= new Map());
+    if (old === undefined) m.delete(id); else m.set(id, old);
+  }
+  return now;
+}
 function scheduleSync(delay = 400) {
   clearTimeout(syncT);
   if (SYNC_STATE === 'ok') setSync('pending');
@@ -2092,7 +2391,7 @@ async function flushAll() {
   for (let k = 0; k < 5; k++) {
     await flushSync();
     if (syncing) { await syncing; continue; }
-    if (!SNAP || !diffSnap(SNAP, snapOf(DB)).length) return;
+    if (!SNAP || !diffSnap(SNAP, holdMask(snapOf(DB))).length) return;
   }
 }
 
@@ -2101,7 +2400,7 @@ async function flushSync() {
   if (!SNAP || !DB || !ME) return;
   if (syncing) { syncAgain = true; return syncing; }
   syncing = (async () => {
-    const now = snapOf(DB);
+    const now = holdMask(snapOf(DB));
     let ch = diffSnap(SNAP, now);
     if (typeof canEdit === 'function' && !canEdit()) ch = ch.filter(x => x.c === '_prefs');
     else if (typeof isAdmin === 'function' && !isAdmin())
@@ -2201,7 +2500,7 @@ function applyRemote(items) {
 function tryRerender() {
   const typing = document.activeElement && (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) || document.activeElement.isContentEditable);
   /* Açık iş penceresi başkası tarafından değiştirildiyse, yazı yazılmıyorsa tazele. */
-  if (MODAL_STALE && OPEN_ISSUE && !typing && issue(OPEN_ISSUE)) { MODAL_STALE = false; try { openIssue(OPEN_ISSUE); } catch (e) { } }
+  if (MODAL_STALE && OPEN_ISSUE && (!typing || ID_ED) && issue(OPEN_ISSUE)) { MODAL_STALE = false; try { openIssue(OPEN_ISSUE); } catch (e) { } }
   const busy = document.getElementById('scrim')?.classList.contains('on')
     || (typeof DRAG !== 'undefined' && DRAG)
     || (typeof QM !== 'undefined' && QM)
@@ -2214,7 +2513,7 @@ function tryRerender() {
 }
 
 async function reloadState() {
-  try { DB = await load(); ensureSchema(); ensureAccounts(); startApp(false); }
+  try { holdClear(); DB = await load(); ensureSchema(); ensureAccounts(); startApp(false); }
   catch (e) { if (e.status === 401) sessionLost(); }
 }
 
@@ -2772,6 +3071,9 @@ const SVG = {
   mail: '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6 8.5-6"/>',
   phone: '<path d="M5 4h3.5l1.5 4.5-2 1.5a11 11 0 0 0 6 6l1.5-2 4.5 1.5V19a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
   chevr: '<path d="m9 6 6 6-6 6"/>',
+  /* İş detayı (docs/tasarim/kart-detay) */
+  chat: '<path d="M4.5 5h15a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H9l-4.5 3.5V17h0a1.5 1.5 0 0 1-1.5-1.5v-9A1.5 1.5 0 0 1 4.5 5z"/>',
+  tag: '<path d="M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8 8a1.4 1.4 0 0 1 0 2l-7 7a1.4 1.4 0 0 1-2 0z"/><circle cx="8" cy="8" r="1.4"/>',
   up: '<path d="m18 15-6-6-6 6"/>',
   /* gezinme: proje sekmeleri ve hesap menüsü (docs/tasarim/gezinme) */
   plan: '<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M16 2v4M8 2v4M3 10h18M7 14h5M11 18h6"/>',
@@ -2993,7 +3295,7 @@ let QM = null;
 const qmMobile = () => matchMedia('(max-width:900px)').matches;
 const QM_FOLD = { 'ı': 'i', 'ş': 's', 'ç': 'c', 'ğ': 'g', 'ü': 'u', 'ö': 'o', 'â': 'a', 'î': 'i', 'û': 'u' };
 const qmKey = v => String(v ?? '').toLocaleLowerCase('tr').replace(/[ışçğüöâîû]/g, c => QM_FOLD[c]);
-const qmTrig = q => document.querySelector(`[${q.kind === 'pri' ? 'data-qpri' : 'data-qas'}="${CSS.escape(q.id)}"]`);
+const qmTrig = q => q.sel ? document.querySelector(q.sel) : document.querySelector(`[${q.kind === 'pri' ? 'data-qpri' : 'data-qas'}="${CSS.escape(q.id)}"]`);
 function qmPriList(i) {
   const cur = lvl(i.priority);
   return LVLS.map(p => { const [c, n] = PRI[p];
@@ -3063,6 +3365,7 @@ function closeQuick(refocus = true) {
 }
 function pickQuick(v) {
   const q = QM; if (!q) return;
+  if (q.pick) { closeQuick(false); q.pick(v); qmTrig(q)?.focus({ preventScroll: true }); return; }
   closeQuick(false);
   const i = issue(q.id); if (!i || !canEdit()) return;
   const was = i.assignee || null, near = DB.ui.view === 'home' ? homeNeighbors(i.id) : [];
@@ -3081,7 +3384,7 @@ function pickQuick(v) {
 /* Menü açıkken: dışarı tıklama yalnızca menüyü kapatır; klavye menüye aittir. */
 document.addEventListener('click', e => {
   if (!QM || e.target.closest?.('.qm')) return;
-  const tr = e.target.closest?.('[data-qpri],[data-qas]');
+  const tr = e.target.closest?.('[data-qpri],[data-qas],[data-pm],[data-nias]');
   const same = tr && qmTrig(QM) === tr;
   closeQuick(false);
   if (tr && !same) return;                   // başka bir rozet/avatar: onun menüsü açılsın
@@ -3265,14 +3568,8 @@ function wireBacklogAdd() {
     const s = $('#bl_s').value.trim(); if (!s) return $('#bl_s').focus();
     const pr = P(); if (!pr) return toast('Önce bir proje seçin');
     const est = parseDur($('#bl_e').value);
-    const it = { id: uid('i'), key: `${pr.code || pr.key}-${++pr.counter}`, projectId: pr.id,
-      type: $('#bl_t').value, summary: s, description: '', statusId: stats()[0].id,
-      assignee: $('#bl_a').value || null, reporter: CU().id, priority: 3, points: null,
-      estimate: est, remainingEst: est, spent: 0, labels: [], cf: {}, sprintId: null, epicId: null,
-      parentId: null, start: '', due: '', created: Date.now(), updatedAt: Date.now(),
-      billable: BILLABLE[0], billType: BILLTYPE[0],
-      rank: Math.max(0, ...DB.issues.map(x => x.rank)) + 100 };
-    DB.issues.push(it); runRules(it, 'created');
+    const it = createIssue(pr, { type: $('#bl_t').value, summary: s, statusId: stats()[0].id,
+      assignee: $('#bl_a').value || null, priority: 3, estimate: est }, pr.code || pr.key);
     DB.ui.qa.type = it.type; DB.ui.qa.assignee = it.assignee || '';
     save(); render(); $('#bl_s')?.focus(); toast(it.key + ' backlog\'a eklendi');
   };
@@ -3613,7 +3910,7 @@ function openModal(html, cls = '') {
   s.classList.add('on');
   const f = s.querySelector('input,textarea,select'); if (f) setTimeout(() => f.focus(), 30);
 }
-function closeModal() { $('#scrim').classList.remove('on'); $('#scrim').innerHTML = ''; OPEN_ISSUE = null; if (RERENDER) setTimeout(tryRerender, 0); }
+function closeModal() { if (closeSub()) return; closeQuick(false); ID_ED = null; ID_CEDIT = null; $('#scrim').classList.remove('on'); $('#scrim').innerHTML = ''; OPEN_ISSUE = null; if (RERENDER) setTimeout(tryRerender, 0); }
 
 /* ---- durum değişimi tek kapıdan ---- */
 /* o.rules === false: otomasyon kuralları çalışmaz (kolon silmede toplu taşıma, #12). */
@@ -3628,231 +3925,832 @@ function setStatus(i, sid, o = {}) {
   if (o.rules !== false) runRules(i, 'status');
 }
 
-/* ============================ İŞ DETAYI ============================ */
-let TAB = 'comments';
-function openIssue(id) {
-  const i = issue(id); if (!i) return;
-  OPEN_ISSUE = id;
-  const s = stat(i.statusId);
-  const kids = DB.issues.filter(x => x.parentId === i.id || (i.type === 'epic' && x.epicId === i.id));
-  const cm = DB.comments.filter(c => c.issueId === i.id).sort((a, b) => a.at - b.at);
-  const hs = DB.history.filter(h => h.issueId === i.id).sort((a, b) => b.at - a.at);
-  const wl = DB.worklogs.filter(w => w.issueId === i.id).sort((a, b) => b.date.localeCompare(a.date));
-  const rem = remaining(i), tot = (i.spent || 0) + rem || 1;
+/* ============================ İŞ DETAYI (görev 6, docs/tasarim/kart-detay) ============================
+   Kabuk bir kez kurulur (#idHead, #idMain, #idSide); her parça kendi kabına çizilir ve refreshIssue(parts)
+   yalnız istenen kapları yeniler (odak ve kaydırma korunur). Bağlayıcılar kaydı her seferinde
+   issue(OPEN_ISSUE) ile bulur: reloadState DB'yi yeniden kurunca eski nesneye yazılmaz. */
+let ID_ED = null;                 // açık satır içi düzenleyici: { part, f, start, force, id }
+let ID_DERR = null;               // reddedilen tarih: { f, v, msg }
+let ID_SUB_AS = null;             // satır içi alt iş için seçilen atanan
+let ID_SUBNEW = null;             // yeni eklenen alt iş (1,5 sn vurgu)
+let ID_MORE = 0;                  // etkinlikte "Daha fazla göster" sayısı
+const ID_DRAFT = { cmt: '', open: false };
+const ID_PARTS = { head: 'idHead', title: 'idT', desc: 'idD', subs: 'idS', links: 'idL', act: 'idA', props: 'idSide' };
+const ID_FEEDS = [['all', 'Tümü'], ['cmt', 'Yorumlar'], ['hist', 'Geçmiş'], ['work', 'Süre']];
+const curIssue = () => issue(OPEN_ISSUE);
+const projOfI = i => DB.projects.find(p => p.id === i?.projectId);
+const isDone = i => stat(i.statusId).cat === 'done';
+/* "18 Kas 2026 Çar" (uzun) ve "18 Kas 2026" (geçmiş); geçersizse boş. */
+const fmtDLong = s => { const d = day10(s) ? hmDay(day10(s)) : null;
+  return d ? `${d.getDate()} ${HM_MON[d.getMonth()]} ${d.getFullYear()} ${DAYS[(d.getDay() + 6) % 7]}` : ''; };
+const fmtDMid = s => { const d = day10(s) ? hmDay(day10(s)) : null; return d ? `${d.getDate()} ${HM_MON[d.getMonth()]} ${d.getFullYear()}` : String(s ?? ''); };
+const fmtTsMid = t => { const d = new Date(t); return isNaN(d) ? '' : `${d.getDate()} ${HM_MON[d.getMonth()]} ${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+const lateDays = i => i?.due && !isDone(i) && day10(i.due) && i.due < TODAY ? Math.round((hmDay(TODAY) - hmDay(i.due)) / 864e5) : 0;
+const canOwn = uid0 => canEdit() && (uid0 === CU()?.id || isAdmin());
 
-  const opt = (list, val, f = x => [x.id, x.name]) => list.map(x => { const [v, l] = f(x);
-    return `<option value="${v}" ${String(val) === String(v) ? 'selected' : ''}>${esc(l)}</option>`; }).join('');
-
-  openModal(`
-    <div class="m-h">
-      ${tIcon(i.type)}<span class="k">${i.key}</span>
-      <span class="chip cat-${s.cat}">${esc(s.name)}</span>
-      <span id="watchers"></span>
-      <button class="btn sm" id="logHere">Süre kaydet</button>
-      <button class="x" data-close>×</button>
+/* ---- ortak tarih bileşeni: gerçek değer aynı kimlikli input[type=date]'te ---- */
+function dateField(o) {
+  const v = day10(o.value), err = o.err || '';
+  const q = o.quick !== false ? [['Bugün', TODAY], ['Yarın', iso(addD(new Date(), 1))], ['Haftaya', iso(addD(new Date(), 7))]] : [];
+  return `<div class="id-df${err ? ' bad' : ''}" data-df="${esc(o.id)}">
+    <div class="id-date${v ? '' : ' empty'}${o.late ? ' late' : ''}">
+      <button type="button" class="id-dbtn" data-dfbtn="${esc(o.id)}" aria-label="${esc(o.label || 'Tarih')}: ${v ? esc(fmtDLong(v)) : 'seçilmedi'}">${ic('cal')}
+        <span class="t">${v ? esc(fmtDLong(v).replace(/ (\S+)$/, '')) + `<span class="wd">${esc(fmtDLong(v).split(' ').pop())}</span>` : esc(o.ph || 'Tarih seçin')}</span></button>
+      ${o.late ? `<span class="id-late">${ic('alert')}${o.late} gün gecikti</span>` : ''}
+      <input type="date" class="id-dnat" id="${esc(o.id)}" ${o.f ? `data-f="${esc(o.f)}"` : ''} value="${v}" tabindex="-1" aria-hidden="true"
+        ${o.min ? `min="${esc(o.min)}"` : ''} ${o.max ? `max="${esc(o.max)}"` : ''}>
     </div>
-    <div class="m-b">
-      <div class="m-l">
-        <h2 contenteditable="true" id="sum" spellcheck="false">${esc(i.summary)}</h2>
+    ${q.length || o.clear !== false ? `<div class="id-dq">${q.map(([l, d]) => `<button type="button" data-dfq="${d}" aria-pressed="${v === d}">${l}</button>`).join('')}
+      ${o.clear !== false ? `<button type="button" data-dfq="" class="clr">Temizle</button>` : ''}</div>` : ''}
+    <div class="id-err" id="${esc(o.id)}_e" role="alert">${err ? ic('alert') + esc(err) : ''}</div></div>`;
+}
+/* Tarih alanı olayları belge düzeyinde: düğme yerel seçiciyi açar, kısayollar değeri yazar ("change" olayı). */
+document.addEventListener('click', e => {
+  const b = e.target.closest?.('[data-dfbtn]');
+  if (b) { const inp = document.getElementById(b.dataset.dfbtn); if (!inp) return;
+    try { inp.showPicker(); } catch (_) { inp.focus(); } return; }
+  const q = e.target.closest?.('[data-dfq]');
+  if (q) { const inp = q.closest('.id-df')?.querySelector('input[type=date]'); if (!inp) return;
+    inp.value = q.dataset.dfq; inp.dispatchEvent(new Event('change', { bubbles: true })); }
+});
+document.addEventListener('change', e => {
+  const inp = e.target; if (!inp.classList?.contains('id-dnat')) return;
+  const w = inp.closest('.id-df'); if (!w) return;
+  const v = day10(inp.value), t = w.querySelector('.id-dbtn .t');
+  if (t) t.innerHTML = v ? esc(fmtDLong(v).replace(/ (\S+)$/, '')) + `<span class="wd">${esc(fmtDLong(v).split(' ').pop())}</span>` : 'Tarih seçin';
+  w.querySelector('.id-date')?.classList.toggle('empty', !v);
+  w.querySelectorAll('[data-dfq]').forEach(b => b.dataset.dfq && b.setAttribute('aria-pressed', String(b.dataset.dfq === v)));
+});
+const dfErr = (id, msg) => { const e = document.getElementById(id + '_e'); if (e) e.innerHTML = msg ? ic('alert') + esc(msg) : '';
+  e?.closest('.id-df')?.classList.toggle('bad', !!msg); };
+const dateOrderErr = (start, due) => start && due && due < start ? `Bitiş, başlangıçtan (${fmtDMid(start)}) önce olamaz. Kaydedilmedi.` : '';
 
-        <div class="sec">Açıklama</div>
-        <div class="desc" contenteditable="true" id="desc" spellcheck="false">${esc(i.description) || '<span style="color:var(--ink3)">Açıklama ekleyin…</span>'}</div>
-
-        ${subSection(i)}
-
-        ${linksSection(i)}
-
-        <div class="tabs" id="tabs">
-          <button data-t="comments" class="${TAB === 'comments' ? 'on' : ''}">Yorumlar ${cm.length ? `(${cm.length})` : ''}</button>
-          <button data-t="work" class="${TAB === 'work' ? 'on' : ''}">Süre kayıtları ${wl.length ? `(${wl.length})` : ''}</button>
-          <button data-t="hist" class="${TAB === 'hist' ? 'on' : ''}">Geçmiş</button>
-        </div>
-        <div id="tabbody">${
-          TAB === 'comments' ? (cm.map(c => `<div class="cmt">${avat(c.userId)}
-              <div class="bd"><div class="hd"><b>${esc(user(c.userId)?.name || '—')}</b> · ${fmtDT(c.at)}
-                ${c.edited ? '<span style="color:var(--ink3)">· düzenlendi</span>' : ''}
-                ${(c.userId === CU().id || isAdmin()) && canEdit() ? `<span style="float:right;display:flex;gap:6px">
-                  <button class="btn sm" data-cedit="${c.id}">Düzenle</button>
-                  <button class="btn sm danger" data-cdel="${c.id}">Sil</button></span>` : ''}</div>
-                ${DB.ui.editCmt === c.id
-                  ? `<textarea class="inp" id="ce_${c.id}" rows="3">${esc(c.body)}</textarea>
-                     <div style="display:flex;gap:6px;margin-top:6px">
-                       <button class="btn sm pri" data-csave="${c.id}">Kaydet</button>
-                       <button class="btn sm" data-ccancel>Vazgeç</button></div>`
-                  : esc(c.body)}</div></div>`).join('')
-              || '<div class="empty">Henüz yorum yok</div>') +
-            `<div style="margin-top:10px"><textarea class="inp" id="newCmt" rows="2" placeholder="Yorum yazın…"></textarea>
-             <button class="btn sm pri" id="addCmt" style="margin-top:6px">Yorumu ekle</button></div>`
-          : TAB === 'work' ? (wl.map(w => `<div class="wl" style="padding:8px 0">${avat(w.userId)}
-              <span style="flex:1"><b>${esc(user(w.userId)?.name || '—')}</b>
-              <span style="color:var(--ink3)">${esc(w.comment) || 'çalıştı'}</span></span>
-              <span class="k">${fmtD(w.date)}${w.time ? ' ' + w.time : ''}</span><b class="num">${fmtDur(w.hours)}</b>
-              ${(w.userId === CU().id || isAdmin()) && canEdit()
-                ? `<button class="btn sm" data-editwl="${w.id}">Düzenle</button>` : ''}</div>`).join('')
-              || '<div class="empty">Süre kaydı yok</div>')
-          : (hs.map(h => `<div class="hist"><span class="w">${fmtDT(h.at)}</span> —
-              <b>${esc(user(h.userId)?.name || '—')}</b> <i>${esc(h.field)}</i> alanını
-              <span class="chip lbl">${esc(h.from)}</span> → <span class="chip lbl">${esc(h.to)}</span> yaptı</div>`).join('')
-              || '<div class="empty">Değişiklik kaydı yok</div>')
-        }</div>
-      </div>
-
-      <aside class="m-r">
-        <div class="sec" style="margin-top:0">Detaylar</div>
-        <div class="kv">
-          <span class="lb">Durum</span><select class="inp" data-f="statusId">${opt(stats(), i.statusId)}</select>
-          <span class="lb">Atanan</span><select class="inp" data-f="assignee"><option value="">Atanmamış</option>${opt(projUsers(), i.assignee)}</select>
-          ${MOD('reporter') ? `<span class="lb">Raporlayan</span><select class="inp" data-f="reporter">${opt(DB.users, i.reporter)}</select>` : ''}
-          <span class="lb">Öncelik</span><select class="inp" data-f="priority">${opt(LVLS, lvl(i.priority), p => [p, PRI[p][1]])}</select>
-          <span class="lb">Tip</span><select class="inp" data-f="type">${opt(ISSUE_TYPES(), i.type, t => [t, TYPE[t][2]])}</select>
-          ${MOD('points') ? `<span class="lb">Puan</span><input class="inp" data-f="points" value="${i.points ?? ''}" placeholder="—">` : ''}
-          ${projType(DB.projects.find(p => p.id === i.projectId)) === 'agile' ? `<span class="lb">Sprint</span><select class="inp" data-f="sprintId"><option value="">Backlog</option>${opt(sprintsOf(), i.sprintId)}</select>` : ''}
-          ${MOD('epic') ? `<span class="lb">Epik</span><select class="inp" data-f="epicId"><option value="">Yok</option>${opt(epicsOf().filter(e => e.id !== i.id), i.epicId, e => [e.id, e.summary])}</select>` : ''}
-          ${planRow(i)}
-          <span class="lb">Faturalama</span><select class="inp" data-f="billable">${opt(BILLABLE, billOf(i), x => [x, x])}</select>
-          <span class="lb">Fatura türü</span><select class="inp" data-f="billType">${opt(BILLTYPE, btypeOf(i), x => [x, x])}</select>
-        </div>
-
-        ${cfPanel(i)}
-        ${labelEditor(i)}
-
-        <div class="sec">Zaman takibi</div>
-        <div class="timebar">
-          <i class="sp" style="width:${(i.spent / tot * 100).toFixed(1)}%"></i>
-          <i class="rm" style="width:${(rem / tot * 100).toFixed(1)}%"></i>
-        </div>
-        <div class="tlegend"><span>${fmtDur(i.spent)} harcandı</span><span>${fmtDur(rem)} kaldı</span></div>
-        ${i.spent + rem > i.estimate && i.estimate ? `<div class="chip" style="background:var(--risk-bg);color:var(--risk);margin-top:6px">Tahmin aşımı: +${fmtDur(i.spent + rem - i.estimate)}</div>` : ''}
-        <div class="kv" style="margin-top:10px">
-          <span class="lb">Tahmin</span><input class="inp" data-f="estimate" value="${fmtDur(i.estimate)}" placeholder="3d 4h">
-          <span class="lb">Kalan</span><input class="inp" data-f="remainingEst" value="${fmtDur(rem)}" placeholder="0h"
-            ${canRemaining() ? '' : 'disabled title="Kalan tahmini yalnızca yönetici değiştirebilir"'}>
-          <span class="lb">Harcanan</span><span class="num" style="font-size:12px">${fmtDur(i.spent)}</span>
-        </div>
-
-        <div class="sec">Kayıt</div>
-        <div style="font-size:11.5px;color:var(--ink3);line-height:1.7">
-          Oluşturuldu ${fmtDT(i.created)}<br>${hs.length ? 'Son değişiklik ' + fmtDT(hs[0].at) : 'Değişiklik yok'}</div>
-        <button class="btn sm danger" style="margin-top:12px;width:100%" data-del="${i.id}">İşi sil</button>
-      </aside>
-    </div>`);
-
-  const S = $('#scrim');
-  S.dataset.issue = i.id;
-  if (!canEdit()) {
-    $$('.m-b input,.m-b select,.m-b textarea,.m-b button.btn', S).forEach(el => el.disabled = true);
-    $$('[contenteditable]', S).forEach(el => el.contentEditable = 'false');
-    const lh = $('#logHere'); if (lh) lh.disabled = true;
-    const dl = S.querySelector('[data-del]'); if (dl) dl.remove();
-  }
-  $$('[data-f]', S).forEach(el => el.onchange = () => {
-    const f = el.dataset.f; let v = el.value;
-    const label = { statusId: 'Durum', assignee: 'Atanan', reporter: 'Raporlayan', priority: 'Öncelik',
-      type: 'Tip', points: 'Puan', sprintId: 'Sprint', epicId: 'Epik', due: 'Bitiş', start: 'Başlangıç',
-      estimate: 'Tahmin', remainingEst: 'Kalan tahmin', billable: 'Faturalama', billType: 'Fatura türü' }[f];
-    const isDur = f === 'estimate' || f === 'remainingEst';
-    if (f === 'statusId') { setStatus(i, v); }
-    else if (f === 'priority') setPriority(i, +v);
-    else if (f === 'assignee') setAssignee(i, v);
-    else {
-      const before = isDur ? fmtDur(f === 'estimate' ? i.estimate : remaining(i)) : (i[f] ?? '—');
-      if (f === 'points') v = v === '' ? null : parseFloat(v.replace(',', '.'));
-      else if (isDur) v = parseDur(v);
-      else if (f === 'sprintId' || f === 'epicId') v = v || null;
-      i[f] = v;
-      /* Henüz süre kaydı yoksa tahmin değişince kalan da onunla eşitlenir. */
-      if (f === 'estimate' && !i.spent) i.remainingEst = v;
-      /* Tarih sırası korunur: bitiş başlangıçtan önce olamaz. */
-      if (f === 'start' && v && i.due && v > i.due) i.due = v;
-      if (f === 'due' && v && i.start && v < i.start) i.start = v;
-      logHist(i, label, before, isDur ? fmtDur(v) : (v ?? '—'));
-    }
-    save(); render(); openIssue(i.id);
-  });
-  $('#sum').onblur = () => { const v = $('#sum').innerText.trim(); if (v && v !== i.summary) { logHist(i, 'Özet', i.summary, v); i.summary = v; save(); render(); } };
-  $('#desc').onblur = () => { const v = $('#desc').innerText.trim(); if (v !== i.description) { i.description = v; save(); } };
-  $('#tabs').onclick = e => { const b = e.target.closest('[data-t]'); if (b) { TAB = b.dataset.t; openIssue(i.id); } };
-  $$('[data-cedit]').forEach(b => b.onclick = () => { DB.ui.editCmt = b.dataset.cedit; openIssue(i.id); });
-  $$('[data-ccancel]').forEach(b => b.onclick = () => { DB.ui.editCmt = null; openIssue(i.id); });
-  $$('[data-csave]').forEach(b => b.onclick = () => {
-    const c = DB.comments.find(x => x.id === b.dataset.csave);
-    const v = $('#ce_' + c.id).value.trim(); if (!v) return;
-    if (v !== c.body) { c.body = v; c.edited = Date.now(); }
-    DB.ui.editCmt = null; save(); openIssue(i.id);
-  });
-  $$('[data-cdel]').forEach(b => b.onclick = () => {
-    if (!confirm('Yorum silinsin mi?')) return;
-    DB.comments = DB.comments.filter(x => x.id !== b.dataset.cdel); save(); openIssue(i.id); });
-  const ac = $('#addCmt'); if (ac) ac.onclick = () => {
-    const v = $('#newCmt').value.trim(); if (!v) return;
-    DB.comments.push({ id: uid('c'), issueId: i.id, userId: CU().id, at: Date.now(), body: v });
-    save(); openIssue(i.id);
-  };
-  $('#logHere').onclick = () => logWorkForm(i.id);
-  wireIssueExtras(i);
+/* ---- iş oluşturmanın tek kapısı: önek çağırandan gelir (her yol bugünkü önekini korur) ---- */
+function createIssue(pr, f, prefix = pr.key) {
+  const est = f.estimate || 0;
+  const it = Object.assign({
+    id: uid('i'), key: `${prefix}-${++pr.counter}`, projectId: pr.id, type: (DB.cfg.types[0] || {}).id || 'task',
+    summary: '', description: '', statusId: statsOf(pr.id)[0]?.id, assignee: null, reporter: CU().id, priority: 3,
+    points: null, estimate: est, remainingEst: est, spent: 0, labels: [], cf: {}, sprintId: null, epicId: null,
+    parentId: null, start: '', due: '', created: Date.now(), updatedAt: Date.now(),
+    billable: BILLABLE[0], billType: BILLTYPE[0], rank: Math.max(0, ...DB.issues.map(x => x.rank || 0)) + 100,
+  }, f);
+  if (f.remainingEst == null) it.remainingEst = it.estimate;
+  DB.issues.push(it);
+  runRules(it, 'created');
+  return it;
 }
 
-/* ============================ FORMLAR ============================ */
-function newIssueForm(preset = {}) {
-  if (!P()) return toast('Önce bir proje seçin');
-  const sp = preset.sprintId ?? (activeSprint()?.id || '');
-  openModal(`
-    <div class="m-h"><b>İş oluştur</b><span class="k" style="color:var(--ink3)">${P().key}</span><button class="x" data-close>×</button></div>
-    <div style="padding:16px 18px">
-      <div class="form-2">
-        <div class="form-row"><label class="field">Tip</label><select class="inp" id="f_type">
-          ${ISSUE_TYPES().map(t => `<option value="${t}" ${preset.type === t ? 'selected' : ''}>${TYPE[t][2]}</option>`).join('')}</select></div>
-        <div class="form-row"><label class="field">Öncelik</label><select class="inp" id="f_pri">
-          ${priOpts(3)}</select></div>
-      </div>
-      <div class="form-row"><label class="field">Özet</label><input class="inp" id="f_sum" placeholder="Ne yapılacak?"></div>
-      <div class="form-row"><label class="field">Açıklama</label><textarea class="inp" id="f_desc" rows="3"></textarea></div>
-      <div class="form-2">
-        <div class="form-row"><label class="field">Atanan</label><select class="inp" id="f_as"><option value="">Atanmamış</option>
-          ${projUsers().map(u => `<option value="${u.id}">${esc(u.name)}</option>`).join('')}</select></div>
-        <div class="form-row"><label class="field">Durum</label><select class="inp" id="f_st">
-          ${stats().map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select></div>
-        ${AGILE() ? `<div class="form-row"><label class="field">Sprint</label><select class="inp" id="f_sp"><option value="">Backlog</option>
-          ${sprintsOf().filter(s => s.state !== 'closed').map(s => `<option value="${s.id}" ${sp === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div>` : ''}
-        ${MOD('epic') ? `<div class="form-row"><label class="field">Epik</label><select class="inp" id="f_ep"><option value="">Yok</option>
-          ${epicsOf().map(e => `<option value="${e.id}">${esc(e.summary)}</option>`).join('')}</select></div>` : ''}
-        ${MOD('points') ? `<div class="form-row"><label class="field">Story point</label><input class="inp" id="f_pts" placeholder="—"></div>` : ''}
-        <div class="form-row"><label class="field">Başlangıç</label><input class="inp" type="date" id="f_start"></div>
-        <div class="form-row"><label class="field">Bitiş</label><input class="inp" type="date" id="f_due"></div>
-        <div class="form-row"><label class="field">Faturalama</label><select class="inp" id="f_bill">
-          ${BILLABLE.map(x => `<option>${x}</option>`).join('')}</select></div>
-        <div class="form-row"><label class="field">Fatura türü</label><select class="inp" id="f_btype">
-          ${BILLTYPE.map(x => `<option>${x}</option>`).join('')}</select></div>
-        <div class="form-row"><label class="field">Tahmin</label><input class="inp" id="f_est" placeholder="2d 4h"></div>
-      </div>
-      ${fieldsFor().length ? `<div class="sec">Özel alanlar</div><div class="form-2">
-        ${fieldsFor().map(f => `<div class="form-row"><label class="field">${esc(f.name)}</label>${cfInput(f, '')}</div>`).join('')}
-      </div>` : ''}
-      <div class="form-row"><label class="field">Etiketler (virgülle)</label><input class="inp" id="f_lbl" placeholder="api, acil"></div>
+/* ---- alt pencere katmanı: iş detayı açıkken onu kapatmadan üstte açılır ---- */
+function openSub(html, cls = '') {
+  if (!$('#scrim').classList.contains('on')) { openModal(html, cls); const m = $('#scrim .modal'); m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); return m; }
+  let s = $('#scrim2');
+  if (!s) { s = document.createElement('div'); s.id = 'scrim2'; s.className = 'scrim sub'; document.body.appendChild(s); }
+  s.innerHTML = `<div class="modal ${cls}" role="dialog" aria-modal="true">${html}</div>`;
+  s.classList.add('on');
+  const f = s.querySelector('input:not([type=hidden]):not(.id-dnat),textarea,select'); if (f) setTimeout(() => f.focus(), 30);
+  return s.querySelector('.modal');
+}
+function closeSub() {
+  const s = $('#scrim2'); if (!s || !s.classList.contains('on')) return false;
+  s.classList.remove('on'); s.innerHTML = '';
+  if (OPEN_ISSUE && issue(OPEN_ISSUE)) { refreshIssue(['all']); setTimeout(() => $('#scrim .modal.id-dlg')?.focus({ preventScroll: true }), 0); }
+  return true;
+}
+const topDialog = () => $('#scrim2.on .modal') || $('#scrim.on .modal');
+
+/* ---- silme onayı (iş, yorum, süre kaydı, toplu) ---- */
+function confirmDel(o) {
+  const m = openSub(`<div class="id-mh"><span class="id-mic del">${ic('trash')}</span>
+      <div class="tx"><b id="delTitle">${esc(o.title)}</b>${o.sub ? `<div class="sub">${esc(o.sub)}</div>` : ''}</div>
+      <button type="button" class="id-ib" data-close aria-label="Kapat">${ic('x')}</button></div>
+    <div class="id-mb">
+      ${o.item ? `<div class="id-delitem">${o.item}</div>` : ''}
+      ${o.counts?.length ? `<div class="id-sec2">Birlikte silinecekler</div><div class="id-delc">${o.counts.map(([icn, n, l]) =>
+        `<div>${ic(icn)}<b class="num">${n}</b><span>${esc(l)}</span></div>`).join('')}</div>` : ''}
+      ${(o.warns || []).map(w => `<div class="id-delw">${ic('subs')}<span>${w}</span></div>`).join('')}
+      <div class="id-deli">${ic('back')}<span>Silindikten sonra <b>8 saniye</b> boyunca "Geri al" ile ${esc(o.undoText || 'kayıt geri gelir')}.</span></div>
     </div>
-    <div class="m-f"><button class="btn" data-close>Vazgeç</button><button class="btn pri" id="doCreate">Oluştur</button></div>`);
-  $('#doCreate').onclick = () => {
-    const sum = $('#f_sum').value.trim(); if (!sum) return toast('Özet gerekli');
-    const pr = P();
-    const it = {
-      id: uid('i'), key: `${pr.key}-${++pr.counter}`, projectId: pr.id, type: $('#f_type').value,
-      summary: sum, description: $('#f_desc').value.trim(), statusId: $('#f_st').value,
-      assignee: $('#f_as').value || null, reporter: CU().id, priority: +$('#f_pri').value,
-      points: $('#f_pts')?.value ? parseFloat($('#f_pts').value.replace(',', '.')) : null,
-      estimate: parseDur($('#f_est').value), remainingEst: parseDur($('#f_est').value), spent: 0, labels: [],
-      sprintId: $('#f_sp')?.value || null, epicId: $('#f_ep')?.value || null, parentId: null,
-      start: $('#f_start')?.value || '', due: $('#f_due')?.value || '', created: Date.now(), updatedAt: Date.now(), rank: Math.max(0, ...DB.issues.map(x => x.rank)) + 100,
-      parentId: preset.parentId || null, cf: {},
-      billable: $('#f_bill').value, billType: $('#f_btype').value,
-    };
-    it.labels = $('#f_lbl').value.split(',').map(s => s.trim()).filter(Boolean);
-    $$('[data-cf]').forEach(el => { const f = DB.fields.find(x => x.id === el.dataset.cf);
-      const v = f.type === 'checkbox' ? el.checked : el.value;
-      if (v !== '' && v !== false) it.cf[f.id] = f.type === 'number' ? parseFloat(String(v).replace(',', '.')) : v; });
-    DB.issues.push(it);
-    runRules(it, 'created');
-    closeModal(); save(); render(); toast(it.key + ' oluşturuldu');
+    <div class="m-f"><span class="spacer"></span><button type="button" class="btn" id="delNo" data-close>Vazgeç</button>
+      <button type="button" class="btn id-danger" id="delOk">${ic('trash')}Sil</button></div>`, 'narrow id-m id-trap');
+  m.setAttribute('role', 'alertdialog'); m.setAttribute('aria-labelledby', 'delTitle');
+  setTimeout(() => $('#delNo')?.focus(), 40);
+  $('#delOk').onclick = () => { closeSubOrModal(); o.onOk(); };
+}
+const closeSubOrModal = () => { if (!closeSub()) closeModal(); };
+
+/* ---- 8 sn bekletme (HOLD): silinen kayıtlar yerelde çıkarılır, sunucuya süre dolunca gider ---- */
+function holdStart(recs, msg) {
+  holdReleaseAll();
+  const h = { keys: new Set(recs.map(([c, x]) => c + '\u0001' + x.id)), before: recs.map(([c, x]) => [c, JSON.parse(JSON.stringify(x))]), t: null };
+  h.undo = () => holdUndo(h);
+  HOLDS.push(h);
+  const tick = () => {
+    if (!HOLDS.includes(h)) return;
+    const t = $('#toast');
+    if (toast._fn === h.undo && t.classList.contains('on') && t.classList.contains('paused')) { h.t = setTimeout(tick, 500); return; }
+    holdRelease(h);
   };
+  h.t = setTimeout(tick, 8000);
+  toast(msg, { label: 'Geri al', fn: h.undo, ms: 8000 });
+  return h;
+}
+function holdRelease(h) {
+  const k = HOLDS.indexOf(h); if (k < 0) return;
+  HOLDS.splice(k, 1); clearTimeout(h.t);
+  if (toast._fn === h.undo) toastHide();
+  scheduleSync(50);
+}
+function holdReleaseAll() { [...HOLDS].forEach(holdRelease); }
+function holdClear() { HOLDS.forEach(h => clearTimeout(h.t)); HOLDS.length = 0; }
+function holdUndo(h) {
+  if (!HOLDS.includes(h)) return toast('Geri alınamadı: silme sunucuya gönderildi', { warn: true });
+  HOLDS.splice(HOLDS.indexOf(h), 1); clearTimeout(h.t);
+  for (const [c, obj] of h.before) {
+    const arr = (DB[c] ||= []), k = arr.findIndex(x => x && x.id === obj.id);
+    if (k >= 0) { const o = arr[k]; for (const key of Object.keys(o)) delete o[key]; Object.assign(o, obj); } else arr.push(obj);
+  }
+  save();
+  if (OPEN_ISSUE && issue(OPEN_ISSUE)) { RERENDER = true; refreshIssue(['all']); } else render();
+  toast('Geri alındı');
+}
+
+function issueDelete(ids) {
+  ids = ids.filter(id => issue(id)); if (!ids.length || !canEdit()) return;
+  const set = new Set(ids), one = ids.length === 1 ? issue(ids[0]) : null;
+  const cm = DB.comments.filter(c => set.has(c.issueId)), wl = DB.worklogs.filter(w => set.has(w.issueId));
+  const ln = DB.links.filter(l => set.has(l.from) || set.has(l.to));
+  const kids = DB.issues.filter(x => !set.has(x.id) && set.has(x.parentId)), ekids = DB.issues.filter(x => !set.has(x.id) && set.has(x.epicId));
+  const hs = DB.history.filter(x => set.has(x.issueId)), tr = DB.transitions.filter(x => set.has(x.issueId));
+  const hours = wl.reduce((a, w) => a + (w.hours || 0), 0);
+  const warns = [];
+  if (kids.length) warns.push(`<b>${kids.length} alt işin üst iş bağı kopar.</b> Alt işler silinmez, üst işsiz kalır.`);
+  if (ekids.length) warns.push(`<b>${ekids.length} işin epik bağı kopar.</b> İşler silinmez.`);
+  confirmDel({
+    title: one ? 'İş silinsin mi?' : `${ids.length} iş silinsin mi?`, sub: 'Bağlı kayıtlarıyla birlikte çöp kutusuna gider.',
+    item: one ? `${tIcon(one.type)}<span class="k">${esc(one.key)}</span><span class="t">${esc(one.summary)}</span>`
+      : `<span class="t">${ids.slice(0, 5).map(id => esc(issue(id).key)).join(', ')}${ids.length > 5 ? ` +${ids.length - 5}` : ''}</span>`,
+    counts: [['chat', cm.length, 'yorum'], ['clock', wl.length, `süre kaydı${hours ? ' · ' + fmtDur(hours) : ''}`], ['link', ln.length, 'bağlantı']],
+    warns, undoText: ids.length > 1 ? 'işler ve bağlı kayıtları geri gelir' : 'iş ve bağlı kayıtları geri gelir',
+    onOk: () => {
+      const recs = [...ids.map(id => ['issues', issue(id)]), ...cm.map(x => ['comments', x]), ...wl.map(x => ['worklogs', x]),
+        ...ln.map(x => ['links', x]), ...hs.map(x => ['history', x]), ...tr.map(x => ['transitions', x]),
+        ...kids.map(x => ['issues', x]), ...ekids.filter(x => !kids.includes(x)).map(x => ['issues', x])];
+      const keys = ids.map(id => issue(id).key);
+      DB.issues = DB.issues.filter(x => !set.has(x.id));
+      DB.comments = DB.comments.filter(x => !set.has(x.issueId)); DB.worklogs = DB.worklogs.filter(x => !set.has(x.issueId));
+      DB.history = DB.history.filter(x => !set.has(x.issueId)); DB.transitions = DB.transitions.filter(x => !set.has(x.issueId));
+      DB.links = DB.links.filter(l => !set.has(l.from) && !set.has(l.to));
+      kids.forEach(k => { k.parentId = null; }); ekids.forEach(k => { k.epicId = null; });
+      ids.forEach(id => SEL.delete(id));
+      if (set.has(OPEN_ISSUE)) closeModal();
+      save(); render();
+      const parts = [cm.length && `${cm.length} yorum`, wl.length && `${wl.length} süre kaydı`, ln.length && `${ln.length} bağlantı`].filter(Boolean);
+      holdStart(recs, `${keys.length > 1 ? keys.length + ' iş' : keys[0]} silindi.${parts.length ? ' ' + parts.join(', ') + ' ile birlikte' : ''}`);
+    },
+  });
+}
+function deleteComment(id) {
+  const c = DB.comments.find(x => x.id === id); if (!c) return;
+  if (!canOwn(c.userId)) return toast('Başkasının yorumunu yalnızca yönetici silebilir');
+  confirmDel({ title: 'Yorum silinsin mi?', item: `${avat(c.userId)}<span class="t">${esc(String(c.body || '').slice(0, 120))}</span>`, undoText: 'yorum geri gelir',
+    onOk: () => { DB.comments = DB.comments.filter(x => x.id !== id); save(); refreshIssue(['act']); holdStart([['comments', c]], 'Yorum silindi.'); } });
+}
+/* Süre kaydı silmenin tek yolu (iş detayı, çizelge, efor listesi, düzenleme penceresi). */
+function deleteWorklog(id) {
+  const w = DB.worklogs.find(x => x.id === id); if (!w) return;
+  if (!canOwn(w.userId)) return toast('Başkasının süre kaydını yalnızca yönetici silebilir');
+  const i = issue(w.issueId);
+  confirmDel({ title: 'Süre kaydı silinsin mi?', undoText: 'süre kaydı geri gelir',
+    item: `${avat(w.userId)}<b class="num">${fmtDur(w.hours)}</b><span class="t">${esc(fmtDMid(w.date))} · ${esc(String(w.comment || '').slice(0, 80))}</span>`,
+    onOk: () => {
+      const recs = [['worklogs', w]]; if (i) recs.push(['issues', i]);
+      const h = holdBefore(recs);
+      if (i) { i.spent = Math.max(0, (i.spent || 0) - w.hours); if (!w.adj || w.adj === 'auto') i.remainingEst = remaining(i) + w.hours; }
+      DB.worklogs = DB.worklogs.filter(x => x.id !== w.id);
+      save(); if (OPEN_ISSUE && issue(OPEN_ISSUE)) { RERENDER = true; refreshIssue(['all']); } else render();
+      holdStart(h, `Süre kaydı silindi: ${fmtDur(w.hours)}`);
+    } });
+}
+/* Kayıtların silmeden ÖNCEKİ kopyası (iş kaydı değişeceği için önce alınır). */
+const holdBefore = recs => recs.map(([c, x]) => [c, JSON.parse(JSON.stringify(x))]);
+
+/* ---- açılış ve yenileme ---- */
+function openIssue(id) {
+  const i = issue(id); if (!i) return;
+  if (OPEN_ISSUE === id && $('#scrim.on .modal.id-dlg')) return refreshIssue(['all']);
+  closeQuick(false); closeSub();
+  ID_ED = null; ID_DERR = null; ID_SUB_AS = null; ID_MORE = 0; ID_DRAFT.cmt = ''; ID_DRAFT.open = false; ID_CEDIT = null;
+  const s = $('#scrim');
+  s.innerHTML = `<div class="modal id-dlg id-trap" role="dialog" aria-modal="true" aria-labelledby="idTitle" tabindex="-1">
+    <div class="id-head" id="idHead"></div>
+    <div class="id-body"><div class="id-main" id="idMain"><div id="idT"></div><div id="idD"></div><div id="idS"></div><div id="idL"></div><div id="idA"></div></div>
+      <aside class="id-side" id="idSide" aria-label="Özellikler"></aside></div></div>`;
+  s.classList.add('on');
+  OPEN_ISSUE = id; s.dataset.issue = id;
+  const m = s.querySelector('.modal');
+  m.addEventListener('click', idClick);
+  m.addEventListener('keydown', idKey);
+  m.addEventListener('change', idChange);
+  m.addEventListener('input', e => { if (e.target.id === 'newCmt') ID_DRAFT.cmt = e.target.value; });
+  m.addEventListener('focusout', idBlur);
+  refreshIssue(['all']);
+  setOnline.k = null; setOnline(ONLINE.map(o => ({ ...o })).concat(ME ? [{ id: ME.id }] : []));
+  setTimeout(() => m.focus({ preventScroll: true }), 30);
+}
+function idFocusKey() {
+  const a = document.activeElement, m = $('#scrim .modal.id-dlg');
+  if (!a || !m || !m.contains(a) || a === m) return null;
+  if (a.id) return '#' + CSS.escape(a.id);
+  for (const at of a.attributes) if (at.name.startsWith('data-')) return `[${at.name}="${CSS.escape(at.value)}"]`;
+  return null;
+}
+function refreshIssue(parts = ['all']) {
+  const i = curIssue(), m = $('#scrim .modal.id-dlg'); if (!i || !m) return;
+  const all = parts.includes('all'), sc = [$('#scrim').scrollTop, m.scrollTop], fk = idFocusKey();
+  const R = { head: issueHead, title: issueTitle, desc: issueDesc, subs: issueSubs, links: issueLinks, act: issueActivity, props: issueProps };
+  for (const [k, fn] of Object.entries(R)) {
+    if (!all && !parts.includes(k)) continue;
+    const el = document.getElementById(ID_PARTS[k]); if (!el) continue;
+    if (ID_ED && ID_ED.part === k) { idStale(i); continue; }
+    el.innerHTML = fn(i);
+  }
+  $('#scrim').scrollTop = sc[0]; m.scrollTop = sc[1];
+  if (fk && !m.contains(document.activeElement)) m.querySelector(fk)?.focus({ preventScroll: true });
+}
+/* Başkasının değişikliği: açık düzenleyicinin kabı yenilenmez; Özet/Açıklama'da uyarı çıkar. */
+function idStale(i) {
+  const ed = ID_ED; if (!ed || !['summary', 'description'].includes(ed.f)) return;
+  const cur = String(i[ed.f] ?? ''), box = document.getElementById(ed.f === 'summary' ? 'idSumStale' : 'idDescStale');
+  if (!box) return;
+  box.innerHTML = cur !== ed.start ? `${ic('alert')}<span>Bu alan az önce değişti: <b>${esc(cur.slice(0, 200)) || '(boş)'}</b></span>
+    <button type="button" class="btn sm" data-stale="save">Yine de kaydet</button><button type="button" class="btn sm" data-stale="drop">Vazgeç</button>` : '';
+  box.hidden = cur === ed.start;
+}
+
+/* ---- parçalar ---- */
+function issueHead(i) {
+  const s = stat(i.statusId), pr = projOfI(i), ed = canEdit();
+  const st = `<span class="cat-dot ${esc(s.cat)}"></span><span class="t">${esc(s.name)}</span>`;
+  return `<nav class="id-crumb" aria-label="Konum"><span class="id-proj">${esc(pr?.name || '')}</span>${ic('chevr')}${tIcon(i.type)}
+      <button type="button" class="id-key" data-copykey aria-label="Anahtarı kopyala: ${esc(i.key)}" title="Anahtarı kopyala">${esc(i.key)}${ic('copy')}</button></nav>
+    <span id="watchers"></span>
+    <div class="id-hact">
+      ${ed ? `<button type="button" class="id-stbtn ${esc(s.cat)}" data-f="statusId" data-pm="status" aria-haspopup="menu" aria-label="Durum: ${esc(s.name)}">${st}${ic('down')}</button>`
+        : `<span class="id-stbtn ro ${esc(s.cat)}">${st}</span>`}
+      ${ed ? `<button type="button" class="btn id-hb" id="logHere">${ic('timeplus')}<span class="lbl">Süre kaydet</span></button>
+        <button type="button" class="id-ib" id="idMore" data-pm="more" aria-haspopup="menu" aria-label="Diğer işlemler" title="Diğer işlemler">${ic('more')}</button>` : ''}
+      <button type="button" class="id-ib" data-close aria-label="Kapat" title="Kapat (Esc)">${ic('x')}</button></div>`;
+}
+function issueTitle(i) {
+  const ed = canEdit(), rep = user(i.reporter);
+  const last = DB.history.filter(h => h.issueId === i.id).reduce((a, h) => Math.max(a, h.at || 0), 0) || i.updatedAt;
+  return `<h2 class="id-title" id="idTitle">${ed ? `<span class="id-ed" tabindex="0" role="button" data-ie="summary" title="Düzenlemek için tıklayın">${esc(i.summary)}</span>` : esc(i.summary)}</h2>
+    <div class="id-meta">${rep ? `<b>${esc(rep.name)}</b> oluşturdu · ` : ''}<span title="${esc(fmtTsMid(i.created))}">${esc(fmtDMid(iso(new Date(i.created || Date.now()))))}</span>
+      ${last ? ` · <span title="${esc(fmtTsMid(last))}">Son değişiklik ${esc(ago(last))}</span>` : ''}</div>`;
+}
+function issueDesc(i) {
+  const ed = canEdit(), d = String(i.description || '');
+  return `<section class="id-sec" aria-labelledby="idDescH"><div class="id-sh"><h3 id="idDescH">${ic('backlog')}Açıklama</h3>
+      ${ed && d ? `<button type="button" class="id-link" data-ie="description">${ic('pencil')}Düzenle</button>` : ''}</div>
+    ${d ? `<div class="id-desc${ed ? ' id-ed' : ''}" ${ed ? 'data-ie="description" tabindex="0" role="button" aria-label="Açıklamayı düzenle"' : ''}>${esc(d)}</div>`
+      : ed ? `<button type="button" class="id-desc empty id-ed" data-ie="description">Açıklama ekleyin…</button>` : '<div class="id-empty">Açıklama yok</div>'}</section>`;
+}
+function issueSubs(i) {
+  if (i.type === 'sub') return '';
+  const ed = canEdit(), kids = kidsOf(i.id), done = kids.filter(isDone).length, pc = kids.length ? Math.round(done / kids.length * 100) : 0;
+  const asU = user(ID_SUB_AS);
+  return `<section class="id-sec" aria-labelledby="idSubH"><div class="id-sh"><h3 id="idSubH">${ic('subs')}Alt işler</h3>
+      ${kids.length ? `<span class="id-prog" role="img" aria-label="${done}/${kids.length} tamamlandı"><i style="width:${pc}%"></i></span><span class="num id-cnt">${done}/${kids.length}</span>` : ''}
+      ${ed ? `<button type="button" class="id-link" id="addSub">${ic('filter')}Daha fazla alan</button>` : ''}</div>
+    ${kids.length || ed ? `<div class="id-list">${kids.map(k => { const ks = stat(k.statusId), dn = ks.cat === 'done';
+      return `<div class="id-srow${dn ? ' done' : ''}${ID_SUBNEW === k.id ? ' new' : ''}" data-sid="${esc(k.id)}">
+        ${ed ? `<button type="button" class="id-chk${dn ? ' on' : ''}" data-subdone="${esc(k.id)}" role="checkbox" aria-checked="${dn}" aria-label="${esc(k.key)} tamamla">${dn ? ic('check') : ''}</button>`
+          : `<span class="id-chk ro${dn ? ' on' : ''}" aria-hidden="true">${dn ? ic('check') : ''}</span>`}
+        ${tIcon(k.type)}<span class="k">${esc(k.key)}</span>
+        <span class="t" data-open="${esc(k.id)}">${esc(k.summary)}</span>
+        <span class="chip cat-${esc(ks.cat)}">${esc(ks.name)}</span>${pIcon(k.priority)}${avat(k.assignee)}
+        <span class="num id-est">${k.estimate ? fmtDur(k.estimate) : '–'}</span>
+        ${ed ? `<button type="button" class="id-ib sm" data-sublog="${esc(k.id)}" aria-label="${esc(k.key)} süre kaydet" title="Süre kaydet">${ic('timeplus')}</button>` : ''}</div>`; }).join('')}
+      ${ed ? `<div class="id-sadd">${ic('plus')}<input class="inp" id="subIn" maxlength="200" autocomplete="off" placeholder="Alt iş ekle: özet yazın, Enter ile oluşturun" aria-label="Yeni alt iş özeti">
+        <button type="button" class="btn sm" id="subAs" data-pm="subas" aria-haspopup="menu">${asU ? avat(asU.id) + esc(asU.name) : ic('userplus') + 'Atanan'}</button>
+        <input class="inp id-sest" id="subEst" placeholder="Tahmin" aria-label="Alt iş tahmini" autocomplete="off"></div>` : ''}
+    </div>${ed ? '<div class="id-hint"><span class="kbd">Enter</span> oluşturur, imleç yeni satırda kalır · <span class="kbd">Esc</span> vazgeçer · atanan ve tahmin isteğe bağlı</div>' : ''}`
+    : '<div class="id-empty">Alt iş yok</div>'}</section>`;
+}
+function issueLinks(i) {
+  const ed = canEdit(), ls = linksOf(i.id), groups = [...new Set(ls.map(x => x.label))];
+  return `<section class="id-sec" aria-labelledby="idLinkH"><div class="id-sh"><h3 id="idLinkH">${ic('link')}Bağlantılar</h3>${ls.length ? `<span class="id-cnt">${ls.length}</span>` : ''}
+      ${ed ? `<button type="button" class="id-link" id="addLink">${ic('plus')}Bağlantı</button>` : ''}</div>
+    ${ls.length ? `<div class="id-list">${groups.map(g => `<div class="id-lg">${esc(g)}</div>${ls.filter(x => x.label === g).map(({ l, other }) => { const os = stat(other.statusId);
+      return `<div class="id-lrow${os.cat === 'done' ? ' done' : ''}">${tIcon(other.type)}<span class="k">${esc(other.key)}</span>
+        <span class="t" data-open="${esc(other.id)}">${esc(other.summary)}</span><span class="chip cat-${esc(os.cat)}">${esc(os.name)}</span>
+        ${ed ? `<button type="button" class="id-ib sm" data-dellink="${esc(l.id)}" aria-label="Bağlantıyı kaldır: ${esc(other.key)}" title="Kaldır">${ic('x')}</button>` : ''}</div>`; }).join('')}`).join('')}</div>`
+      : '<div class="id-empty">Bağlantı yok</div>'}</section>`;
+}
+/* Eski geçmiş kayıtları yalnız gösterimde çevrilir (kriter 19): ham kimlik → ad, tip kodu → ad, ISO tarih → "18 Kas 2026". */
+function histVal(field, v) {
+  if (v == null || v === '') return '—';
+  const s = String(v);
+  if (field === 'Sprint') return sprint(s)?.name || s;
+  if (field === 'Epik') return issue(s)?.summary || s;
+  if (field === 'Raporlayan') return user(s)?.name || s;
+  if (field === 'Tip') return TYPE[s]?.[2] || s;
+  if ((field === 'Başlangıç' || field === 'Bitiş') && /^\d{4}-\d{2}-\d{2}$/.test(s)) return fmtDMid(s);
+  return s;
+}
+let ID_CEDIT = null;
+function issueActivity(i) {
+  const ed = canEdit(), f = ID_FEEDS.some(x => x[0] === DB.ui.idFeed) ? DB.ui.idFeed : 'all';
+  const cm = DB.comments.filter(c => c.issueId === i.id), hs = DB.history.filter(h => h.issueId === i.id), wl = DB.worklogs.filter(w => w.issueId === i.id);
+  const n = { all: cm.length + hs.length + wl.length, cmt: cm.length, hist: hs.length, work: wl.length };
+  const wAt = w => w.at || new Date((day10(w.date) || TODAY) + 'T' + (/^\d\d:\d\d$/.test(w.time || '') ? w.time : '12:00')).getTime();
+  const items = [...(f === 'all' || f === 'cmt' ? cm.map(c => ({ k: 'c', at: c.at, x: c })) : []),
+    ...(f === 'all' || f === 'hist' ? hs.map(h => ({ k: 'h', at: h.at, x: h })) : []),
+    ...(f === 'all' || f === 'work' ? wl.map(w => ({ k: 'w', at: wAt(w), x: w })) : [])].sort((a, b) => b.at - a.at);
+  const lim = 50 + ID_MORE * 50, shown = items.slice(0, lim);
+  const who = id => `<b>${esc(user(id)?.name || '—')}</b>`;
+  const when = t => `<span class="id-ago" title="${esc(fmtTsMid(t))}">${esc(ago(t))}</span>`;
+  const row = (it) => {
+    const x = it.x;
+    if (it.k === 'c') {
+      const mine = canOwn(x.userId), editing = ID_CEDIT === x.id;
+      return `<div class="id-ev c">${avat(x.userId)}<div class="bd"><div class="hd">${who(x.userId)} yorum yaptı ${when(x.at)}${x.edited ? ' <i class="id-edited">düzenlendi</i>' : ''}
+        ${mine && !editing ? `<span class="id-evact"><button type="button" class="id-link" data-cedit="${esc(x.id)}">${ic('pencil')}Düzenle</button>
+          <button type="button" class="id-link del" data-cdel="${esc(x.id)}">${ic('trash')}Sil</button></span>` : ''}</div>
+        ${editing ? `<div class="id-box"><textarea class="inp" id="ce_${esc(x.id)}" rows="3" aria-label="Yorumu düzenle">${esc(x.body)}</textarea>
+          <div class="id-boxf"><span class="id-hint"><span class="kbd">Ctrl</span>+<span class="kbd">Enter</span> kaydeder · <span class="kbd">Esc</span> vazgeçer</span>
+          <button type="button" class="btn sm" data-ccancel>Vazgeç</button><button type="button" class="btn sm pri" data-csave="${esc(x.id)}">Kaydet</button></div></div>`
+          : `<div class="id-cbody">${esc(x.body)}</div>`}</div></div>`;
+    }
+    if (it.k === 'w') {
+      const mine = canOwn(x.userId);
+      return `<div class="id-ev w">${avat(x.userId)}<div class="bd"><div class="hd">${who(x.userId)} <b class="num">${fmtDur(x.hours)}</b> süre kaydetti (${esc(hmDM(day10(x.date) || TODAY))}${x.time ? ' ' + esc(x.time) : ''})
+        ${mine ? `<span class="id-evact"><button type="button" class="id-link" data-editwl="${esc(x.id)}">${ic('pencil')}Düzenle</button>
+          <button type="button" class="id-link del" data-delwl="${esc(x.id)}">${ic('trash')}Sil</button></span>` : ''}</div>
+        <div class="id-wbody"><b class="num">${fmtDur(x.hours)}</b><span>${esc(x.comment) || 'çalıştı'}</span></div></div></div>`;
+    }
+    return `<div class="id-ev h">${avat(x.userId)}<div class="bd"><div class="hd">${who(x.userId)} ${esc(x.field)} alanını değiştirdi ${when(x.at)}</div>
+      <div class="id-hbody"><span class="f">${esc(x.field)}</span><s class="id-old">${esc(histVal(x.field, x.from))}</s>${ic('arrow')}<b>${esc(histVal(x.field, x.to))}</b></div></div></div>`;
+  };
+  return `<section class="id-sec" aria-labelledby="idActH"><div class="id-sh"><h3 id="idActH">${ic('clock')}Etkinlik</h3><span class="id-sort">En yeni üstte</span></div>
+    <div class="id-feedf" role="group" aria-label="Etkinlik süzgeci">${ID_FEEDS.map(([k, l]) => `<button type="button" data-feed="${k}" aria-pressed="${f === k}">${l} <span class="num">${n[k]}</span></button>`).join('')}</div>
+    ${ed && f !== 'hist' && f !== 'work' ? `<div class="id-cnew${ID_DRAFT.open || ID_DRAFT.cmt ? ' open' : ''}">${avat(CU()?.id)}<div class="id-box">
+      <textarea class="inp" id="newCmt" rows="${ID_DRAFT.open || ID_DRAFT.cmt ? 3 : 1}" placeholder="Yorum ekle…" aria-label="Yorum ekle">${esc(ID_DRAFT.cmt)}</textarea>
+      <div class="id-boxf"><span class="id-hint"><span class="kbd">Ctrl</span>+<span class="kbd">Enter</span> gönderir</span>
+        <button type="button" class="btn sm" id="cmtNo">Vazgeç</button><button type="button" class="btn sm pri" id="addCmt">Gönder</button></div></div></div>` : ''}
+    <div class="id-feed">${shown.map(row).join('') || '<div class="id-empty">Henüz kayıt yok</div>'}</div>
+    ${items.length > lim ? `<button type="button" class="id-more" id="idMoreFeed">${ic('down')}Daha fazla göster · ${items.length - lim} eski kayıt</button>` : ''}</section>`;
+}
+function issueProps(i) {
+  const ed = canEdit(), pr = projOfI(i), st = statsOf(i.projectId), s = stat(i.statusId), k = st.findIndex(x => x.id === i.statusId), nx = nextStatus(i);
+  const row = (lab, val, extra = '') => `<div class="id-prow${extra}"><span class="id-pl">${lab}</span><div class="id-pvw">${val}</div></div>`;
+  const pb = (f, kind, html, aria) => ed ? `<button type="button" class="id-pv" data-f="${f}" data-pm="${kind}" aria-haspopup="menu" aria-label="${esc(aria)}">${html}</button>` : `<span class="id-pv ro">${html}</span>`;
+  const pt = (f, html, aria, lock) => ID_ED?.part === 'props' && ID_ED.f === f
+    ? `<input class="inp id-ie" id="ie_${f}" data-ief="${f}" value="${esc(ID_ED.val ?? '')}" aria-label="${esc(aria)}" autocomplete="off">`
+    : ed && !lock ? `<button type="button" class="id-pv" data-f="${f}" data-ie="${f}" aria-label="${esc(aria)}: düzenle">${html}</button>`
+    : `<span class="id-pv ro"${lock ? ` title="${esc(lock)}"` : ''}>${html}${lock && ed ? ic('lock') : ''}</span>`;
+  const grp = (icn, t, body) => `<div class="id-grp"><div class="id-gh">${ic(icn)}${t}</div>${body}</div>`;
+  const [pc, pn] = PRI[lvl(i.priority)];
+  const rem = remaining(i), tot = (i.spent || 0) + rem || 1;
+  const nm = (id, empty) => { const u = user(id); return u ? `${avat(u.id)}<span class="t">${esc(u.name)}</span>` : `<span class="c-av none">${ic('userx')}</span><span class="t muted">${empty}</span>`; };
+  const sp = sprint(i.sprintId), ep = issue(i.epicId);
+  const der = f => ID_DERR?.f === f ? ID_DERR : null;
+  const fs = DB.fields.filter(f => !f.projectId || f.projectId === i.projectId);
+  const last = DB.history.filter(h => h.issueId === i.id).sort((a, b) => b.at - a.at)[0];
+  return grp('arrow', 'Durum', `<div class="id-steps" aria-hidden="true">${st.map((x, n) => `<i class="${n <= k ? x.cat : ''}"></i>`).join('')}</div>
+      <div class="id-stline"><span><b>${esc(s.name)}</b>${k >= 0 ? ` · ${k + 1}/${st.length} adım` : ''}</span>
+        ${ed && nx ? `<button type="button" class="btn sm" data-next="${esc(nx.id)}">${esc(nx.name)}${ic('arrow')}</button>` : ''}</div>
+      ${row('Öncelik', pb('priority', 'pri', `<span class="prio ${pc}">${ic(pc)}${pn}</span>`, 'Öncelik: ' + pn))}
+      ${row('Tip', pb('type', 'type', `${tIcon(i.type)}<span class="t">${esc(TYPE[i.type]?.[2] || i.type)}</span>`, 'Tip: ' + (TYPE[i.type]?.[2] || i.type)))}`)
+    + grp('users', 'Kişiler', row('Atanan', pb('assignee', 'as', nm(i.assignee, 'Atanmamış'), 'Atanan: ' + (user(i.assignee)?.name || 'Atanmamış')))
+      + (MOD('reporter') ? row('Raporlayan', pb('reporter', 'rep', nm(i.reporter, 'Yok'), 'Raporlayan: ' + (user(i.reporter)?.name || 'Yok'))) : ''))
+    + grp('cal', 'Planlama', (projType(pr) === 'agile' ? row('Sprint', pb('sprintId', 'sprint', `<span class="t">${sp ? esc(sp.name) + (sp.state === 'active' ? ' <small>aktif</small>' : '') : 'Backlog'}</span>`, 'Sprint: ' + (sp?.name || 'Backlog'))) : '')
+      + (MOD('epic') ? row('Epik', pb('epicId', 'epic', ep ? `<span class="id-epic">${ic('layers')}${esc(ep.summary)}</span>` : '<span class="t muted">Yok</span>', 'Epik: ' + (ep?.summary || 'Yok'))) : '')
+      + row('Başlangıç', ed ? dateField({ id: 'idStart', f: 'start', value: der('start') ? der('start').v : i.start, label: 'Başlangıç', err: der('start')?.msg, quick: true })
+          : `<span class="id-pv ro">${i.start ? esc(fmtDLong(i.start)) : '—'}</span>`, ' date')
+      + row('Bitiş', ed ? dateField({ id: 'idDue', f: 'due', value: der('due') ? der('due').v : i.due, label: 'Bitiş', err: der('due')?.msg, late: der('due') ? 0 : lateDays(i) })
+          : `<span class="id-pv ro${lateDays(i) ? ' late' : ''}">${i.due ? esc(fmtDLong(i.due)) : '—'}${lateDays(i) ? ` <span class="id-late">${ic('alert')}${lateDays(i)} gün gecikti</span>` : ''}</span>`, ' date')
+      + (MOD('points') ? row('Puan', pt('points', `<span class="num">${i.points ?? '—'}</span>`, 'Puan') + idSaved('points')) : ''))
+    + grp('clock', 'Zaman', `<div class="timebar"><i class="sp" style="width:${((i.spent || 0) / tot * 100).toFixed(1)}%"></i><i class="rm" style="width:${(rem / tot * 100).toFixed(1)}%"></i></div>
+      <div class="tlegend"><span>${fmtDur(i.spent)} harcandı</span><span>${fmtDur(rem)} kaldı</span></div>
+      ${(i.spent || 0) + rem > i.estimate && i.estimate ? `<div class="id-over">Tahmin aşımı: +${fmtDur((i.spent || 0) + rem - i.estimate)}</div>` : ''}
+      ${row('Tahmin', pt('estimate', `<span class="num">${fmtDur(i.estimate)}</span>`, 'Tahmin') + idSaved('estimate'))}
+      ${row('Kalan', pt('remainingEst', `<span class="num">${fmtDur(rem)}</span>`, 'Kalan tahmin', canRemaining() ? '' : 'Kalan tahmini yalnızca yönetici değiştirebilir') + idSaved('remainingEst'))}
+      ${row('Harcanan', `<span class="id-pv ro"><span class="num">${fmtDur(i.spent)}</span> <small>${DB.worklogs.filter(w => w.issueId === i.id).length} kayıt</small></span>`)}`)
+    + grp('briefcase', 'Faturalama', row('Faturalama', pb('billable', 'bill', `<span class="t">${esc(billOf(i))}</span>`, 'Faturalama: ' + billOf(i)))
+      + row('Fatura türü', pb('billType', 'btype', `<span class="t">${esc(btypeOf(i))}</span>`, 'Fatura türü: ' + btypeOf(i))))
+    + (fs.length ? grp('filter', 'Özel alanlar', fs.map(f => row(`<span title="${esc(f.key)}">${esc(f.name)}</span>`,
+        ed ? cfInput(f, i.cf?.[f.id]) : `<span class="id-pv ro">${esc(cfShow(f, i.cf?.[f.id]))}</span>`)).join('')) : '')
+    + grp('tag', 'Etiketler', `<div class="id-tags">${(i.labels || []).map(l => `<span class="id-tag"><i style="background:${safeColor(tagColor(l))}"></i>${esc(l)}
+        ${ed ? `<button type="button" data-dellabel="${esc(l)}" aria-label="Etiketi kaldır: ${esc(l)}">${ic('x')}</button>` : ''}</span>`).join('') || (ed ? '' : '<span class="muted">Yok</span>')}
+        ${ed ? `<input class="inp id-tagin" id="newLabel" placeholder="+ Etiket" aria-label="Etiket ekle, Enter" maxlength="60">` : ''}</div>`)
+    + `<div class="id-foot">Oluşturuldu <b>${esc(fmtTsMid(i.created))}</b>${user(i.reporter) ? ' · ' + esc(user(i.reporter).name) : ''}
+      ${last ? `<br>Son değişiklik <b>${esc(fmtTsMid(last.at))}</b> · ${esc(user(last.userId)?.name || '—')}` : ''}</div>`;
+}
+let ID_SAVED = null;
+const idSaved = f => ID_SAVED === f ? `<span class="id-saved" role="status">${ic('check')}Kaydedildi</span>` : '';
+function idFlashSaved(f) { ID_SAVED = f; clearTimeout(idFlashSaved.t); idFlashSaved.t = setTimeout(() => { ID_SAVED = null; document.querySelectorAll('#idSide .id-saved').forEach(e => e.remove()); }, 1600); }
+
+/* ---- alan yazımı: menü ve satır içi düzenleyicinin ortak kapısı ---- */
+const ID_LABEL = { statusId: 'Durum', assignee: 'Atanan', reporter: 'Raporlayan', priority: 'Öncelik', type: 'Tip', points: 'Puan',
+  sprintId: 'Sprint', epicId: 'Epik', due: 'Bitiş', start: 'Başlangıç', estimate: 'Tahmin', remainingEst: 'Kalan tahmin', billable: 'Faturalama', billType: 'Fatura türü' };
+function idSet(i, f, v) {
+  if (!i || !canEdit()) return false;
+  if (f === 'statusId') { if (i.statusId === v || !stat(v)) return false; delete i.doneFrom; setStatus(i, v); }
+  else if (f === 'priority') { if (!setPriority(i, +v)) return false; }
+  else if (f === 'assignee') { if (!setAssignee(i, v || null)) return false; }
+  else {
+    const isDur = f === 'estimate' || f === 'remainingEst';
+    const before = isDur ? fmtDur(f === 'estimate' ? i.estimate : remaining(i)) : (i[f] ?? '—');
+    if (f === 'points') { v = String(v ?? '').trim() === '' ? null : parseFloat(String(v).replace(',', '.')); if (Number.isNaN(v)) v = null; }
+    else if (isDur) v = parseDur(v);
+    else if (['sprintId', 'epicId', 'reporter'].includes(f)) v = v || null;
+    if (isDur ? (f === 'estimate' ? (i.estimate || 0) === v : remaining(i) === v) : String(i[f] ?? '') === String(v ?? '')) return false;
+    i[f] = v;
+    if (f === 'estimate' && !i.spent) i.remainingEst = v;
+    logHist(i, ID_LABEL[f], before, isDur ? fmtDur(v) : (v ?? '—'));
+  }
+  i.updatedAt = Date.now();
+  save(); RERENDER = true;
+  return true;
+}
+
+/* ---- özellik menüleri (#8 hızlı menülerinin temeli: openQuick/qmMobile) ---- */
+const pmOpt = (v, cur, icon, label, sub = '') => `<button type="button" class="qm-opt" role="menuitemradio" aria-checked="${String(cur ?? '') === String(v)}" data-qv="${esc(v)}">
+  ${icon}<span class="qm-l">${label}${sub ? `<span class="qm-sub">${sub}</span>` : ''}</span>${String(cur ?? '') === String(v) ? `<span class="qm-chk">${ic('check')}</span>` : ''}</button>`;
+function pmOpen(o) {
+  closeQuick(false);
+  const mob = qmMobile(), btn = o.btn;
+  const wrap = document.createElement('div');
+  wrap.className = 'qm-wrap id-pm' + (mob ? ' sheet' : '');
+  wrap.innerHTML = `${mob ? '<div class="qm-dim"></div>' : ''}
+    <div class="qm ${o.kind}" role="menu" aria-label="${esc(o.title)}">
+      ${mob ? `<div class="qm-grab"></div><div class="qm-ttl">${esc(o.title)}${o.sub ? `<small>${esc(o.sub)}</small>` : ''}</div>` : `<div class="qm-h">${esc(o.title)}</div>`}
+      ${o.search ? `<label class="qm-q">${ic('search')}<input class="qm-in" type="search" placeholder="Kişi ara…" aria-label="Kişi ara" autocomplete="off"></label>` : ''}
+      <div class="qm-list">${o.list('')}</div></div>`;
+  document.body.appendChild(wrap);
+  QM = { kind: o.kind, id: o.id || '', wrap, el: wrap.querySelector('.qm'), mob, sel: o.sel, pick: o.pick };
+  btn.classList.add('open'); btn.setAttribute('aria-expanded', 'true');
+  wrap.addEventListener('click', e => { const x = e.target.closest('[data-qv]'); if (x) { e.stopPropagation(); pickQuick(x.dataset.qv); } });
+  const inp = wrap.querySelector('.qm-in');
+  if (inp) inp.oninput = () => { wrap.querySelector('.qm-list').innerHTML = o.list(inp.value); };
+  if (!mob) {
+    const m = QM.el, r = btn.getBoundingClientRect(), w = m.offsetWidth, h = m.offsetHeight;
+    let left = o.right ? r.right - w : r.left;
+    left = Math.max(8, Math.min(left, innerWidth - w - 8));
+    let top = r.bottom + 6; if (top + h > innerHeight - 8) top = Math.max(8, r.top - h - 6);
+    m.style.left = left + 'px'; m.style.top = top + 'px';
+  }
+  (inp || QM.el.querySelector('.qm-opt[aria-checked="true"]') || QM.el.querySelector('.qm-opt'))?.focus({ preventScroll: true });
+}
+function propMenu(kind, btn) {
+  const i = curIssue(); if (!i || !canEdit()) return;
+  const sel = btn.id ? '#' + CSS.escape(btn.id) : `[data-pm="${kind}"]`;
+  const after = changed => { if (changed) { refreshIssue(['all']); } };
+  const base = { btn, sel, id: i.id, kind, sub: `${i.key} · ${i.summary}` };
+  const usersList = (cur, pool) => q => { const k = qmKey(q).trim(), hit = t => !k || qmKey(t).includes(k);
+    return pool.filter(u => hit(u.name)).map(u => pmOpt(u.id, cur, `<span class="c-av" style="background:${safeColor(u.color)}">${esc(u.ini || '?')}</span>`, esc(u.name))).join('') || '<div class="qm-empty">Eşleşen kişi yok</div>'; };
+  const M = {
+    status: () => ({ title: 'Durum', list: () => statsOf(i.projectId).map(s => pmOpt(s.id, i.statusId, `<span class="cat-dot ${esc(s.cat)}"></span>`, esc(s.name))).join(''),
+      pick: v => after(idSet(i, 'statusId', v)) }),
+    pri: () => ({ kind: 'pri', title: 'Öncelik', list: () => qmPriList(i), pick: v => after(idSet(i, 'priority', +v)) }),
+    as: () => ({ kind: 'as', title: 'Atanan kişi', search: issueUsers(i).length > 8, list: q => qmAsList(i, q), pick: v => after(idSet(i, 'assignee', v || null)) }),
+    rep: () => ({ title: 'Raporlayan', search: DB.users.length > 8, list: usersList(i.reporter, DB.users.filter(u => u.active !== false && !u.system)), pick: v => after(idSet(i, 'reporter', v)) }),
+    type: () => ({ title: 'Tip', list: () => ISSUE_TYPES().map(t => pmOpt(t, i.type, tIcon(t), esc(TYPE[t][2]))).join(''), pick: v => after(idSet(i, 'type', v)) }),
+    sprint: () => ({ title: 'Sprint', list: () => pmOpt('', i.sprintId || '', ic('backlog'), 'Backlog')
+      + DB.sprints.filter(s => s.projectId === i.projectId && (s.state !== 'closed' || s.id === i.sprintId)).map(s => pmOpt(s.id, i.sprintId, ic('sprint'), esc(s.name), s.state === 'active' ? 'aktif' : '')).join(''),
+      pick: v => after(idSet(i, 'sprintId', v)) }),
+    epic: () => ({ title: 'Epik', list: () => pmOpt('', i.epicId || '', ic('x'), 'Yok')
+      + DB.issues.filter(e => e.type === 'epic' && e.projectId === i.projectId && e.id !== i.id).map(e => pmOpt(e.id, i.epicId, ic('layers'), esc(e.summary), esc(e.key))).join(''),
+      pick: v => after(idSet(i, 'epicId', v)) }),
+    bill: () => ({ title: 'Faturalama', list: () => BILLABLE.map(x => pmOpt(x, billOf(i), '', esc(x))).join(''), pick: v => after(idSet(i, 'billable', v)) }),
+    btype: () => ({ title: 'Fatura türü', list: () => BILLTYPE.map(x => pmOpt(x, btypeOf(i), '', esc(x))).join(''), pick: v => after(idSet(i, 'billType', v)) }),
+    more: () => ({ title: 'Diğer işlemler', right: true, list: () => `<button type="button" class="qm-opt" role="menuitem" data-qv="copy">${ic('copy')}<span class="qm-l">Anahtarı kopyala</span></button>
+        <hr><button type="button" class="qm-opt danger" role="menuitem" data-qv="del">${ic('trash')}<span class="qm-l">Sil</span></button>`,
+      pick: v => { if (v === 'copy') copyText(`${i.key} ${i.summary}`); if (v === 'del') issueDelete([i.id]); } }),
+    subas: () => ({ kind: 'as', title: 'Alt işin atananı', search: issueUsers(i).length > 8, list: q => qmAsList({ ...i, assignee: ID_SUB_AS }, q),
+      pick: v => { ID_SUB_AS = v || null; refreshIssue(['subs']); } }),
+  };
+  const o = M[kind]?.(); if (!o) return;
+  pmOpen({ ...base, ...o, kind: o.kind || kind });
+}
+
+/* ---- satır içi düzenleme ---- */
+function inlineEdit(f) {
+  const i = curIssue(); if (!i || !canEdit()) return;
+  if (ID_ED) idCommit();
+  if (f === 'summary') {
+    ID_ED = { part: 'title', f, start: String(i.summary || '') };
+    $('#idT').innerHTML = `<div class="id-tedit"><input class="inp id-tin" id="idSumIn" maxlength="200" value="${esc(i.summary)}" aria-label="Başlık" autocomplete="off">
+      <div class="id-err" id="idSumErr" role="alert"></div><div class="id-stalebox" id="idSumStale" hidden></div></div>`;
+    const el = $('#idSumIn'); el.focus(); el.select();
+  } else if (f === 'description') {
+    ID_ED = { part: 'desc', f, start: String(i.description || '') };
+    $('#idD').innerHTML = `<section class="id-sec"><div class="id-sh"><h3>${ic('backlog')}Açıklama</h3></div>
+      <div class="id-box open"><textarea class="inp" id="idDescIn" rows="7" aria-label="Açıklama">${esc(i.description || '')}</textarea>
+      <div class="id-stalebox" id="idDescStale" hidden></div>
+      <div class="id-boxf"><span class="id-hint"><span class="kbd">Ctrl</span>+<span class="kbd">Enter</span> kaydeder · <span class="kbd">Esc</span> vazgeçer</span>
+        <button type="button" class="btn sm" id="idDescNo">Vazgeç</button><button type="button" class="btn sm pri" id="idDescOk">Kaydet</button></div></div></section>`;
+    $('#idDescIn').focus();
+  } else if (['points', 'estimate', 'remainingEst'].includes(f)) {
+    if (f === 'remainingEst' && !canRemaining()) return;
+    ID_ED = { part: 'props', f, start: String(i[f] ?? ''), val: f === 'points' ? (i.points ?? '') : f === 'estimate' ? fmtDur(i.estimate) : fmtDur(remaining(i)) };
+    $('#idSide').innerHTML = issueProps(i);
+    const el = $('#ie_' + f); el.focus(); el.select();
+  }
+}
+/* Kaydet: true → kapandı; false → açık kaldı (hata ya da çakışma uyarısı). */
+function idCommit(force) {
+  const ed = ID_ED, i = curIssue(); if (!ed) return true;
+  if (!i) { ID_ED = null; return true; }
+  if (ed.f === 'summary') {
+    const v = ($('#idSumIn')?.value || '').trim();
+    if (!v) { const e = $('#idSumErr'); if (e) e.innerHTML = ic('alert') + 'Başlık boş olamaz. Kısa bir başlık yazın; Esc ile vazgeçin.'; $('#idSumIn')?.setAttribute('aria-invalid', 'true'); $('#idSumIn')?.focus(); return false; }
+    if (String(i.summary) !== ed.start && !force && !ed.force) { idStale(i); return false; }
+    ID_ED = null;
+    if (v !== i.summary) { logHist(i, 'Özet', i.summary, v); i.summary = v; save(); RERENDER = true; }
+    refreshIssue(['title', 'head']); return true;
+  }
+  if (ed.f === 'description') {
+    const v = ($('#idDescIn')?.value || '').replace(/\s+$/, '');
+    if (String(i.description || '') !== ed.start && !force && !ed.force) { idStale(i); return false; }
+    ID_ED = null;
+    if (v !== (i.description || '')) { i.description = v; i.updatedAt = Date.now(); save(); RERENDER = true; }
+    refreshIssue(['desc']); return true;
+  }
+  const v = $('#ie_' + ed.f)?.value ?? '';
+  if (ed.f !== 'points' && v.trim() && !parseDur(v) && !/^0/.test(v.trim())) {
+    const el = $('#ie_' + ed.f); el?.setAttribute('aria-invalid', 'true'); toast('Geçerli bir süre girin, örn. 3h 30m'); el?.focus(); return false;
+  }
+  ID_ED = null;
+  const ch = idSet(i, ed.f, v);
+  if (ch) idFlashSaved(ed.f);
+  refreshIssue(ch ? ['all'] : ['props']);
+  return true;
+}
+function idCancel() {
+  const ed = ID_ED; if (!ed) return;
+  ID_ED = null;
+  refreshIssue([ed.part]);
+  const back = ed.f === 'summary' ? '[data-ie="summary"]' : ed.f === 'description' ? '[data-ie="description"]' : `[data-ie="${ed.f}"]`;
+  $('#scrim .modal.id-dlg')?.querySelector(back)?.focus({ preventScroll: true });
+}
+function idBlur(e) {
+  const ed = ID_ED; if (!ed) return;
+  const to = e.relatedTarget;
+  if (ed.f === 'summary' && e.target.id === 'idSumIn') {
+    if (to && to.closest('.id-tedit')) return;
+    if (!($('#idSumIn').value || '').trim()) return;         // boşken dışarı: kaydetmez, hata yerinde kalır
+    setTimeout(() => { if (ID_ED === ed) idCommit(); }, 0);
+  } else if (ed.part === 'props' && e.target.dataset?.ief) {
+    setTimeout(() => { if (ID_ED === ed) idCommit(); }, 0);
+  }
+}
+
+/* ---- olaylar (kabuğa bir kez bağlanır; kayıt her seferinde issue(OPEN_ISSUE)) ---- */
+function idClick(e) {
+  const t = e.target, i = curIssue(); if (!i) return;
+  const hit = s => t.closest(s);
+  let b;
+  if ((b = hit('[data-pm]'))) { e.preventDefault(); e.stopPropagation(); return propMenu(b.dataset.pm, b); }
+  if ((b = hit('[data-ie]')) && !hit('input,textarea')) { e.stopPropagation(); return inlineEdit(b.dataset.ie); }
+  if ((b = hit('[data-stale]'))) { e.stopPropagation(); if (b.dataset.stale === 'save') { ID_ED.force = true; idCommit(true); } else idCancel(); return; }
+  if (hit('#idDescOk')) return idCommit();
+  if (hit('#idDescNo')) return idCancel();
+  if (hit('[data-copykey]')) return copyText(`${i.key} ${i.summary}`);
+  if (hit('#logHere')) return worklogForm({ issueId: i.id });
+  if ((b = hit('[data-next]'))) { if (idSet(i, 'statusId', b.dataset.next)) refreshIssue(['all']); return; }
+  if ((b = hit('[data-feed]'))) { DB.ui.idFeed = b.dataset.feed; ID_MORE = 0; save(); refreshIssue(['act']); return; }
+  if (hit('#idMoreFeed')) { ID_MORE++; return refreshIssue(['act']); }
+  if (hit('#addSub')) return subTaskForm(i.id);
+  if (hit('#addLink')) return linkForm(i.id);
+  if ((b = hit('[data-subdone]'))) { e.stopPropagation(); const k = issue(b.dataset.subdone); if (!k) return;
+    isDone(k) ? reopenIssue(k.id) : completeIssue(k.id); return refreshIssue(['all']); }
+  if ((b = hit('[data-sublog]'))) return worklogForm({ issueId: b.dataset.sublog });
+  if ((b = hit('[data-dellink]'))) { DB.links = DB.links.filter(l => l.id !== b.dataset.dellink); save(); return refreshIssue(['links']); }
+  if ((b = hit('[data-dellabel]'))) { i.labels = (i.labels || []).filter(l => l !== b.dataset.dellabel); i.updatedAt = Date.now(); save(); RERENDER = true; return refreshIssue(['props']); }
+  if ((b = hit('[data-cedit]'))) { ID_CEDIT = b.dataset.cedit; ID_ED = null; refreshIssue(['act']); ID_ED = { part: 'act', f: 'cmt' }; $('#ce_' + CSS.escape(ID_CEDIT))?.focus(); return; }
+  if (hit('[data-ccancel]')) { ID_CEDIT = null; ID_ED = null; return refreshIssue(['act']); }
+  if ((b = hit('[data-csave]'))) return idCmtSave(b.dataset.csave);
+  if ((b = hit('[data-cdel]'))) return deleteComment(b.dataset.cdel);
+  if (hit('#addCmt')) return idCmtAdd();
+  if (hit('#cmtNo')) { ID_DRAFT.cmt = ''; ID_DRAFT.open = false; return refreshIssue(['act']); }
+  if (hit('#newCmt') && !ID_DRAFT.open) { ID_DRAFT.open = true; const el = $('#newCmt'); el.rows = 3; el.closest('.id-cnew')?.classList.add('open'); }
+}
+function idCmtAdd() {
+  const i = curIssue(), el = $('#newCmt'); if (!i || !el || !canEdit()) return;
+  const v = el.value.trim(); if (!v) return el.focus();
+  DB.comments.push({ id: uid('c'), issueId: i.id, userId: CU().id, at: Date.now(), body: v });
+  ID_DRAFT.cmt = ''; ID_DRAFT.open = false; save(); refreshIssue(['act']);
+}
+function idCmtSave(id) {
+  const c = DB.comments.find(x => x.id === id); if (!c || !canOwn(c.userId)) return;
+  const v = ($('#ce_' + CSS.escape(id))?.value || '').trim(); if (!v) return;
+  if (v !== c.body) { c.body = v; c.edited = Date.now(); save(); }
+  ID_CEDIT = null; ID_ED = null; refreshIssue(['act']);
+}
+function idKey(e) {
+  const t = e.target, i = curIssue(); if (!i) return;
+  const ctrlEnter = e.key === 'Enter' && (e.ctrlKey || e.metaKey);
+  if (t.id === 'idSumIn') {
+    if (e.key === 'Enter') { e.preventDefault(); idCommit(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); idCancel(); }
+    return;
+  }
+  if (t.id === 'idDescIn') {
+    if (ctrlEnter) { e.preventDefault(); idCommit(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); idCancel(); }
+    return;
+  }
+  if (t.dataset?.ief) {
+    if (e.key === 'Enter') { e.preventDefault(); idCommit(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); idCancel(); }
+    return;
+  }
+  if (t.id === 'newCmt') {
+    if (ctrlEnter) { e.preventDefault(); idCmtAdd(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); ID_DRAFT.open = false; if (!t.value) { refreshIssue(['act']); } t.blur(); $('#scrim .modal.id-dlg')?.focus({ preventScroll: true }); }
+    return;
+  }
+  if (t.id?.startsWith('ce_')) {
+    if (ctrlEnter) { e.preventDefault(); idCmtSave(t.id.slice(3)); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); ID_CEDIT = null; ID_ED = null; refreshIssue(['act']); }
+    return;
+  }
+  if (t.id === 'subIn' || t.id === 'subEst') {
+    if (e.key === 'Enter') { e.preventDefault(); subInlineAdd(i); }
+    else if (e.key === 'Escape' && (t.value || $('#subIn').value)) { e.preventDefault(); e.stopPropagation(); $('#subIn').value = ''; $('#subEst').value = ''; }
+    return;
+  }
+  if (t.id === 'newLabel' && e.key === 'Enter') {
+    e.preventDefault(); const v = t.value.trim(); if (!v) return;
+    i.labels = [...new Set([...(i.labels || []), v])]; i.updatedAt = Date.now(); save(); RERENDER = true; refreshIssue(['props']); $('#newLabel')?.focus();
+    return;
+  }
+  if ((e.key === 'Enter' || e.key === ' ') && t.dataset?.ie && t.getAttribute('role') === 'button') { e.preventDefault(); inlineEdit(t.dataset.ie); }
+}
+function idChange(e) {
+  const t = e.target, i = curIssue(); if (!i) return;
+  if (t.dataset?.cf) {
+    const f = DB.fields.find(x => x.id === t.dataset.cf); if (!f) return;
+    const v = f.type === 'checkbox' ? t.checked : f.type === 'number' ? (t.value === '' ? '' : parseFloat(t.value.replace(',', '.'))) : t.value;
+    i.cf ||= {};
+    logHist(i, f.name, cfShow(f, i.cf[f.id]), cfShow(f, v));
+    i.cf[f.id] = v; save(); RERENDER = true; return;
+  }
+  if (t.classList?.contains('id-dnat') && (t.dataset.f === 'start' || t.dataset.f === 'due')) {
+    const f = t.dataset.f, v = day10(t.value);
+    const msg = f === 'start' ? dateOrderErr(v, i.due) : dateOrderErr(i.start, v);
+    if (msg) { ID_DERR = { f, v, msg }; refreshIssue(['props']); return; }
+    ID_DERR = null;
+    const before = i[f] || '';
+    if (before !== v) { i[f] = v; logHist(i, ID_LABEL[f], before || '—', v || '—'); save(); RERENDER = true; idFlashSaved(f); }
+    refreshIssue(['props']);
+  }
+}
+function subInlineAdd(p) {
+  const el = $('#subIn'); if (!el || !canEdit()) return;
+  const v = el.value.trim(); if (!v) return el.focus();
+  const pr = projOfI(p); if (!pr) return;
+  const it = createIssue(pr, { type: 'sub', summary: v, statusId: statsOf(p.projectId)[0]?.id, assignee: ID_SUB_AS || null,
+    priority: lvl(p.priority), estimate: parseDur($('#subEst')?.value || ''), sprintId: p.sprintId || null, epicId: p.epicId || null,
+    parentId: p.id, billable: p.billable || BILLABLE[0], billType: p.billType || BILLTYPE[0] }, pr.code || pr.key);
+  save(); RERENDER = true;
+  ID_SUBNEW = it.id; setTimeout(() => { if (ID_SUBNEW === it.id) { ID_SUBNEW = null; document.querySelector(`.id-srow[data-sid="${CSS.escape(it.id)}"]`)?.classList.remove('new'); } }, 1500);
+  refreshIssue(['subs', 'act', 'props']);
+  $('#subIn')?.focus();
+  toast(it.key + ' eklendi');
+}
+
+/* ---- odak tuzağı: üstteki pencere (iş detayı, alt pencereler, yeni iş) ---- */
+addEventListener('keydown', e => {
+  if (e.key !== 'Tab') return;
+  const m = topDialog(); if (!m || !m.classList.contains('id-trap') || QM) return;
+  const f = [...m.querySelectorAll('button:not([disabled]),input:not([type=hidden]):not([disabled]):not(.id-dnat),select:not([disabled]),textarea:not([disabled]),[tabindex="0"]')]
+    .filter(x => x.offsetParent !== null || x === document.activeElement);
+  if (!f.length) return;
+  const a = document.activeElement, first = f[0], last = f[f.length - 1];
+  if (e.shiftKey && (a === first || a === m)) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && (a === last || !m.contains(a))) { e.preventDefault(); first.focus(); }
+});
+
+/* ============================ FORMLAR ============================ */
+const TYPE_HINT = { task: 'Yapılacak bir iş', bug: 'Düzeltilecek kusur', story: 'Kullanıcı ihtiyacı', epic: 'İşleri gruplar' };
+let NI_AS = null;
+/* Yeni iş formu (görev 7): tip kartları, 4'lü öncelik, kişi seçici, tarih kısayolları, "Daha fazla alan". */
+function newIssueForm(preset = {}, keep) {
+  if (!P()) return toast('Önce bir proje seçin');
+  if (!canEdit()) return;
+  const pr = P(), types = ISSUE_TYPES();
+  const t0 = keep?.type && types.includes(keep.type) ? keep.type : preset.type && types.includes(preset.type) ? preset.type : (types.find(t => t !== 'epic') || types[0]);
+  const p0 = keep?.priority || 3;
+  const sp = keep ? keep.sprintId : (preset.sprintId ?? (activeSprint()?.id || ''));
+  const ep = keep?.epicId || '';
+  NI_AS = keep ? keep.assignee : null;
+  const fs = fieldsFor();
+  const moreN = ['Durum', 'Faturalama', 'Fatura türü', fs.length ? `${fs.length} özel alan` : '', 'Etiketler'].filter(Boolean).join(', ');
+  openModal(`
+    <div class="id-mh"><span class="id-mic">${ic('plus')}</span>
+      <div class="tx"><b id="niTitle">Yeni iş</b><div class="sub"><span class="k">${esc(pr.key)}</span> ${esc(pr.name)}</div></div>
+      <button type="button" class="id-ib" data-close aria-label="Kapat">${ic('x')}</button></div>
+    <div class="id-mb">
+      <div class="id-fl">Tip</div>
+      <div class="id-types" role="radiogroup" aria-label="Tip">${types.map(t => `<button type="button" class="id-tcard" role="radio" data-type="${esc(t)}" aria-checked="${t === t0}">
+        ${tIcon(t)}<span class="tx"><b>${esc(TYPE[t][2])}</b>${TYPE_HINT[t] ? `<small>${TYPE_HINT[t]}</small>` : ''}</span></button>`).join('')}</div>
+      <input type="hidden" id="f_type" value="${esc(t0)}">
+      <div class="id-fl"><label for="f_sum">Özet <span class="req">*</span></label><span class="num id-cc" id="f_sum_c">0 / 200</span></div>
+      <input class="inp" id="f_sum" maxlength="200" placeholder="Ne yapılacak?" autocomplete="off" aria-describedby="f_sum_e">
+      <div class="id-err" id="f_sum_e" role="alert"></div>
+      <div class="id-fl"><label for="f_desc">Açıklama <span class="opt">(isteğe bağlı)</span></label></div>
+      <textarea class="inp" id="f_desc" rows="3" placeholder="Ayrıntı, kabul ölçütü ya da bağlantı ekleyin…"></textarea>
+      <div class="id-fl">Öncelik</div>
+      <div class="id-seg" id="f_pri" role="radiogroup" aria-label="Öncelik">${LVLS.map(p => `<button type="button" role="radio" data-pri="${p}" aria-checked="${p === p0}"><span class="prio ${PRI[p][0]}">${ic(PRI[p][0])}</span>${PRI[p][1]}</button>`).join('')}</div>
+      <div class="id-g2">
+        <div><div class="id-fl"><span>Atanan <span class="opt">(isteğe bağlı)</span></span><button type="button" class="id-link" id="f_me">${ic('userplus')}Bana ata</button></div>
+          <button type="button" class="id-pick" id="f_asBtn" data-nias aria-haspopup="menu"></button><input type="hidden" id="f_as" value=""></div>
+        ${AGILE() ? `<div><div class="id-fl"><label for="f_sp">Sprint</label></div><select class="inp" id="f_sp"><option value="">Backlog</option>
+          ${sprintsOf().filter(s => s.state !== 'closed').map(s => `<option value="${esc(s.id)}" ${sp === s.id ? 'selected' : ''}>${esc(s.name)}${s.state === 'active' ? ' · aktif' : ''}</option>`).join('')}</select></div>` : ''}
+        <div><div class="id-fl">Başlangıç</div>${dateField({ id: 'f_start', label: 'Başlangıç', clear: false })}</div>
+        <div><div class="id-fl">Bitiş</div>${dateField({ id: 'f_due', label: 'Bitiş', clear: false })}</div>
+        <div><div class="id-fl"><label for="f_est">Tahmin <span class="opt">(isteğe bağlı)</span></label></div><input class="inp" id="f_est" placeholder="4h" autocomplete="off">
+          <div class="id-hint">örn. 30m · 2h · 1d 4h</div></div>
+        ${MOD('epic') ? `<div><div class="id-fl"><label for="f_ep">Epik <span class="opt">(isteğe bağlı)</span></label></div><select class="inp" id="f_ep"><option value="">Yok</option>
+          ${epicsOf().map(e => `<option value="${esc(e.id)}" ${ep === e.id ? 'selected' : ''}>${esc(e.summary)}</option>`).join('')}</select></div>` : ''}
+        ${MOD('points') ? `<div><div class="id-fl"><label for="f_pts">Story point</label></div><input class="inp" id="f_pts" placeholder="—" inputmode="decimal"></div>` : ''}
+      </div>
+      <button type="button" class="id-morebtn" id="f_moreBtn" aria-expanded="false" aria-controls="f_more">${ic('chevr')}<b>Daha fazla alan</b><span>${esc(moreN)}</span></button>
+      <div id="f_more" hidden><div class="id-g2">
+        <div><div class="id-fl"><label for="f_st">Durum</label></div><select class="inp" id="f_st">${stats().map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('')}</select></div>
+        <div><div class="id-fl"><label for="f_bill">Faturalama</label></div><select class="inp" id="f_bill">${BILLABLE.map(x => `<option>${x}</option>`).join('')}</select></div>
+        <div><div class="id-fl"><label for="f_btype">Fatura türü</label></div><select class="inp" id="f_btype">${BILLTYPE.map(x => `<option>${x}</option>`).join('')}</select></div>
+        ${fs.map(f => `<div><div class="id-fl">${esc(f.name)}</div>${cfInput(f, '')}</div>`).join('')}
+      </div>
+      <div class="id-fl"><label for="f_lbl">Etiketler (virgülle)</label></div><input class="inp" id="f_lbl" placeholder="api, acil"></div>
+    </div>
+    <div class="m-f"><span class="id-hint"><span class="kbd">Ctrl</span>+<span class="kbd">Enter</span> oluşturur</span><span class="spacer"></span>
+      <button type="button" class="btn" data-close>Vazgeç</button>
+      <button type="button" class="btn" id="doCreateMore">${ic('plus')}Oluştur ve yenisini aç</button>
+      <button type="button" class="btn pri" id="doCreate">${ic('check')}Oluştur</button></div>`, 'id-m id-new id-trap');
+  const m = $('#scrim .modal'); m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-labelledby', 'niTitle');
+  const setAs = id => { NI_AS = id || null; $('#f_as').value = NI_AS || ''; const u = user(NI_AS);
+    const b = $('#f_asBtn'); b.classList.toggle('empty', !u);
+    b.innerHTML = u ? `${avat(u.id)}<span class="t">${esc(u.name)}</span>${ic('down')}` : `<span class="c-av none">${ic('userx')}</span><span class="t">Atanmamış</span>${ic('down')}`;
+    b.setAttribute('aria-label', 'Atanan: ' + (u ? u.name : 'Atanmamış')); };
+  setAs(NI_AS);
+  const sum = $('#f_sum');
+  const cnt = () => { $('#f_sum_c').textContent = `${sum.value.length} / 200`; if (sum.value.trim()) { $('#f_sum_e').innerHTML = ''; sum.removeAttribute('aria-invalid'); } };
+  sum.oninput = cnt;
+  setTimeout(() => sum.focus(), 40);
+  m.querySelector('.id-types').onclick = e => { const b = e.target.closest('[data-type]'); if (!b) return;
+    m.querySelectorAll('[data-type]').forEach(x => x.setAttribute('aria-checked', String(x === b))); $('#f_type').value = b.dataset.type; };
+  $('#f_pri').onclick = e => { const b = e.target.closest('[data-pri]'); if (!b) return;
+    $$('#f_pri [data-pri]').forEach(x => x.setAttribute('aria-checked', String(x === b))); };
+  /* Radyo grubu: ok tuşları seçimi taşır. */
+  m.addEventListener('keydown', e => {
+    const g = e.target.closest?.('[role=radiogroup]');
+    if (g && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+      const r = [...g.querySelectorAll('[role=radio]')], k = r.indexOf(e.target); if (k < 0) return;
+      e.preventDefault(); const n = r[(k + (e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 1) + r.length) % r.length]; n.focus(); n.click();
+    }
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); $('#doCreate').click(); }
+    if (e.key === 'Enter' && e.target === sum) { e.preventDefault(); $('#doCreate').click(); }
+  });
+  $('#f_me').onclick = () => { setAs(CU().id); $('#f_asBtn').focus(); };
+  $('#f_asBtn').onclick = e => { e.stopPropagation();
+    const fake = { projectId: pr.id, assignee: NI_AS };
+    pmOpen({ btn: $('#f_asBtn'), sel: '#f_asBtn', kind: 'as', title: 'Atanan kişi', search: issueUsers(fake).length > 8,
+      list: q => qmAsList({ ...fake, assignee: NI_AS }, q), pick: v => setAs(v) }); };
+  $('#f_moreBtn').onclick = () => { const b = $('#f_moreBtn'), o = b.getAttribute('aria-expanded') !== 'true';
+    b.setAttribute('aria-expanded', String(o)); $('#f_more').hidden = !o; b.querySelector('b').textContent = o ? 'Daha az alan' : 'Daha fazla alan'; };
+  const checkDates = () => { const msg = dateOrderErr($('#f_start').value, $('#f_due').value); dfErr('f_due', msg); return !msg; };
+  $('#f_start').addEventListener('change', checkDates); $('#f_due').addEventListener('change', checkDates);
+  const create = again => {
+    const s = sum.value.trim();
+    if (!s) { $('#f_sum_e').innerHTML = ic('alert') + 'Özet boş olamaz. Kısa bir başlık yazın.'; sum.setAttribute('aria-invalid', 'true'); sum.focus(); return; }
+    if (!checkDates()) return;
+    const est = parseDur($('#f_est').value);
+    const cf = {};
+    $$('#f_more [data-cf]').forEach(el => { const f = DB.fields.find(x => x.id === el.dataset.cf); if (!f) return;
+      const v = f.type === 'checkbox' ? el.checked : el.value;
+      if (v !== '' && v !== false) cf[f.id] = f.type === 'number' ? parseFloat(String(v).replace(',', '.')) : v; });
+    const pri = +($('#f_pri [aria-checked="true"]')?.dataset.pri || 3);
+    const it = createIssue(pr, {
+      type: $('#f_type').value, summary: s, description: $('#f_desc').value.trim(), statusId: $('#f_st').value || stats()[0]?.id,
+      assignee: NI_AS || null, priority: pri, points: $('#f_pts')?.value ? parseFloat($('#f_pts').value.replace(',', '.')) : null,
+      estimate: est, remainingEst: est, sprintId: $('#f_sp')?.value || null, epicId: $('#f_ep')?.value || null, parentId: preset.parentId || null,
+      start: $('#f_start').value || '', due: $('#f_due').value || '', cf, billable: $('#f_bill').value, billType: $('#f_btype').value,
+      labels: $('#f_lbl').value.split(',').map(x => x.trim()).filter(Boolean),
+    }, pr.key);
+    save();
+    if (!again) { closeModal(); render(); return toast(it.key + ' oluşturuldu'); }
+    const k = { type: $('#f_type').value, priority: pri, sprintId: $('#f_sp')?.value || '', epicId: $('#f_ep')?.value || '', assignee: NI_AS };
+    RERENDER = true;
+    newIssueForm(preset, k);
+    toast(it.key + ' oluşturuldu');
+  };
+  $('#doCreate').onclick = () => create(false);
+  $('#doCreateMore').onclick = () => create(true);
 }
 
 function sprintForm(id) {
@@ -4191,7 +5089,7 @@ function wire() {
     const qs = t.closest('[data-qas]');  if (qs) { e.preventDefault(); return openQuick('as', qs); }
     if (t.closest('.qm-wrap')) return;
 
-    if (t.closest('[data-close]') || t === $('#scrim')) return closeModal();
+    if (t.closest('[data-close]') || t === $('#scrim') || t === $('#scrim2')) return closeModal();
     const pj = t.closest('[data-proj]');
     if (pj) { DB.ui.project = pj.dataset.proj; DB.board.q = ''; $('#projSel').value = pj.dataset.proj;
       closeModal(); save(); render(); return; }
@@ -4225,20 +5123,9 @@ function wire() {
         { userId: byUser ? id : null, issueId: byUser ? null : id, date });
     }
     const del = t.closest('[data-delwl]');
-    if (del) { const w = DB.worklogs.find(x => x.id === del.dataset.delwl); const i = issue(w.issueId);
-      if (w.userId !== CU().id && !isAdmin()) return toast('Başkasının süre kaydını yalnızca yönetici silebilir');
-      if (!confirm(`${user(w.userId)?.name || ''} · ${fmtD(w.date)} · ${fmtDur(w.hours)} süre kaydı silinsin mi?`)) return;
-      i.spent = Math.max(0, (i.spent || 0) - w.hours);
-      if (!w.adj || w.adj === 'auto') i.remainingEst = remaining(i) + w.hours;
-      DB.worklogs = DB.worklogs.filter(x => x.id !== w.id);
-      save(); render(); if ($('#scrim').classList.contains('on')) openIssue(i.id); return; }
+    if (del) { e.stopPropagation(); return deleteWorklog(del.dataset.delwl); }
     const di = t.closest('[data-del]');
-    if (di) { if (!confirm('Bu iş; yorumları, süre kayıtları ve geçmişiyle birlikte silinsin mi?\n\nYönetici gerekirse Sistem › Çöp kutusu’ndan geri yükleyebilir.')) return;
-      const id = di.dataset.del;
-      DB.issues = DB.issues.filter(x => x.id !== id);
-      DB.worklogs = DB.worklogs.filter(x => x.issueId !== id);
-      DB.comments = DB.comments.filter(x => x.issueId !== id);
-      closeModal(); save(); render(); return; }
+    if (di) return issueDelete([di.dataset.del]);
     const ds = t.closest('[data-delsprint]');
     if (ds) { const id = ds.dataset.delsprint;
       DB.issues.forEach(i => { if (i.sprintId === id) i.sprintId = null; });
@@ -4253,7 +5140,12 @@ function wire() {
   });
 
   addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeModal();
+    /* Esc önce menüyü/düzenleyiciyi kapatır (onlar olayı tüketir), sonra pencereyi. */
+    if (e.key === 'Escape') {
+      if (e.defaultPrevented || QM) return;
+      if (ID_ED && !$('#scrim2.on')) return idCancel();
+      closeModal();
+    }
     if (e.key === 'c' && !e.ctrlKey && !e.metaKey && canEdit() && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName) && !e.target.isContentEditable
         && !$('#scrim').classList.contains('on')) { e.preventDefault(); newIssueForm(); }
   });
@@ -4350,6 +5242,7 @@ function startApp(useHash) {
 }
 
 addEventListener('beforeunload', e => {
+  if (HOLDS.length) { holdReleaseAll(); flushSync(); }        // bekleyen silmeler hemen gider
   if (!DIRTY || FS_STATE === 'ready') return;
   e.preventDefault(); e.returnValue = '';
 });
@@ -4676,13 +5569,6 @@ function cfInput(f, v) {
 }
 const fieldsFor = () => DB.fields.filter(f => !f.projectId || f.projectId === DB.ui.project);
 
-function cfPanel(i) {
-  const fs = fieldsFor(); if (!fs.length) return '';
-  return `<div class="sec">Özel alanlar</div><div class="kv">
-    ${fs.map(f => `<span class="lb" title="${esc(f.key)}">${esc(f.name)}</span>${cfInput(f, i.cf?.[f.id])}`).join('')}
-  </div>`;
-}
-
 /* ============================================================
    3) BAĞLANTILAR & ETİKETLER
    ============================================================ */
@@ -4692,27 +5578,6 @@ function linksOf(id) {
     l, other: issue(l.from === id ? l.to : l.from), label: LINKT[l.type][l.from === id ? 0 : 1],
   })).filter(x => x.other);
 }
-function linksSection(i) {
-  const ls = linksOf(i.id);
-  return `<div class="sec">Bağlantılar
-      <button class="btn sm" id="addLink" style="float:right;margin-top:-4px">+ Bağlantı</button></div>
-    ${ls.map(({ l, other, label }) => `<div class="row" style="padding:6px 0;border-bottom:1px solid var(--line)">
-      <span class="chip lbl">${label}</span>${tIcon(other.type)}
-      <span class="k" style="color:var(--ink3);width:64px">${other.key}</span>
-      <span class="sum" data-open="${other.id}">${esc(other.summary)}</span>
-      <span class="chip cat-${stat(other.statusId).cat}">${esc(stat(other.statusId).name)}</span>
-      <button class="btn sm danger" data-dellink="${l.id}">×</button></div>`).join('')
-      || '<div class="empty" style="padding:8px">Bağlantı yok</div>'}`;
-}
-function labelEditor(i) {
-  return `<div class="sec">Etiketler</div>
-    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
-      ${(i.labels || []).map(l => `<span class="chip lbl">${esc(l)}
-        <button data-dellabel="${esc(l)}" style="color:var(--ink3)">×</button></span>`).join('') || '<span style="color:var(--ink3);font-size:12px">Yok</span>'}
-    </div>
-    <input class="inp" id="newLabel" placeholder="Etiket ekle, Enter">`;
-}
-
 /* ============================================================
    4) OTOMASYON
    ============================================================ */
@@ -5116,44 +5981,18 @@ function ruleForm(id) {
 }
 
 /* ---- iş detayındaki ek bölümlerin bağlanması ---- */
-function wireIssueExtras(i) {
-  $$('[data-cf]').forEach(el => el.onchange = () => {
-    const f = DB.fields.find(x => x.id === el.dataset.cf);
-    const v = f.type === 'checkbox' ? el.checked : f.type === 'number' ? (el.value === '' ? '' : parseFloat(el.value.replace(',', '.'))) : el.value;
-    i.cf ||= {};
-    logHist(i, f.name, cfShow(f, i.cf[f.id]), cfShow(f, v));
-    i.cf[f.id] = v; save(); render();
-  });
-  const nl = $('#newLabel'); if (nl) nl.onkeydown = e => {
-    if (e.key !== 'Enter') return; e.preventDefault();
-    const v = nl.value.trim(); if (!v) return;
-    i.labels = [...new Set([...(i.labels || []), v])]; save(); render(); openIssue(i.id);
-  };
-  $$('[data-dellabel]').forEach(b => b.onclick = () => {
-    i.labels = (i.labels || []).filter(l => l !== b.dataset.dellabel); save(); render(); openIssue(i.id); });
-  $$('[data-dellink]').forEach(b => b.onclick = () => {
-    DB.links = DB.links.filter(l => l.id !== b.dataset.dellink); save(); openIssue(i.id); });
-  const al = $('#addLink'); if (al) al.onclick = () => linkForm(i.id);
-  const asu = $('#addSub'); if (asu) asu.onclick = () => subTaskForm(i.id);
-  const stg = $('#subTgl'); if (stg) stg.onclick = () => { DB.ui.subOpen = DB.ui.subOpen === false; openIssue(i.id); };
-  $$('[data-subdone]').forEach(c => c.onclick = e => { e.stopPropagation();
-    const k = issue(c.dataset.subdone);
-    stat(k.statusId).cat === 'done' ? reopenIssue(k.id) : completeIssue(k.id);
-    openIssue(i.id); });
-  $$('[data-sublog]').forEach(b => b.onclick = () => worklogForm({ issueId: b.dataset.sublog }));
-}
-
 function linkForm(fromId) {
   const list = DB.issues.filter(x => x.id !== fromId && x.projectId === DB.ui.project);
-  openModal(`<div class="m-h"><b>Bağlantı ekle</b><button class="x" data-close>×</button></div>
+  openSub(`<div class="m-h"><b>Bağlantı ekle</b><button class="x" data-close>×</button></div>
     <div style="padding:16px 18px">
       <div class="form-row"><label class="field">Bu iş…</label><select class="inp" id="lk_t">
         ${Object.entries(LINKT).map(([v, l]) => `<option value="${v}">${l[0]}</option>`).join('')}</select></div>
       <div class="form-row"><label class="field">Hedef iş</label><select class="inp" id="lk_i">
         ${list.map(x => `<option value="${x.id}">${x.key} — ${esc(x.summary)}</option>`).join('')}</select></div>
     </div>
-    <div class="m-f"><button class="btn" data-close>Vazgeç</button><button class="btn pri" id="lk_ok">Ekle</button></div>`, 'narrow');
+    <div class="m-f"><button class="btn" data-close>Vazgeç</button><button class="btn pri" id="lk_ok">Ekle</button></div>`, 'narrow id-trap');
   $('#lk_ok').onclick = () => {
+    if (!$('#lk_i').value) return;
     DB.links.push({ id: uid('l'), from: fromId, to: $('#lk_i').value, type: $('#lk_t').value });
     closeModal(); save(); openIssue(fromId);
   };
@@ -5365,13 +6204,7 @@ function wireBulk() {
     all.checked ? ids.forEach(i => SEL.add(i)) : ids.forEach(i => SEL.delete(i)); render(); };
   const go = $('#bk_go'); if (!go) return;
   $('#bk_clear').onclick = () => { SEL.clear(); render(); };
-  $('#bk_del').onclick = () => {
-    if (!confirm(`${SEL.size} iş silinsin mi?`)) return;
-    DB.issues = DB.issues.filter(i => !SEL.has(i.id));
-    DB.worklogs = DB.worklogs.filter(w => !SEL.has(w.issueId));
-    DB.links = DB.links.filter(l => !SEL.has(l.from) && !SEL.has(l.to));
-    SEL.clear(); save(); render(); toast('Silindi');
-  };
+  $('#bk_del').onclick = () => issueDelete([...SEL]);
   go.onclick = () => {
     const st = $('#bk_st').value, as = $('#bk_as').value, sp = $('#bk_sp')?.value || '',
           pr = $('#bk_pr').value, lb = $('#bk_lb').value.trim();
@@ -8113,18 +8946,9 @@ function wireQuickAdd() {
     if (!s) return $('#qa_s').focus();
     grab();
     const pr = P(); if (!pr) return toast('Önce bir proje seçin');
-    const it = {
-      id: uid('i'), key: `${pr.key}-${++pr.counter}`, projectId: pr.id, type: q.type,
-      summary: s, description: '', statusId: DB.ui.qaOpen,
-      assignee: q.assignee || null, reporter: CU().id, priority: q.priority,
-      points: null, estimate: parseDur(q.estimate), remainingEst: parseDur(q.estimate), spent: 0,
-      labels: [], cf: { ...q.cf }, sprintId: AGILE() ? (activeSprint()?.id || null) : null,
-      epicId: null, parentId: null, start: q.start || '', due: q.due || '', created: Date.now(), updatedAt: Date.now(),
-      billable: q.billable, billType: q.billType,
-      rank: Math.max(0, ...DB.issues.map(x => x.rank)) + 100,
-    };
-    DB.issues.push(it);
-    runRules(it, 'created');
+    const it = createIssue(pr, { type: q.type, summary: s, statusId: DB.ui.qaOpen, assignee: q.assignee || null, priority: q.priority,
+      estimate: parseDur(q.estimate), cf: { ...q.cf }, sprintId: AGILE() ? (activeSprint()?.id || null) : null,
+      start: q.start || '', due: q.due || '', billable: q.billable, billType: q.billType }, pr.key);
     q.cf = {};                       // müşteri vb. bir sonraki göreve taşınmaz
     save(); render();
     $('#qa_s')?.focus();
@@ -8300,18 +9124,6 @@ const PLAN_COLOR = { done: 'var(--done)', late: 'var(--risk)', active: 'var(--ac
 
 function ensurePlanning() {
   DB.issues.forEach(i => { if (i.start === undefined) i.start = ''; });
-}
-
-/* ---- iş detayı: tarih satırı ---- */
-function planRow(i) {
-  const n = planDays(i);
-  const bad = i.start && i.due && i.start > i.due;
-  return `<span class="lb">Başlangıç</span><input class="inp" type="date" data-f="start" value="${i.start || ''}" max="${i.due || ''}">
-    <span class="lb">Bitiş</span><input class="inp" type="date" data-f="due" value="${i.due || ''}" min="${i.start || ''}">
-    <span class="lb">Planlanan</span><span style="font-size:12px">
-      ${bad ? '<span style="color:var(--risk)">Bitiş, başlangıçtan önce olamaz</span>'
-        : n ? `<b class="num">${n}</b> iş günü ${planState(i) === 'late' ? '<span class="chip" style="background:var(--risk-bg);color:var(--risk)">gecikmiş</span>' : ''}`
-        : '<span style="color:var(--ink3)">tarih girilmedi</span>'}</span>`;
 }
 
 /* ============================================================
@@ -8550,85 +9362,54 @@ function doneFromOk(i) {
    ALT İŞ PANELİ  (tarayıcı pop-up'ı yok)
    ============================================================ */
 function subTaskForm(parentId, preset = {}) {
-  const p = issue(parentId);
-  openModal(`<div class="m-h"><b>Alt iş ekle</b>
-      <span class="k" style="color:var(--ink3)">${esc(p.key)}</span>
-      <span class="chip lbl">${esc(p.summary)}</span>
-      <button class="x" data-close>×</button></div>
-    <div style="padding:16px 18px">
-      <div class="form-row"><label class="field">Başlık</label><input class="inp" id="sb_s" placeholder="Ne yapılacak?"></div>
-      <div class="form-2">
-        <div class="form-row"><label class="field">Atanan</label><select class="inp" id="sb_a"><option value="">Atanmamış</option>
-          ${projUsers().map(u => `<option value="${u.id}" ${u.id === (preset.assignee || p.assignee) ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select></div>
-        <div class="form-row"><label class="field">Durum</label><select class="inp" id="sb_st">
-          ${stats().map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select></div>
-        <div class="form-row"><label class="field">Tahmin</label><input class="inp" id="sb_e" placeholder="4h"></div>
-        <div class="form-row"><label class="field">Öncelik</label><select class="inp" id="sb_p">
-          ${priOpts(p.priority)}</select></div>
-        <div class="form-row"><label class="field">Başlangıç</label><input class="inp" type="date" id="sb_ds" value="${preset.start || ''}"></div>
-        <div class="form-row"><label class="field">Bitiş</label><input class="inp" type="date" id="sb_de" value="${preset.due || ''}"></div>
+  const p = issue(parentId); if (!p || !canEdit()) return;
+  const pu = issueUsers(p), ps = statsOf(p.projectId);
+  openSub(`<div class="id-mh"><span class="id-mic">${ic('subs')}</span>
+      <div class="tx"><b id="sbTitle">Alt iş ekle</b><div class="sub">${tIcon(p.type)}<span class="k">${esc(p.key)}</span> ${esc(p.summary)}</div></div>
+      <button type="button" class="id-ib" data-close aria-label="Kapat">${ic('x')}</button></div>
+    <div class="id-mb">
+      <div class="id-fl"><label for="sb_s">Başlık <span class="req">*</span></label></div>
+      <input class="inp" id="sb_s" maxlength="200" placeholder="Ne yapılacak?" autocomplete="off">
+      <div class="id-err" id="sb_err" role="alert"></div>
+      <div class="id-g2">
+        <div><div class="id-fl"><label for="sb_a">Atanan</label></div><select class="inp" id="sb_a"><option value="">Atanmamış</option>
+          ${pu.map(u => `<option value="${esc(u.id)}" ${u.id === (preset.assignee || p.assignee) ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select></div>
+        <div><div class="id-fl"><label for="sb_st">Durum</label></div><select class="inp" id="sb_st">
+          ${ps.map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('')}</select></div>
+        <div><div class="id-fl"><label for="sb_e">Tahmin</label></div><input class="inp" id="sb_e" placeholder="4h" autocomplete="off"></div>
+        <div><div class="id-fl"><label for="sb_p">Öncelik</label></div><select class="inp" id="sb_p">${priOpts(p.priority)}</select></div>
+        <div><div class="id-fl">Başlangıç</div>${dateField({ id: 'sb_ds', value: preset.start, label: 'Başlangıç' })}</div>
+        <div><div class="id-fl">Bitiş</div>${dateField({ id: 'sb_de', value: preset.due, label: 'Bitiş' })}</div>
       </div>
-      <div class="form-row"><label class="field">Açıklama</label><textarea class="inp" id="sb_d" rows="2"></textarea></div>
-      <div id="sb_err" class="lg-err"></div>
+      <div class="id-fl"><label for="sb_d">Açıklama</label></div><textarea class="inp" id="sb_d" rows="2"></textarea>
     </div>
-    <div class="m-f"><button class="btn" data-close>Vazgeç</button>
-      <button class="btn" id="sb_more">Ekle ve devam et</button>
-      <button class="btn pri" id="sb_ok">Ekle</button></div>`);
-
+    <div class="m-f"><span class="spacer"></span><button type="button" class="btn" data-close>Vazgeç</button>
+      <button type="button" class="btn" id="sb_more">Ekle ve devam et</button>
+      <button type="button" class="btn pri" id="sb_ok">Ekle</button></div>`, 'id-m id-trap');
+  const chk = () => { const msg = dateOrderErr($('#sb_ds').value, $('#sb_de').value); dfErr('sb_de', msg); return !msg; };
+  $('#sb_ds').addEventListener('change', chk); $('#sb_de').addEventListener('change', chk);
   const make = () => {
     const s = $('#sb_s').value.trim();
-    if (!s) { $('#sb_err').textContent = 'Başlık gerekli.'; return null; }
+    if (!s) { $('#sb_err').innerHTML = ic('alert') + 'Başlık gerekli.'; $('#sb_s').focus(); return null; }
+    if (!chk()) return null;
     const pr = DB.projects.find(x => x.id === p.projectId);
-    const est = parseDur($('#sb_e').value);
-    const it = {
-      id: uid('i'), key: `${pr.code || pr.key}-${++pr.counter}`, projectId: p.projectId, type: 'sub',
-      summary: s, description: $('#sb_d').value.trim(), statusId: $('#sb_st').value,
-      assignee: $('#sb_a').value || null, reporter: CU().id, priority: +$('#sb_p').value,
-      points: null, estimate: est, remainingEst: est, spent: 0, labels: [], cf: {},
-      sprintId: p.sprintId, epicId: p.epicId, parentId: p.id,
-      start: $('#sb_ds').value || '', due: $('#sb_de').value || '', created: Date.now(), updatedAt: Date.now(),
-      billable: p.billable, billType: p.billType,
-      rank: Math.max(0, ...DB.issues.map(x => x.rank)) + 100,
-    };
-    DB.issues.push(it); runRules(it, 'created'); save();
+    const it = createIssue(pr, { type: 'sub', summary: s, description: $('#sb_d').value.trim(), statusId: $('#sb_st').value,
+      assignee: $('#sb_a').value || null, priority: +$('#sb_p').value, estimate: parseDur($('#sb_e').value),
+      sprintId: p.sprintId, epicId: p.epicId, parentId: p.id, start: $('#sb_ds').value || '', due: $('#sb_de').value || '',
+      billable: p.billable, billType: p.billType }, pr.code || pr.key);
+    save();
     return it;
   };
-  $('#sb_ok').onclick = () => { const it = make(); if (it) { closeModal(); render(); openIssue(p.id); toast(it.key + ' eklendi'); } };
-  $('#sb_more').onclick = () => { const it = make(); if (it) { $('#sb_s').value = ''; $('#sb_e').value = ''; $('#sb_d').value = ''; $('#sb_s').focus(); toast(it.key + ' eklendi'); } };
+  $('#sb_ok').onclick = () => { const it = make(); if (it) { closeModal(); render(); if ($('#scrim').classList.contains('on')) openIssue(p.id); toast(it.key + ' eklendi'); } };
+  $('#sb_more').onclick = () => { const it = make(); if (it) { $('#sb_s').value = ''; $('#sb_e').value = ''; $('#sb_d').value = ''; $('#sb_err').innerHTML = ''; $('#sb_s').focus(); toast(it.key + ' eklendi'); } };
   $('#sb_s').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('#sb_ok').click(); } };
-}
-
-/* ---- iş detayında açılıp kapanan alt iş listesi ---- */
-function subSection(i) {
-  if (i.type === 'sub') return '';
-  const kids = kidsOf(i.id);
-  const done = kids.filter(k => stat(k.statusId).cat === 'done').length;
-  const open = DB.ui.subOpen !== false;
-  return `<div class="sec">Alt işler ${kids.length ? `(${done}/${kids.length})` : ''}
-      <span style="float:right;margin-top:-4px;display:flex;gap:6px">
-        ${kids.length ? `<button class="btn sm" id="subTgl">${open ? 'Gizle' : 'Göster'}</button>` : ''}
-        ${canEdit() ? '<button class="btn sm" id="addSub">+ Alt iş</button>' : ''}
-      </span></div>
-    ${kids.length ? `
-      <div class="subsum">
-        <span>Toplam tahmin <b class="num">${fmtDur(kids.reduce((a, k) => a + (k.estimate || 0), 0))}</b></span>
-        <span>Harcanan <b class="num">${fmtDur(kids.reduce((a, k) => a + (k.spent || 0), 0))}</b></span>
-        <span>Kalan <b class="num">${fmtDur(kids.reduce((a, k) => a + remaining(k), 0))}</b></span>
-      </div>
-      ${open ? `<div class="sublist">${kids.map(k => `<div class="row" style="padding:6px 0;border-bottom:1px solid var(--line)">
-        <input type="checkbox" ${stat(k.statusId).cat === 'done' ? 'checked' : ''} data-subdone="${k.id}" ${canEdit() ? '' : 'disabled'} title="Tamamla">
-        <span class="k" style="color:var(--ink3);width:64px">${k.key}</span>
-        <span class="sum" data-open="${k.id}" style="${stat(k.statusId).cat === 'done' ? 'text-decoration:line-through;color:var(--ink3)' : ''}">${esc(k.summary)}</span>
-        ${k.estimate ? `<span class="k" style="color:var(--ink3)">${fmtDur(k.spent)}/${fmtDur(k.estimate)}</span>` : ''}
-        ${avat(k.assignee)}
-        ${canEdit() ? `<button class="btn sm" data-sublog="${k.id}" title="Süre kaydet">◷</button>` : ''}
-      </div>`).join('')}</div>` : ''}` : '<div class="empty" style="padding:8px">Alt iş yok</div>'}`;
 }
 
 /* ============================================================
    SÜRE KAYDI: saatlik, notu zorunlu, düzenlenebilir
    ============================================================ */
 function worklogForm(opts = {}) {
+  if (!canEdit()) return toast('İzleyiciler süre kaydedemez');
   const edit = opts.edit ? DB.worklogs.find(w => w.id === opts.edit) : null;
   /* Çizelge "tüm projeler" kapsamındaysa iş listesi de tüm görünür
      projeleri kapsar; aksi halde yalnızca aktif proje. */
@@ -8638,8 +9419,8 @@ function worklogForm(opts = {}) {
     : issuesOf();
   const list = pool.filter(i => i.type !== 'epic').sort((a, b) =>
     projName(a.projectId).localeCompare(projName(b.projectId), 'tr') || a.key.localeCompare(b.key));
-  if (!list.length && !edit) {
-    openModal(`<div class="m-h"><b>Süre kaydet</b><button class="x" data-close>×</button></div>
+  if (!list.length && !edit && !issue(opts.issueId)) {
+    openSub(`<div class="m-h"><b>Süre kaydet</b><button class="x" data-close>×</button></div>
       <div style="padding:18px"><p style="margin:0;color:var(--ink2)">
         ${P() ? `<b>${esc(P().name)}</b> projesinde henüz iş yok.` : 'Görebildiğin projelerde henüz iş yok.'} Süre bir işe kaydedilir;
         önce bir iş oluşturun ya da başka bir projeye geçin.</p></div>
@@ -8654,81 +9435,94 @@ function worklogForm(opts = {}) {
   if (edit && !mayOwner) return toast('Bu kaydı yalnızca sahibi veya yönetici düzenleyebilir');
   const src = edit || {};
 
-  openModal(`
-    <div class="m-h"><b>${edit ? 'Süre kaydını düzenle' : 'Süre kaydet'}</b>
-      ${avat(owner)}<span style="font-size:12px">${esc(user(owner)?.name || '')}</span>
-      <button class="x" data-close>×</button></div>
-    <div style="padding:16px 18px">
-      <div class="form-row"><label class="field">İş</label><select class="inp" id="w_i">
+  /* İşten açılınca iş başlıkta salt okunur (#w_i gizli alan olarak kalır); işsiz açılışta seçilir. */
+  const fixed = !edit && opts.issueId && issue(opts.issueId) ? issue(opts.issueId) : null;
+  const CH = [['15m', '15dk'], ['30m', '30dk'], ['1h', '1s'], ['2h', '2s'], ['4h', '4s'], ['1d', '1g']];
+  const wm = openSub(`
+    <div class="id-mh"><span class="id-mic">${ic('timeplus')}</span>
+      <div class="tx"><b id="wTitle">${edit ? 'Süre kaydını düzenle' : 'Süre kaydet'}</b>
+        ${fixed ? `<div class="sub">${tIcon(fixed.type)}<span class="k">${esc(fixed.key)}</span> ${esc(fixed.summary)}</div>`
+          : `<div class="sub">${avat(owner)} ${esc(user(owner)?.name || '')}</div>`}</div>
+      <button type="button" class="id-ib" data-close aria-label="Kapat">${ic('x')}</button></div>
+    <div class="id-mb">
+      ${fixed ? `<input type="hidden" id="w_i" value="${esc(fixed.id)}">` : `<div class="id-fl"><label for="w_i">İş</label></div><select class="inp" id="w_i">
         ${(() => {
           const src = edit ? DB.issues.filter(i => i.projectId === issue(target).projectId) : list;
-          const opt = i => `<option value="${i.id}" ${i.id === target ? 'selected' : ''}>${i.key} — ${esc(i.summary)}</option>`;
+          const opt = i => `<option value="${esc(i.id)}" ${i.id === target ? 'selected' : ''}>${esc(i.key)} — ${esc(i.summary)}</option>`;
           if (!wide || edit) return src.map(opt).join('');
           const byProj = [...new Set(src.map(i => i.projectId))];
           return byProj.map(pid => `<optgroup label="${esc(projName(pid))}">
             ${src.filter(i => i.projectId === pid).map(opt).join('')}</optgroup>`).join('');
-        })()}</select></div>
-      <div class="form-2">
-        <div class="form-row"><label class="field">Tarih</label><input class="inp" type="date" id="w_d" value="${src.date || opts.date || TODAY}"></div>
-        <div class="form-row"><label class="field">Başlangıç saati</label><input class="inp" type="time" id="w_t" value="${src.time || opts.time || ''}" step="900">
-          <div style="font-size:11px;color:var(--ink3);margin-top:4px">Boş bırakılabilir; girilirse çizelgede saatine yerleşir.</div></div>
+        })()}</select>`}
+      <div class="id-fl"><label for="w_h">Süre <span class="req">*</span></label></div>
+      <div class="id-wdur"><input class="inp" id="w_h" value="${edit ? fmtDur(edit.hours) : ''}" placeholder="3h 30m veya 1d" autocomplete="off" aria-describedby="w_h_e w_h_hint">
+        <div class="id-chips" role="group" aria-label="Hızlı süre">${CH.map(([v, l]) => `<button type="button" data-wch="${v}" aria-pressed="false">${l}</button>`).join('')}</div></div>
+      <div class="id-hint" id="w_h_hint">w = hafta, d = gün (${H_PER_DAY}s), h = saat, m = dakika</div>
+      <div class="id-err" id="w_h_e" role="alert"></div>
+      <div class="id-g2">
+        <div><div class="id-fl">Tarih</div>${dateField({ id: 'w_d', value: src.date || opts.date || TODAY, label: 'Tarih', clear: false })}</div>
+        <div><div class="id-fl"><label for="w_t">Saat <span class="opt">(isteğe bağlı)</span></label></div>
+          <input class="inp" type="time" id="w_t" value="${esc(src.time || opts.time || '')}" step="900">
+          <div class="id-hint">Girilirse çizelgede saatine yerleşir.</div></div>
       </div>
-      <div class="form-row"><label class="field">Harcanan süre</label>
-        <input class="inp" id="w_h" value="${edit ? fmtDur(edit.hours) : ''}" placeholder="3h 30m veya 1d">
-        <div style="font-size:11px;color:var(--ink3);margin-top:4px">w = hafta, d = gün (${H_PER_DAY}s), h = saat, m = dakika</div></div>
-      ${canRemaining() ? `<div class="form-row"><label class="field">Kalan tahmin</label>
+      ${canRemaining() ? `<div class="id-fl"><label for="w_adj">Kalan tahmin</label></div>
         <select class="inp" id="w_adj">
           <option value="auto">Otomatik azalt</option>
           <option value="leave">Değiştirme</option>
           <option value="set">Şu değere ayarla…</option>
           <option value="reduce">Şu kadar azalt…</option>
         </select>
-        <input class="inp" id="w_adjv" placeholder="örn. 12h" style="margin-top:6px;display:none">
-        <div id="w_prev" style="font-size:11.5px;color:var(--ink3);margin-top:5px"></div></div>`
-      : `<div id="w_prev" style="font-size:11.5px;color:var(--ink3);margin-bottom:10px"></div>`}
-      <div class="form-row"><label class="field">Not <span style="color:var(--risk)">*</span></label>
-        <textarea class="inp" id="w_c" rows="2" placeholder="Ne yapıldı? Fatura açıklaması olarak da kullanılır.">${esc(src.comment || '')}</textarea></div>
-      ${isAdmin() && edit ? `<div class="form-row"><label class="field">Kayıt sahibi</label>
-        <select class="inp" id="w_u">${DB.users.map(u => `<option value="${u.id}" ${u.id === owner ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select></div>` : ''}
+        <input class="inp" id="w_adjv" placeholder="örn. 12h" style="margin-top:6px;display:none">` : ''}
+      <div class="id-fl"><label for="w_c">Not <span class="req">*</span></label><span class="num id-cc" id="w_cc">0 / 500</span></div>
+      <textarea class="inp" id="w_c" rows="3" maxlength="500" placeholder="Ne üzerinde çalıştınız? Fatura açıklaması olarak da kullanılır." aria-describedby="w_c_e">${esc(src.comment || '')}</textarea>
+      <div class="id-err" id="w_c_e" role="alert"></div>
+      <div id="w_prev" class="id-wprev" aria-live="polite"></div>
+      ${isAdmin() && edit ? `<div class="id-fl"><label for="w_u">Kayıt sahibi</label></div>
+        <select class="inp" id="w_u">${DB.users.map(u => `<option value="${esc(u.id)}" ${u.id === owner ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select>` : ''}
       <div id="w_err" class="lg-err"></div>
     </div>
     <div class="m-f">
-      ${edit ? `<button class="btn danger" id="w_del">Sil</button>` : ''}
+      ${edit ? `<button type="button" class="btn danger" id="w_del">${ic('trash')}Sil</button>` : ''}
+      <span class="id-hint"><span class="kbd">Ctrl</span>+<span class="kbd">Enter</span> kaydeder</span>
       <span class="spacer"></span>
-      <button class="btn" data-close>Vazgeç</button>
-      <button class="btn pri" id="doWork">${edit ? 'Kaydet' : 'Ekle'}</button></div>`, 'narrow');
+      <button type="button" class="btn" data-close>Vazgeç</button>
+      <button type="button" class="btn pri" id="doWork">${ic('check')}Kaydet</button></div>`, 'narrow id-m id-trap');
+  wm.setAttribute('aria-labelledby', 'wTitle');
+  wm.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); $('#doWork').click(); } });
+  const chips = () => { const h = parseDur($('#w_h').value); $$('[data-wch]').forEach(b => b.setAttribute('aria-pressed', String(!!h && parseDur(b.dataset.wch) === h))); };
+  wm.querySelector('.id-chips').onclick = e => { const b = e.target.closest('[data-wch]'); if (!b) return;
+    $('#w_h').value = b.dataset.wch; $('#w_h').dispatchEvent(new Event('input')); $('#w_h_e').innerHTML = ''; };
+  const wcc = () => { $('#w_cc').textContent = `${$('#w_c').value.length} / 500`; if ($('#w_c').value.trim()) $('#w_c_e').innerHTML = ''; };
+  $('#w_c').addEventListener('input', wcc); wcc();
+  if (fixed) setTimeout(() => $('#w_h')?.focus(), 40);
 
   const adjEl = $('#w_adj');
   const preview = () => {
+    chips();
     const i = issue($('#w_i').value); if (!i) return;
     const h = parseDur($('#w_h').value);
     const a = adjEl ? adjEl.value : 'auto';
     if (adjEl) $('#w_adjv').style.display = (a === 'set' || a === 'reduce') ? 'block' : 'none';
     const base = edit ? remaining(i) + (edit.issueId === i.id ? 0 : 0) : remaining(i);
     const after = nextRemaining(i, h, a, adjEl ? parseDur($('#w_adjv').value) : 0);
-    $('#w_prev').innerHTML = `Tahmin <b class="num">${fmtDur(i.estimate)}</b> ·
-      harcanan <b class="num">${fmtDur(i.spent)}</b> → <b class="num">${fmtDur((i.spent || 0) - (edit ? edit.hours : 0) + h)}</b> ·
-      kalan <b class="num">${fmtDur(base)}</b> → <b class="num" style="color:var(--accent)">${fmtDur(after)}</b>
-      ${canRemaining() ? '' : '<br><span style="color:var(--ink3)">Kalan tahmin otomatik azalır; değiştirme yetkisi yöneticidedir.</span>'}`;
+    $('#w_prev').innerHTML = `<div><span>${ic('clock')}Kalan tahmin</span><span class="num"><s>${fmtDur(base)}</s>${ic('arrow')}<b>${fmtDur(after)}</b></span></div>
+      <div><span>Harcanan</span><span class="num"><s>${fmtDur(i.spent)}</s>${ic('arrow')}<b>${fmtDur((i.spent || 0) - (edit ? edit.hours : 0) + h)}</b></span></div>
+      ${canRemaining() ? '' : '<small>Kalan tahmin otomatik azalır; değiştirme yetkisi yöneticidedir.</small>'}`;
   };
   ['#w_i', '#w_h', '#w_adj', '#w_adjv'].forEach(s => { const e = $(s); if (e) { e.oninput = preview; e.onchange = preview; } });
   preview();
 
-  const del = $('#w_del'); if (del) del.onclick = () => {
-    const i = issue(edit.issueId);
-    i.spent = Math.max(0, (i.spent || 0) - edit.hours);
-    if (!edit.adj || edit.adj === 'auto') i.remainingEst = remaining(i) + edit.hours;
-    DB.worklogs = DB.worklogs.filter(x => x.id !== edit.id);
-    closeModal(); save(); render(); toast('Kayıt silindi');
-  };
+  const del = $('#w_del'); if (del) del.onclick = () => { closeModal(); deleteWorklog(edit.id); };
 
   $('#doWork').onclick = () => {
     const h = parseDur($('#w_h').value);
     const note = $('#w_c').value.trim();
     const err = m => $('#w_err').textContent = m;
-    if (!h) return err('Geçerli bir süre girin, örn. 3h 30m');
-    if ($('#w_d') && !/^\d{4}-\d{2}-\d{2}$/.test($('#w_d').value)) return err('Tarih seçin');
-    if (!note) return err('Not zorunludur — yapılan işi kısaca yazın.');
+    const fe = (id, m, foc) => { const x = document.getElementById(id); if (x) x.innerHTML = m ? ic('alert') + esc(m) : ''; if (m && foc) $(foc)?.focus(); };
+    fe('w_h_e', ''); fe('w_c_e', ''); dfErr('w_d', ''); err('');
+    if (!h) return fe('w_h_e', 'Geçerli bir süre girin, örn. 3h 30m', '#w_h');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test($('#w_d').value)) return dfErr('w_d', 'Tarih seçin');
+    if (!note) return fe('w_c_e', 'Not zorunlu: ne üzerinde çalıştığınızı kısaca yazın.', '#w_c');
     const i = issue($('#w_i').value);
     if (!i) return err('İş seçilmedi');
     const adj = adjEl ? adjEl.value : 'auto';
