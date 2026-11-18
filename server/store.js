@@ -63,7 +63,7 @@ export async function readState(pool, me) {
   return tx(pool, async c => {
     await c.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
     const seq = await maxSeq(c);
-    const data = await readAll(c);
+    const data = scopeData(await readAll(c), me);
     const pr = (await c.query('SELECT data FROM user_prefs WHERE user_id=$1', [me.id])).rows[0];
     for (const k of PREF_KEYS) if (pr?.data?.[k] !== undefined && pr.data[k] !== null) data[k] = pr.data[k];
     if (me.role === 'viewer' && Array.isArray(data.customers)) data.customers = data.customers.map(maskCustomer);
@@ -85,9 +85,16 @@ export async function readChanges(pool, since, me) {
        FROM changes WHERE seq > $1 ORDER BY collection, record_id, seq DESC`, [since]);
   const max = await maxSeq(pool);
   const items = [];
+  const admin = !me || isAdminRole(me.role);
+  let access = false;
   for (const r of rows) {
     const it = { c: r.collection, id: r.record_id, op: r.op, seq: Number(r.seq) };
     if (r.collection === '_reload') { items.push(it); continue; }
+    /* Erişim değişikliği (18): bu kullanıcının (ya da herkesin) görebildiği alan/proje kümesi değişti. */
+    if (r.collection === ACCESS_CH) {
+      if (me && (r.record_id === me.id || (!admin && r.record_id === '*'))) access = true;   // yönetici yapılan da tam veriyi alsın
+      continue;
+    }
     if (r.op === 'put') {
       const d = await readOne(pool, r.collection, r.record_id);
       if (d === undefined) it.op = 'del';
@@ -98,7 +105,8 @@ export async function readChanges(pool, since, me) {
   items.sort((a, b) => a.seq - b.seq);
   /* Toplu değişiklik (geri yükleme / içe aktarma) olduysa istemci her şeyi yeniden yüklesin. */
   if (items.some(i => i.c === '_reload')) return { seq: max, reload: true, items: [] };
-  return { seq: max, items };
+  if (access) return { seq: max, reload: true, access: true, items: [] };
+  return { seq: max, items: admin ? items : await scopeItems(pool, me, items) };
 }
 
 async function readOne(db, c, id) {
@@ -392,6 +400,9 @@ async function applyRecord(c, ctx, ch) {
      ON CONFLICT (collection, id) DO UPDATE SET data = EXCLUDED.data, version = t.version + 1,
        updated_at = now(), updated_by = EXCLUDED.updated_by`, [ch.c, ch.id, json, me.id]);
   if (adjusted) ctx.adjusted.push({ c: ch.c, id: ch.id });
+  /* Okuma süzmesi (18): üyelik ya da projenin alanı değişti → etkilenenler tam yeniden yükler. */
+  if (ch.c === 'workspaces') await logAccess(c, ctx, wsAccessDiff(cur, data));
+  if (ch.c === 'projects' && cur && projWsId(cur) !== projWsId(data)) await logAccess(c, ctx, ['*']);
 
   if (ch.c === 'issues') { ctx.touchedIssues.add(ch.id); await notifyForIssue(c, me, data, cur); }
   if (ch.c === 'comments' && !cur) await notifyForComment(c, me, data);
@@ -583,10 +594,87 @@ function designOk(me, ws, p) {
   return !p || !Array.isArray(m) || m.length === 0 || m.includes(me.id);
 }
 /* Projenin alanı (olmayan alana bağlı ya da alansız proje Genel sayılır). */
+const projWsId = p => (typeof p?.workspaceId === 'string' && p.workspaceId ? p.workspaceId : DEFAULT_WS);
 async function wsOfProjectData(c, p) {
-  const id = typeof p?.workspaceId === 'string' && p.workspaceId ? p.workspaceId : DEFAULT_WS;
+  const id = projWsId(p);
   const r = (await c.query(`SELECT data FROM workspaces WHERE id = $1 OR id = $2 ORDER BY (id = $1) DESC LIMIT 1`, [id, DEFAULT_WS])).rows[0];
   return r?.data;
+}
+
+/* ---- okuma süzmesi (18) ----
+   Erişim kuralı TEK yerde: canAccess (alanda herhangi bir rol). Yazma (needMember / designOk / checkWorkspace) da
+   önce bu rolü ister: okunamayan alan/proje yazılamaz; yazılabilen her şey okunur. Üye listesi tanımsız (eski)
+   alanda herkesin rolü olduğu için süzme yok (bugünkü davranış). Sistem yöneticisi süzülmez.
+   Projeye bağlı tablolar projectId, işe bağlılar issueId, bağlantılar iki ucundan biri üzerinden süzülür.
+   Proje bağımsız tablolar (users, customers, filters, genel fields/rules, settings, misc_records) olduğu gibi gider. */
+export const canAccess = (u, ws) => wsRole(u, ws) !== null;
+export const ACCESS_CH = '_access';
+const BY_PROJECT = ['statuses', 'sprints', 'issues', 'fields', 'rules'];
+const BY_ISSUE = ['worklogs', 'comments', 'history', 'transitions'];
+const SCOPED_READ = ['workspaces', 'projects', ...BY_PROJECT, ...BY_ISSUE, 'links'];
+/* Görünen alan ve proje kimlikleri. */
+function buildScope(me, workspaces, projects) {
+  const wsMap = new Map(workspaces.filter(w => w && w.id).map(w => [w.id, w]));
+  const wsOk = new Set([...wsMap.values()].filter(w => canAccess(me, w)).map(w => w.id));
+  /* Olmayan alana bağlı proje Genel'e, Genel de yoksa eski (üyesiz) alana düşer: wsOfProjectData ile aynı. */
+  const projOk = p => {
+    const id = wsMap.has(projWsId(p)) ? projWsId(p) : DEFAULT_WS;
+    return wsMap.has(id) ? wsOk.has(id) : canAccess(me, undefined);
+  };
+  return { wsOk, proj: new Set(projects.filter(p => p && p.id && projOk(p)).map(p => p.id)) };
+}
+/* Kayıt görünür mü (issueOk: iş kimliği → görünür mü). */
+function recordVisible(col, d, scope, issueOk) {
+  if (!d || typeof d !== 'object') return true;
+  if (col === 'workspaces') return scope.wsOk.has(d.id);
+  if (col === 'projects') return scope.proj.has(d.id);
+  if (BY_PROJECT.includes(col)) {
+    /* Genel özel alan / kural (projesiz) herkese gider. */
+    if ((col === 'fields' || col === 'rules') && (d.projectId == null || d.projectId === '')) return true;
+    return scope.proj.has(d.projectId);
+  }
+  if (BY_ISSUE.includes(col)) return issueOk(d.issueId);
+  if (col === 'links') return issueOk(d.from) || issueOk(d.to);
+  return true;
+}
+/* İlk yükleme: bellekteki tam veriden süz. */
+export function scopeData(data, me) {
+  if (!me || isAdminRole(me.role)) return data;
+  const scope = buildScope(me, data.workspaces || [], data.projects || []);
+  const ok = new Set((data.issues || []).filter(i => i && scope.proj.has(i.projectId)).map(i => i.id));
+  const issueOk = id => ok.has(id);
+  for (const col of SCOPED_READ)
+    if (Array.isArray(data[col])) data[col] = data[col].filter(d => recordVisible(col, d, scope, issueOk));
+  return data;
+}
+/* Değişiklik akışı: yalnız görünen kayıtların güncel hâli gider; silme bildirimleri (yalnız kimlik) olduğu gibi. */
+async function scopeItems(db, me, items) {
+  if (!items.some(i => i.op === 'put' && SCOPED_READ.includes(i.c))) return items;
+  const scope = buildScope(me, (await db.query('SELECT data FROM workspaces')).rows.map(r => r.data),
+    (await db.query('SELECT data FROM projects')).rows.map(r => r.data));
+  const ids = new Set();
+  for (const i of items) if (i.op === 'put' && i.data) {
+    if (BY_ISSUE.includes(i.c)) ids.add(i.data.issueId);
+    if (i.c === 'links') { ids.add(i.data.from); ids.add(i.data.to); }
+  }
+  const ok = new Set();
+  const list = [...ids].filter(x => typeof x === 'string');
+  if (list.length) for (const r of (await db.query('SELECT id, project_id FROM issues WHERE id = ANY($1)', [list])).rows)
+    if (scope.proj.has(r.project_id)) ok.add(r.id);
+  return items.filter(i => i.op !== 'put' || recordVisible(i.c, i.data, scope, id => ok.has(id)));
+}
+/* Erişim kümesi değişti: ilgili kullanıcıya (ya da '*' herkese) tam yeniden yükleme sinyali. */
+async function logAccess(c, ctx, uids) {
+  for (const u of new Set(uids)) if (typeof u === 'string' && u) await logChange(c, ACCESS_CH, u, 'put', ctx.me.id, ctx.batch);
+}
+/* Alan kaydı değişince erişimi değişen kullanıcılar: eski↔üyeli geçişte herkes, değilse üye/sahip farkı. */
+function wsAccessDiff(cur, data) {
+  if (!cur) return [];                                 // yeni alan: üyeler kaydın kendisini değişiklikle alır
+  if (wsLegacy(cur) !== wsLegacy(data)) return ['*'];
+  if (wsLegacy(cur)) return [];
+  const ids = w => new Set([...(w.members || []).map(x => x?.userId), wsOwner(w)].filter(Boolean));
+  const a = ids(cur), b = ids(data);
+  return [...a].filter(x => !b.has(x)).concat([...b].filter(x => !a.has(x)));
 }
 const projById = async (c, pid) => typeof pid === 'string' && pid
   ? (await c.query('SELECT data FROM projects WHERE id=$1', [pid])).rows[0]?.data : undefined;
@@ -993,6 +1081,8 @@ async function applyUser(c, ctx, ch) {
      WHERE id=$1 AND (username, name, role, active, data) IS DISTINCT FROM ($2, $3, $4, $5, $6::jsonb)`,
     [cur.id, username, name, role, act, JSON.stringify(extra)]);
   if (!act) await c.query('DELETE FROM sessions WHERE user_id=$1', [cur.id]);
+  /* Yönetici olup/olmaktan çıkınca görebildiği veri değişir (18). */
+  if (r.rowCount && isAdminRole(cur.role) !== isAdminRole(role)) await logAccess(c, ctx, [cur.id]);
   return r.rowCount > 0;
 }
 
