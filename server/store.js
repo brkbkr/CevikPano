@@ -24,6 +24,10 @@ const CREATE_ONCE = ['workspaces', 'customers', 'history', 'comments'];
 export const HIST_LOCKED = 'Geçmiş kaydı değiştirilemez';
 export const HIST_SKEW_MS = 5 * 60 * 1000;
 export const COMMENT_FORBIDDEN = 'Başkasının yorumunu yalnızca yönetici değiştirebilir';
+const HIST_KEYS = ['id', 'issueId', 'userId', 'at', 'field', 'from', 'to', 'kind', 'key', 'rule'];
+export const HIST_MAX_BYTES = 2048;
+/* Geçmiş kaydında bilinen anahtarlar dışındakiler atılır; değişiklik olduysa true. */
+const stripHistKeys = d => { let n = 0; for (const k of Object.keys(d)) if (!HIST_KEYS.includes(k)) { delete d[k]; n++; } return n > 0; };
 
 /* ---- kullanıcıyı istemciye gönderilecek biçime çevir (parola özeti yok) ---- */
 export function publicUser(row) {
@@ -243,14 +247,16 @@ async function applyRecord(c, ctx, ch) {
       throw new HttpError(403, 'Başkası adına süre kaydı yalnızca yönetici girebilir');
   }
   if (ch.c === 'worklogs') { if (cur?.issueId) ctx.touchedIssues.add(cur.issueId); if (ch.data?.issueId) ctx.touchedIssues.add(ch.data.issueId); }
-  /* Başkasının yorumu (yazarı olan): değiştirme/silme yalnız yönetici. Kayıt yoksa silme zaten etkisiz. */
-  if (ch.c === 'comments' && !meAdmin && cur?.userId && cur.userId !== me.id) throw new HttpError(403, COMMENT_FORBIDDEN);
+  /* Başkasının ya da yazarı olmayan eski yorum: değiştirme/silme yalnız yönetici. Kayıt yoksa silme zaten etkisiz. */
+  if (ch.c === 'comments' && !meAdmin && cur && cur.userId !== me.id) throw new HttpError(403, COMMENT_FORBIDDEN);
   if (ch.c === 'history') {
     if (ch.op === 'del') { if (!cur) return false; throw new HttpError(403, HIST_LOCKED); }
     if (cur) {
       const inc = { ...ch.data, id: ch.id };
       normalizeHistory(inc);
       if (same(cur, inc)) return false;               // aynı veri (yeniden gönderim) sessizce geçer
+      stripHistKeys(inc);
+      if (same(cur, inc)) { ctx.adjusted.push({ c: ch.c, id: ch.id }); return false; }
       /* Yeniden gönderim: sunucu bu kişinin kaydında yalnız yazarı/zamanı düzeltmişti. */
       const bare = x => ({ ...x, userId: null, at: null });
       if (!meAdmin && cur.userId === me.id && same(bare(cur), bare(inc))) { ctx.adjusted.push({ c: ch.c, id: ch.id }); return false; }
@@ -307,18 +313,24 @@ async function applyRecord(c, ctx, ch) {
   if (ch.c === 'customers' && normalizeCustomer(data)) adjusted = true;
   if (ch.c === 'workspaces' && enforceCreatedBy(data, cur, me)) adjusted = true;
   if (ch.c === 'history' && normalizeHistory(data)) adjusted = true;
+  if (ch.c === 'history' && stripHistKeys(data)) adjusted = true;
   if (ch.c === 'history' && !meAdmin && enforceHistoryAuthor(data, me)) adjusted = true;
-  /* Yeni yorumda yazar oturumdur; var olan yorumun yazarı değişmez (yönetici hariç). */
-  if (ch.c === 'comments' && !meAdmin) {
-    const owner = cur ? cur.userId : me.id;
-    if (data.userId !== owner) { if (owner === undefined) delete data.userId; else data.userId = owner; adjusted = true; }
-  }
+  /* "Geri yükleme" satırını yalnız sunucu (çöp kutusu) ve yönetici yazar. */
+  if (ch.c === 'history' && !meAdmin && data.kind === 'restore') { delete data.kind; adjusted = true; }
+  if (ch.c === 'history' && Buffer.byteLength(JSON.stringify(data)) > HIST_MAX_BYTES) throw new HttpError(400, 'Geçmiş kaydı çok büyük');
+  /* Yeni yorumda yazar oturumdur; var olan yorumun yazarı değişmez (yönetici hariç; yönetici olmayan
+     yalnız kendi yorumunu düzenler, bu durumda cur.userId === me.id). */
+  if (ch.c === 'comments' && !meAdmin && data.userId !== me.id) { data.userId = me.id; adjusted = true; }
   validate(ch.c, data, { live: true, cur });
   /* Geçmiş kaydının işi var olmalı (aynı gönderimde oluşturulan iş dahil: gruplamada işlerden sonra gelir).
      FOR SHARE: iş aynı anda silinirse yetim kayıt kalmasın. */
   if (ch.c === 'history'
       && !(await c.query('SELECT 1 FROM issues WHERE id=$1 FOR SHARE', [data.issueId])).rowCount)
     throw new HttpError(400, 'Geçmiş kaydının işi bulunamadı');
+  /* Yorumun işi var olmalı (yeni yorumda ya da işi değişince; içe aktarma gevşek kalır). */
+  if (ch.c === 'comments' && (!cur || data.issueId !== cur.issueId)
+      && !(await c.query('SELECT 1 FROM issues WHERE id=$1 FOR SHARE', [data.issueId])).rowCount)
+    throw new HttpError(400, 'Yorumun işi bulunamadı');
   /* Atanan değiştiyse var olan, aktif bir kullanıcı olmalı. */
   if (ch.c === 'issues' && data.assignee != null && data.assignee !== '' && data.assignee !== cur?.assignee) {
     const ok = typeof data.assignee === 'string'

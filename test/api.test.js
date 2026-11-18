@@ -1852,6 +1852,36 @@ describe('geçmiş ve yorum koruması', { skip: !URL && 'TEST_DATABASE_URL yok' 
     assert.equal(await row('comments', 'ch_m2'), undefined);
   });
 
+  test('geçmiş: bilinmeyen anahtarlar atılır, 2 KB sınırı, üye "restore" türü yazamaz', async () => {
+    let r = ok(await M.sync([H('hh_ek', { issueId: 'ih1', at: Date.now(), body: 'x'.repeat(5000), extra: { a: 1 }, kind: 'edit' })]));
+    assert.deepEqual(Object.keys(await row('history', 'hh_ek')).sort(), ['at', 'field', 'from', 'id', 'issueId', 'kind', 'to', 'userId']);
+    assert.ok(adj(r, 'history', 'hh_ek'));
+    /* Alanlar kırpılsa da toplam 2 KB'ı aşan kayıt (uzun kimlikler) reddedilir. */
+    assert.deepEqual(reasons(await A.sync([H('hh_buyuk', { issueId: 'ih1', userId: 'u'.repeat(200), key: 'k'.repeat(200), rule: 'r'.repeat(200),
+      field: 'f'.repeat(100), from: '€'.repeat(200), to: '€'.repeat(200), kind: '€'.repeat(200) })])), ['Geçmiş kaydı çok büyük']);
+    assert.equal(await row('history', 'hh_buyuk'), undefined);
+    r = ok(await M.sync([H('hh_rst', { issueId: 'ih1', at: Date.now(), field: 'Geri yükleme', kind: 'restore' })]));
+    assert.equal((await row('history', 'hh_rst')).kind, undefined);
+    assert.ok(adj(r, 'history', 'hh_rst'));
+    ok(await A.sync([H('hh_rst_a', { issueId: 'ih1', field: 'Geri yükleme', kind: 'restore' })]));
+    assert.equal((await row('history', 'hh_rst_a')).kind, 'restore');
+  });
+
+  test('yorum: işi var olmalı (aynı gönderimdeki yeni iş dahil); yazarı olmayan eski yorumu yalnız yönetici değiştirir/siler', async () => {
+    assert.deepEqual(reasons(await M.sync([C('ch_yetim', { issueId: 'i_yok_c' })])), ['Yorumun işi bulunamadı']);
+    assert.deepEqual(reasons(await A.sync([C('ch_yetim', { issueId: 'i_yok_c' })])), ['Yorumun işi bulunamadı']);
+    assert.equal(await row('comments', 'ch_yetim'), undefined);
+    ok(await M.sync([C('ch_yeniis', { issueId: 'ih_yorum' }), I('ih_yorum')]));
+    await pool.query(`INSERT INTO comments (id, data) VALUES ('ch_eski', '{"id":"ch_eski","issueId":"ih1","body":"eski"}')`);
+    const cur = await row('comments', 'ch_eski');
+    assert.deepEqual(reasons(await M.sync([{ c: 'comments', id: 'ch_eski', op: 'put', data: { ...cur, body: 'x' }, base: cur }])), [NOT_OWNER]);
+    assert.deepEqual(reasons(await M.sync([D('comments', 'ch_eski')])), [NOT_OWNER]);
+    ok(await A.sync([{ c: 'comments', id: 'ch_eski', op: 'put', data: { ...cur, body: 'yönetici' }, base: cur }]));
+    assert.equal((await row('comments', 'ch_eski')).userId, undefined);
+    ok(await A.sync([D('comments', 'ch_eski')]));
+    assert.equal(await row('comments', 'ch_eski'), undefined);
+  });
+
   test('içe aktarma (replaceAll) eski, uzun, yazarsız, zamansız geçmişi atlamaz; metinleri kırpar', async () => {
     const before = (await A.state()).json.data;
     const data = {
@@ -1863,10 +1893,12 @@ describe('geçmiş ve yorum koruması', { skip: !URL && 'TEST_DATABASE_URL yok' 
         { id: 'hz_issiz', field: 'Durum', from: 1, to: 2, at: 12 },
         { id: 'hz_alan', issueId: 'iz1', userId: 7, field: 'A'.repeat(300), from: null, to: false },
       ],
+      comments: [{ id: 'cz_yetim', issueId: 'iz_yok', body: 'işi silinmiş eski yorum' }],
     };
     const r = await A.req('POST', '/api/import', { data });
     assert.equal(r.status, 200, JSON.stringify(r.json));
     assert.equal(r.json.history, 4);
+    assert.equal(r.json.comments, 1);                                    // yorumun işi içe aktarmada denetlenmez
     assert.ok(!r.json.skipped, JSON.stringify(r.json));
     const u = await row('history', 'hz_uzun');
     assert.equal(u.from.length, 200); assert.ok(u.from.endsWith('…')); assert.equal(u.to, '{"eski":1}');
