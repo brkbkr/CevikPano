@@ -113,6 +113,7 @@ const RULES = {
     [typeof d.summary === 'string' && d.summary.length <= 500, 'İş özeti gerekli (en fazla 500 karakter)'],
     [optStr(d.description, 100000), 'Açıklama çok uzun'],
     [date(d.due) && date(d.start), 'Geçersiz tarih'],
+    [d.customerId == null || d.customerId === '' || validId(d.customerId), 'Geçersiz cari'],
     [d.estimate == null || (typeof d.estimate === 'number' && d.estimate >= 0), 'Tahmin negatif olamaz'],
     [d.priority == null || (Number.isInteger(d.priority) && d.priority >= 1 && d.priority <= 5), 'Öncelik 1 ile 5 arasında bir tamsayı olmalı'],
     [d.points == null || (typeof d.points === 'number' && Number.isFinite(d.points) && d.points >= 0 && d.points <= 1000), 'Puan 0 ile 1000 arasında bir sayı olmalı'],

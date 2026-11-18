@@ -2068,3 +2068,135 @@ describe('talep eden', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     assert.equal((await row('customers', 'c_tl2')).data.contacts.length, 2);
   });
 });
+
+/* ---------------- müşteri atamaları cariden (görev 11b) ----------------
+   005 geçişi: eski "Müşteri" seçim alanının değerleri cariye dönüşür, işler bağlanır, alan gizlenir. */
+describe('müşteri → cari (005)', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  const del = (c, id) => ({ c, id, op: 'del' });
+  const row = async (table, id) => (await pool.query(`SELECT data FROM ${table} WHERE id=$1`, [id])).rows[0]?.data;
+  const reasons = r => r.json.rejected.map(x => x.reason);
+  const ok = r => { assert.equal(r.status, 200); assert.equal(r.json.rejected.length, 0, JSON.stringify(r.json.rejected)); };
+  const rejectedWith = (r, msg) => { assert.equal(r.status, 200); assert.equal(r.json.applied, 0, JSON.stringify(r.json)); assert.deepEqual(reasons(r), [msg]); };
+  const KEYS = { i_mi1: 'GEN-9101', i_mk1: 'GEN-9102', i_mk2: 'GEN-9103', i_mk3: 'GEN-9104' };
+  const iss = (id, extra = {}) => ({ c: 'issues', id, op: 'put', data: { projectId: 'p1', key: KEYS[id], summary: 'Cari işi ' + id, statusId: 'p1_s0', ...extra } });
+  const readRel = async p => (await import('node:fs/promises')).readFile(new globalThis.URL(p, import.meta.url), 'utf8');
+  const rerun = async () => {
+    const sql = await readRel('../server/migrations/005_musteri_cari.sql');
+    const c = await pool.connect();
+    try { await c.query('BEGIN'); await c.query(sql); await c.query('COMMIT'); } finally { c.release(); }
+  };
+  const maxSeq = async () => Number((await pool.query('SELECT max(seq) m FROM changes')).rows[0].m);
+  let A, U;
+  before(async () => {
+    A = client(); await A.login('admin', 'test-admin-pw');
+    await A.sync([{ c: 'users', id: 'u_mc1', op: 'put', data: { username: 'mcuye', name: 'mcuye', role: 'member', active: true } }]);
+    U = client(); await U.login('mcuye', 'Start12345');
+    assert.equal((await U.req('POST', '/api/auth/password', { newPassword: 'McYeni123456' })).status, 200);
+  });
+
+  test('geçiş: demo verisi (Müşteri alanı) → cariler, işler bağlanır, alan gizlenir; tekrar çalıştırınca çift cari yok', async () => {
+    const demo = JSON.parse(await readRel('./fixtures/demo.json'));
+    /* eski yedek gibi doğrudan tablolara: alan + işler (kimlikler önekli, başka testlerle çakışmasın) */
+    const f = demo.fields.find(x => x.key === 'musteri');
+    await pool.query('INSERT INTO fields (id, data) VALUES ($1, $2::jsonb)', ['mc_' + f.id, JSON.stringify({ ...f, id: 'mc_' + f.id })]);
+    const issues = demo.issues.map(i => ({ ...i, id: 'mc_' + i.id, projectId: 'p_mcdemo',
+      cf: Object.fromEntries(Object.entries(i.cf || {}).map(([k, v]) => ['mc_' + k, v])) }));
+    /* yazım farkları: boşluk + büyük/küçük harf aynı cari; önceden bağlı iş değişmez */
+    issues[0].cf.mc_cf_mus = '  acme ';
+    issues[1].cf.mc_cf_mus = 'GLOBEX';
+    const pre = issues.find(i => !i.cf.mc_cf_mus); pre.cf.mc_cf_mus = 'Initech'; pre.customerId = 'c_mc_pre';
+    for (const i of issues) await pool.query('INSERT INTO issues (id, data) VALUES ($1, $2::jsonb)', [i.id, JSON.stringify(i)]);
+    /* "Acme" adlı cari zaten var (farklı yazımla) → yenisi açılmaz, ona bağlanır */
+    ok(await A.sync([{ c: 'customers', id: 'c_mc_acme', op: 'put', data: { name: 'ACME', kind: 'customer' } },
+      { c: 'customers', id: 'c_mc_pre', op: 'put', data: { name: 'Önceden', kind: 'customer' } }]));
+    const seq0 = await maxSeq();
+    await rerun();
+    const byVal = v => issues.filter(i => i !== pre && String(i.cf.mc_cf_mus || '').trim().toLowerCase() === v);
+    const glob = (await pool.query(`SELECT id, data FROM customers WHERE lower(name)='globex'`)).rows;
+    assert.equal(glob.length, 1);
+    assert.match(glob[0].id, /^cu_m_[0-9a-f]{32}$/);
+    assert.deepEqual(glob[0].data, { id: glob[0].id, name: 'Globex', kind: 'customer', active: true, contacts: [] });   // en sık yazım
+    assert.ok(byVal('acme').length >= 9 && byVal('globex').length >= 8);
+    for (const i of byVal('acme')) assert.equal((await row('issues', i.id)).customerId, 'c_mc_acme');
+    for (const i of byVal('globex')) assert.equal((await row('issues', i.id)).customerId, glob[0].id);
+    assert.equal((await row('issues', pre.id)).customerId, 'c_mc_pre');                           // dolu olan değişmez
+    assert.equal((await pool.query(`SELECT count(*) n FROM customers WHERE lower(name) IN ('acme','initech')`)).rows[0].n, '1');
+    for (const i of issues.filter(x => !x.cf.mc_cf_mus)) assert.equal((await row('issues', i.id)).customerId, undefined);
+    assert.equal((await row('issues', issues[0].id)).cf.mc_cf_mus, '  acme ');                     // değerler yerinde
+    const fd = await row('fields', 'mc_cf_mus');
+    assert.equal(fd.archived, true); assert.equal(fd.hidden, true); assert.deepEqual(fd.options, f.options);
+    const ch = (await pool.query('SELECT collection, count(*)::int n FROM changes WHERE seq > $1 GROUP BY 1', [seq0])).rows;
+    const n = Object.fromEntries(ch.map(r => [r.collection, r.n]));
+    assert.equal(n.customers, 1); assert.equal(n.fields, 1);
+    assert.equal(n.issues, byVal('acme').length + byVal('globex').length);
+    assert.ok((await pool.query(`SELECT 1 FROM pg_indexes WHERE indexname='issues_customer_idx'`)).rowCount);
+    /* tekrar: hiçbir şey değişmez */
+    const seq1 = await maxSeq();
+    const cnt = (await pool.query('SELECT count(*) n FROM customers')).rows[0].n;
+    await rerun();
+    assert.equal((await pool.query('SELECT count(*) n FROM customers')).rows[0].n, cnt);
+    assert.equal(await maxSeq(), seq1);
+    /* yeni gelen eski biçimli iş (ör. eski sürümden) sonraki çalıştırmada var olan cariye bağlanır */
+    await pool.query('INSERT INTO issues (id, data) VALUES ($1, $2::jsonb)', ['mc_new', JSON.stringify({ id: 'mc_new', projectId: 'p_mcdemo', summary: 'x', cf: { mc_cf_mus: 'Globex' } })]);
+    await rerun();
+    assert.equal((await row('issues', 'mc_new')).customerId, glob[0].id);
+    assert.equal((await pool.query('SELECT count(*) n FROM customers')).rows[0].n, cnt);
+    /* geçiş kaydı: migrate() 005'i bir kez uygular */
+    await pool.query(`DELETE FROM schema_migrations WHERE id='005_musteri_cari.sql'`);
+    await migrate(pool);
+    assert.equal((await pool.query(`SELECT count(*) n FROM schema_migrations WHERE id='005_musteri_cari.sql'`)).rows[0].n, '1');
+    /* istemciye alan gizli işaretiyle gider */
+    assert.equal((await A.state()).json.data.fields.find(x => x.id === 'mc_cf_mus').hidden, true);
+    await pool.query(`DELETE FROM issues WHERE id LIKE 'mc\\_%'`);
+    await pool.query(`DELETE FROM fields WHERE id='mc_cf_mus'`);
+  });
+
+  test('iş customerId: biçim, var olan ve etkin cari; değişmeyen pasif bağ korunur; kaldırma serbest', async () => {
+    ok(await A.sync([{ c: 'customers', id: 'c_mi1', op: 'put', data: { name: 'İş Carisi', kind: 'customer' } },
+      { c: 'customers', id: 'c_mi2', op: 'put', data: { name: 'Pasif İş Carisi', kind: 'customer', active: false } }]));
+    for (const bad of [7, { x: 1 }, '<b>', 'a b']) rejectedWith(await U.sync([iss('i_mi1', { customerId: bad })]), 'Geçersiz cari');
+    rejectedWith(await U.sync([iss('i_mi1', { customerId: 'c_yok' })]), 'Cari bulunamadı');
+    rejectedWith(await U.sync([iss('i_mi1', { customerId: 'c_mi2' })]), 'Pasif cari işe bağlanamaz');
+    ok(await U.sync([iss('i_mi1', { customerId: 'c_mi1' })]));                        // üye de bağlar
+    assert.equal((await row('issues', 'i_mi1')).customerId, 'c_mi1');
+    assert.equal((await pool.query(`SELECT customer_id FROM issues WHERE id='i_mi1'`)).rows[0].customer_id, 'c_mi1');
+    ok(await A.sync([{ c: 'customers', id: 'c_mi1', op: 'put', data: { name: 'İş Carisi', kind: 'customer', active: false } }]));
+    ok(await U.sync([iss('i_mi1', { customerId: 'c_mi1', summary: 'değişti' })]));   // pasif bağ korunur
+    rejectedWith(await A.sync([del('customers', 'c_mi1')]), 'Bu cariye bağlı 1 iş var; silmek yerine pasife alın');
+    ok(await U.sync([iss('i_mi1', { customerId: '' })]));
+    ok(await U.sync([iss('i_mi1', { customerId: null })]));
+    rejectedWith(await U.sync([iss('i_mi1', { customerId: 'c_mi1' })]), 'Pasif cari işe bağlanamaz');
+    ok(await A.sync([del('issues', 'i_mi1'), del('customers', 'c_mi1'), del('customers', 'c_mi2')]));
+  });
+
+  test('birleştir: proje + iş bağları ve kişiler hedefe, kaynak silinir; tek değişiklik, yalnız yönetici', async () => {
+    ok(await A.sync([
+      { c: 'customers', id: 'c_mk', op: 'put', data: { name: 'Kaynak Ltd', kind: 'customer', contacts: [{ id: 'k1', name: 'Ali' }, { id: 'k2', name: 'Veli' }] } },
+      { c: 'customers', id: 'c_mh', op: 'put', data: { name: 'Hedef A.Ş.', kind: 'customer', contacts: [{ id: 'k1', name: 'Ayşe' }] } },
+      { c: 'customers', id: 'c_mp', op: 'put', data: { name: 'Pasif Hedef', kind: 'customer', active: false } },
+      { c: 'projects', id: 'p_mk1', op: 'put', data: { name: 'Birleşme 1', key: 'MKA', counter: 0, workspaceId: 'ws1', customerId: 'c_mk' } },
+      { c: 'projects', id: 'p_mk2', op: 'put', data: { name: 'Birleşme 2', key: 'MKB', counter: 0, workspaceId: 'ws1', customerId: 'c_mk', archived: true } },
+      iss('i_mk1', { customerId: 'c_mk' }), iss('i_mk2', { customerId: 'c_mk' }), iss('i_mk3', { customerId: 'c_mh' })]));
+    const mrg = to => ({ c: 'customers', id: 'c_mk', op: 'del', mergeInto: to });
+    rejectedWith(await U.sync([mrg('c_mh')]), 'Bu değişiklik için yönetici yetkisi gerekli');
+    rejectedWith(await A.sync([mrg('c_mp')]), 'Pasif cariye birleştirilemez');
+    rejectedWith(await A.sync([mrg('c_mk')]), 'Birleştirilecek cari geçersiz');
+    rejectedWith(await A.sync([mrg('c_yok')]), 'Cari bulunamadı');
+    rejectedWith(await A.sync([mrg(5)]), 'Birleştirilecek cari geçersiz');
+    assert.equal((await row('issues', 'i_mk1')).customerId, 'c_mk');                       // reddedilen birleştirme hiçbir şey yazmaz
+    assert.equal((await row('projects', 'p_mk1')).customerId, 'c_mk');
+    const seq0 = await maxSeq();
+    const r = await A.sync([mrg('c_mh')]);
+    ok(r); assert.equal(r.json.applied, 1);
+    assert.equal(await row('customers', 'c_mk'), undefined);
+    for (const id of ['p_mk1', 'p_mk2']) assert.equal((await row('projects', id)).customerId, 'c_mh');
+    for (const id of ['i_mk1', 'i_mk2', 'i_mk3']) assert.equal((await row('issues', id)).customerId, 'c_mh');
+    assert.equal((await row('projects', 'p_mk2')).archived, true);
+    assert.deepEqual((await row('customers', 'c_mh')).contacts, [{ id: 'k1', name: 'Ayşe' }, { id: 'k1_2', name: 'Ali' }, { id: 'k2', name: 'Veli' }]);
+    const ch = (await pool.query('SELECT collection, record_id, op FROM changes WHERE seq > $1', [seq0])).rows.map(x => `${x.collection}:${x.record_id}:${x.op}`);
+    assert.deepEqual(ch.sort(), ['customers:c_mh:put', 'customers:c_mk:del', 'issues:i_mk1:put', 'issues:i_mk2:put', 'projects:p_mk1:put', 'projects:p_mk2:put'].sort());
+    assert.equal((await A.sync([mrg('c_mh')])).json.applied, 0);                             // kaynak yok: etkisiz
+    ok(await A.sync([del('issues', 'i_mk1'), del('issues', 'i_mk2'), del('issues', 'i_mk3'), del('projects', 'p_mk1'), del('projects', 'p_mk2')]));
+    ok(await A.sync([del('customers', 'c_mh'), del('customers', 'c_mp')]));
+  });
+});

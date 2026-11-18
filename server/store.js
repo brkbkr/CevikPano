@@ -277,6 +277,8 @@ async function applyRecord(c, ctx, ch) {
     if (ch.c === 'customers') {
       /* Kişisel veri: cari çöp kutusuna gitmez, kalıcı silinir (geri alınamaz). Silinen cari yedeklerden de
          çıkarılır; yetkili kişi silmesi eski yedeklerde saklama süresi dolana kadar kalabilir. */
+      /* Birleştirme (görev 11b): { op:'del', mergeInto: hedef } → bağlar ve kişiler hedefe, kaynak silinir. */
+      if (ch.mergeInto !== undefined) await mergeCustomer(c, ctx, ch.id, ch.mergeInto);
       await checkCustomerDelete(c, ch.id);
       await c.query('DELETE FROM customers WHERE id=$1', [ch.id]);
       await purgeCustomerFromSnapshots(c, ch.id);
@@ -350,6 +352,7 @@ async function applyRecord(c, ctx, ch) {
   if (ch.c === 'workspaces') await checkWorkspace(c, me, ch.id, data, cur);
   if (ch.c === 'projects') await checkProjectWorkspace(c, data, cur);
   if (ch.c === 'projects') await checkProjectCustomer(c, data, cur);
+  if (ch.c === 'issues') await checkProjectCustomer(c, data, cur, 'Pasif cari işe bağlanamaz');
   if (ch.c === 'projects' && cur) await checkProjectType(c, me, ch.id, data, cur);
   /* Üye listesini değiştiren yönetici olmayan kişi zaten üye olmalı (ya da liste boş olmalı). Yeni projede serbest. */
   if (ch.c === 'projects' && cur && !same(cur.members ?? [], data.members ?? []))
@@ -559,17 +562,52 @@ async function purgeCustomerFromSnapshots(c, id) {
 async function checkCustomerDelete(c, id) {
   const n = Number((await c.query('SELECT count(*) AS n FROM projects WHERE customer_id=$1', [id])).rows[0].n);
   if (n > 0) throw new HttpError(409, `Bu cariye bağlı ${n} proje var; silmek yerine pasife alın`);
+  const k = Number((await c.query('SELECT count(*) AS n FROM issues WHERE customer_id=$1', [id])).rows[0].n);
+  if (k > 0) throw new HttpError(409, `Bu cariye bağlı ${k} iş var; silmek yerine pasife alın`);
+}
+
+/* İki cariyi birleştirir (yönetici; customers ADMIN_ONLY): kaynağa bağlı tüm projeler ve işler (arşivliler dahil)
+   hedefe taşınır, kaynağın yetkili kişileri hedefe eklenir; ardından kaynak silinir (çağıran). Hedef var ve etkin
+   olmalı. Hepsi tek işlemde: bir adım reddedilirse hiçbiri yazılmaz (SAVEPOINT). */
+async function mergeCustomer(c, ctx, id, to) {
+  if (!validId(to) || to === id) throw new HttpError(400, 'Birleştirilecek cari geçersiz');
+  const src = (await c.query('SELECT data FROM customers WHERE id=$1', [id])).rows[0]?.data;
+  const tgt = (await c.query('SELECT data, active FROM customers WHERE id=$1 FOR UPDATE', [to])).rows[0];
+  if (!src || !tgt) throw new HttpError(400, 'Cari bulunamadı');
+  if (!tgt.active) throw new HttpError(400, 'Pasif cariye birleştirilemez');
+  const { me, batch } = ctx;
+  for (const table of ['projects', 'issues']) {
+    const rows = (await c.query(`UPDATE ${table} SET data = data || jsonb_build_object('customerId', $2::text),
+        version = version + 1, updated_at = now(), updated_by = $3 WHERE customer_id = $1 RETURNING id`, [id, to, me.id])).rows;
+    for (const r of rows) { await logChange(c, table, r.id, 'put', me.id, batch); ctx.adjusted.push({ c: table, id: r.id }); }
+  }
+  const list = v => (Array.isArray(v) ? v.filter(x => x && typeof x === 'object' && !Array.isArray(x)) : []);
+  const mine = list(tgt.data.contacts), ids = new Set(mine.map(x => x.id));
+  const add = list(src.contacts).map(x => {
+    let nid = x.id, n = 1;
+    while (ids.has(nid)) nid = `${x.id}_${++n}`;
+    ids.add(nid);
+    return { ...x, id: nid };
+  });
+  if (add.length) {
+    const data = { ...tgt.data, contacts: [...mine, ...add] };
+    validate('customers', data, { live: true, cur: tgt.data });
+    await c.query(`UPDATE customers SET data = $2::jsonb, version = version + 1, updated_at = now(), updated_by = $3 WHERE id = $1`,
+      [to, JSON.stringify(data), me.id]);
+  }
+  await logChange(c, 'customers', to, 'put', me.id, batch);
+  ctx.adjusted.push({ c: 'customers', id: to });
 }
 
 /* Projeye cari yeni bağlanıyorsa ya da değiştiyse (güncel kayda göre) cari var ve etkin olmalı.
    Bağ kaldırma serbest; pasife alınmış carinin değişmeyen bağı korunur. */
-async function checkProjectCustomer(c, data, cur) {
+async function checkProjectCustomer(c, data, cur, passive = 'Pasif cari projeye bağlanamaz') {
   const cid = data.customerId;
   if (cid == null || cid === '') return;
   if (cur && (cur.customerId ?? '') === cid) return;
   const row = (await c.query('SELECT active FROM customers WHERE id=$1 FOR SHARE', [cid])).rows[0];
   if (!row) throw new HttpError(400, 'Cari bulunamadı');
-  if (!row.active) throw new HttpError(400, 'Pasif cari projeye bağlanamaz');
+  if (!row.active) throw new HttpError(400, passive);
 }
 
 /* Talep eden (görev 12): yalnız canlı yazmada, yeni işte ya da talep eden değişince (güncel kayda göre).
