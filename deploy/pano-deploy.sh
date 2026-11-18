@@ -2,7 +2,7 @@
 # pano-deploy — sunucudaki otomatik dağıtıcı.
 #
 # Her ortam bir GitHub dalını izler (/etc/pano/ortamlar):
-#   test  → main        (PR birleştirilince birkaç dakikada test sitesine gelir)
+#   test  → test        (testleri geçen son geliştirme ya da main; "Teste gönder" iş akışı günceller)
 #   prod  → production  (GitHub'da "Canlıya yayınla" çalıştırılınca canlıya gelir)
 # Dal ilerlediyse: kodu indirir, yeniden kurar, sağlık kontrolü yapar.
 # Yeni sürüm açılmazsa önceki sürüme döner ve o sürümü bir daha denemez.

@@ -17,10 +17,11 @@ değişmiyor) tasarım adımı atlanabilir; diğerleri atlanmaz.
 | 4 | `yazilimci` | Analiz + onaylı taslak | Kod, migration, testler, PR (`claude/<konu>`) |
 | 5 | `testci` | PR + kabul kriterleri | Bulgular + GEÇTİ/GEÇMEDİ (PR yorumu) |
 | 6 | (döngü) | GEÇMEDİ | Yazılımcı düzeltir → testçi tekrar |
-| 7 | **Kullanıcı** | Yeşil CI + GEÇTİ + sade özet | PR'ı onaylar (Squash and merge) → 2-5 dk sonra test sitesi |
+| 7 | Test sitesi | `claude/<konu>` push'u + yeşil CI | "Teste gönder" `test` dalını günceller → 2-5 dk sonra test sitesi |
 | 8 | `testci` | Test sitesi | Duman testi (sürüm, giriş, değişen ekran) |
-| 9 | `product-owner` | Test sitesi + raporlar | Kabul + sürüm notu |
-| 10 | **Kullanıcı** | Sürüm notu | GitHub → Actions → **Canlıya yayınla** |
+| 9 | `product-owner` | Test sitesi + raporlar | Kabul + sürüm notu; kullanıcıya sade özet |
+| 10 | **Kullanıcı** | Test sitesi + özet | PR'ı onaylar (Squash and merge → `main`) |
+| 11 | **Kullanıcı** | Sürüm notu | GitHub → Actions → **Canlıya yayınla** |
 
 ## Sınırlar
 - PR birleştirme ve canlıya yayın kullanıcının kararıdır; Claude bunları kendisi yapmaz.
@@ -33,4 +34,7 @@ değişmiyor) tasarım adımı atlanabilir; diğerleri atlanmaz.
 - Kullanıcıya her adımın sonunda **sade Türkçe** kısa bilgi verilir: ne yapıldı, nerede görülür, ondan ne bekleniyor.
 
 ## Bitti tanımı
-CI yeşil · testçi GEÇTİ · kullanıcı onayladı · test sitesinde duman testi geçti · PO kabul etti · sürüm notu yazıldı · belgeler güncel.
+CI yeşil · testçi GEÇTİ · test sitesinde duman testi geçti · PO kabul etti · sürüm notu yazıldı · belgeler güncel · kullanıcı onaya çağrıldı.
+
+Not: Test sitesi aynı anda tek bir geliştirmeyi gösterir (testleri geçen son push). İşler sırayla yürütülür; bir işin test
+sitesindeki denemesi bitmeden diğerine push yapma.

@@ -34,9 +34,12 @@ Jira benzeri çevik proje yönetimi. Arayüz ve tüm metinler **Türkçe**; kull
 - PR'ları birleştirmek ve canlıya yayınlamak kullanıcının kararıdır.
 
 ## Ortamlar ve yayın
-- Sunucu (Oracle, Ubuntu ARM): canlı `/opt/cevikpano` ← GitHub `production`; test `/opt/cevikpano-test` ← `main`.
+- Sunucu (Oracle, Ubuntu ARM): canlı `/opt/cevikpano` ← GitHub `production`; test `/opt/cevikpano-test` ← `test`.
+  `test` dalını `.github/workflows/teste-gonder.yml` günceller (testleri geçen son `claude/*` push'u ya da `main`);
+  `test` dalına elle push yapma.
   `deploy/pano-deploy.sh` (systemd zamanlayıcı, 2 dk) dalı izler, kurar, sağlık kontrolü yapar, başarısızsa geri döner.
-- `main`'e birleştirilen her şey testte açılır; canlıya yalnızca GitHub Actions → "Canlıya yayınla" ile çıkar.
+- Akış: `claude/<konu>` dalına push → CI yeşil → test sitesi → kullanıcı PR'ı onaylar (`main`) →
+  kullanıcı "Canlıya yayınla" (yalnızca `main`'deki, testleri geçmiş sürümler yayınlanabilir).
   `production` dalına elle push yapma.
 - Ortak kapı: `deploy/edge.yml` + `deploy/Caddyfile`. Uygulama `docker-compose.yml` (app + db), `pano-edge` ağına bağlanır.
 - Geçişler geri alınamaz: yeni migration'lar her zaman eski kodla da çalışacak şekilde (ek tablo/kolon) yazılmalı,
