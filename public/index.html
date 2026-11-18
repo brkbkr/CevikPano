@@ -1729,6 +1729,131 @@ button.cu-prj:hover{background:var(--surface2)}
   .cu-plink{grid-template-columns:minmax(0,1fr)}
   .cu-empty .acts{width:100%} .cu-empty .acts .btn{flex:1;justify-content:center;min-height:40px}
 }
+/* ==========================================================================
+   Proje türü (Pano / Agile) ve kolon yönetimi (issue #12, docs/tasarim/proje-turu) — pt- sınıfları
+   ========================================================================== */
+:root{ --pt-danger:#B91C1C; --pt-danger-ink:#FFFFFF; --pt-row-bg:#FFFFFF; --pt-row-new:#F8FBFF; }
+:root[data-theme="dark"]{ --pt-danger:#F87171; --pt-danger-ink:#1A0606; --pt-row-bg:#0C1424; --pt-row-new:#0F1B31; }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --pt-danger:#F87171; --pt-danger-ink:#1A0606; --pt-row-bg:#0C1424; --pt-row-new:#0F1B31; }
+}
+.cat-dot{width:8px;height:8px;border-radius:50%;background:var(--todo);flex-shrink:0;display:inline-block}
+.cat-dot.inprogress{background:var(--prog)} .cat-dot.done{background:var(--done)}
+.pt-type{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px 0 6px;border-radius:6px;font-size:11px;font-weight:650;letter-spacing:0;text-transform:none;
+  border:1px solid var(--line2);background:var(--surface2);color:var(--ink2);white-space:nowrap;flex-shrink:0;vertical-align:middle}
+.pt-type svg.i{width:13px;height:13px}
+.pt-type.agile{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 35%,transparent);color:var(--accent-d)}
+.pt-types{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.pt-tcard{position:relative;display:flex;align-items:flex-start;gap:12px;width:100%;min-height:76px;padding:12px 40px 12px 12px;border:1px solid var(--line2);border-radius:12px;
+  background:var(--surface);text-align:left;color:var(--ink);cursor:pointer}
+.pt-tcard:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line2))}
+.pt-tcard .ic{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:var(--surface3);color:var(--ink2);flex-shrink:0}
+.pt-tcard .ic svg.i{width:20px;height:20px}
+.pt-tcard .tx{min-width:0}
+.pt-tcard b{display:block;font-size:14px;font-weight:700;letter-spacing:-.01em;margin:1px 0 2px}
+.pt-tcard .d{display:block;font-size:12px;color:var(--ink2);line-height:1.4}
+.pt-tcard .tag{display:inline-block;margin-top:6px;font-size:10.5px;font-weight:650;color:var(--meta);font-family:var(--mono);letter-spacing:.02em}
+.pt-tcard .ws-rad{position:absolute;right:12px;top:12px}
+.pt-tcard[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.pt-tcard[aria-checked="true"] .ic{background:var(--accent);color:var(--accent-ink)}
+.pt-tcard[aria-checked="true"] .ws-rad{border-color:var(--accent);background:var(--accent);box-shadow:inset 0 0 0 3px var(--surface)}
+.pt-tpls{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.pt-tpl{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line2);background:var(--surface);color:var(--ink2);font-size:12.5px;font-weight:550;cursor:pointer}
+.pt-tpl .n{font-family:var(--mono);font-size:10.5px;color:var(--meta)}
+.pt-tpl svg.i{width:14px;height:14px}
+.pt-tpl[aria-checked="true"]{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 45%,transparent);color:var(--accent-d);font-weight:650}
+.pt-tpl[aria-checked="true"] .n{color:var(--accent-d)}
+.pt-cols{display:flex;flex-direction:column;gap:6px}
+.pt-row{display:grid;grid-template-columns:24px minmax(0,1fr) 168px 44px 36px 36px 36px;grid-template-areas:"ix nm cat n up dn del" ". msg msg msg msg msg msg";
+  gap:0 6px;align-items:center;padding:6px 6px 6px 8px;border:1px solid var(--line);border-radius:10px;background:var(--pt-row-bg)}
+.pt-row.compact{grid-template-columns:24px minmax(0,1fr) 168px 36px 36px 36px;grid-template-areas:"ix nm cat up dn del" ". msg msg msg msg msg"}
+.pt-row.has-err{border-color:var(--risk-line)}
+.pt-ix{grid-area:ix;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--meta);text-align:center}
+.pt-nm{grid-area:nm;position:relative;min-width:0}
+.pt-nm .inp{width:100%;height:36px;padding-right:52px;font-weight:550}
+.pt-nm .cnt{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:10.5px;color:var(--meta);pointer-events:none}
+.pt-row.has-err .pt-nm .inp{border-color:var(--risk);box-shadow:0 0 0 3px color-mix(in srgb,var(--risk) 16%,transparent)}
+.pt-cat{grid-area:cat;position:relative;min-width:0}
+.pt-cat .cat-dot{position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none}
+.pt-cat select.inp{width:100%;height:36px;padding-left:27px;font-size:13px}
+.pt-cat select.inp:disabled{background-color:var(--surface2);color:var(--ink2);-webkit-text-fill-color:var(--ink2);opacity:1;border-style:dashed;cursor:not-allowed}
+.pt-n{grid-area:n;font-family:var(--mono);font-size:11px;color:var(--ink2);text-align:right;white-space:nowrap;padding-right:2px}
+.pt-n.zero{color:var(--meta)}
+.pt-row .iconbtn{width:36px;height:36px;border-radius:9px;border-color:transparent;background:none;color:var(--ink2)}
+.pt-row .iconbtn:hover:not(:disabled){background:var(--surface2);border-color:var(--line2)}
+.pt-row .iconbtn:disabled{color:color-mix(in srgb,var(--meta) 55%,transparent);cursor:not-allowed}
+.pt-row .iconbtn.del:not(:disabled){color:var(--risk)}
+.pt-row .iconbtn.del:hover:not(:disabled){background:var(--risk-bg);border-color:var(--risk-line)}
+.pt-row .iconbtn svg.i{width:17px;height:17px}
+.pt-up{grid-area:up} .pt-dn{grid-area:dn} .pt-del{grid-area:del}
+.pt-msg{grid-area:msg;display:flex;align-items:flex-start;gap:6px;margin-top:6px;font-size:12px;font-weight:550;line-height:1.4}
+.pt-msg svg.i{width:14px;height:14px;margin-top:1px;flex-shrink:0}
+.pt-msg.err{color:var(--risk)}
+.pt-msg.hint{color:var(--ink2);font-weight:500}
+.pt-msg.hint svg.i{color:var(--meta)}
+.pt-add{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:0 12px;margin-top:6px;border:1px dashed var(--line2);border-radius:10px;background:none;color:var(--accent-d);font-weight:600;font-size:13px;text-align:left;cursor:pointer}
+.pt-add:hover:not(:disabled){background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+.pt-add svg.i{width:17px;height:17px}
+.pt-add .lim{margin-left:auto;font-family:var(--mono);font-size:11px;font-weight:550;color:var(--meta)}
+.pt-add:disabled{color:var(--meta);background:var(--surface2);cursor:not-allowed}
+.pt-colhd{display:grid;grid-template-columns:24px minmax(0,1fr) 168px 44px 120px;gap:0 6px;padding:0 6px 6px 8px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta)}
+.pt-colhd span:nth-child(4){text-align:right}
+.pt-colhd.compact{grid-template-columns:24px minmax(0,1fr) 168px 120px}
+.modal.pt-dlg{max-width:720px;display:flex;flex-direction:column;container-type:inline-size;border-radius:16px}
+.modal.pt-dlg.w-md{max-width:520px}
+.pt-dlg .m-h .t{flex:1;min-width:0}
+.pt-dlg .m-h .t b{display:block;font-size:15px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pt-dlg .m-h .s{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2);margin-top:2px}
+.pt-dlg .m-h .x{margin-left:0}
+.pt-dlg .pt-b{padding:16px 18px;min-height:0}
+.pt-dlg .m-f{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:12px 18px;background:var(--surface2);border-top:1px solid var(--line)}
+.pt-dlg .m-f .note{flex:1;min-width:0;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2)}
+.pt-dlg .m-f .note svg.i{color:var(--ok);width:15px;height:15px}
+.pt-fld{margin-bottom:16px}
+.pt-fld > .lb,.pt-fld > label{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:7px}
+.pt-fld .req{color:var(--meta);font-weight:500}
+.pt-q{font-size:14px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em}
+.pt-qs{font-size:12.5px;color:var(--ink2);margin:0 0 12px;line-height:1.45}
+.btn.pt-fill{background:var(--pt-danger);border-color:transparent;color:var(--pt-danger-ink)}
+.btn.pt-fill:hover{filter:brightness(1.06);background:var(--pt-danger)}
+.ws-opts{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.ws-alert{display:flex;gap:10px;padding:11px 12px;border-radius:10px;font-size:12.5px;line-height:1.5;background:var(--risk-bg);border:1px solid var(--risk-line);color:var(--risk);margin-bottom:12px}
+.ws-alert svg.i{width:17px;height:17px;margin-top:1px;flex-shrink:0}
+.ws-alert .tx{color:var(--ink)} .ws-alert b{color:var(--risk);display:block}
+.pt-chg{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:var(--ink2)}
+.pt-chg li{display:flex;gap:8px;align-items:flex-start;line-height:1.45}
+.pt-chg svg.i{width:15px;height:15px;color:var(--accent);margin-top:1px;flex-shrink:0}
+.pt-ferr{display:flex;align-items:flex-start;gap:6px;font-size:12px;font-weight:600;color:var(--risk);margin-top:8px}
+.pt-ferr:empty{display:none}
+.pt-ferr svg.i{width:15px;height:15px;margin-top:1px}
+.ws-empty .ghost-cols{display:flex;gap:8px;margin-bottom:16px;opacity:.9}
+.ws-empty .ghost-cols i{width:46px;height:58px;border-radius:8px;border:1.5px dashed var(--line2);background:var(--surface2)}
+.pt-set{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:12px}
+.pt-set .r{display:flex;align-items:center;gap:12px;padding:12px 14px;border-top:1px solid var(--line);min-height:56px;flex-wrap:wrap}
+.pt-set .r:first-child{border-top:0}
+.pt-set .r .tx{flex:1;min-width:0}
+.pt-set .r .l{font-size:13px;font-weight:600}
+.pt-set .r .d{font-size:12px;color:var(--ink2);margin-top:2px;line-height:1.4}
+@container (max-width:520px){
+  .pt-colhd{display:none}
+  .pt-row,.pt-row.compact{grid-template-columns:minmax(0,1fr) auto 40px 40px 40px;grid-template-areas:"nm nm nm nm nm" "cat n up dn del" "msg msg msg msg msg";gap:6px;padding:8px}
+  .pt-row.compact{grid-template-areas:"nm nm nm nm nm" "cat cat up dn del" "msg msg msg msg msg"}
+  .pt-ix{display:none}
+  .pt-row .iconbtn{width:40px;height:40px}
+  .pt-msg{margin-top:0}
+  .pt-add{min-height:48px;flex-wrap:wrap;row-gap:2px;padding:8px 12px}
+  .pt-add .lim{margin-left:27px;flex-basis:100%}
+  .pt-types{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:640px){
+  .pt-nm .inp,.pt-cat select.inp{height:42px}
+  .scrim:has(.pt-dlg){padding:0}
+  .modal.pt-dlg{max-width:none;min-height:100dvh;border-radius:0;border:0}
+  .pt-dlg .pt-b{flex:1;overflow-y:auto;padding:14px}
+  .pt-dlg .m-f{position:sticky;bottom:0;padding:10px 12px}
+  .pt-dlg .m-f .btn{flex:1;min-height:44px;justify-content:center}
+  .pt-dlg .m-f .note{display:none}
+}
 </style>
 </head>
 <body>
@@ -1891,8 +2016,10 @@ function diffSnap(a, b) {
   for (const k of PREF_KEYS)
     if (a.pref[k] !== b.pref[k] && b.pref[k] !== undefined) out.push({ c: '_prefs', id: k, op: 'put', data: JSON.parse(b.pref[k]) });
   /* Kullanıcılar önce gitsin (yeni bir iş yeni bir kullanıcıya atanmış olabilir); yeni çalışma alanı
-     ondan sonra (aynı gönderimde o alana proje açılmış olabilir); alan silme en sonda (önce projeler taşınır). */
-  const rank = x => x.c === 'users' ? 0 : x.c === 'workspaces' ? (x.op === 'del' ? 3 : 1) : 2;
+     ondan sonra (aynı gönderimde o alana proje açılmış olabilir); alan silme en sonda (önce projeler taşınır).
+     Kolon silme de en sonda: içindeki işler aynı gönderimde önce taşınır (#12). */
+  const rank = x => x.c === 'users' ? 0 : x.c === 'workspaces' ? (x.op === 'del' ? 3 : 1)
+    : x.c === 'statuses' && x.op === 'del' ? 3 : 2;
   return out.sort((x, y) => rank(x) - rank(y));
 }
 
@@ -1927,7 +2054,8 @@ async function flushSync() {
     let ch = diffSnap(SNAP, now);
     if (typeof canEdit === 'function' && !canEdit()) ch = ch.filter(x => x.c === '_prefs');
     else if (typeof isAdmin === 'function' && !isAdmin())
-      ch = ch.filter(x => !['statuses', 'fields', 'rules', '_settings', 'customers'].includes(x.c) && !(['projects', 'workspaces'].includes(x.c) && x.op === 'del')
+      /* Kolonlar (statuses) süzülmez: projenin üyesi olan Üye de değiştirir, yetkiyi sunucu denetler (#12). */
+      ch = ch.filter(x => !['fields', 'rules', '_settings', 'customers'].includes(x.c) && !(['projects', 'workspaces'].includes(x.c) && x.op === 'del')
         && !(x.c === 'users' && x.id !== ME.id));
     if (!ch.length) { SNAP = now; setSync('ok'); return; }
     setSync('saving');
@@ -1946,11 +2074,16 @@ async function flushSync() {
         const cuTaken = /^Bu vergi numarasıyla kayıtlı cari var \(#([^)]+)\)$/.exec(rejected[0].reason || '');
         if (!cuTaken) toast('Kaydedilemeyen değişiklik: ' + (rejected[0].reason || 'yetki yok') + (rejected.length > 1 ? ` (+${rejected.length - 1})` : ''));
         await reloadState();
+        if (typeof colsRefresh === 'function') colsRefresh(rejected[0].reason);
         if (cuTaken) cuTakenToast(cuTaken[1]);
       }
     } catch (e) {
       if (e.status === 401) return sessionLost();
-      if (e.status === 409 || e.status === 400 || e.status === 403) { toast(e.message); SNAP = now; setSync('ok'); return reloadState(); }
+      if (e.status === 409 || e.status === 400 || e.status === 403) {
+        toast(e.message); SNAP = now; setSync('ok'); await reloadState();
+        if (typeof colsRefresh === 'function') colsRefresh(e.message);
+        return;
+      }
       setSync('error');
       retryT = setTimeout(flushSync, 5000);
     }
@@ -2525,6 +2658,14 @@ const priName = p => PRI[lvl(p)][1];
 const priOpts = cur => LVLS.map(p => `<option value="${p}" ${lvl(cur) === p ? 'selected' : ''}>${PRI[p][1]}</option>`).join('');
 /* Satır içi çizgi ikonlar (docs/tasarim/kart). */
 const SVG = {
+  /* proje türü ve kolonlar (#12) */
+  board: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 7v7M12 7v4M16 7v9"/>',
+  sprint: '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
+  cols: '<rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M9 3v18M15 3v18"/>',
+  backlog: '<path d="M10 6h11M10 12h11M10 18h11"/><path d="m3 6 1.5 1.5L7 5"/><path d="m3 12 1.5 1.5L7 11"/><path d="M3 18h4"/>',
+  up: '<path d="M12 19V5"/><path d="m5.5 11.5 6.5-6.5 6.5 6.5"/>', dn: '<path d="M12 5v14"/><path d="m5.5 12.5 6.5 6.5 6.5-6.5"/>',
+  back: '<path d="m15 18-6-6 6-6"/>',
+  copy: '<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M4 16V5a1 1 0 0 1 1-1h11"/>',
   acil: '<path d="m7 11 5-5 5 5"/><path d="m7 18 5-5 5 5"/>',
   yuksek: '<path d="m6 15 6-6 6 6"/>',
   orta: '<path d="M6 9h12M6 15h12"/>',
@@ -2694,7 +2835,7 @@ function dropIndexRank(container, y, sel) {
 
 /* ============================ PANO ============================ */
 function boardIssues() {
-  const scope = MOD('sprint') ? (DB.board.scope || 'sprint') : 'all';
+  const scope = AGILE() ? (DB.board.scope || 'sprint') : 'all';
   const act = activeSprint();
   return issuesOf().filter(i => i.type !== 'epic' && !i.parentId && matches(i) &&
     (scope === 'all' || (act && i.sprintId === act.id)))
@@ -2703,9 +2844,10 @@ function boardIssues() {
 
 function toolbarBoard() {
   const act = activeSprint();
+  if (!stats().length) return '';                 // kolonsuz proje: iş açılacak kolon yok (#12)
   return `
     <div class="search"><input class="inp" id="q" placeholder="Kart ara…" value="${esc(DB.board.q)}"></div>
-    ${MOD('sprint') ? `<div class="seg" id="scope">
+    ${AGILE() ? `<div class="seg" id="scope">
       <button data-s="sprint" class="${DB.board.scope !== 'all' ? 'on' : ''}">${act ? esc(act.name) : 'Aktif sprint'}</button>
       <button data-s="all" class="${DB.board.scope === 'all' ? 'on' : ''}">Tüm işler</button>
     </div>` : ''}
@@ -2717,6 +2859,7 @@ function toolbarBoard() {
       ${[['none', 'Kulvar yok'], ['assignee', 'Kişiye göre'], ...(MOD('epic') ? [['epic', 'Epiğe göre']] : []), ['priority', 'Önceliğe göre']]
         .map(([v, l]) => `<option value="${v}" ${DB.board.swimlane === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
     <div class="spacer"></div>
+    ${canEditCols(P()) ? `<button class="btn" id="colsEdit">${ic('cols')}Kolonları düzenle</button>` : ''}
     ${canEdit() ? '<button class="btn pri" id="newIssue">+ İş oluştur</button>' : ''}`;
 }
 
@@ -2925,8 +3068,9 @@ function columns(list) {
 }
 
 function renderBoard() {
+  if (!stats().length) return noColsView();
   const list = boardIssues();
-  if (MOD('sprint') && !activeSprint() && DB.board.scope !== 'all')
+  if (AGILE() && !activeSprint() && DB.board.scope !== 'all')
     return `<div class="panel"><h3>Aktif sprint yok</h3>
       <div class="sub">Pano, aktif sprintteki işleri gösterir. Backlog'a gidip bir sprint başlatın
       ya da “Tüm işler” kapsamına geçin.</div>
@@ -2951,7 +3095,7 @@ function toolbarBacklog() {
     <select class="inp" id="fUser" style="width:auto"><option value="">Herkes</option>
       ${DB.users.map(u => `<option value="${u.id}" ${DB.board.filterUser === u.id ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select>
     <div class="spacer"></div>
-    ${canEdit() && MOD('sprint') ? '<button class="btn" id="newSprint">+ Sprint oluştur</button>' : ''}
+    ${canEdit() && AGILE() ? '<button class="btn" id="newSprint">+ Sprint oluştur</button>' : ''}
     ${canEdit() ? '<button class="btn pri" id="newIssue">+ İş oluştur</button>' : ''}`;
 }
 
@@ -2982,8 +3126,8 @@ function sumOf(items) {
 function renderBacklog() {
   const list = issuesOf().filter(i => i.type !== 'epic' && matches(i)).sort((a, b) => a.rank - b.rank);
 
-  /* Sprint modülü kapalıyken backlog, öncelik sırası verilen tek bir iş listesidir. */
-  if (!MOD('sprint')) {
+  /* Pano türündeki projede backlog, öncelik sırası verilen tek bir iş listesidir (#12). */
+  if (!AGILE()) {
     const open = list.filter(i => stat(i.statusId).cat !== 'done');
     const done = list.filter(i => stat(i.statusId).cat === 'done');
     return `<section class="sprintbox" data-drop="sprint" data-sprint="">
@@ -3311,8 +3455,8 @@ function velocity() {
 }
 
 function renderReports() {
-  const act = MOD('sprint') ? activeSprint() : null;
-  const items = MOD('sprint')
+  const act = AGILE() ? activeSprint() : null;
+  const items = AGILE()
     ? (act ? DB.issues.filter(i => i.sprintId === act.id) : [])
     : issuesOf().filter(i => i.type !== 'epic');
   const dn = items.filter(i => stat(i.statusId).cat === 'done');
@@ -3328,7 +3472,7 @@ function renderReports() {
   const tot = items.length || 1;
 
   return `<div class="grid2">
-    ${MOD('sprint') ? `<section class="panel">
+    ${AGILE() ? `<section class="panel">
       <h3>Sprint burndown</h3>
       <div class="sub">${act ? esc(act.name) + ' · kalan story point' : 'Aktif sprint yok'}</div>
       ${act ? `<div class="stat">
@@ -3357,7 +3501,7 @@ function renderReports() {
     </section>
 
     <section class="panel">
-      <h3>Kapasite planı</h3><div class="sub">${MOD('sprint') ? 'Aktif sprint' : 'Açık işler'} · kalan iş yükü / kişi kapasitesi</div>
+      <h3>Kapasite planı</h3><div class="sub">${AGILE() ? 'Aktif sprint' : 'Açık işler'} · kalan iş yükü / kişi kapasitesi</div>
       ${capacityPanel()}
     </section>
 
@@ -3377,7 +3521,7 @@ function renderReports() {
     </section>
 
     <section class="panel">
-      <h3>Tahmin doğruluğu</h3><div class="sub">${MOD('sprint') ? 'Aktif sprint' : 'Tüm işler'} · tahmin vs harcanan</div>
+      <h3>Tahmin doğruluğu</h3><div class="sub">${AGILE() ? 'Aktif sprint' : 'Tüm işler'} · tahmin vs harcanan</div>
       <div class="stat">
         <div><b>${fmtDur(est)}</b><span>tahmin</span></div>
         <div><b>${fmtDur(spent)}</b><span>harcanan</span></div>
@@ -3405,7 +3549,8 @@ function openModal(html, cls = '') {
 function closeModal() { $('#scrim').classList.remove('on'); $('#scrim').innerHTML = ''; OPEN_ISSUE = null; if (RERENDER) setTimeout(tryRerender, 0); }
 
 /* ---- durum değişimi tek kapıdan ---- */
-function setStatus(i, sid) {
+/* o.rules === false: otomasyon kuralları çalışmaz (kolon silmede toplu taşıma, #12). */
+function setStatus(i, sid, o = {}) {
   if (i.statusId === sid) return;
   const from = stat(i.statusId), to = stat(sid);
   logHist(i, 'Durum', from.name, to.name);
@@ -3413,7 +3558,7 @@ function setStatus(i, sid) {
   if (to.cat === 'done') i.doneAt = TODAY; else delete i.doneAt;
   i.updatedAt = Date.now();
   recordTransition(i, from.id, sid);
-  runRules(i, 'status');
+  if (o.rules !== false) runRules(i, 'status');
 }
 
 /* ============================ İŞ DETAYI ============================ */
@@ -3494,7 +3639,7 @@ function openIssue(id) {
           <span class="lb">Öncelik</span><select class="inp" data-f="priority">${opt(LVLS, lvl(i.priority), p => [p, PRI[p][1]])}</select>
           <span class="lb">Tip</span><select class="inp" data-f="type">${opt(ISSUE_TYPES(), i.type, t => [t, TYPE[t][2]])}</select>
           ${MOD('points') ? `<span class="lb">Puan</span><input class="inp" data-f="points" value="${i.points ?? ''}" placeholder="—">` : ''}
-          ${MOD('sprint') ? `<span class="lb">Sprint</span><select class="inp" data-f="sprintId"><option value="">Backlog</option>${opt(sprintsOf(), i.sprintId)}</select>` : ''}
+          ${projType(DB.projects.find(p => p.id === i.projectId)) === 'agile' ? `<span class="lb">Sprint</span><select class="inp" data-f="sprintId"><option value="">Backlog</option>${opt(sprintsOf(), i.sprintId)}</select>` : ''}
           ${MOD('epic') ? `<span class="lb">Epik</span><select class="inp" data-f="epicId"><option value="">Yok</option>${opt(epicsOf().filter(e => e.id !== i.id), i.epicId, e => [e.id, e.summary])}</select>` : ''}
           ${planRow(i)}
           <span class="lb">Faturalama</span><select class="inp" data-f="billable">${opt(BILLABLE, billOf(i), x => [x, x])}</select>
@@ -3600,7 +3745,7 @@ function newIssueForm(preset = {}) {
           ${projUsers().map(u => `<option value="${u.id}">${esc(u.name)}</option>`).join('')}</select></div>
         <div class="form-row"><label class="field">Durum</label><select class="inp" id="f_st">
           ${stats().map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select></div>
-        ${MOD('sprint') ? `<div class="form-row"><label class="field">Sprint</label><select class="inp" id="f_sp"><option value="">Backlog</option>
+        ${AGILE() ? `<div class="form-row"><label class="field">Sprint</label><select class="inp" id="f_sp"><option value="">Backlog</option>
           ${sprintsOf().filter(s => s.state !== 'closed').map(s => `<option value="${s.id}" ${sp === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div>` : ''}
         ${MOD('epic') ? `<div class="form-row"><label class="field">Epik</label><select class="inp" id="f_ep"><option value="">Yok</option>
           ${epicsOf().map(e => `<option value="${e.id}">${esc(e.summary)}</option>`).join('')}</select></div>` : ''}
@@ -3738,7 +3883,7 @@ function render() {
   ensureSel(); renderSelectors();
   const pr = P();
   $('#crumb').textContent = `${pr ? pr.key : wsById(DB.ui.workspace)?.name || 'ÇevikPano'} · ${v.c}`;
-  $('#title').textContent = v.t;
+  $('#title').textContent = viewTitle(VIEWS[DB.ui.view] ? DB.ui.view : 'board');
   /* Seçili proje yokken projeye bağlı ekranlar çökmez: boş durum paneli (#22). */
   const noProj = !pr && WS_PROJ_VIEWS.includes(DB.ui.view);
   $('#toolrow').innerHTML = noProj ? '' : v.tb();
@@ -3765,6 +3910,12 @@ function syncNav() {
     if (hidden[el.dataset.v]) el.style.display = 'none';
     else if (VIEWS[el.dataset.v]) el.style.display = '';
   });
+  /* Proje türüne göre menü ve sekme etiketi: Pano'da "İş listesi", Agile'da "Backlog" (#12). */
+  const bl = viewTitle('backlog');
+  $$('.nav a[data-v="backlog"], #vtabs button[data-v="backlog"]').forEach(el => {
+    const t = [...el.childNodes].reverse().find(n => n.nodeType === 3);
+    if (t) t.textContent = bl; else el.append(bl);
+  });
 }
 
 function wireToolbar() {
@@ -3776,6 +3927,10 @@ function wireToolbar() {
   on('#newIssue', 'onclick', () => newIssueForm());
   on('#newIssue2', 'onclick', () => newIssueForm({ sprintId: '' }));
   on('#newSprint', 'onclick', () => sprintForm());
+  on('#colsEdit', 'onclick', () => colsEditor(DB.ui.project));
+  on('#colsEdit2', 'onclick', () => colsEditor(DB.ui.project));
+  on('#ptTypeSet', 'onclick', () => typeDialog(DB.ui.project));
+  on('#ptColsSet', 'onclick', () => colsEditor(DB.ui.project));
   on('#logWork', 'onclick', () => logWorkForm());
   const sc = $('#scope'); if (sc) sc.onclick = e => { const b = e.target.closest('[data-s]');
     if (b) { DB.board.scope = b.dataset.s; save(); render(); } };
@@ -3936,7 +4091,7 @@ function wire() {
       i.rank = dropIndexRank(z, e.clientY, '.card');
       setStatus(i, z.dataset.status);
       const act = activeSprint();
-      if (act && !i.sprintId && DB.board.scope !== 'all') i.sprintId = act.id;
+      if (act && AGILE() && !i.sprintId && DB.board.scope !== 'all') i.sprintId = act.id;
     } else {
       const to = z.dataset.sprint || null;
       if (i.sprintId !== to) logHist(i, 'Sprint', i.sprintId ? sprint(i.sprintId).name : 'Backlog', to ? sprint(to).name : 'Backlog');
@@ -4033,6 +4188,15 @@ const MODULE_LABELS = {
   reporter: ['Raporlayan', 'İşi kimin açtığı bilgisi'],
 };
 const MOD = k => DB?.cfg?.modules?.[k] === true;
+/* Proje türü (#12): 'board' (Pano: kolonlar, sprint yok) | 'agile' (backlog + sprintler). Türü olmayan
+   (eski) proje genel sprint ayarından hesaplanır; kayda yazılmaz. Sunucudaki projType ile aynı. */
+const PROJECT_TYPES = ['board', 'agile'];
+const projType = p => PROJECT_TYPES.includes(p?.type) ? p.type : (MOD('sprint') ? 'agile' : 'board');
+const AGILE = () => projType(P()) === 'agile';
+const anyAgile = () => DB.projects.some(p => canSeeProject(p) && projType(p) === 'agile');
+const TYPE_LABEL = { board: 'Pano', agile: 'Agile' };
+/* Ekran başlığı türe göre: Pano türünde backlog "İş listesi" olur (adres aynı kalır). */
+const viewTitle = v => v === 'backlog' && !AGILE() ? 'İş listesi' : (VIEWS[v]?.t || '');
 
 /* ---- şema tamamlayıcı (eski kayıtlar için) ---- */
 function ensureSchema() {
@@ -4254,7 +4418,7 @@ function renderSearch() {
     ${bulkBar()}
     <div class="tswrap"><table class="ts">
       <thead><tr><th style="width:32px">${canEdit() ? '<input type="checkbox" id="selAll">' : ''}</th><th class="who">İş</th><th>Tip</th><th>Durum</th><th>Atanan</th><th>Öncelik</th>
-        ${MOD('points') ? '<th>Puan</th>' : ''}<th>Tahmin</th><th>Harcanan</th><th>Kalan</th><th>Plan</th>${MOD('sprint') ? '<th>Sprint</th>' : ''}<th>Faturalama</th>
+        ${MOD('points') ? '<th>Puan</th>' : ''}<th>Tahmin</th><th>Harcanan</th><th>Kalan</th><th>Plan</th>${anyAgile() ? '<th>Sprint</th>' : ''}<th>Faturalama</th>
         ${cols.map(c => `<th>${esc(c.name)}</th>`).join('')}</tr></thead>
       <tbody>${rows.map(i => { const s = stat(i.statusId); return `<tr data-open="${i.id}" style="cursor:pointer">
         <td>${canEdit() ? `<input type="checkbox" data-sel="${i.id}" ${SEL.has(i.id) ? 'checked' : ''}>` : ''}</td>
@@ -4271,7 +4435,7 @@ function renderSearch() {
         <td class="num">${remaining(i) ? fmtDur(remaining(i)) : '—'}</td>
         <td class="k" style="font-size:11px;${planState(i) === 'late' ? 'color:var(--risk)' : 'color:var(--ink3)'}">
           ${i.start || i.due ? `${i.start ? fmtD(i.start) : '—'}→${i.due ? fmtD(i.due) : '—'}` : '—'}</td>
-        ${MOD('sprint') ? `<td style="font-size:11.5px">${i.sprintId ? esc(sprint(i.sprintId).name) : '—'}</td>` : ''}
+        ${anyAgile() ? `<td style="font-size:11.5px">${i.sprintId ? esc(sprint(i.sprintId).name) : '—'}</td>` : ''}
         <td style="font-size:11px"><span class="chip ${billOf(i) === 'Faturalanmayacak' ? 'lbl' : 'cat-done'}">${esc(billOf(i))}</span><br>
           <span style="color:var(--ink3)">${esc(btypeOf(i))}</span></td>
         ${cols.map(c => `<td style="font-size:11.5px">${esc(cfShow(c, i.cf?.[c.id]))}</td>`).join('')}
@@ -4281,11 +4445,11 @@ function renderSearch() {
         <td>${fmtDur(rows.reduce((a, i) => a + (i.estimate || 0), 0))}</td>
         <td>${fmtDur(rows.reduce((a, i) => a + (i.spent || 0), 0))}</td>
         <td>${fmtDur(rows.reduce((a, i) => a + remaining(i), 0))}</td>
-        <td colspan="${(MOD('sprint') ? 1 : 0) + 1 + cols.length}"></td></tr></tfoot>
+        <td colspan="${(anyAgile() ? 1 : 0) + 1 + cols.length}"></td></tr></tfoot>
     </table></div>
     <details style="margin-top:12px"><summary style="cursor:pointer;color:var(--ink3);font-size:12px">Sorgu dili yardımı</summary>
       <div class="panel" style="margin-top:8px;font-size:12.5px;line-height:1.7">
-        <b>Alanlar:</b> <code class="k">${Object.keys(QF).filter(k => (k !== 'epik' || MOD('epic')) && (k !== 'sprint' || MOD('sprint')) && (k !== 'puan' || MOD('points')) && (k !== 'raporlayan' || MOD('reporter'))).join(', ')}</code>
+        <b>Alanlar:</b> <code class="k">${Object.keys(QF).filter(k => (k !== 'epik' || MOD('epic')) && (k !== 'sprint' || anyAgile()) && (k !== 'puan' || MOD('points')) && (k !== 'raporlayan' || MOD('reporter'))).join(', ')}</code>
         ${DB.fields.length ? `<br><b>Özel alanlar:</b> <code class="k">${DB.fields.map(f => f.key).join(', ')}</code>` : ''}
         <br><b>Operatörler:</b> <code class="k">= != ~ !~ &gt; &lt; &gt;= &lt;= IN (…) IS [NOT] EMPTY</code>
         <br><b>Bağlaçlar:</b> <code class="k">AND / VE, OR / VEYA, NOT / DEGIL, parantez</code>
@@ -4381,8 +4545,9 @@ function runRules(i, trigger, ctx = {}) {
         case 'assign':   if (i.assignee !== a.v) { logHist(i, 'Atanan', user(i.assignee)?.name || '—', user(a.v)?.name || '—'); i.assignee = a.v || null; } break;
         case 'priority': if (lvl(i.priority) !== lvl(a.v)) i.priority = lvl(a.v); break;
         case 'label':    i.labels = [...new Set([...(i.labels || []), a.v])]; break;
-        case 'sprint':   i.sprintId = a.v || null; break;
-        case 'status':   if (a.v && a.v !== i.statusId) setStatus(i, a.v); break;
+        case 'sprint':   if (projType(DB.projects.find(p => p.id === i.projectId)) === 'agile') i.sprintId = a.v || null; break;
+        /* Hedef kolon bu projede yoksa (silinmiş) atlanır (#12). */
+        case 'status':   if (a.v && a.v !== i.statusId && DB.statuses.some(s => s.id === a.v && s.projectId === i.projectId)) setStatus(i, a.v); break;
         case 'cf':       (i.cf ||= {})[a.field] = a.v; break;
         case 'due':      { const n = parseInt(a.v, 10) || 0;
                            i.start ||= TODAY; i.due = addWorkdays(i.start, Math.max(0, n - 1)); break; }
@@ -4408,13 +4573,19 @@ function toolbarAdmin() {
 function renderAdmin() {
   const tab = DB.ui.adminTab || 'workflow';
   if (tab === 'workflow') {
-    const ss = stats();
-    return `<div class="panel"><h3>Durumlar ve kolonlar</h3>
+    const ss = stats(), pr = P(), nDone = ss.filter(s => s.cat === 'done').length;
+    /* Proje türü ve kolonlar (#12): tür burada da görünür, değişiklik aynı pencereyle. */
+    return `<div class="pt-set">
+      <div class="r"><div class="tx"><div class="l">Proje türü</div><div class="d">Menüyü, panoyu ve sprint ekranlarını belirler.</div></div>
+        ${typeTag(projType(pr))}${canEditCols(pr) ? `<button class="btn ghost" id="ptTypeSet">${ic('swap')}Türü değiştir…</button>` : ''}</div>
+      <div class="r"><div class="tx"><div class="l">Kolonlar</div><div class="d">${ss.length} kolon${ss.length ? ' · ' + esc(ss[0].name) + (ss.length > 1 ? ' → ' + esc(ss[ss.length - 1].name) : '') : ''}</div></div>
+        ${canEditCols(pr) ? `<button class="btn" id="ptColsSet">${ic('cols')}Kolonları düzenle</button>` : ''}</div></div>
+    <div class="panel"><h3>Durumlar ve kolonlar</h3>
       <div class="sub">Pano kolonları bu sırayla oluşur. <b>Kategori</b> raporları belirler — durum adını değiştirmek raporları bozmaz.</div>
       ${ss.map((s, k) => `<div class="row" style="border:1px solid var(--line);border-radius:6px;margin-bottom:6px;cursor:default">
         <span class="k" style="color:var(--ink3);width:22px">${k + 1}</span>
-        <input class="inp" data-st="${s.id}" data-p="name" value="${esc(s.name)}" style="flex:1;max-width:220px">
-        <select class="inp" data-st="${s.id}" data-p="cat" style="width:auto">
+        <input class="inp" data-st="${s.id}" data-p="name" value="${esc(s.name)}" maxlength="${COL_NAME_MAX}" style="flex:1;max-width:220px">
+        <select class="inp" data-st="${s.id}" data-p="cat" style="width:auto" ${s.cat === 'done' && nDone === 1 ? `disabled title="${LAST_DONE}"` : ''}>
           ${[['todo', 'Yapılacak'], ['inprogress', 'Devam ediyor'], ['done', 'Bitti']].map(([v, l]) =>
             `<option value="${v}" ${s.cat === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
         <span class="lb" style="font-family:var(--mono);font-size:10px;color:var(--ink3)">WIP</span>
@@ -4422,12 +4593,13 @@ function renderAdmin() {
         <span class="k" style="color:var(--ink3)">${issuesOf().filter(i => i.statusId === s.id).length} iş</span>
         <button class="btn sm" data-mv="${s.id}" data-dir="-1" ${k === 0 ? 'disabled' : ''}>↑</button>
         <button class="btn sm" data-mv="${s.id}" data-dir="1" ${k === ss.length - 1 ? 'disabled' : ''}>↓</button>
-        <button class="btn sm danger" data-delst="${s.id}" ${ss.length < 2 ? 'disabled' : ''}>Sil</button>
+        <button class="btn sm danger" data-delst="${s.id}" ${ss.length < 2 || (s.cat === 'done' && nDone === 1) ? 'disabled' : ''}
+          ${s.cat === 'done' && nDone === 1 ? `title="${LAST_DONE}"` : ''}>Sil</button>
       </div>`).join('')}
       <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center">
-        <input class="inp" id="st_new" placeholder="Yeni durum adı" style="max-width:220px">
+        <input class="inp" id="st_new" placeholder="Yeni durum adı" maxlength="${COL_NAME_MAX}" style="max-width:220px">
         <select class="inp" id="st_cat" style="width:auto">${CATS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
-        <button class="btn" id="addStatus">+ Durum ekle</button>
+        <button class="btn" id="addStatus" ${ss.length >= COL_MAX ? `disabled title="Bir projede en fazla ${COL_MAX} kolon olabilir"` : ''}>+ Durum ekle</button>
         <span class="spacer"></span>
         <select class="inp" id="st_tpl" style="width:auto"><option value="">Şablon uygula…</option>
           ${Object.entries(STATUS_TEMPLATES).map(([k, [l, r]]) => `<option value="${k}">${l} (${r.length})</option>`).join('')}</select>
@@ -4480,13 +4652,14 @@ function renderAdmin() {
   return `<div class="grid2">
     <div class="panel" style="grid-column:1/-1"><h3>Modüller</h3>
       <div class="sub">Kullanmadığınız modülleri kapatın — ilgili alanlar, ekranlar ve raporlar arayüzden tamamen kalkar. Veri silinmez, tekrar açınca geri gelir.</div>
-      ${Object.entries(MODULE_LABELS).map(([k, [t, d]]) => `<div class="row" style="cursor:default;align-items:flex-start">
+      ${Object.entries(MODULE_LABELS).filter(([k]) => k !== 'sprint').map(([k, [t, d]]) => `<div class="row" style="cursor:default;align-items:flex-start">
         <label style="display:flex;gap:9px;align-items:flex-start;flex:1">
           <input type="checkbox" data-mod="${k}" ${MOD(k) ? 'checked' : ''} style="margin-top:3px">
           <span><b style="font-weight:600">${esc(t)}</b>
             <span style="display:block;font-size:11.5px;color:var(--ink3)">${esc(d)}</span></span></label>
         <span class="chip ${MOD(k) ? 'cat-done' : 'lbl'}">${MOD(k) ? 'açık' : 'kapalı'}</span>
       </div>`).join('')}
+      <div class="ws-info" style="margin:10px 0 0">${ic('info')}<span>Sprint artık proje türüyle belirlenir. Agile projelerde sprint açıktır; türü Projeler ekranından ya da proje ayarlarından değiştirebilirsin.</span></div>
     </div>
     <div class="panel"><h3>Kullanıcılar ve erişim</h3>
       <div class="sub">Kullanıcı ekleme, rol, parola ve proje üyelikleri artık ayrı bir ekranda.</div>
@@ -4538,6 +4711,13 @@ function wireAdmin() {
 
   $$('[data-st]').forEach(el => el.onchange = () => {
     const s = stat(el.dataset.st), p = el.dataset.p;
+    if (p === 'name') {
+      const v = el.value.trim().replace(/\s+/g, ' ');
+      const err = colNameErr(v, stats().filter(x => x.id !== s.id).map(x => x.name));
+      if (err) { toast(err); return render(); }
+      s.name = v; return save(), render();
+    }
+    if (p === 'cat' && s.cat === 'done' && el.value !== 'done' && stats().filter(x => x.cat === 'done').length < 2) { toast(LAST_DONE); return render(); }
     s[p] = p === 'wip' ? (parseInt(el.value) || 0) : el.value;
     save(); render();
   });
@@ -4546,17 +4726,16 @@ function wireAdmin() {
     if (j < 0 || j >= ss.length) return;
     [ss[i].ord, ss[j].ord] = [ss[j].ord, ss[i].ord]; save(); render();
   });
+  /* Silme Kolonları düzenle penceresindeki adımla aynı (#12): içinde iş varsa hedef kolon sorulur. */
   $$('[data-delst]').forEach(b => b.onclick = () => {
-    const id = b.dataset.delst, used = issuesOf().filter(i => i.statusId === id);
-    const other = stats().filter(s => s.id !== id);
-    if (!other.length) return toast('Projenin son durumu silinemez');
-    if (used.length && !confirm(`${used.length} iş "${stat(id).name}" durumunda. Hepsi "${other[0].name}" durumuna taşınsın mı?`)) return;
-    used.forEach(i => i.statusId = other[0].id);
-    DB.statuses = DB.statuses.filter(s => s.id !== id);
-    save(); render();
+    const id = b.dataset.delst;
+    if (colCount(id)) return colsEditor(DB.ui.project, id);
+    colDelete(id);
   });
   const as = $('#addStatus'); if (as) as.onclick = () => {
-    const n = $('#st_new').value.trim(); if (!n) return toast('Durum adı gerekli');
+    const n = $('#st_new').value.trim().replace(/\s+/g, ' '); if (!n) return toast('Durum adı gerekli');
+    if (stats().length >= COL_MAX) return toast(`Bir projede en fazla ${COL_MAX} kolon olabilir`);
+    const err = colNameErr(n, stats().map(x => x.name)); if (err) return toast(err);
     DB.statuses.push({ id: uid('st'), projectId: DB.ui.project, name: n, cat: $('#st_cat').value, wip: 0,
       ord: Math.max(0, ...stats().map(s => s.ord)) + 1 });
     save(); render(); toast(n + ' eklendi');
@@ -4706,7 +4885,7 @@ function ruleForm(id) {
   };
   const draw = () => {
     $('#rl_acts').innerHTML = acts.map((a, k) => `<div style="display:flex;gap:6px;align-items:flex-start;margin-bottom:6px">
-      <select class="inp" data-aa="${k}" style="width:170px">${Object.entries(ACTS).filter(([, o]) => !o.mod || MOD(o.mod)).map(([v, o]) =>
+      <select class="inp" data-aa="${k}" style="width:170px">${Object.entries(ACTS).filter(([, o]) => !o.mod || (o.mod === 'sprint' ? AGILE() : MOD(o.mod))).map(([v, o]) =>
         `<option value="${v}" ${a.act === v ? 'selected' : ''}>${o.l}</option>`).join('')}</select>
       <div style="flex:1">${valInput(a, k)}</div>
       <button class="btn sm danger" data-ax="${k}">×</button></div>`).join('');
@@ -4926,8 +5105,8 @@ function throughput(weeks = 8) {
 /* ---- kapasite ---- */
 const capOf = u => u.capacity ?? 30;
 function capacityPanel() {
-  const s = MOD('sprint') ? activeSprint() : null;
-  if (MOD('sprint') && !s) return '<div class="empty">Aktif sprint yok</div>';
+  const s = AGILE() ? activeSprint() : null;
+  if (AGILE() && !s) return '<div class="empty">Aktif sprint yok</div>';
   const wk = s ? Math.max(1, Math.round((new Date(s.end) - new Date(s.start)) / 86400000 + 1) / 7) : 1;
   const rows = projUsers().map(u => {
     const mine = s
@@ -4968,7 +5147,7 @@ function bulkBar() {
       ${stats().map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>
     <select class="inp" id="bk_as" style="width:auto"><option value="">Atanan…</option><option value="__none">Atanmamış</option>
       ${projUsers().map(u => `<option value="${u.id}">${esc(u.name)}</option>`).join('')}</select>
-    ${MOD('sprint') ? `<select class="inp" id="bk_sp" style="width:auto"><option value="">Sprint…</option><option value="__none">Backlog</option>
+    ${AGILE() ? `<select class="inp" id="bk_sp" style="width:auto"><option value="">Sprint…</option><option value="__none">Backlog</option>
       ${sprintsOf().map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>` : ''}
     <select class="inp" id="bk_pr" style="width:auto"><option value="">Öncelik…</option>
       ${LVLS.map(p => `<option value="${p}">${PRI[p][1]}</option>`).join('')}</select>
@@ -5034,7 +5213,7 @@ const SHORTCUTS = [
 ];
 function palette() {
   const items = [
-    ...Object.entries(VIEWS).map(([v, o]) => ({ t: 'Git', n: o.t, run: () => { DB.ui.view = v; save(); render(); } })),
+    ...Object.entries(VIEWS).map(([v, o]) => ({ t: 'Git', n: viewTitle(v), run: () => { DB.ui.view = v; save(); render(); } })),
     { t: 'Eylem', n: 'Yeni iş oluştur', run: () => newIssueForm() },
     { t: 'Eylem', n: 'Süre kaydet', run: () => logWorkForm() },
     { t: 'Eylem', n: 'Yeni proje oluştur', run: () => newProjectForm() },
@@ -5138,7 +5317,7 @@ const DIMS = {
              n: m => monthName(m), short: m => m },
 };
 const activeDims = () => Object.entries(DIMS).filter(([k]) =>
-  (k !== 'epic' || MOD('epic')) && (k !== 'sprint' || MOD('sprint')));
+  (k !== 'epic' || MOD('epic')) && (k !== 'sprint' || anyAgile()));
 const MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
                 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 const monthName = m => `${MONTHS[+m.slice(5, 7) - 1]} ${m.slice(0, 4)}`;
@@ -6382,7 +6561,7 @@ function wsClick(e) {
   const mi = t.closest('.ws-pop .ws-mi');
   if (mi && !mi.disabled) wsPopClose(mi.closest('.ws-pop'));
   const more = t.closest('[data-wsmore]'); if (more) return wsPopToggle(more);
-  const b = t.closest('[data-wsnew],[data-wsnewproj],[data-wsedit],[data-wsarch],[data-wsunarch],[data-wsdel],[data-movproj],[data-wsarchtog],[data-wspick],[data-wsmanage]');
+  const b = t.closest('[data-wsnew],[data-wsnewproj],[data-wsedit],[data-wsarch],[data-wsunarch],[data-wsdel],[data-movproj],[data-ptypedlg],[data-wsarchtog],[data-wspick],[data-wsmanage]');
   if (!b || b.disabled) return;
   const d = b.dataset;
   if (b.closest('#wsMenu')) wsMenuClose();
@@ -6400,6 +6579,7 @@ function wsClick(e) {
   if ('wsunarch' in d) return wsSetArchived(d.wsunarch, false);
   if ('wsdel' in d) return wsDelete(d.wsdel);
   if ('movproj' in d) return moveProjectForm(d.movproj);
+  if ('ptypedlg' in d) return typeDialog(d.ptypedlg);
   if ('wsarchtog' in d) { DB.ui.showArchivedWs = !DB.ui.showArchivedWs; save(); render(); $('[data-wsarchtog]')?.focus(); }
 }
 
@@ -7038,6 +7218,7 @@ function wsProjCard(p, arch) {
   const hours = DB.worklogs.filter(w => issue(w.issueId)?.projectId === p.id).reduce((a, w) => a + (+w.hours || 0), 0);
   const cur = p.id === DB.ui.project, pid = esc(p.id);
   const items = [
+    canEditCols(p) && !arch ? `<button type="button" class="ws-mi" role="menuitem" data-ptypedlg="${pid}">${ic('swap')}<span class="two">Türü değiştir…<span class="why">Şu an ${TYPE_LABEL[projType(p)]}</span></span></button>` : '',
     canEdit() ? `<button type="button" class="ws-mi" role="menuitem" data-movproj="${pid}">${ic('move')}Çalışma alanını değiştir…</button>` : '',
     canAdmin() ? `<button type="button" class="ws-mi" role="menuitem" data-arch="${pid}">${ic(p.archived ? 'unarchive' : 'archive')}${p.archived ? 'Yeniden etkinleştir' : 'Arşivle'}</button>` : '',
     isAdmin() ? `<div class="ws-hr" role="separator"></div><button type="button" class="ws-mi danger" role="menuitem" data-delproj="${pid}"
@@ -7045,6 +7226,7 @@ function wsProjCard(p, arch) {
   return `<article class="ws-pcard ${cur ? 'is-cur' : ''}" data-wsproj="${pid}">
     <div class="ws-ph"><span class="ws-key">${esc(p.key)}</span>
       <input class="inp ws-pname" data-projname="${pid}" value="${esc(p.name)}" aria-label="Proje adı" ${canEdit() ? '' : 'disabled'}>
+      ${typeTag(projType(p))}
       ${p.archived ? `<span class="ws-chip">${ic('archive')}arşiv</span>` : cur ? `<span class="ws-chip cur">${ic('check')}seçili</span>` : ''}
       ${items ? wsPopMenu(`${p.name}: işlemler`, 'Proje işlemleri', items) : ''}</div>
     <div class="ws-pstats"><span>${ic('issues')}<b>${all.length}</b> iş</span><span>${ic('circle')}<b>${open}</b> açık</span><span>${ic('hour')}<b>${efFmtSafe(hours)}</b> efor</span></div>
@@ -7058,6 +7240,339 @@ function wsProjCard(p, arch) {
     <div class="ws-pf"><span class="lead2">Yürüten <b>${esc(user(p.lead)?.name || '—')}</b></span>
       ${arch ? '' : `<button class="btn" data-goproj="${pid}">Projeye geç${ic('arrow')}</button>`}</div>
   </article>`;
+}
+
+/* ============================================================
+   PROJE TÜRÜ VE KOLON YÖNETİMİ (#12, docs/tasarim/proje-turu)
+   Kurallar sunucuda da var (store.js: canConfigure, checkColumns, checkProjectType);
+   buradaki denetimler yalnızca kullanıcı deneyimi içindir.
+   ============================================================ */
+const COL_MAX = 12, COL_NAME_MAX = 30;
+const LAST_DONE = 'Projede en az bir Bitti kolonu kalmalı';
+const colKey = s => String(s ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr');
+const colsOf = pid => DB.statuses.filter(s => s.projectId === pid).sort((a, b) => (a.ord ?? 0) - (b.ord ?? 0));
+/* Kolonları ve türü değiştirebilen: yönetici ya da projenin üyesi olan Üye (izleyici hiçbir zaman). */
+const canEditCols = p => !!p && canEdit() && (isAdmin() || isMember(p));
+const typeTag = t => t === 'agile' ? `<span class="pt-type agile">${ic('sprint')}Agile</span>` : `<span class="pt-type">${ic('board')}Pano</span>`;
+const catOk = c => ['todo', 'inprogress', 'done'].includes(c) ? c : 'todo';
+function colNameErr(name, others) {
+  const n = String(name ?? '').trim();
+  if (!n || n.length > COL_NAME_MAX) return `Kolon adı 1 ile ${COL_NAME_MAX} karakter arasında olmalı`;
+  if (others.some(o => colKey(o) === colKey(n))) return 'Bu adla bir kolon zaten var';
+  return '';
+}
+const colCount = id => DB.issues.filter(i => i.statusId === id).length;
+
+/* Tek kolon satırı: Kolonları düzenle penceresi ve yeni proje formu aynı bileşeni kullanır. */
+function colRowHtml(r, k, o = {}) {
+  const nm = esc(r.name), pre = o.pre || 'c', c = catOk(r.cat);
+  const lockId = `${pre}${k}-l`, errId = `${pre}${k}-e`;
+  const delOff = o.lock || o.only;
+  return `<div class="pt-row ${o.compact ? 'compact' : ''} ${o.err ? 'has-err' : ''}" role="listitem">
+    <span class="pt-ix" aria-hidden="true">${k + 1}</span>
+    <div class="pt-nm"><input class="inp" data-cn="${k}" value="${esc(o.draft ?? r.name)}" maxlength="${COL_NAME_MAX}" aria-label="Kolon ${k + 1} adı"
+      ${o.err ? `aria-invalid="true" aria-describedby="${errId}"` : ''}><span class="cnt" aria-hidden="true">${String(o.draft ?? r.name).length}/${COL_NAME_MAX}</span></div>
+    <div class="pt-cat"><span class="cat-dot ${c}" aria-hidden="true"></span>
+      <select class="inp" data-cc="${k}" aria-label="${nm}: kategori" ${o.lock ? `disabled aria-describedby="${lockId}"` : ''}>${
+        CATS.map(([v, l]) => `<option value="${v}" ${v === c ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+    ${o.compact ? '' : `<span class="pt-n ${o.n ? '' : 'zero'}">${o.n || 0} iş</span>`}
+    <button type="button" class="iconbtn pt-up" data-cu="${k}" aria-label="${nm}: yukarı taşı" title="Yukarı taşı" ${o.first ? 'disabled' : ''}>${ic('up')}</button>
+    <button type="button" class="iconbtn pt-dn" data-cd="${k}" aria-label="${nm}: aşağı taşı" title="Aşağı taşı" ${o.last ? 'disabled' : ''}>${ic('dn')}</button>
+    <button type="button" class="iconbtn del pt-del" data-cx="${k}" aria-label="${nm}: sil"
+      title="${o.lock ? LAST_DONE : o.only ? 'Projenin son kolonu silinemez' : 'Sil'}" ${delOff ? 'disabled' : ''} ${o.lock ? `aria-describedby="${lockId}"` : ''}>${ic('trash')}</button>
+    ${o.err ? `<div class="pt-msg err" id="${errId}">${ic('alert')}${esc(o.err)}</div>` : ''}
+    ${o.lock ? `<div class="pt-msg hint" id="${lockId}">${ic('lock')}${LAST_DONE}</div>` : ''}
+  </div>`;
+}
+const colHd = compact => `<div class="pt-colhd ${compact ? 'compact' : ''}" aria-hidden="true"><span>#</span><span>Ad</span><span>Kategori</span>${compact ? '' : '<span>İş</span>'}<span></span></div>`;
+
+/* Odağı yeniden çizimden sonra aynı denetime geri ver. */
+const FOCUS_ATTRS = ['cn', 'cc', 'cu', 'cd', 'cx', 'cto', 'ptype', 'tpl'];
+function focusKey(el) {
+  if (!(el instanceof Element)) return null;
+  if (el.id) return '#' + el.id;
+  const a = FOCUS_ATTRS.find(x => x in el.dataset);
+  return a ? `[data-${a}="${el.dataset[a]}"]` : null;
+}
+function focusBack(host, sel, fallback) {
+  const el = sel && host.querySelector(sel);
+  const t = el && !el.disabled ? el : fallback && host.querySelector(fallback);
+  if (t) t.focus();
+}
+
+/* Kolon silme (Kolonları düzenle ve Proje ayarları → İş akışı aynı işlevi kullanır): içindeki işler önce
+   hedef kolona taşınır (geçmişe "Durum: X → Y"; otomasyon kuralları çalışmaz), sonra kolon silinir. */
+function colDelete(id, to) {
+  const s = DB.statuses.find(x => x.id === id); if (!s) return false;
+  const cols = colsOf(s.projectId);
+  if (cols.length < 2) { toast('Projenin son kolonu silinemez'); return false; }
+  if (s.cat === 'done' && cols.filter(c => c.cat === 'done').length < 2) { toast(LAST_DONE); return false; }
+  const moved = DB.issues.filter(i => i.statusId === id);
+  if (moved.length && !cols.some(c => c.id === to && c.id !== id)) { toast('Hedef kolon seçin'); return false; }
+  moved.forEach(i => setStatus(i, to, { rules: false }));
+  DB.issues.forEach(i => { if (i.doneFrom === id) delete i.doneFrom; });
+  if (DB.ui.qaOpen === id) DB.ui.qaOpen = null;
+  DB.statuses = DB.statuses.filter(x => x.id !== id);
+  save(); render();
+  return true;
+}
+
+/* ---- Kolonları düzenle penceresi ---- */
+let COLS_UI = null;     // { pid, del, to, err: {id: ileti}, draft: {id: yazılan ad}, alert }
+function colsEditor(pid, delId) {
+  const p = DB.projects.find(x => x.id === pid);
+  if (!canEditCols(p)) return toast('Kolonları yalnızca yönetici ya da proje üyesi değiştirebilir');
+  COLS_UI = { pid, del: null, to: null, err: {}, draft: {}, alert: '' };
+  openModal('', 'pt-dlg');
+  $('#scrim .modal').dataset.cols = '1';
+  if (delId) colsAskDelete(delId); else colsDraw();
+}
+const colsBox = () => document.querySelector('#scrim.on .modal[data-cols]');
+/* Sunucu bir değişikliği reddetti (flushSync → reloadState): pencere açıksa uyarıyla yeniden çiz. */
+function colsRefresh(msg) {
+  if (!COLS_UI || !colsBox()) return;
+  Object.assign(COLS_UI, { alert: msg || '', err: {}, draft: {} });
+  colsDraw();
+}
+function colsAskDelete(id) {
+  const U = COLS_UI, cols = colsOf(U.pid), k = cols.findIndex(c => c.id === id);
+  if (k < 0) return colsDraw();
+  if (!colCount(id)) { colDelete(id); return colsDraw(null, '#pt_add'); }
+  U.del = id; U.to = (cols[k - 1] || cols[k + 1]).id;
+  colsDraw();
+}
+function colsDraw(focusSel, fallback) {
+  const box = colsBox(), U = COLS_UI; if (!box || !U) return;
+  const p = DB.projects.find(x => x.id === U.pid);
+  if (!p || !canEditCols(p)) { closeModal(); COLS_UI = null; return; }
+  const cols = colsOf(U.pid), nDone = cols.filter(s => s.cat === 'done').length;
+  const sub = `<span class="ws-key">${esc(p.key)}</span>${esc(p.name)} · ${typeTag(projType(p))}`;
+  const ds = U.del && cols.find(c => c.id === U.del);
+  box.classList.toggle('w-md', !!ds);
+  box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-labelledby', 'pt_ct');
+  if (ds) {
+    const k = cols.indexOf(ds), n = colCount(ds.id), others = cols.filter(c => c.id !== ds.id);
+    if (!others.some(c => c.id === U.to)) U.to = (cols[k - 1] || cols[k + 1]).id;
+    const to = cols.find(c => c.id === U.to);
+    box.innerHTML = `<div class="m-h"><button type="button" class="iconbtn" data-cback aria-label="Geri: kolon listesine dön">${ic('back')}</button>
+        <div class="t"><b id="pt_ct">Kolonu sil: ${esc(ds.name)}</b><span class="s"><span class="cat-dot ${catOk(ds.cat)}" aria-hidden="true"></span>${esc(catName(ds.cat))} · ${n} iş</span></div>
+        <button class="x" data-close aria-label="Kapat">×</button></div>
+      <div class="pt-b">
+        <p class="pt-q" id="pt_dq">İçindeki ${n} iş hangi kolona taşınsın?</p>
+        <p class="pt-qs">Taşıma bitince "${esc(ds.name)}" kolonu silinir.</p>
+        <div class="ws-opts" role="radiogroup" aria-labelledby="pt_dq">${others.map(o => {
+          const on = o.id === U.to, j = cols.indexOf(o);
+          const why = [colCount(o.id) + ' iş', j === k - 1 ? 'önceki kolon' : (k === 0 && j === 1 ? 'sonraki kolon' : ''), o.cat === 'done' ? 'Bitti kategorisi' : ''].filter(Boolean).join(' · ');
+          return `<button type="button" class="ws-opt" role="radio" aria-checked="${on}" tabindex="${on ? 0 : -1}" data-cto="${esc(o.id)}">
+            <span class="cat-dot ${catOk(o.cat)}" aria-hidden="true"></span><span class="tx"><span class="nm">${esc(o.name)}</span><span class="s">${why}</span></span><span class="ws-rad"></span></button>`;
+        }).join('')}</div>
+        <div class="ws-info">${ic('info')}<span>Her işin geçmişine <span class="k">Durum: ${esc(ds.name)} → ${esc(to.name)}</span> yazılır. Otomasyon kuralları bu toplu taşımada çalışmaz.</span></div>
+      </div>
+      <div class="m-f"><button type="button" class="btn" data-cback>Vazgeç</button><button type="button" class="btn pt-fill" id="pt_delok">${ic('trash')}Sil ve taşı</button></div>`;
+    $$('[data-cback]', box).forEach(b => b.onclick = () => { U.del = null; colsDraw(`[data-cx="${k}"]`, '#pt_add'); });
+    const opts = $$('[data-cto]', box);
+    opts.forEach((b, j) => {
+      b.onclick = () => { U.to = b.dataset.cto; colsDraw(`[data-cto="${b.dataset.cto}"]`); };
+      b.onkeydown = e => {
+        const d = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key]; if (!d) return;
+        e.preventDefault(); const t = opts[(j + d + opts.length) % opts.length];
+        U.to = t.dataset.cto; colsDraw(`[data-cto="${t.dataset.cto}"]`);
+      };
+    });
+    $('#pt_delok', box).onclick = () => { if (colDelete(ds.id, U.to)) { U.del = null; colsDraw(null, '#pt_add'); } };
+    return focusBack(box, focusSel, '[data-cto][aria-checked="true"]');
+  }
+  U.del = null;
+  const full = cols.length >= COL_MAX;
+  box.innerHTML = `<div class="m-h"><div class="t"><b id="pt_ct">Kolonları düzenle</b><span class="s">${sub}</span></div>
+      <button class="x" data-close aria-label="Kapat">×</button></div>
+    <div class="pt-b">
+      ${U.alert ? `<div class="ws-alert" role="alert">${ic('alert')}<span class="tx"><b>${esc(U.alert)}</b>Değişiklik kaydedilmedi; kolonlar yeniden yüklendi.</span></div>` : ''}
+      ${cols.length ? colHd(false) : `<p class="pt-qs">Bu projede henüz kolon yok. İlk kolonu ekleyin; en az bir "Bitti" kolonu gerekir.</p>`}
+      <div class="pt-cols" role="list" aria-label="Kolonlar, soldan sağa">${cols.map((s, k) => colRowHtml(s, k, {
+        n: colCount(s.id), first: k === 0, last: k === cols.length - 1, only: cols.length < 2,
+        lock: s.cat === 'done' && nDone === 1, err: U.err[s.id], draft: U.draft[s.id] })).join('')}</div>
+      <button type="button" class="pt-add" id="pt_add" ${full ? 'disabled aria-describedby="pt_lim"' : ''}>${ic('plus')}Kolon ekle<span class="lim" id="pt_lim">${cols.length}/${COL_MAX} · ${
+        full ? `Bir projede en fazla ${COL_MAX} kolon olabilir` : 'yeni kolon "Devam ediyor" olarak eklenir'}</span></button>
+    </div>
+    <div class="m-f"><span class="note">${ic('check')}Değişiklikler hemen kaydedilir</span><button type="button" class="btn" data-close>Kapat</button></div>`;
+  const redo = (sel, fb) => { U.alert = ''; colsDraw(sel, fb); };
+  const commit = (k, el) => {
+    const s = cols[k]; if (!s) return;
+    const v = el.value.trim().replace(/\s+/g, ' ');
+    /* Geçerli adda yeniden çizim yalnız hata kalkınca (yoksa aynı anda tıklanan düğme kaybolmasın). */
+    const had = !!U.err[s.id];
+    if (v === s.name) { delete U.err[s.id]; delete U.draft[s.id]; return had && redo(focusKey(document.activeElement)); }
+    const err = colNameErr(v, cols.filter(c => c.id !== s.id).map(c => c.name));
+    if (err) { U.err[s.id] = err; U.draft[s.id] = el.value; return redo(focusKey(document.activeElement) || `[data-cn="${k}"]`); }
+    delete U.err[s.id]; delete U.draft[s.id];
+    s.name = v; save(); render();
+    if (had || el.value !== v) redo(focusKey(document.activeElement));
+  };
+  $$('[data-cn]', box).forEach(el => {
+    el.oninput = () => { el.nextElementSibling.textContent = `${el.value.length}/${COL_NAME_MAX}`; };
+    el.onchange = () => setTimeout(() => commit(+el.dataset.cn, el), 0);
+    el.onkeydown = e => {
+      if (e.key === 'Enter') { e.preventDefault(); commit(+el.dataset.cn, el); }
+      if (e.key === 'Escape') { e.stopPropagation(); const s = cols[+el.dataset.cn]; delete U.err[s.id]; delete U.draft[s.id]; redo(`[data-cn="${el.dataset.cn}"]`); }
+    };
+  });
+  $$('[data-cc]', box).forEach(el => el.onchange = () => {
+    const s = cols[+el.dataset.cc];
+    if (s.cat === 'done' && el.value !== 'done' && nDone < 2) { toast(LAST_DONE); return redo(`[data-cc="${el.dataset.cc}"]`); }
+    s.cat = el.value; save(); render(); redo(`[data-cc="${el.dataset.cc}"]`);
+  });
+  const move = (k, d) => {
+    const j = k + d; if (j < 0 || j >= cols.length) return;
+    if (new Set(cols.map(c => c.ord)).size !== cols.length || cols.some(c => typeof c.ord !== 'number')) cols.forEach((c, x) => { c.ord = x; });
+    [cols[k].ord, cols[j].ord] = [cols[j].ord, cols[k].ord];
+    save(); render();
+    redo(d < 0 ? `[data-cu="${j}"]` : `[data-cd="${j}"]`, d < 0 ? `[data-cd="${j}"]` : `[data-cu="${j}"]`);
+  };
+  $$('[data-cu]', box).forEach(b => b.onclick = () => move(+b.dataset.cu, -1));
+  $$('[data-cd]', box).forEach(b => b.onclick = () => move(+b.dataset.cd, 1));
+  $$('[data-cx]', box).forEach(b => b.onclick = () => { U.alert = ''; colsAskDelete(cols[+b.dataset.cx].id); });
+  $('#pt_add', box).onclick = () => {
+    if (colsOf(U.pid).length >= COL_MAX) return toast(`Bir projede en fazla ${COL_MAX} kolon olabilir`);
+    const names = new Set(cols.map(c => colKey(c.name)));
+    let n = 'Yeni kolon', x = 2; while (names.has(colKey(n))) n = 'Yeni kolon ' + x++;
+    DB.statuses.push({ id: uid('st'), projectId: U.pid, name: n, cat: 'inprogress', wip: 0,
+      ord: Math.max(-1, ...cols.map(c => +c.ord || 0)) + 1 });
+    save(); render(); redo();
+    const inp = box.querySelector(`[data-cn="${cols.length}"]`); if (inp) { inp.focus(); inp.select(); }
+  };
+  focusBack(box, focusSel, fallback);
+}
+
+/* ---- Proje türü seçimi (yeni proje + Türü değiştir) ---- */
+const typeCards = (sel, cur) => `<div class="pt-types" role="radiogroup" aria-label="Proje türü">${[
+  ['board', 'board', 'Pano', 'Kolonlarda akan işler, sprint yok'],
+  ['agile', 'sprint', 'Agile', 'Backlog ve sprintler']].map(([v, i, l, d]) =>
+  `<button type="button" class="pt-tcard" role="radio" aria-checked="${sel === v}" tabindex="${sel === v ? 0 : -1}" data-ptype="${v}">
+    <span class="ic">${ic(i)}</span><span class="tx"><b>${l}</b><span class="d">${d}</span>
+    <span class="tag">${cur ? (cur === v ? 'şu anki tür' : '') : v === 'board' ? 'varsayılan' : ''}</span></span><span class="ws-rad"></span></button>`).join('')}</div>`;
+function wireTypeCards(host, pick) {
+  const cards = $$('[data-ptype]', host);
+  cards.forEach((b, j) => {
+    b.onclick = () => pick(b.dataset.ptype);
+    b.onkeydown = e => {
+      const d = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key]; if (!d) return;
+      e.preventDefault(); pick(cards[(j + d + cards.length) % cards.length].dataset.ptype);
+    };
+  });
+}
+
+function typeDialog(pid) {
+  const p = DB.projects.find(x => x.id === pid);
+  if (!canEditCols(p)) return toast('Proje türünü yalnızca yönetici ya da proje üyesi değiştirebilir');
+  const cur = projType(p); let sel = cur;
+  openModal('', 'pt-dlg w-md');
+  const box = $('#scrim .modal');
+  const draw = () => {
+    const act = sel === 'board' && cur !== 'board' && DB.sprints.find(s => s.projectId === pid && s.state === 'active');
+    const nOpen = act ? DB.issues.filter(i => i.sprintId === act.id && stat(i.statusId).cat !== 'done').length : 0;
+    const chg = sel === 'agile'
+      ? ['Menüde "İş listesi" yerine "Backlog"; sprint oluşturup başlatabilirsin.',
+         'Tüm işler backlog\'da başlar. Eski sprint atamaları olduğu gibi görünür.',
+         'Pano "Aktif sprint / Tüm işler" geçişini kazanır. Kolonlar değişmez.']
+      : ['Menüde "Backlog" yerine "İş listesi"; pano tüm işleri gösterir.',
+         'Sprint kutuları, burndown ve sprint hızı gizlenir; sprint bilgisi silinmez.'];
+    box.innerHTML = `<div class="m-h"><div class="t"><b id="pt_tt">Türü değiştir</b><span class="s"><span class="ws-key">${esc(p.key)}</span>${esc(p.name)}</span></div>
+        <button class="x" data-close aria-label="Kapat">×</button></div>
+      <div class="pt-b">${typeCards(sel, cur)}
+        <div style="height:14px"></div>
+        ${act ? `<div class="ws-alert" role="alert" id="pt_te">${ic('alert')}<span class="tx"><b>Önce aktif sprinti tamamlayın</b>${esc(act.name)}${
+          act.start && act.end ? ` (${fmtD(act.start)}–${fmtD(act.end)}, ${nOpen} açık iş)` : ''} hâlâ aktif. Pano türünde sprint olmadığı için sprint Backlog'dan tamamlanmalı.</span></div>` : ''}
+        ${sel !== cur ? `<div class="pt-fld" style="margin-bottom:0"><div class="lb">${sel === 'agile' ? "Agile'a geçince" : "Pano'ya geçince"}</div>
+          <ul class="pt-chg">${chg.map(x => `<li>${ic('check')}${esc(x)}</li>`).join('')}</ul></div>` : ''}
+      </div>
+      <div class="m-f"><button type="button" class="btn" data-close>Vazgeç</button>
+        ${act ? `<button type="button" class="btn" id="pt_tbl">${ic('backlog')}Backlog'a git</button>` : ''}
+        <button type="button" class="btn pri" id="pt_tok" ${sel === cur || act ? 'disabled' : ''} ${act ? 'aria-describedby="pt_te"' : ''}>${ic('swap')}Türü değiştir</button></div>`;
+    box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-labelledby', 'pt_tt');
+    wireTypeCards(box, v => { sel = v; draw(); box.querySelector(`[data-ptype="${v}"]`)?.focus(); });
+    const bl = $('#pt_tbl', box); if (bl) bl.onclick = () => {
+      DB.ui.project = pid; DB.ui.view = 'backlog'; DB.board.q = ''; closeModal(); save(); startApp();
+    };
+    $('#pt_tok', box).onclick = () => {
+      if (sel === cur || act) return;
+      p.type = sel;
+      closeModal(); save(); render(); toast(`${p.name}: proje türü ${TYPE_LABEL[sel]}`);
+    };
+  };
+  draw();
+  box.querySelector('[data-ptype][aria-checked="true"]')?.focus();
+}
+
+/* Kolonsuz (eski) proje: otomatik doldurma yok; yetkiliye "Kolonları düzenle". */
+const noColsView = () => `<div class="ws-empty"><div class="ghost-cols" aria-hidden="true"><i></i><i></i><i></i></div>
+  <h3>Bu projede henüz kolon yok</h3>${canEditCols(P())
+    ? `<p>İşlerin akacağı kolonları ekleyince pano burada açılır. En az bir "Bitti" kolonu gerekir.</p>
+       <button type="button" class="btn pri" id="colsEdit2">${ic('cols')}Kolonları düzenle</button>`
+    : '<p>Bir yönetici ya da projenin üyesi kolonları eklediğinde pano burada görünür.</p>'}</div>`;
+
+/* Yeni proje formundaki kolon listesi (kayıt "Oluştur"a basınca yapılır; satırlar kilitlenmez). */
+function newColsEditor(host, flow) {
+  const st = { tpl: 'default', err: '' };
+  const TPLS = () => [
+    ['default', 'Varsayılan akış', DB.cfg.defaultStatuses || STATUS_TEMPLATES.uyarlama[1]],
+    ['basic', 'Basit', STATUS_TEMPLATES.basic[1]],
+    ['dev', 'Geliştirme', STATUS_TEMPLATES.dev[1]],
+    ['uyarlama', 'Uyarlama', STATUS_TEMPLATES.uyarlama[1]],
+    ...(P() && stats().length ? [['copy', `${P().key} projesinden kopyala`, stats().map(s => [s.name, catOk(s.cat)])]] : [])];
+  const rowErr = k => colNameErr(flow[k][0], flow.filter((_, j) => j !== k).map(r => r[0]));
+  let sig = '';
+  const draw = (focusSel, fb) => {
+    const full = flow.length >= COL_MAX;
+    sig = flow.map((_, k) => rowErr(k)).join('|');
+    host.innerHTML = `<div class="pt-tpls" role="radiogroup" aria-label="Kolon şablonu">${TPLS().map(([v, l, r]) =>
+        `<button type="button" class="pt-tpl" role="radio" aria-checked="${st.tpl === v}" tabindex="${st.tpl === v ? 0 : -1}" data-tpl="${v}">${v === 'copy' ? ic('copy') : ''}${esc(l)}<span class="n">${r.length}</span></button>`).join('')}</div>
+      ${colHd(true)}
+      <div class="pt-cols" role="list" aria-label="Kolon önizlemesi">${flow.map((r, k) => colRowHtml({ name: r[0], cat: r[1] }, k, {
+        pre: 'n', compact: true, first: k === 0, last: k === flow.length - 1, only: flow.length < 2, err: rowErr(k) })).join('')}</div>
+      <button type="button" class="pt-add" id="np_add" ${full ? 'disabled aria-describedby="np_lim"' : ''}>${ic('plus')}Kolon ekle<span class="lim" id="np_lim">${flow.length}/${COL_MAX}${
+        full ? ` · Bir projede en fazla ${COL_MAX} kolon olabilir` : ''}</span></button>
+      <div class="pt-ferr" id="np_cerr" role="alert">${st.err ? ic('alert') + esc(st.err) : ''}</div>`;
+    const tpls = $$('[data-tpl]', host);
+    const pickTpl = v => { st.tpl = v; st.err = ''; flow.length = 0;
+      (TPLS().find(t => t[0] === v)?.[2] || []).slice(0, COL_MAX).forEach(r => flow.push([r[0], catOk(r[1])])); draw(`[data-tpl="${v}"]`); };
+    tpls.forEach((b, j) => {
+      b.onclick = () => pickTpl(b.dataset.tpl);
+      b.onkeydown = e => { const d = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key]; if (!d) return;
+        e.preventDefault(); pickTpl(tpls[(j + d + tpls.length) % tpls.length].dataset.tpl); };
+    });
+    $$('[data-cn]', host).forEach(el => {
+      el.oninput = () => { flow[+el.dataset.cn][0] = el.value; el.nextElementSibling.textContent = `${el.value.length}/${COL_NAME_MAX}`; };
+      /* Yeniden çizim yalnız satır hataları değişince (aynı anda tıklanan düğme kaybolmasın). */
+      el.onchange = () => setTimeout(() => { if (flow.map((_, k) => rowErr(k)).join('|') !== sig) draw(focusKey(document.activeElement)); }, 0);
+    });
+    $$('[data-cc]', host).forEach(el => el.onchange = () => { flow[+el.dataset.cc][1] = el.value; st.err = ''; draw(`[data-cc="${el.dataset.cc}"]`); });
+    const mv = (k, d) => { const j = k + d; if (j < 0 || j >= flow.length) return;
+      [flow[k], flow[j]] = [flow[j], flow[k]]; draw(d < 0 ? `[data-cu="${j}"]` : `[data-cd="${j}"]`, d < 0 ? `[data-cd="${j}"]` : `[data-cu="${j}"]`); };
+    $$('[data-cu]', host).forEach(b => b.onclick = () => mv(+b.dataset.cu, -1));
+    $$('[data-cd]', host).forEach(b => b.onclick = () => mv(+b.dataset.cd, 1));
+    $$('[data-cx]', host).forEach(b => b.onclick = () => { if (flow.length < 2) return; const k = +b.dataset.cx; flow.splice(k, 1);
+      draw(`[data-cx="${Math.min(k, flow.length - 1)}"]`, '#np_add'); });
+    $('#np_add', host).onclick = () => {
+      if (flow.length >= COL_MAX) return;
+      const names = new Set(flow.map(r => colKey(r[0])));
+      let n = 'Yeni kolon', x = 2; while (names.has(colKey(n))) n = 'Yeni kolon ' + x++;
+      flow.push([n, 'inprogress']); draw();
+      const inp = host.querySelector(`[data-cn="${flow.length - 1}"]`); if (inp) { inp.focus(); inp.select(); }
+    };
+    focusBack(host, focusSel, fb);
+  };
+  draw();
+  /* "Oluştur" öncesi denetim: hata iletisi ya da '' */
+  return () => {
+    let e = '';
+    if (!flow.length) e = 'En az bir kolon gerekli.';
+    else if (flow.length > COL_MAX) e = `Bir projede en fazla ${COL_MAX} kolon olabilir`;
+    else if (flow.some((_, k) => rowErr(k))) e = 'Kolon adlarını düzeltin.';
+    else if (!flow.some(r => r[1] === 'done')) e = 'Projede en az bir Bitti kolonu olmalı. Bir kolonun kategorisini "Bitti" yap.';
+    st.err = e; if (e) draw('#np_ok');
+    return e;
+  };
 }
 
 function newProjectForm(preset = {}) {
@@ -7075,15 +7590,10 @@ function newProjectForm(preset = {}) {
         ? `<select class="inp" id="np_cu">${cuOptions('')}</select>
            <div class="cu-hint">${ic('info')}Yalnız etkin cariler listelenir. Bir projeye en çok bir cari bağlanır.</div>`
         : `<div class="cu-hint" id="np_cu_none">${ic('info')}<span>Henüz cari yok.${isAdmin() ? ' <a href="#customers" data-cugo>Cariler</a>' : ''}</span></div>`}</div>
-      <div class="form-row"><label class="field">İş akışı şablonu</label><select class="inp" id="np_w">
-        <option value="default">Varsayılan akış</option>
-        ${Object.entries(STATUS_TEMPLATES).map(([k, [l, r]]) => `<option value="${k}">${l} — ${r.map(x => x[0]).join(' · ')}</option>`).join('')}
-        <option value="copy">Aktif projedeki durumları kopyala</option>
-      </select></div>
-      <label class="field">Durumlar (sırayı ve kategoriyi değiştirebilirsiniz)</label>
-      <div id="np_flow" style="margin-bottom:10px"></div>
-      <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;margin-bottom:10px">
-        <input type="checkbox" id="np_def"> Bunu yeni projelerin varsayılan akışı yap</label>
+      <div class="pt-fld"><div class="lb" id="np_tl">Proje türü <span class="req">zorunlu · sonra değiştirilebilir</span></div><div id="np_type">${typeCards('board')}</div></div>
+      <div class="pt-fld" style="margin-bottom:10px"><div class="lb">Kolonlar <span class="req">şablon seç, sonra düzenle</span></div><div id="np_cols"></div></div>
+      ${isAdmin() ? `<label style="display:flex;align-items:center;gap:6px;font-size:12.5px;margin-bottom:10px">
+        <input type="checkbox" id="np_def"> Bunu yeni projelerin varsayılan akışı yap</label>` : ''}
       <label class="field">Üyeler</label>
       <div id="np_m" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:4px">
         ${DB.users.filter(u => u.active).map(u => `<button class="memchip ${u.id === SESSION ? 'on' : ''}" data-npm="${u.id}">
@@ -7091,17 +7601,14 @@ function newProjectForm(preset = {}) {
       </div>
       <div id="np_err" class="lg-err"></div>
     </div>
-    <div class="m-f"><button class="btn" data-close>Vazgeç</button><button class="btn pri" id="np_ok">Oluştur</button></div>`);
-  let flow = (DB.cfg.defaultStatuses || STATUS_TEMPLATES.uyarlama[1]).map(r => [...r]);
-  let redraw = statusEditor(flow, '#np_flow');
-  $('#np_w').onchange = e => {
-    const v = e.target.value;
-    const src = v === 'copy' ? stats().map(s => [s.name, s.cat])
-      : v === 'default' ? (DB.cfg.defaultStatuses || STATUS_TEMPLATES.uyarlama[1])
-      : STATUS_TEMPLATES[v][1];
-    flow.length = 0; src.forEach(r => flow.push([...r]));
-    redraw();
-  };
+    <div class="m-f"><button class="btn" data-close>Vazgeç</button><button class="btn pri" id="np_ok">Oluştur</button></div>`, 'pt-dlg');
+  /* Tür zorunlu, varsayılan Pano; kolonlar şablondan gelir ve düzenlenebilir (#12). */
+  let ptype = 'board';
+  const drawType = () => { $('#np_type').innerHTML = typeCards(ptype);
+    wireTypeCards($('#np_type'), v => { ptype = v; drawType(); $(`#np_type [data-ptype="${v}"]`)?.focus(); }); };
+  drawType();
+  const flow = (DB.cfg.defaultStatuses || STATUS_TEMPLATES.uyarlama[1]).slice(0, COL_MAX).map(r => [r[0], catOk(r[1])]);
+  const colsErr = newColsEditor($('#np_cols'), flow);
   const picked = new Set([SESSION]);
 
   $$('[data-npm]').forEach(b => b.onclick = () => {
@@ -7122,13 +7629,13 @@ function newProjectForm(preset = {}) {
     if (cu && !cuById(cu)) return $('#np_err').textContent = 'Cari bulunamadı';
     if (cu && !cuActive(cuById(cu))) return $('#np_err').textContent = 'Pasif cari projeye bağlanamaz';
     const key = projCode(name, new Set(DB.projects.map(p => p.code || p.key)));
-    const clean = flow.filter(r => r[0].trim());
-    if (!clean.length) return $('#np_err').textContent = 'En az bir durum gerekli.';
+    if (colsErr()) return $('#np_err').textContent = '';
+    const clean = flow.map(r => [r[0].trim().replace(/\s+/g, ' '), r[1]]);
     const pid = uid('p');
-    clean.forEach(([n, c], k) => DB.statuses.push({ id: uid('st'), projectId: pid, name: n.trim(), cat: c, wip: 0, ord: k }));
-    if ($('#np_def').checked) DB.cfg.defaultStatuses = clean.map(r => [r[0].trim(), r[1]]);
+    clean.forEach(([n, c], k) => DB.statuses.push({ id: uid('st'), projectId: pid, name: n, cat: c, wip: 0, ord: k }));
+    if (isAdmin() && $('#np_def')?.checked) DB.cfg.defaultStatuses = clean.map(r => [...r]);
     picked.add(SESSION);
-    DB.projects.push({ id: pid, key, code: key, name, lead: SESSION, counter: 0, members: [...picked], archived: false, workspaceId: ws, ...(cu ? { customerId: cu } : {}) });
+    DB.projects.push({ id: pid, key, code: key, name, type: ptype, lead: SESSION, counter: 0, members: [...picked], archived: false, workspaceId: ws, ...(cu ? { customerId: cu } : {}) });
     DB.ui.project = pid; DB.ui.view = 'board';
     closeModal(); save(); startApp(); toast(`${name} oluşturuldu`);
   };
@@ -7416,7 +7923,7 @@ function wireQuickAdd() {
       summary: s, description: '', statusId: DB.ui.qaOpen,
       assignee: q.assignee || null, reporter: CU().id, priority: q.priority,
       points: null, estimate: parseDur(q.estimate), remainingEst: parseDur(q.estimate), spent: 0,
-      labels: [], cf: { ...q.cf }, sprintId: MOD('sprint') ? (activeSprint()?.id || null) : null,
+      labels: [], cf: { ...q.cf }, sprintId: AGILE() ? (activeSprint()?.id || null) : null,
       epicId: null, parentId: null, start: q.start || '', due: q.due || '', created: Date.now(), updatedAt: Date.now(),
       billable: q.billable, billType: q.billType,
       rank: Math.max(0, ...DB.issues.map(x => x.rank)) + 100,
@@ -8437,7 +8944,7 @@ function setOnline(list) {
   const key = others.map(o => o.id + o.issue).join();
   if (key === setOnline.k) return; setOnline.k = key;
   ONLINE = others;
-  const html = others.slice(0, 6).map(o => `<span class="onl" title="${esc(user(o.id).name)} çevrim içi${o.view && VIEWS[o.view] ? ' · ' + VIEWS[o.view].t : ''}">${avat(o.id)}</span>`).join('')
+  const html = others.slice(0, 6).map(o => `<span class="onl" title="${esc(user(o.id).name)} çevrim içi${o.view && VIEWS[o.view] ? ' · ' + viewTitle(o.view) : ''}">${avat(o.id)}</span>`).join('')
     + (others.length > 6 ? `<span class="onl-more">+${others.length - 6}</span>` : '');
   const t = document.getElementById('tbOnline'); if (t) t.innerHTML = html;
   const r = document.getElementById('online');

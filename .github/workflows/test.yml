@@ -63,6 +63,8 @@ jobs:
         run: node test/e2e/calisma-alanlari.cjs
       - name: Cariler testi
         run: node test/e2e/cariler.cjs
+      - name: Proje türü ve kolonlar testi
+        run: node test/e2e/proje-turu.cjs
       - name: Sunucu günlüğü
         if: failure()
         run: cat server.log
