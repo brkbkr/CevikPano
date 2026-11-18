@@ -7489,7 +7489,8 @@ function palette() {
     ...Object.entries(VIEWS).filter(([v]) => viewAllowed(v) && v !== 'workspace').map(([v, o]) => ({ t: 'Git', n: viewTitle(v), run: () => { DB.ui.view = v; save(); render(); } })),
     { t: 'Eylem', n: 'Yeni iş oluştur', run: () => newIssueForm() },
     { t: 'Eylem', n: 'Süre kaydet', run: () => logWorkForm() },
-    { t: 'Eylem', n: 'Yeni proje oluştur', run: () => newProjectForm() },
+    /* Yeni proje: alana proje açabilen (canNewProj: alan yöneticisi / sistem yöneticisi; eski alanda Üye) — sunucu kuralıyla aynı. */
+    ...(canNewProjAny() ? [{ t: 'Eylem', n: 'Yeni proje oluştur', run: () => newProjectForm() }] : []),
     { t: 'Eylem', n: 'Sprint oluştur', run: () => sprintForm() },
     { t: 'Eylem', n: 'Özel alan ekle', run: () => fieldForm() },
     { t: 'Eylem', n: 'Otomasyon kuralı ekle', run: () => ruleForm() },
