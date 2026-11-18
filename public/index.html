@@ -3933,23 +3933,16 @@ function dropIndexRank(container, y, sel) {
 
 /* ============================ PANO ============================ */
 /* Alt işler kendi durum kolonunda kart olarak görünür; "Alt işler" anahtarı kişisel tercihtir (DB.board.subs, varsayılan göster). */
-function boardIssues(only) {
-  const scope = only || (AGILE() ? (DB.board.scope || 'sprint') : 'all');
-  const act = activeSprint();
+function boardIssues(sprintId) {
   return issuesOf().filter(i => i.type !== 'epic' && (!i.parentId || DB.board.subs !== false) && matches(i) &&
-    (scope === 'all' || (act && i.sprintId === act.id)))
+    (!sprintId || i.sprintId === sprintId))
     .sort((a, b) => a.rank - b.rank);
 }
 
-function toolbarBoard(sprintView) {
-  const act = activeSprint();
+function toolbarBoard() {
   if (!stats().length) return '';                 // kolonsuz proje: iş açılacak kolon yok (#12)
   return `
     <div class="search"><input class="inp" id="q" placeholder="Kart ara…" value="${esc(DB.board.q)}"></div>
-    ${AGILE() && !sprintView ? `<div class="seg" id="scope">
-      <button data-s="sprint" class="${DB.board.scope !== 'all' ? 'on' : ''}">${act ? esc(act.name) : 'Aktif sprint'}</button>
-      <button data-s="all" class="${DB.board.scope === 'all' ? 'on' : ''}">Tüm işler</button>
-    </div>` : ''}
     <select class="inp" id="fUser" style="width:auto"><option value="">Herkes</option>
       ${DB.users.map(u => `<option value="${u.id}" ${DB.board.filterUser === u.id ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select>
     <select class="inp" id="fType" style="width:auto"><option value="">Tüm tipler</option>
@@ -4173,15 +4166,9 @@ function columns(list) {
   }).join('')}</div>`;
 }
 
-/* only === 'sprint': Aktif sprint sekmesi (kapsam seçimi yok, yalnız aktif sprintin işleri). */
-function renderBoard(only) {
+function renderBoard(sprintId) {
   if (!stats().length) return noColsView();
-  const list = boardIssues(only);
-  if (AGILE() && !activeSprint() && (only || DB.board.scope) !== 'all')
-    return `<div class="panel"><h3>Aktif sprint yok</h3>
-      <div class="sub">Pano, aktif sprintteki işleri gösterir. Backlog'a gidip bir sprint başlatın
-      ya da “Tüm işler” kapsamına geçin.</div>
-      <a class="btn pri" href="#backlog" style="text-decoration:none;display:inline-block">Backlog'a git</a></div>`;
+  const list = boardIssues(sprintId);
   const sw = DB.board.swimlane;
   if (sw === 'none') return columns(list);
   let groups;
@@ -4446,7 +4433,7 @@ function renderSprint() {
       </div>
       ${man ? `<button type="button" class="btn" data-spcomplete="${esc(s.id)}">${ic('checkc')}Sprinti tamamla</button>` : ''}
     </section>
-    ${renderBoard('sprint')}`;
+    ${renderBoard(s.id)}`;
 }
 
 /* ============================================================
@@ -6033,8 +6020,8 @@ const VIEWS = {
   greports:  { s: 'global', t: 'Genel raporlar',    c: 'Tüm projeler',      r: renderGr,        tb: () => '' },
   pool:      { s: 'global', t: 'Talep havuzu',      c: 'Genel bakış',       r: renderPool,      tb: () => '' },
   board:     { s: 'proj',   t: 'Pano',              c: 'Çevik pano',        r: renderBoard,     tb: toolbarBoard },
-  sprint:    { s: 'proj',   t: 'Aktif sprint',      c: 'Sprint panosu',     r: renderSprint,    tb: () => (activeSprint() ? toolbarBoard(true) : '') },
   backlog:   { s: 'proj',   t: 'Backlog',           c: 'Planlama',          r: renderBacklog,   tb: toolbarBacklog },
+  sprint:    { s: 'proj',   t: 'Aktif sprint',      c: 'Sprint panosu',     r: renderSprint,    tb: () => (activeSprint() ? toolbarBoard() : '') },
   plan:      { s: 'proj',   t: 'Zaman planı',       c: 'Planlama',          r: renderPlan,      tb: toolbarPlan },
   roadmap:   { s: 'proj',   t: 'Yol haritası',      c: 'Epik zaman çizelgesi', r: renderRoadmap, tb: () => '' },
   timesheet: { s: 'proj',   t: 'Zaman çizelgesi',   c: 'Takip',             r: renderTimesheet, tb: toolbarTimesheet },
@@ -6047,15 +6034,16 @@ const VIEWS = {
 };
 
 /* Proje sekmeleri, soldan sağa (docs/tasarim/gezinme). Hangisinin görüneceğine viewAllowed karar verir. */
-const PROJ_TABS = ['board', 'sprint', 'backlog', 'plan', 'roadmap', 'timesheet', 'effort', 'reports', 'search', 'admin'];
+const PROJ_TABS = ['board', 'backlog', 'sprint', 'plan', 'roadmap', 'timesheet', 'effort', 'reports', 'search', 'admin'];
 const TAB_IC = { board: 'board', sprint: 'sprint', backlog: 'backlog', plan: 'plan', roadmap: 'roadmap', timesheet: 'clock', effort: 'effort',
   reports: 'reports', search: 'search', admin: 'settings' };
 /* Görünürlük için tek kural: render (adres elle yazılsa da), sekmeler, sol menü ve hesap menüsü bunu kullanır.
    Yetki sunucuda; bu yalnız kullanıcı deneyimi içindir. */
 function viewAllowed(v) {
-  if (!VIEWS[v]) return false;
+  if (!Object.hasOwn(VIEWS, v)) return false;
   if (v === 'roadmap') return MOD('epic');
-  if (v === 'sprint') return AGILE();                             // Pano türündeki projede sekme yok
+  if (v === 'board') return !P() || !AGILE();
+  if (v === 'sprint') return !!P() && AGILE();
   if (v === 'pool') return poolProjects().length > 0;            // talep projesi yoksa havuz yok (görev 12)
   if (v === 'users' || v === 'system' || v === 'customers') return isAdmin();
   if (v === 'admin') return isAdmin() || (!!P() && wsRole(CU(), wsOf(P())) === 'admin');   // proje ayarları: alan yöneticisi (22b)
@@ -6064,12 +6052,16 @@ function viewAllowed(v) {
 }
 
 function render() {
-  /* Eski #projects adresi: sistem yöneticisinde tüm alanlar; diğerlerinde seçili alanın sayfası (22b). */
-  if (DB.ui.view === 'projects' && !isAdmin()) { ensureSel(); DB.ui.view = 'workspace'; }
-  if (VIEWS[DB.ui.view] && !viewAllowed(DB.ui.view)) DB.ui.view = 'board';
-  const v = VIEWS[DB.ui.view] || VIEWS.board;
+  ensureSel();
+  /* Eski Projeler bağlantısı üyeleri seçili çalışma alanına götürür. */
+  if (DB.ui.view === 'projects' && !isAdmin()) DB.ui.view = 'workspace';
+  if (!viewAllowed(DB.ui.view)) {
+    DB.ui.view = projectStartView(P());
+    save();
+  }
+  const v = VIEWS[DB.ui.view];
   if (location.hash.slice(1) !== viewHash(DB.ui.view)) try { history.replaceState(null, '', '#' + viewHash(DB.ui.view)); } catch (_) { }
-  ensureSel(); noteRecent();
+  noteRecent();
   const pr = P();
   renderHead(v, pr);
   /* Seçili proje yokken projeye bağlı ekranlar çökmez: boş durum paneli (#22). */
@@ -6094,7 +6086,7 @@ function renderHead(v, pr) {
   } else {
     if (v === VIEWS.greports) { const sc = grScope(); $('#crumb').textContent = `Tüm projeler · ${sc.length} proje · ${new Set(sc.map(wsOf)).size} çalışma alanı`; }
     else $('#crumb').textContent = `${pr ? pr.key : wsById(DB.ui.workspace)?.name || 'ÇevikPano'} · ${v.c}`;
-    $('#title').textContent = viewTitle(VIEWS[DB.ui.view] ? DB.ui.view : 'board');
+    $('#title').textContent = viewTitle(DB.ui.view);
   }
 }
 
@@ -6102,7 +6094,7 @@ function renderHead(v, pr) {
 let TABS_KEY = '';
 function renderTabs() {
   const bar = $('#tabbar'), tl = $('#vtabs'), pr = P();
-  const cur = VIEWS[DB.ui.view] ? DB.ui.view : 'board';
+  const cur = DB.ui.view;
   const show = VIEWS[cur].s === 'proj' && !!pr;
   bar.hidden = !show;
   const view = $('#view');
@@ -6239,8 +6231,6 @@ function wireToolbar() {
     const w = parseInt(e.target.value, 10); if (!(w >= 1 && w <= 8)) return;
     p.sprintWeeks = w; save(); render(); toast(`Sprint süresi ${w} hafta`); });
   on('#logWork', 'onclick', () => logWorkForm());
-  const sc = $('#scope'); if (sc) sc.onclick = e => { const b = e.target.closest('[data-s]');
-    if (b) { DB.board.scope = b.dataset.s; save(); render(); } };
   const tm = $('#tsMode'); if (tm) tm.onclick = e => { const b = e.target.closest('[data-m]');
     if (b) { DB.ui.tsMode = b.dataset.m; save(); render(); } };
   on('#wPrev', 'onclick', () => { DB.ui.week = iso(addD(new Date(DB.ui.week), -7)); save(); render(); });
@@ -6309,11 +6299,11 @@ function wire() {
     if (t.closest('[data-close]') || t === $('#scrim') || t === $('#scrim2')) return closeModal();
     const pj = t.closest('[data-proj]');
     if (pj) {
-      /* Sol menüden (ağaç / son kullanılanlar): genel ekrandaysa Pano, proje ekranındaysa aynı sekme; alanı açık kalır. */
+      /* Sol menüden (ağaç / son kullanılanlar): genel ekrandaysa proje başlangıcı, proje ekranındaysa uygun sekme; alanı açık kalır. */
       e.preventDefault();
       const nav = pj.closest('#rail, #navPop');
       DB.ui.project = pj.dataset.proj; DB.board.q = '';
-      if (nav) { if (VIEWS[DB.ui.view]?.s !== 'proj') DB.ui.view = 'board'; const p = P(); if (p) wsOpenSet(wsOf(p), true); navDrawer(false); }
+      if (nav) { const p = P(); if (VIEWS[DB.ui.view]?.s !== 'proj') DB.ui.view = projectStartView(p); if (p) wsOpenSet(wsOf(p), true); navDrawer(false); }
       closeModal(); save(); render(); return; }
     const ac2 = t.closest('[data-act]');
     if (ac2) { closeModal();
@@ -6396,8 +6386,6 @@ function wire() {
     if (z.dataset.drop === 'status') {
       i.rank = dropIndexRank(z, e.clientY, '.card');
       setStatus(i, z.dataset.status);
-      const act = activeSprint();
-      if (act && AGILE() && !i.sprintId && DB.board.scope !== 'all') histSet(i, 'sprintId', act.id);
     } else {
       const to = z.dataset.sprint || null;
       if (i.sprintId !== to) logHist(i, 'Sprint', i.sprintId ? sprint(i.sprintId).name : 'Backlog', to ? sprint(to).name : 'Backlog');
@@ -6499,6 +6487,7 @@ const MOD = k => DB?.cfg?.modules?.[k] === true;
    (eski) proje genel sprint ayarından hesaplanır; kayda yazılmaz. Sunucudaki projType ile aynı. */
 const PROJECT_TYPES = ['board', 'agile'];
 const projType = p => PROJECT_TYPES.includes(p?.type) ? p.type : (MOD('sprint') ? 'agile' : 'board');
+const projectStartView = p => p && projType(p) === 'agile' ? 'backlog' : 'board';
 const AGILE = () => projType(P()) === 'agile';
 const anyAgile = () => DB.projects.some(p => canSeeProject(p) && projType(p) === 'agile');
 const TYPE_LABEL = { board: 'Pano', agile: 'Agile' };
@@ -7079,8 +7068,6 @@ function wireAdmin() {
     u.ini = el.value.split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase(); save(); render(); });
   $$('[data-mod]').forEach(c => c.onchange = () => {
     DB.cfg.modules[c.dataset.mod] = c.checked;
-    if (!c.checked && c.dataset.mod === 'epic' && DB.ui.view === 'roadmap') DB.ui.view = 'board';
-    if (!c.checked && c.dataset.mod === 'sprint') DB.board.scope = 'all';
     if (!c.checked && c.dataset.mod === 'epic' && DB.board.swimlane === 'epic') DB.board.swimlane = 'none';
     save(); render(); toast(MODULE_LABELS[c.dataset.mod][0] + (c.checked ? ' açıldı' : ' kapatıldı'));
   });
@@ -7472,7 +7459,7 @@ function wireBulk() {
 const SHORTCUTS = [
   ['⌘K / Ctrl+K', 'Komut paleti'], ['⌘S / Ctrl+S', 'HTML dosyasına kaydet'],
   ['c', 'Yeni iş'], ['/', 'Aramaya odaklan'],
-  ['g sonra h/b/l/t/e/p/a/j', 'Benim işlerim · pano · backlog · çizelge · efor · rapor · arama · projeler'],
+  ['g sonra h/b/l/t/e/p/a/j', 'Benim işlerim · Pano / Aktif sprint · İş listesi / Backlog · çizelge · efor · rapor · arama · projeler'],
   ['w', 'Süre kaydet'], ['?', 'Bu liste'], ['Esc', 'Kapat'],
 ];
 function palette() {
@@ -7492,7 +7479,11 @@ function palette() {
     ] : []),
     ...(isAdmin() ? [{ t: 'Eylem', n: 'Yeni çalışma alanı', run: () => wsForm() }] : []),
     ...visibleWs().map(w => ({ t: 'Alan', n: w.name, run: () => pickWs(w.id) })),
-    ...selectableProjects().map(p => ({ t: 'Proje', n: `${p.key} — ${p.name}`, run: () => { DB.ui.project = p.id; save(); boot(); } })),
+    ...selectableProjects().map(p => ({ t: 'Proje', n: `${p.key} — ${p.name}`, run: () => {
+      DB.ui.project = p.id;
+      if (VIEWS[DB.ui.view]?.s !== 'proj') DB.ui.view = projectStartView(p);
+      DB.board.q = ''; save(); render();
+    } })),
     ...DB.issues.filter(i => MOD('epic') || i.type !== 'epic').map(i => ({ t: i.key, n: i.summary, run: () => openIssue(i.id) })),
   ];
   openModal(`<div class="m-h" style="padding:8px 12px">
@@ -7533,7 +7524,7 @@ function wireKeys() {
     if (typing) return;
     const open = $('#scrim').classList.contains('on');
     if (GKEY) { GKEY = false;
-      const map = { b: 'board', l: 'backlog', r: 'roadmap', t: 'timesheet', p: 'reports', a: 'search', s: 'admin', e: 'effort', h: 'home', j: 'projects', z: 'plan' };
+      const map = { b: viewAllowed('sprint') ? 'sprint' : 'board', l: 'backlog', r: 'roadmap', t: 'timesheet', p: 'reports', a: 'search', s: 'admin', e: 'effort', h: 'home', j: 'projects', z: 'plan' };
       if (map[e.key]) { e.preventDefault(); location.hash = map[e.key]; }
       return;
     }
@@ -9235,7 +9226,7 @@ function wsProjRows(ws) {
 const projIc = p => ic(projType(p) === 'agile' ? 'sprint' : 'board');
 function navProj(p) {
   const on = p === P(), cur = on && VIEWS[DB.ui.view]?.s === 'proj';
-  return `<li><a href="#${cur ? DB.ui.view : 'board'}" class="nv-proj ${on && !cur ? 'is-last' : ''}" data-proj="${esc(p.id)}" ${cur ? 'aria-current="page"' : ''}>${projIc(p)}<span class="tx">${esc(p.name)}</span><span class="k">${esc(p.key)}</span></a></li>`;
+  return `<li><a href="#${cur ? DB.ui.view : projectStartView(p)}" class="nv-proj ${on && !cur ? 'is-last' : ''}" data-proj="${esc(p.id)}" ${cur ? 'aria-current="page"' : ''}>${projIc(p)}<span class="tx">${esc(p.name)}</span><span class="k">${esc(p.key)}</span></a></li>`;
 }
 function navWs(w) {
   const open = wsIsOpen(w.id), id = esc(w.id);
@@ -10227,7 +10218,7 @@ function cuClick(e) {
   if ('cugo' in d) { closeModal(); DB.ui.view = 'customers'; save(); return render(); }
   if ('cugoproj' in d) {
     const p = DB.projects.find(x => x.id === d.cugoproj); if (!p) return;
-    DB.ui.project = p.id; DB.board.q = ''; DB.ui.view = 'board'; closeModal(); save(); return render();
+    DB.ui.project = p.id; DB.board.q = ''; DB.ui.view = projectStartView(p); closeModal(); save(); return render();
   }
   if ('cuissues' in d) {
     const c = cuById(d.cuissues); if (!c) return;
@@ -10583,9 +10574,9 @@ function typeDialog(pid) {
     const act = sel === 'board' && cur !== 'board' && DB.sprints.find(s => s.projectId === pid && s.state === 'active');
     const nOpen = act ? DB.issues.filter(i => i.sprintId === act.id && stat(i.statusId).cat !== 'done').length : 0;
     const chg = sel === 'agile'
-      ? ['Menüde "İş listesi" yerine "Backlog"; sprint oluşturup başlatabilirsin.',
+      ? ['Backlog sekmesinde sprint oluşturup başlatabilirsin.',
          'Tüm işler backlog\'da başlar. Eski sprint atamaları olduğu gibi görünür.',
-         'Pano "Aktif sprint / Tüm işler" geçişini kazanır. Kolonlar değişmez.']
+         'Aktif sprint sekmesi, sprintteki işleri mevcut kolonlarda gösterir.']
       : ['Menüde "Backlog" yerine "İş listesi"; pano tüm işleri gösterir.',
          'Sprint kutuları, burndown ve sprint hızı gizlenir; sprint bilgisi silinmez.'];
     box.innerHTML = `<div class="m-h"><div class="t"><b id="pt_tt">Türü değiştir</b><span class="s"><span class="ws-key">${esc(p.key)}</span>${esc(p.name)}</span></div>
@@ -10996,7 +10987,7 @@ function wireProjects() {
   $$('#pNew').forEach(b => b.onclick = () => newProjectForm());
   $$('[data-goproj]').forEach(b => b.onclick = () => {
     DB.ui.project = b.dataset.goproj;
-    DB.ui.view = 'board'; DB.board.q = ''; DB.board.filterUser = ''; DB.board.filterType = '';
+    DB.ui.view = projectStartView(P()); DB.board.q = ''; DB.board.filterUser = ''; DB.board.filterType = '';
     DB.ui.qaOpen = null; SEL.clear(); save(); startApp();
   });
   $$('[data-mem]').forEach(b => b.onclick = () => {
