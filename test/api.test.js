@@ -1151,6 +1151,39 @@ describe('cariler', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     ok(await A.sync([del('customers', 'c_y3')]));
   });
 
+  test('vergi no: aynı numaraya yazmalar danışma kilidiyle sıralanır; ikincisi ön denetimde 409 alır (23505 değil)', async () => {
+    const TN = '3333333335';
+    const c = await pool.connect();
+    try {
+      await c.query('BEGIN');
+      await c.query('SELECT pg_advisory_xact_lock(727277, hashtext($1))', [TN]);
+      const pending = A.sync([cu('c_k2', firm('Kilit İki', { taxNo: TN }))]);
+      await new Promise(r => setTimeout(r, 300));
+      const waiting = (await pool.query(`SELECT count(*) n FROM pg_locks WHERE locktype='advisory' AND classid=727277 AND NOT granted`)).rows[0].n;
+      assert.equal(waiting, '1');                                          // senkron kilidi bekliyor
+      await c.query(`INSERT INTO customers (id, data) VALUES ('c_k1', $1::jsonb)`,
+        [JSON.stringify({ id: 'c_k1', name: 'Kilit Bir', kind: 'customer', taxNo: TN })]);
+      await c.query('COMMIT');
+      rejectedWith(await pending, 'Bu vergi numarasıyla kayıtlı cari var (#c_k1)');
+    } finally { c.release(); }
+    assert.equal(await row('customers', 'c_k2'), undefined);
+    ok(await A.sync([del('customers', 'c_k1')]));
+  });
+
+  test('aynı kimlikle eşzamanlı cari oluşturma: ikincisi üzerine yazmaz (409)', async () => {
+    const c = await pool.connect();
+    try {
+      await c.query('BEGIN');
+      await c.query(`INSERT INTO customers (id, data) VALUES ('c_ay', '{"id":"c_ay","name":"İlk Yazan","kind":"customer"}')`);
+      const pending = A.sync([cu('c_ay', firm('İkinci Yazan'))]);
+      await new Promise(r => setTimeout(r, 300));
+      await c.query('COMMIT');
+      rejectedWith(await pending, 'Kayıt aynı anda oluşturuldu, yeniden deneyin');
+    } finally { c.release(); }
+    assert.equal((await row('customers', 'c_ay')).name, 'İlk Yazan');
+    ok(await A.sync([del('customers', 'c_ay')]));
+  });
+
   test('yetki: üye ve izleyici cari ekleyemez, değiştiremez, silemez; yönetici yönetir', async () => {
     ok(await A.sync([cu('c_y', firm('Yetki A.Ş.'))]));
     for (const k of [U, V]) {
@@ -1224,6 +1257,36 @@ describe('cariler', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     assert.equal(r.json.applied, 0); assert.equal(r.json.rejected.length, 0);
   });
 
+  test('silme: silinen cari yedeklerden de çıkar (unvan/TCKN kalmaz), diğer cariler ve sayım güncel', async () => {
+    const NAME = 'Yedek Silme Deneme Ltd.', TCKN = '10000000278', KEEP = 'Yedekte Kalan A.Ş.';
+    ok(await A.sync([cu('c_ys', firm(NAME, { taxNo: TCKN, contacts: [{ id: 'ct_ys', name: 'Yedek Yetkili' }] })), cu('c_yk', firm(KEEP))]));
+    const b1 = (await A.req('POST', '/api/backups', { label: 'cari silme öncesi' })).json;
+    const b2 = (await A.req('POST', '/api/backups', { label: 'cari silme öncesi 2' })).json;
+    const before = (await A.req('GET', '/api/backups')).json.find(b => b.id === b1.id);
+    const r = await A.sync([del('customers', 'c_ys')]);
+    ok(r); assert.equal(r.json.applied, 1);
+    for (const b of [b1, b2]) {
+      const g = await A.req('GET', `/api/backups/${b.id}`);
+      assert.equal(g.status, 200);
+      const txt = JSON.stringify(g.json);
+      for (const v of [NAME, TCKN, 'Yedek Yetkili']) assert.ok(!txt.includes(v), v);
+      assert.ok(g.json.customers.some(x => x.name === KEEP));
+      assert.ok(Array.isArray(g.json.projects) && Array.isArray(g.json.issues));   // yedeğin geri kalanı aynı
+    }
+    const after = (await A.req('GET', '/api/backups')).json.find(b => b.id === b1.id);
+    assert.equal(after.counts.customers, before.counts.customers - 1);
+    assert.equal(after.counts.projects, before.counts.projects);
+    const raw = (await pool.query(`SELECT count(*) n FROM snapshots WHERE data::text LIKE '%' || $1 || '%'`, [TCKN])).rows[0].n;
+    assert.equal(raw, '0');
+    /* silme reddedilirse (bağlı proje) yedeklere dokunulmaz */
+    const pa = (await row('projects', 'p_cu1')).data;
+    ok(await A.sync([{ c: 'projects', id: 'p_cu1', op: 'put', data: { ...pa, customerId: 'c_yk' } }]));
+    rejectedWith(await A.sync([del('customers', 'c_yk')]), 'Bu cariye bağlı 1 proje var; silmek yerine pasife alın');
+    assert.ok((await A.req('GET', `/api/backups/${b1.id}`)).json.customers.some(x => x.name === KEEP));
+    ok(await A.sync([{ c: 'projects', id: 'p_cu1', op: 'put', data: pa }]));
+    ok(await A.sync([del('customers', 'c_yk')]));
+  });
+
   test('yetkili kişi: silinen kişi hiçbir tabloda kalmaz; eski base ile geri gelmez; silinmiş cariye base ile yazılamaz', async () => {
     const MAIL = 'silinecek.kisi@ornek.test';
     ok(await A.sync([cu('c_k', firm('Kişi A.Ş.', { contacts: [{ id: 'ct_k1', name: 'Silinecek Kişi', email: MAIL }, { id: 'ct_k2', name: 'Kalan Kişi' }] }))]));
@@ -1265,13 +1328,14 @@ describe('cariler', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     ok(await A.sync([cu('c_tc', firm('Şahıs Deneme', { taxNo: '12345678901' })), cu('c_vk', firm('Tüzel Deneme', { taxNo: '4444444444' }))]));
     const pick = (list, id) => list.find(x => x.id === id).taxNo;
     const vs = (await V.state()).json.data.customers, us = (await U.state()).json.data.customers, as = (await A.state()).json.data.customers;
-    assert.equal(pick(vs, 'c_tc'), '123******01'); assert.equal(pick(vs, 'c_vk'), '4444444444');
+    assert.equal(pick(vs, 'c_tc'), '*********01'); assert.equal(pick(vs, 'c_vk'), '4444444444');
     assert.equal(pick(us, 'c_tc'), '12345678901'); assert.equal(pick(as, 'c_tc'), '12345678901');
     const items = async k => (await k.req('GET', `/api/changes?since=${s0}`)).json.items.filter(i => i.c === 'customers').map(i => i.data);
     const vc = await items(V), uc = await items(U);
-    assert.equal(pick(vc, 'c_tc'), '123******01'); assert.equal(pick(vc, 'c_vk'), '4444444444');
+    assert.equal(pick(vc, 'c_tc'), '*********01'); assert.equal(pick(vc, 'c_vk'), '4444444444');
     assert.equal(pick(uc, 'c_tc'), '12345678901');
     assert.ok(!JSON.stringify((await V.state()).json).includes('12345678901'));
+    assert.ok(!JSON.stringify((await V.state()).json).includes('123*'));      // ilk haneler de görünmez
     /* dışa aktarma (yönetici) maskesiz; izleyici dışa aktaramaz */
     assert.equal(pick((await A.req('GET', '/api/export')).json.customers, 'c_tc'), '12345678901');
     assert.equal((await V.req('GET', '/api/export')).status, 403);

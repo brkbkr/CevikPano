@@ -16,7 +16,7 @@ const ROLES = ['super', 'admin', 'member', 'viewer'];
 export const ADMIN_ONLY = ['statuses', 'fields', 'rules', '_settings', 'customers'];
 const ISSUE_CHILDREN = ['comments', 'worklogs', 'history', 'transitions'];
 /* Yeni kaydı yalnız ekleyerek oluşturan koleksiyonlar (eşzamanlı oluşturmada üzerine yazılmaz). */
-const CREATE_ONCE = ['workspaces'];
+const CREATE_ONCE = ['workspaces', 'customers'];
 
 /* ---- kullanıcıyı istemciye gönderilecek biçime çevir (parola özeti yok) ---- */
 export function publicUser(row) {
@@ -60,11 +60,11 @@ export async function readState(pool, me) {
   });
 }
 
-/* İzleyiciye 11 haneli vergi numarası (T.C. kimlik no) maskeli gider: 123******01.
+/* İzleyiciye 11 haneli vergi numarası (T.C. kimlik no) maskeli gider; yalnız son 2 hane görünür: *********01.
    10 haneli vergi numarası (tüzel kişi) maskelenmez. Yedek / dışa aktarma maskesizdir (yalnız yönetici). */
 export function maskCustomer(d) {
   if (!d || typeof d.taxNo !== 'string' || !/^\d{11}$/.test(d.taxNo)) return d;
-  return { ...d, taxNo: d.taxNo.slice(0, 3) + '******' + d.taxNo.slice(-2) };
+  return { ...d, taxNo: '*'.repeat(9) + d.taxNo.slice(-2) };
 }
 
 /* ---- son okunan sıra numarasından beri değişenler ---- */
@@ -203,9 +203,11 @@ async function applyRecord(c, ctx, ch) {
     if (ch.c === 'issues') await cascadeIssueDelete(c, ctx, ch.id);
     if (ch.c === 'workspaces') await checkWorkspaceDelete(c, ch.id);
     if (ch.c === 'customers') {
-      /* Kişisel veri: cari çöp kutusuna gitmez, kalıcı silinir (geri alınamaz). */
+      /* Kişisel veri: cari çöp kutusuna gitmez, kalıcı silinir (geri alınamaz). Silinen cari yedeklerden de
+         çıkarılır; yetkili kişi silmesi eski yedeklerde saklama süresi dolana kadar kalabilir. */
       await checkCustomerDelete(c, ch.id);
       await c.query('DELETE FROM customers WHERE id=$1', [ch.id]);
+      await purgeCustomerFromSnapshots(c, ch.id);
       return true;
     }
     await c.query(`INSERT INTO deleted_records (collection, record_id, data, batch_id, deleted_by)
@@ -325,16 +327,35 @@ async function checkProjectWorkspace(c, data, cur) {
 /* ---- cariler (#11) ----
    Ekle/düzenle/sil yalnız yönetici (ADMIN_ONLY). İletilerde yalnız kimlik: unvan/vergi no günlüğe ve
    başka kullanıcıların yanıtına düşmez (istemci unvanı kimlikten kendisi bulur). */
+const TAX_NO_LOCK = 727277;
 const taxNoTaken = id => id ? `Bu vergi numarasıyla kayıtlı cari var (#${id})` : 'Bu vergi numarasıyla kayıtlı cari var';
 
-/* Vergi numarası (pasifler dahil) tekil. Yeni kayıtta ya da değiştiyse önceden denetlenir; eşzamanlı yazmada
+/* Vergi numarası (pasifler dahil) tekil. Yeni kayıtta ya da değiştiyse önceden denetlenir. Aynı vergi
+   numarasına eşzamanlı yazmalar danışma kilidiyle sıralanır: ikincisi ilkinin sonucunu görür ve normal 409 alır
+   (23505 ve PostgreSQL günlüğüne DETAIL satırı oluşmaz). Kilidi almayan bir yazmaya karşı yedek olarak
    customers_tax_no_uq indeksi ikincisini reddeder (applyChanges aynı iletiyle eşler). */
 async function checkCustomerTaxNo(c, ctx, id, data, cur) {
   const tn = data.taxNo || null;
   ctx.taxNo = tn;
   if (!tn || (cur && (cur.taxNo || null) === tn)) return;
+  await c.query('SELECT pg_advisory_xact_lock($1, hashtext($2))', [TAX_NO_LOCK, tn]);
   const other = (await c.query('SELECT id FROM customers WHERE tax_no=$1 AND id<>$2 LIMIT 1', [tn, id])).rows[0];
   if (other) throw new HttpError(409, taxNoTaken(other.id));
+}
+
+/* Yedeklerdeki (snapshots.data → customers dizisi) aynı kimlikli cariyi çıkarır; sayımı da günceller.
+   Aynı işlemde çalışır: silme geri alınırsa yedekler de değişmez. */
+async function purgeCustomerFromSnapshots(c, id) {
+  await c.query(`WITH n AS (
+      SELECT s.id, coalesce((SELECT jsonb_agg(e.x ORDER BY e.o) FROM jsonb_array_elements(s.data->'customers') WITH ORDINALITY e(x, o)
+                              WHERE e.x->>'id' IS DISTINCT FROM $1), '[]'::jsonb) AS arr
+        FROM snapshots s
+       WHERE jsonb_typeof(s.data->'customers') = 'array'
+         AND s.data->'customers' @> jsonb_build_array(jsonb_build_object('id', $1::text)))
+    UPDATE snapshots s SET data = jsonb_set(s.data, '{customers}', n.arr),
+      counts = CASE WHEN jsonb_typeof(s.counts) = 'object' THEN jsonb_set(s.counts, '{customers}', to_jsonb(jsonb_array_length(n.arr)))
+                    ELSE s.counts END
+      FROM n WHERE n.id = s.id`, [id]);
 }
 
 /* Bağlı projesi (arşivliler dahil) olan cari silinmez. Satır FOR UPDATE ile kilitli: aynı anda bağlayan
