@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="tr" data-theme="light"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Parametrik proje alanları taslağı</title>
+<script>if (/theme=dark/.test(location.search)) document.documentElement.dataset.theme = 'dark';</script>
+<style>
+/* ---- uygulamadan kopyalanan token'lar (tasarım dili v3 + sol menü v4 + kart v5 + hm- + ws-) ---- */
+:root{
+  --paper:#F3F6FB; --surface:#FFFFFF; --surface2:#F6F9FD; --surface3:#EBF1F9;
+  --line:#E1E8F2; --line2:#CCD7E6;
+  --ink:#0B1B33; --ink2:#43546E; --ink3:#7E8CA3;
+  --accent:#2563EB; --accent-d:#1D4ED8; --accent-soft:#EAF1FE; --accent-ink:#FFFFFF;
+  --btn-grad:linear-gradient(180deg,#3B82F6,#2563EB);
+  --ring:0 0 0 3px rgba(37,99,235,.20);
+  --shadow-sm:0 1px 2px rgba(11,27,51,.05);
+  --shadow:0 1px 2px rgba(11,27,51,.04),0 8px 20px -6px rgba(11,27,51,.10);
+  --shadow-lg:0 30px 60px -15px rgba(11,27,51,.30),0 2px 6px rgba(11,27,51,.06);
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --sans:Inter,system-ui,sans-serif;
+  --risk:#B91C1C; --risk-bg:#FEF2F2; --risk-line:#FECACA;
+  --done:#047857;
+  --rail-bg:#FFFFFF; --rail-ink:#334155; --rail-ink2:#94A3B8; --rail-line:#E5EAF2;
+  --rail-hover:#F3F7FD; --rail-on:#EAF2FF; --rail-on-ink:#1D4ED8; --rail-icon:#3B82F6; --rail-bar:#2563EB; --rail-field:#F3F7FD;
+  --meta:#64748B;
+  --ws-badge-ink:#FFFFFF;
+  --ws-info-bg:#EFF5FF; --ws-info-ln:#CFE0FB; --ws-info-ink:#1E3A8A;
+}
+[data-theme="dark"]{
+  --paper:#060B16; --surface:#0C1424; --surface2:#101A2E; --surface3:#16223A;
+  --line:#1B2842; --line2:#273857;
+  --ink:#E6EDF8; --ink2:#A3B2CB; --ink3:#6B7C99;
+  --accent:#60A5FA; --accent-d:#93C5FD; --accent-soft:rgba(96,165,250,.14); --accent-ink:#06101F;
+  --btn-grad:linear-gradient(180deg,#60A5FA,#3B82F6);
+  --ring:0 0 0 3px rgba(96,165,250,.28);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 20px -6px rgba(0,0,0,.55);
+  --shadow-lg:0 30px 60px -15px rgba(0,0,0,.75),0 2px 6px rgba(0,0,0,.4);
+  --risk:#FCA5A5; --risk-bg:rgba(248,113,113,.12); --risk-line:rgba(248,113,113,.32);
+  --done:#34D399;
+  --rail-bg:#0C1424; --rail-ink:#C3CEE0; --rail-ink2:#5F6F8C; --rail-line:#1B2842;
+  --rail-hover:#121D33; --rail-on:rgba(96,165,250,.14); --rail-on-ink:#BFDBFE; --rail-icon:#60A5FA; --rail-bar:#60A5FA; --rail-field:#101A2E;
+  --meta:#8494AE;
+  --ws-info-bg:rgba(96,165,250,.10); --ws-info-ln:rgba(96,165,250,.28); --ws-info-ink:#BFDBFE;
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:var(--sans);background:var(--paper);color:var(--ink);padding:24px;-webkit-font-smoothing:antialiased;font-size:13px}
+button,input,textarea,select{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,tr:focus-visible{outline:none;box-shadow:var(--ring)}
+svg.i{width:14px;height:14px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.doc-h{font-size:20px;margin:0 0 4px;letter-spacing:-.02em}
+.lead{color:var(--ink2);font-size:13px;margin:0 0 18px;max-width:980px;line-height:1.5}
+.sec-t{font-size:13px;font-weight:700;margin:28px 0 10px;color:var(--ink2);display:flex;align-items:center;gap:8px}
+.sec-t .n{font-family:var(--mono);font-size:11px;background:var(--accent-soft);color:var(--accent-d);border-radius:6px;padding:2px 7px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 12px;border-radius:9px;font-size:13px;font-weight:550;border:1px solid var(--line2);background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm);white-space:nowrap}
+.btn.pri{background:var(--btn-grad);border-color:transparent;color:var(--accent-ink)}
+.btn.ghost{border-color:transparent;background:none;box-shadow:none;color:var(--accent-d)}
+.btn svg.i{width:16px;height:16px}
+.inp{display:block;width:100%;height:36px;border:1px solid var(--line2);background:var(--surface);padding:0 11px;border-radius:9px;font-size:13px;color:var(--ink)}
+select.inp{appearance:none;padding-right:30px;background:var(--surface) no-repeat right 10px center/14px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")}
+.iconbtn{width:36px;height:36px;border-radius:9px;display:inline-grid;place-items:center;color:var(--ink2);border:1px solid transparent;background:none;padding:0}
+.iconbtn:hover{background:var(--surface2);border-color:var(--line)}
+.iconbtn svg.i{width:18px;height:18px}
+.chip{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:6px;font-size:11px;font-weight:650;white-space:nowrap;border:1px solid var(--line);background:var(--surface2);color:var(--ink2)}
+.chip svg.i{width:12px;height:12px}
+.chip.acc{background:var(--accent-soft);color:var(--accent-d);border-color:transparent}
+.key{font-family:var(--mono);font-size:11px;font-weight:650;color:var(--ink2);background:var(--surface3);border-radius:6px;padding:2px 7px}
+.info{display:flex;gap:10px;padding:10px 12px;border-radius:10px;background:var(--ws-info-bg);border:1px solid var(--ws-info-ln);color:var(--ws-info-ink);font-size:12.5px;line-height:1.5}
+.info svg.i{width:16px;height:16px;margin-top:1px}
+.frame{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.fh{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.fh h2{font-size:15px;margin:0;letter-spacing:-.01em}
+.fh .sp{flex:1}
+.tabs{display:flex;gap:2px;padding:0 10px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 12px;border:0;background:none;font-size:13px;font-weight:550;color:var(--ink2);position:relative;white-space:nowrap}
+.tab svg.i{width:16px;height:16px;color:var(--meta)}
+.tab[aria-selected="true"]{color:var(--accent-d);font-weight:650}
+.tab[aria-selected="true"] svg.i{color:var(--accent)}
+.tab[aria-selected="true"]::after{content:"";position:absolute;left:8px;right:8px;bottom:0;height:3px;border-radius:3px 3px 0 0;background:var(--accent)}
+.fb{padding:16px}
+/* ---- Alanlar sekmesi (pf-) ---- */
+.pf-grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start}
+.pf-blk{border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.pf-bh{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.pf-bh h3{margin:0;font-size:13px}
+.pf-bh .sub{font-size:12px;color:var(--meta)}
+.pf-bh .sp{flex:1}
+.pf-row{display:grid;grid-template-columns:36px minmax(0,1fr) auto auto 44px 36px;gap:10px;align-items:center;padding:10px 12px;border-top:1px solid var(--line)}
+.pf-row:first-of-type{border-top:0}
+.pf-row.off{background:var(--surface2)}
+.pf-row.sel{box-shadow:inset 3px 0 0 var(--accent);background:var(--accent-soft)}
+.pf-ic{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;background:var(--surface3);color:var(--ink2)}
+.pf-ic svg.i{width:18px;height:18px}
+.pf-row.on .pf-ic{background:var(--accent-soft);color:var(--accent-d)}
+.pf-nm{min-width:0}
+.pf-nm b{font-size:13.5px;display:flex;align-items:center;gap:8px}
+.pf-nm .d{font-size:12px;color:var(--ink2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pf-st{font-size:11.5px;font-weight:650;display:inline-flex;align-items:center;gap:4px;color:var(--meta)}
+.pf-st svg.i{width:13px;height:13px}
+.pf-row.on .pf-st{color:var(--done)}
+.sw{position:relative;width:40px;height:24px;border-radius:12px;border:0;background:var(--line2);padding:0;flex-shrink:0}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .15s}
+.sw[aria-checked="true"]{background:var(--accent)}
+.sw[aria-checked="true"]::after{left:19px}
+.swl{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--ink2);min-height:36px}
+.pf-empty{padding:18px 12px;text-align:center;color:var(--ink2);font-size:12.5px}
+.ro{font-size:11px;color:var(--meta);display:inline-flex;align-items:center;gap:4px}
+.ro svg.i{width:12px;height:12px}
+/* form paneli */
+.pf-form{border:1px solid var(--line);border-radius:12px;background:var(--surface);box-shadow:var(--shadow)}
+.pf-form .fbody{padding:12px;display:flex;flex-direction:column;gap:12px}
+.fld label{display:block;font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:5px}
+.fld .hint{font-size:11.5px;color:var(--meta);margin-top:4px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.types{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.types button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 2px;min-height:56px;border:1px solid var(--line2);border-radius:9px;background:var(--surface);font-size:11.5px;color:var(--ink2)}
+.types button svg.i{width:18px;height:18px}
+.types button[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-d);font-weight:650;box-shadow:var(--ring)}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opt{display:flex;align-items:center;gap:6px}
+.opt .grip{color:var(--meta);display:grid}
+.opt .inp{height:34px}
+.opt .def{font-size:11px;color:var(--accent-d);font-weight:650;white-space:nowrap;display:inline-flex;gap:3px;align-items:center}
+.ffoot{display:flex;gap:8px;justify-content:flex-end;padding:10px 12px;border-top:1px solid var(--line)}
+/* ---- Kart detay (kd-) ---- */
+.kd{display:grid;grid-template-columns:minmax(0,1fr) 340px}
+.kd-main{padding:16px 18px;border-right:1px solid var(--line)}
+.kd-main h1{font-size:18px;margin:6px 0 10px;letter-spacing:-.01em}
+.kd-main p{color:var(--ink2);line-height:1.55;margin:0 0 10px}
+.kd-side{padding:14px;background:var(--surface2);display:flex;flex-direction:column;gap:14px}
+.grp h4{margin:0 0 6px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--meta);display:flex;align-items:center;gap:6px}
+.grp h4 svg.i{width:13px;height:13px}
+.pr{display:grid;grid-template-columns:110px minmax(0,1fr);align-items:center;gap:8px;min-height:36px;padding:0 6px;border-radius:8px}
+.pr:hover{background:var(--surface)}
+.pr .l{font-size:12.5px;color:var(--ink2)}
+.pr .v{font-size:13px;display:flex;align-items:center;gap:2px 6px;min-width:0;flex-wrap:wrap;padding:6px 0}
+.pr .v.empty{color:var(--meta)}
+.pr .v .src{font-size:11px;color:var(--meta)}
+.pr.edit{background:var(--surface);box-shadow:inset 0 0 0 1px var(--accent),var(--ring)}
+.pop{margin:4px 0 4px 116px;border:1px solid var(--line2);border-radius:10px;background:var(--surface);box-shadow:var(--shadow-lg);padding:4px}
+.pop button{display:flex;width:100%;align-items:center;gap:8px;min-height:36px;padding:0 10px;border:0;border-radius:7px;background:none;font-size:13px;text-align:left}
+.pop button[aria-selected="true"]{background:var(--accent-soft);color:var(--accent-d);font-weight:650}
+.pop button .ck{margin-left:auto}
+.pop button.none{color:var(--meta)}
+.cardp{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:10px 12px;box-shadow:var(--shadow-sm);width:280px}
+.cardp .t{font-weight:600;margin:4px 0 8px;line-height:1.4}
+.cardp .tags{display:flex;gap:4px;flex-wrap:wrap}
+.cardp .ft{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
+.av{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:9px;background:#7C3AED}
+/* ---- Raporlar (gr-) ---- */
+.tpl{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px}
+.tpl button{flex:0 0 auto;display:flex;align-items:center;gap:10px;min-height:52px;padding:8px 12px 8px 10px;border:1px solid var(--line);border-radius:12px;background:var(--surface);box-shadow:var(--shadow-sm);text-align:left;max-width:240px}
+.tpl button .ti{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;background:var(--surface3);color:var(--ink2);flex-shrink:0}
+.tpl button .ti svg.i{width:17px;height:17px}
+.tpl button b{display:block;font-size:12.5px}
+.tpl button span.s{display:block;font-size:11px;color:var(--meta);margin-top:1px}
+.tpl button[aria-pressed="true"]{border-color:var(--accent);box-shadow:var(--ring)}
+.tpl button[aria-pressed="true"] .ti{background:var(--accent-soft);color:var(--accent-d)}
+.dimbar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin:12px 0}
+.dimbar .fld{width:220px}
+.dimbar .x{height:36px;display:grid;place-items:center;color:var(--meta)}
+.dd{border:1px solid var(--line2);border-radius:10px;background:var(--surface);box-shadow:var(--shadow-lg);padding:4px;width:260px;margin-top:4px}
+.dd .gh{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--meta);padding:8px 10px 4px;display:flex;align-items:center;gap:6px}
+.dd button{display:flex;width:100%;align-items:center;gap:8px;min-height:34px;padding:0 10px;border:0;border-radius:7px;background:none;font-size:13px;text-align:left;color:var(--ink)}
+.dd button svg.i{width:15px;height:15px;color:var(--meta)}
+.dd button[aria-selected="true"]{background:var(--accent-soft);color:var(--accent-d);font-weight:650}
+.dd button[aria-selected="true"] svg.i{color:var(--accent-d)}
+.dd button .k{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--meta)}
+.pv{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px}
+.pv th,.pv td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.pv th:first-child,.pv td:first-child{text-align:left}
+.pv thead th{font-size:11.5px;color:var(--ink2);background:var(--surface2);font-weight:650}
+.pv td{font-family:var(--mono)}
+.pv td:first-child{font-family:var(--sans)}
+.pv tr.un td:first-child{color:var(--ink2);font-style:italic}
+.pv tr.tot td{font-weight:700;background:var(--surface2)}
+.pvw{border:1px solid var(--line);border-radius:12px;overflow:auto}
+.gr-l>div{min-width:0}
+.gr-l{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:start}
+.note{font-size:12px;color:var(--meta);display:flex;gap:6px;align-items:center;margin-top:8px}
+.note svg.i{width:14px;height:14px}
+/* ---- mobil ---- */
+@media (max-width:640px){
+  body{padding:12px}
+  .pf-grid,.kd,.gr-l{grid-template-columns:1fr}
+  .pf-row{grid-template-columns:36px minmax(0,1fr) 44px;row-gap:4px}
+  .pf-row .pf-st{display:none}
+  .pf-row .swl{grid-column:2 / 4;grid-row:2;min-height:28px}
+  .pf-row .iconbtn.more{display:none}
+  .types{grid-template-columns:repeat(3,1fr)}
+  .kd-main{border-right:0;border-bottom:1px solid var(--line)}
+  .pop{margin-left:0}
+  .dimbar .fld{width:calc(50% - 30px)}
+  .fh .btn span.t{display:none}
+  .cardp{width:100%}
+  .dd{width:100%}
+}
+</style></head><body>
+<h1 class="doc-h">Parametrik proje alanları — taslak</h1>
+<p class="lead">Faturalama, Fatura türü ve Cari projeye göre açılıp kapatılabilen "hazır alanlar" olur; alan yöneticisi serbest alan ekler. Hiçbir alan zorunlu değildir. Örnek proje: <span class="key">BNX</span> Bnexify Portal.</p>
+<div id="root"></div>
+<script>
+const P={settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+plus:'<path d="M12 5v14M5 12h14"/>',receipt:'<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8M12 17.5v-11"/>',
+tag:'<path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z"/><circle cx="7.5" cy="7.5" r="1"/>',
+building:'<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v8h4M18 9h2a2 2 0 0 1 2 2v11h-4M10 6h4M10 10h4M10 14h4M10 18h4"/>',
+list:'<path d="M3 6h.01M3 12h.01M3 18h.01M8 6h13M8 12h13M8 18h13"/>',hash:'<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/>',
+check:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="m9 12 2 2 4-4"/>',type:'<path d="M4 7V4h16v3M9 20h6M12 4v16"/>',
+cal:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',pencil:'<path d="M21.2 6.8a2.8 2.8 0 0 0-4-4L3.8 16.2a2 2 0 0 0-.5.8l-1.3 4.4a.5.5 0 0 0 .6.6l4.4-1.3a2 2 0 0 0 .8-.5z"/>',
+grip:'<circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/>',
+x:'<path d="M18 6 6 18M6 6l12 12"/>',lock:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',eye:'<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+eyeoff:'<path d="M9.9 4.2A10 10 0 0 1 12 4c7 0 10 8 10 8a13 13 0 0 1-1.7 2.7M6.6 6.6A13.5 13.5 0 0 0 2 12s3 8 10 8a9.7 9.7 0 0 0 5.4-1.6M2 2l20 20M14.1 14.1a3 3 0 1 1-4.2-4.2"/>',
+more:'<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',ok:'<path d="M20 6 9 17l-5-5"/>',
+user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',chart:'<path d="M3 3v18h18M18 17V9M13 17V5M8 17v-3"/>',
+layers:'<path d="m12 2 10 5-10 5L2 7Z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/>',swap:'<path d="m16 3 4 4-4 4M20 7H4M8 21l-4-4 4-4M4 17h16"/>',
+folder:'<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
+sliders:'<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',down:'<path d="m6 9 6 6 6-6"/>',globe:'<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/>',
+shield:'<path d="M20 13c0 5-3.5 7.5-7.7 9a1 1 0 0 1-.6 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.2-2.7a1.2 1.2 0 0 1 1.6 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z"/>'};
+const ic=(n,s='')=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true" ${s}>${P[n]}</svg>`;
+const sw=(on,l)=>`<button class="sw" role="switch" aria-checked="${on}" aria-label="${l}"></button>`;
+const row=(o)=>`<div class="pf-row ${o.on?'on':'off'} ${o.sel?'sel':''}">
+  <span class="pf-ic">${ic(o.ic)}</span>
+  <div class="pf-nm"><b>${o.n}${o.k?` <span class="key">${o.k}</span>`:''}</b><div class="d">${o.d}</div></div>
+  <span class="pf-st">${o.on?ic('ok')+'Açık':ic('eyeoff')+'Kapalı'}</span>
+  <label class="swl">${o.card?ic('eye'):ic('eyeoff')}Kartta${o.card?'':' değil'}</label>
+  ${sw(o.on,o.n+' alanını aç/kapat')}
+  <button class="iconbtn more" aria-label="${o.n}: düzenle">${ic('pencil')}</button></div>`;
+
+const fieldsTab=`<section class="frame"><div class="fh"><span class="key">BNX</span><h2>Bnexify Portal — Proje ayarları</h2><span class="sp"></span><span class="chip acc">${ic('shield')}Alan yöneticisi</span></div>
+<div class="tabs" role="tablist"><button class="tab" role="tab">${ic('settings')}Genel</button><button class="tab" role="tab">${ic('user')}Üyeler</button><button class="tab" role="tab">${ic('layers')}İş akışı</button><button class="tab" role="tab" aria-selected="true">${ic('sliders')}Alanlar</button></div>
+<div class="fb"><div class="pf-grid"><div style="display:flex;flex-direction:column;gap:14px">
+ <div class="pf-blk"><div class="pf-bh">${ic('receipt')}<h3>Hazır alanlar</h3><span class="sub">Faturalama ve cari için</span></div>
+  ${row({ic:'receipt',n:'Faturalama',k:'fatura',d:'Seçim · Faturalanacak, Faturalanmayacak · varsayılan: Faturalanacak',on:true,card:false})}
+  ${row({ic:'tag',n:'Fatura türü',k:'faturaturu',d:'Seçim · Kişi/Saat, Adam/Ay, Sabit fiyat · varsayılan: Kişi/Saat',on:true,card:true,sel:true})}
+  ${row({ic:'building',n:'Cari',k:'cari',d:'Cari kaydı · işte boşsa projenin carisi: Atlas Lojistik A.Ş.',on:false,card:false})}
+ </div>
+ <div class="pf-blk"><div class="pf-bh">${ic('sliders')}<h3>Bu projenin alanları</h3><span class="sub">2 alan</span><span class="sp"></span><button class="btn pri">${ic('plus')}<span class="t">Alan ekle</span></button></div>
+  ${row({ic:'list',n:'Ortam',k:'ortam',d:'Seçim · Test, Hazırlık, Canlı',on:true,card:true})}
+  ${row({ic:'hash',n:'Tahmini bütçe (TL)',k:'butce',d:'Sayı · boş bırakılabilir',on:true,card:false})}
+ </div>
+ <div class="pf-blk"><div class="pf-bh">${ic('globe')}<h3>Tüm projelerde geçerli alanlar</h3><span class="sp"></span><span class="ro">${ic('lock')}Yalnız sistem yöneticisi düzenler</span></div>
+  <div class="pf-row on"><span class="pf-ic">${ic('cal')}</span><div class="pf-nm"><b>Sözleşme bitişi <span class="key">sozlesme</span></b><div class="d">Tarih · tüm projeler</div></div><span class="pf-st">${ic('ok')}Açık</span><span></span><span></span><span></span></div>
+ </div>
+ <div class="info">${ic('info')}<span>Kapatılan alan bu projenin kartında, detayında ve formlarında görünmez. İşlerdeki değerler silinmez; alanı yeniden açınca geri gelir.</span></div>
+</div>
+<aside class="pf-form" aria-label="Alan düzenle"><div class="pf-bh">${ic('pencil')}<h3>Fatura türü</h3><span class="chip">Hazır alan</span><span class="sp"></span><button class="iconbtn" aria-label="Kapat">${ic('x')}</button></div>
+ <div class="fbody">
+  <div class="two"><div class="fld"><label>Görünen ad</label><input class="inp" value="Fatura türü"></div><div class="fld"><label>Anahtar</label><input class="inp" style="font-family:var(--mono)" value="faturaturu" disabled></div></div>
+  <div class="fld"><label>Tür</label><div class="types" role="radiogroup">
+   <button role="radio" aria-checked="true">${ic('list')}Seçim</button><button role="radio" aria-checked="false" disabled>${ic('hash')}Sayı</button><button role="radio" aria-checked="false" disabled>${ic('check')}Evet/Hayır</button><button role="radio" aria-checked="false" disabled>${ic('type')}Metin</button><button role="radio" aria-checked="false" disabled>${ic('cal')}Tarih</button></div>
+   <div class="hint">Hazır alanın türü değişmez. Yeni alanda beş tür seçilebilir.</div></div>
+  <div class="fld"><label>Seçenekler</label><div class="opts">
+   <div class="opt"><span class="grip">${ic('grip')}</span><input class="inp" value="Kişi/Saat"><span class="def">${ic('ok')}Varsayılan</span></div>
+   <div class="opt"><span class="grip">${ic('grip')}</span><input class="inp" value="Adam/Ay"><button class="iconbtn" aria-label="Seçeneği sil">${ic('x')}</button></div>
+   <div class="opt"><span class="grip">${ic('grip')}</span><input class="inp" value="Sabit fiyat"><button class="iconbtn" aria-label="Seçeneği sil">${ic('x')}</button></div>
+   <button class="btn ghost" style="align-self:flex-start">${ic('plus')}Seçenek ekle</button></div>
+   <div class="hint">Silinen seçeneği taşıyan işlerde değer kalır, "(eski değer)" olarak görünür.</div></div>
+  <div class="fld"><label>Varsayılan değer</label><select class="inp"><option>Kişi/Saat</option></select><div class="hint">Yeni işte önceden seçili gelir; kullanıcı boş bırakabilir.</div></div>
+  <label class="swl">${sw(true,'Kartta göster')}Kartta göster <span class="ro">(en çok 3 rozet)</span></label>
+  <label class="swl">${sw(false,'Listede sütun olarak göster')}Listede sütun olarak göster</label>
+ </div><div class="ffoot"><button class="btn">Vazgeç</button><button class="btn pri">${ic('ok')}Kaydet</button></div></aside>
+</div></div></section>`;
+
+const detail=`<section class="frame"><div class="kd"><div class="kd-main"><span class="key">BNX-142</span>
+ <h1>Sipariş ekranında toplu onay</h1><p>Müşteri temsilcileri bekleyen siparişleri tek tek onaylıyor. Liste ekranına çoklu seçim ve "Seçilenleri onayla" eylemi eklenecek.</p>
+ <p style="font-size:12px;color:var(--meta)">Pano kartında görünüm (Kartta göster açık alanlar, en çok 3 rozet):</p>
+ <div class="cardp"><span class="key">BNX-142</span><div class="t">Sipariş ekranında toplu onay</div>
+  <div class="tags"><span class="chip">${ic('tag')}Fatura türü: Adam/Ay</span><span class="chip">${ic('list')}Ortam: Canlı</span><span class="chip" style="color:var(--risk);border-color:var(--risk-line);background:var(--risk-bg)">${ic('receipt')}Faturalanmayacak</span></div>
+  <div class="ft"><span style="font-family:var(--mono);font-size:11px;color:var(--meta)">6s 30dk</span><span class="av">EY</span></div></div>
+ <p class="note">${ic('info')}Faturalama rozeti yalnız "Faturalanmayacak" iken görünür.</p>
+</div>
+<aside class="kd-side">
+ <div class="grp"><h4>${ic('user')}Ayrıntılar</h4>
+  <div class="pr"><span class="l">Atanan</span><span class="v"><span class="av">EY</span>Elif Yılmaz</span></div>
+  <div class="pr"><span class="l">Durum</span><span class="v"><span class="chip acc">Geliştiriliyor</span></span></div></div>
+ <div class="grp"><h4>${ic('receipt')}Faturalama</h4>
+  <div class="pr"><span class="l">Faturalama</span><span class="v empty">— <span class="src">(raporda Faturalanacak)</span></span></div>
+  <div class="pr edit"><span class="l">Fatura türü</span><span class="v">Adam/Ay ${ic('down')}</span></div>
+  <div class="pop" role="listbox"><button class="none" role="option">— Boş bırak</button><button role="option">Kişi/Saat</button><button role="option" aria-selected="true">Adam/Ay<span class="ck">${ic('ok')}</span></button><button role="option">Sabit fiyat</button></div>
+  <div class="pr"><span class="l">Cari</span><span class="v">Atlas Lojistik A.Ş. <span class="src">· projeden</span></span></div></div>
+ <div class="grp"><h4>${ic('sliders')}Özel alanlar</h4>
+  <div class="pr"><span class="l">Ortam</span><span class="v">Canlı</span></div>
+  <div class="pr"><span class="l">Tahmini bütçe</span><span class="v empty">Değer ekle</span></div>
+  <div class="pr"><span class="l">Sözleşme bitişi</span><span class="v" style="font-family:var(--mono);font-size:12px">31.12.2026</span></div></div>
+</aside></div></section>`;
+
+const TPL=[['receipt','Faturalanabilir saat','Cariye göre',1],['tag','Fatura türü × Ay','Aylık saat'],['user','Kişi × Faturalama','Kim, ne kadar'],['building','Cari × Proje','Dağılım'],['sliders','Alana göre aylık','Alan seçin']];
+const reports=`<section class="frame"><div class="fh">${ic('chart')}<h2>Genel raporlar — Süre</h2><span class="sp"></span><button class="btn">${ic('down')}<span class="t">Excel</span></button></div>
+<div class="fb"><div style="font-size:12px;font-weight:650;color:var(--ink2);margin-bottom:6px">Hazır şablonlar</div>
+ <div class="tpl" role="toolbar" aria-label="Hazır şablonlar">${TPL.map(t=>`<button aria-pressed="${!!t[3]}"><span class="ti">${ic(t[0])}</span><span><b>${t[1]}</b><span class="s">${t[2]}</span></span></button>`).join('')}</div>
+ <div class="gr-l"><div>
+  <div class="dimbar"><div class="fld" style="width:220px"><label>Satır (açık seçici)</label><select class="inp" style="box-shadow:var(--ring);border-color:var(--accent)"><option>Fatura türü</option></select></div></div>
+  <div class="dd" role="listbox" aria-label="Boyut">
+   <div class="gh">Temel</div>
+   <button role="option">${ic('user')}Kişi</button><button role="option">${ic('folder')}Proje</button><button role="option">${ic('cal')}Ay</button>
+   <div class="gh">${ic('receipt')}Hazır alanlar</div>
+   <button role="option">${ic('receipt')}Faturalama<span class="k">fatura</span></button><button role="option" aria-selected="true">${ic('tag')}Fatura türü<span class="k">faturaturu</span></button><button role="option">${ic('building')}Cari<span class="k">cari</span></button>
+   <div class="gh">${ic('sliders')}Proje alanları</div>
+   <button role="option">${ic('list')}Ortam<span class="k">3 proje</span></button><button role="option">${ic('check')}Bakım kapsamında<span class="k">2 proje</span></button></div>
+ </div><div>
+  <div class="dimbar"><div class="fld" style="width:170px"><label>Satır</label><select class="inp"><option>Fatura türü</option></select></div><span class="x">${ic('swap')}</span><div class="fld" style="width:170px"><label>Sütun</label><select class="inp"><option>Ay</option></select></div></div>
+  <div class="pvw"><table class="pv"><thead><tr><th>Fatura türü</th><th>Eyl 2026</th><th>Eki 2026</th><th>Kas 2026</th><th>Toplam</th></tr></thead><tbody>
+   <tr><td>Kişi/Saat</td><td>212,5</td><td>238,0</td><td>141,5</td><td>592,0</td></tr>
+   <tr><td>Adam/Ay</td><td>96,0</td><td>104,5</td><td>62,0</td><td>262,5</td></tr>
+   <tr><td>Sabit fiyat</td><td>—</td><td>18,0</td><td>22,5</td><td>40,5</td></tr>
+   <tr class="un"><td>Belirtilmemiş</td><td>14,0</td><td>9,5</td><td>6,0</td><td>29,5</td></tr>
+   <tr class="tot"><td>Toplam</td><td>322,5</td><td>370,0</td><td>232,0</td><td>924,5</td></tr></tbody></table></div>
+  <p class="note">${ic('info')}"Belirtilmemiş": alanı boş işler ve alanın kapalı olduğu projeler. Saatler sa cinsinden.</p>
+ </div></div></div></section>`;
+
+document.getElementById('root').innerHTML=`<div class="sec-t"><span class="n">1</span>Proje ayarları → Alanlar</div>${fieldsTab}
+<div class="sec-t"><span class="n">2</span>Kart detayı → yan panel</div>${detail}
+<div class="sec-t"><span class="n">3</span>Genel raporlar → boyut seçici ve hazır şablonlar</div>${reports}`;
+</script></body></html>
