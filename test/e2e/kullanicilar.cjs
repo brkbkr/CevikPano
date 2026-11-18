@@ -34,6 +34,14 @@ let F = 0; const ok = (n, c, x = '') => { if (!c) F++; console.log((c ? 'PASS ' 
   ok('new user forced to set password', await Z.isVisible('#fp_a'));
   await Z.fill('#fp_a', 'ZeynepYeni12'); await Z.fill('#fp_b', 'ZeynepYeni12'); await Z.click('#fpForm button[type=submit]'); await sleep(2000);
   ok('new user sees only member projects', await Z.evaluate(() => [...document.querySelectorAll('#projSel option')].length) === 1);
+  ok('member sees no data tools', await Z.evaluate(() => {
+    const foot = document.querySelector('.rail-foot');
+    const visible = foot && getComputedStyle(foot).display !== 'none';
+    location.hash = 'system';
+    return !visible && !document.querySelector('a[data-v="system"]:not([style*="none"])');
+  }));
+  await sleep(300);
+  ok('member cannot open system view', await Z.evaluate(() => DB.ui.view !== 'system'));
   // admin: rolü izleyici yap
   await A.evaluate(() => { location.hash = 'home'; }); await sleep(300); await A.evaluate(() => { location.hash = 'users'; }); await sleep(1200);
   await A.click(`tr.urow[data-uedit="${await A.evaluate(() => DB.users.find(x => x.username === 'zeynep').id)}"]`); await sleep(500);
