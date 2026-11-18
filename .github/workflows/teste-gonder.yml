@@ -31,7 +31,7 @@ jobs:
        github.event.workflow_run.event == 'push' &&
        (github.event.workflow_run.head_branch == 'main' || startsWith(github.event.workflow_run.head_branch, 'claude/')))
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with: { fetch-depth: 0 }
       - name: Sürümü belirle
         id: s
