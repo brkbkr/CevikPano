@@ -1830,10 +1830,6 @@ button.cu-prj:hover{background:var(--surface2)}
 .nv-role svg.i{width:12px;height:12px}
 .nv-role.neu{background:var(--surface3);color:var(--ink2)}
 .nv-role.sup{background:var(--risk-bg);color:var(--risk)}
-.nv-save{display:flex;align-items:center;gap:8px;margin:0 4px 4px;padding:8px 10px;border-radius:9px;background:var(--surface2);border:1px solid var(--line);font-size:12.5px;font-weight:550;color:var(--ink2)}
-.nv-save svg.i{width:16px;height:16px;color:var(--ok)}
-.nv-save.busy,.nv-save.busy svg.i{color:var(--nv-busy)}
-.nv-save.err,.nv-save.err svg.i{color:var(--risk)}
 .nv-mi{display:flex;align-items:center;gap:10px;width:100%;min-height:38px;padding:6px 10px;border:0;background:none;border-radius:8px;text-align:left;font-size:13px;color:var(--ink);cursor:pointer}
 .nv-mi:hover,.nv-mi:focus-visible{background:var(--surface2)}
 .nv-mi:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
@@ -1844,13 +1840,21 @@ button.cu-prj:hover{background:var(--surface2)}
 .nv-sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)}
 [aria-checked="true"] > .nv-sw{background:var(--accent)}
 [aria-checked="true"] > .nv-sw::after{left:16px}
-/* sol alt: oturum kutusu kalktı, kayıt durumu en altta */
+/* sol alt: oturum kutusu ve kayıt kutusu kalktı; çevrim içi listesi en altta */
 .rail .online{margin-top:auto}
 /* ☰ çekmece düğmesi ve perdesi (yalnız dar ekranda) */
 .nv-navbtn{display:none}
 .nv-scrim{position:fixed;inset:0;z-index:69;background:var(--nv-scrim)}
 .nv-scrim[hidden]{display:none}
 
+/* ---- kayıt sorunu çipi (yalnız sorun varken) ---- */
+.nv-syncw:empty{display:none}
+.nv-syncchip{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:999px;border:1px solid var(--risk-line,#FECACA);
+  background:var(--risk-bg,#FEF2F2);color:var(--risk);font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer;max-width:280px}
+.nv-syncchip span{overflow:hidden;text-overflow:ellipsis}
+.nv-syncchip svg.i{width:15px;height:15px;flex-shrink:0}
+.nv-syncchip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:900px){ .nv-syncchip{height:44px;max-width:44px;padding:0 13px} .nv-syncchip span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)} }
 /* ---- dilim A2: sol menü ağacı, açılır menüler, kenar çubuğunu özelleştir ---- */
 :root{ --nv-guide:#E5EAF2; --nv-sec-ink:#64748B; --nv-fixed-bg:#F6F9FD; --nv-fixed-ink:#64748B; --nv-check-off:#94A3B8; }
 :root[data-theme="dark"]{ --nv-guide:#1B2842; --nv-sec-ink:#8494AE; --nv-fixed-bg:#101A2E; --nv-fixed-ink:#8494AE; --nv-check-off:#5F6F8C; }
@@ -2307,7 +2311,6 @@ button.id-pv:hover{background:var(--surface);border-color:var(--line)}
     <div class="brand"><img src="/img/icon.svg" alt="" class="brand-ic"><b>ÇevikPano</b></div>
     <div class="nv-rail" id="navRoot"></div>
     <div class="online" id="online"></div>
-    <div class="filebar" id="fileBar"></div>
     <div class="nv-more" id="navMore"></div>
     <!-- Veri araçları yalnızca yöneticiler için: Sistem → Veri. Düğmeler gizli, işleyiciler bunlara bağlı. -->
     <div class="rail-foot" hidden>
@@ -2327,6 +2330,7 @@ button.id-pv:hover{background:var(--surface);border-color:var(--line)}
         <div class="tb-actions">
           <button class="cmdk" id="btnCmd" title="Ara veya komut çalıştır (Ctrl+K)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Ara veya komut…</span><kbd>Ctrl K</kbd></button>
           <div class="tb-online" id="tbOnline"></div>
+          <span class="nv-syncw" id="syncWarn" role="status" aria-live="polite"></span>
           <button class="iconbtn" id="btnTheme" title="Tema (açık / koyu)" aria-label="Tema değiştir"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button>
           <button class="iconbtn" id="btnBell" title="Bildirimler" aria-label="Bildirimler">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
@@ -2757,18 +2761,27 @@ function scheduleAuto() {
 function markDirty() { }
 function markClean() { }
 
-/* Sol menüdeki kayıt durumu (sunucu) */
-function renderFileBar() {
-  if (typeof renderAcctSync === 'function') renderAcctSync();
-  const el = document.getElementById('fileBar');
-  if (!el) return;
-  const t = SYNC_AT ? new Date(SYNC_AT).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '';
-  const txt = { ok: 'Kaydedildi' + (t ? ' ' + t : ''), pending: 'Kaydediliyor…', saving: 'Kaydediliyor…',
-    error: 'Bağlantı sorunu — tekrar denenecek' }[SYNC_STATE];
-  el.innerHTML = `<div class="fnote" style="display:flex;align-items:center;gap:7px;font-size:12px">
-    <span class="fstate ${SYNC_STATE === 'ok' ? 'ok' : 'dirty'}"></span>${txt}</div>
-    <div class="fnote">Değişiklikler otomatik kaydedilir, herkes aynı anda çalışabilir.</div>`;
+/* Kayıt durumu yalnız SORUN olduğunda görünür (üst çubukta çip): çevrimdışı, gönderim başarısız ya da 10 sn'den uzun
+   süren kaydetme. Tıklamak hemen yeniden dener (data-act="savefile"). Normal durumda hiçbir gösterge yok. */
+let SYNC_SLOW_T = null, SYNC_BUSY_AT = 0;
+const SYNC_SLOW_MS = 10000;
+function syncProblem() {
+  if (!DIRTY) return '';
+  if (navigator.onLine === false) return 'Bağlantı yok — değişiklikler bekliyor';
+  if (SYNC_STATE === 'error') return 'Kaydedilemedi, yeniden deneniyor';
+  if (SYNC_BUSY_AT && Date.now() - SYNC_BUSY_AT >= SYNC_SLOW_MS) return 'Kaydetme gecikiyor — yeniden dene';
+  return '';
 }
+function renderFileBar() {
+  if (SYNC_STATE === 'ok') { SYNC_BUSY_AT = 0; clearTimeout(SYNC_SLOW_T); SYNC_SLOW_T = null; }
+  else if (!SYNC_BUSY_AT) { SYNC_BUSY_AT = Date.now(); clearTimeout(SYNC_SLOW_T); SYNC_SLOW_T = setTimeout(renderFileBar, SYNC_SLOW_MS + 50); }
+  const el = document.getElementById('syncWarn'); if (!el) return;
+  const t = syncProblem(), cur = el.querySelector('button')?.dataset.msg || '';
+  if (t === cur) return;
+  el.innerHTML = t ? `<button type="button" class="nv-syncchip" data-act="savefile" data-msg="${esc(t)}" title="Şimdi yeniden dene">${ic(navigator.onLine === false ? 'alert' : 'sync')}<span>${esc(t)}</span></button>` : '';
+}
+addEventListener('offline', () => renderFileBar());
+addEventListener('online', () => { renderFileBar(); if (DIRTY && typeof flushSync === 'function') flushSync(); });
 
 /* Dosyada gömülü veri, tarayıcıdakinden yeniyse kullanıcıya sor. */
 function offerEmbedded(emb) {
@@ -5081,14 +5094,6 @@ function renderAcctBtn() {
   b.setAttribute('aria-label', 'Hesap: ' + (u.name || ''));
   b.title = u.name || '';
 }
-const SYNC_TXT = { ok: 'Tüm değişiklikler kaydedildi', pending: 'Kaydediliyor…', saving: 'Kaydediliyor…', error: 'Bağlantı sorunu — tekrar denenecek' };
-/* Menüdeki kayıt durumu setSync → renderFileBar ile canlı güncellenir. */
-function renderAcctSync() {
-  const el = document.getElementById('acctSync'); if (!el) return;
-  const busy = SYNC_STATE === 'pending' || SYNC_STATE === 'saving', err = SYNC_STATE === 'error';
-  el.className = 'nv-save' + (busy ? ' busy' : err ? ' err' : '');
-  el.innerHTML = `${ic(busy ? 'sync' : err ? 'alert' : 'cloud')}<span>${SYNC_TXT[SYNC_STATE] || ''}</span>`;
-}
 const isDark = () => (document.documentElement.dataset.theme
   || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
 function acctClose(focus) {
@@ -5104,8 +5109,6 @@ function acctOpen() {
     <div class="nv-acct-h"><span class="nv-avbtn" style="background:${safeColor(u.color)}" aria-hidden="true">${esc(u.ini || wsInitial(u.name))}</span>
       <div class="tx"><b>${esc(u.name)}</b><span class="u">${esc(ME?.username || u.username || '')}</span>
         <span class="nv-role ${isAdmin() ? '' : 'neu'} ${sup ? 'sup' : ''}">${ic(isAdmin() ? 'shield' : canEdit() ? 'users' : 'eye')}${esc(rl)}</span></div></div>
-    <div class="nv-save" id="acctSync" role="status"></div>
-    <button type="button" class="nv-mi" role="menuitem" data-act="savefile">${ic('save')}Şimdi kaydet</button>
     <button type="button" class="nv-mi" role="menuitem" data-act="pw">${ic('key')}Parolamı değiştir</button>
     <button type="button" class="nv-mi" role="menuitemcheckbox" aria-checked="${isDark()}" data-act="theme">${ic('moon')}Koyu tema<span class="nv-sw" aria-hidden="true"></span></button>
     <button type="button" class="nv-mi" role="menuitem" data-acct="keys">${ic('keyboard')}Klavye kısayolları<kbd>?</kbd></button>
@@ -5113,7 +5116,6 @@ function acctOpen() {
     <div class="nv-mhr" role="separator"></div>
     <button type="button" class="nv-mi out" role="menuitem" data-act="logout">${ic('logout')}Çıkış yap</button>
   </div>`);
-  renderAcctSync();
   $('#acctBtn').setAttribute('aria-expanded', 'true');
   const m = $('#acctMenu');
   menuKeys(m, f => acctClose(f));

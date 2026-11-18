@@ -180,17 +180,14 @@ const LABELS = ['Pano', 'İş listesi', 'Zaman planı', 'Yol haritası', 'Zaman 
   const m1 = await A.evaluate(() => { const m = document.getElementById('acctMenu');
     return { role: m?.getAttribute('role'), exp: document.getElementById('acctBtn').getAttribute('aria-expanded'), f: document.activeElement.dataset.act,
       txt: m?.textContent.replace(/\s+/g, ' '), sys: !!m?.querySelector('[data-v="system"]'), out: !!m?.querySelector('[data-act="logout"]'),
-      sync: document.getElementById('acctSync')?.textContent, theme: m?.querySelector('[data-act="theme"]')?.getAttribute('aria-checked') }; });
-  ok('menu: name, username, role, sync state and items (super)', m1.role === 'menu' && m1.exp === 'true' && m1.f === 'savefile' && /Yönetici/.test(m1.txt) && /admin/.test(m1.txt)
-    && /Süper yönetici/.test(m1.txt) && m1.sync === 'Tüm değişiklikler kaydedildi' && /Şimdi kaydet/.test(m1.txt) && /Parolamı değiştir/.test(m1.txt)
+      sync: !!document.getElementById('acctSync') || !!m?.querySelector('[data-act="savefile"]'), theme: m?.querySelector('[data-act="theme"]')?.getAttribute('aria-checked') }; });
+  /* Kayıt göstergeleri kalktı: menüde "Şimdi kaydet" ve "Tüm değişiklikler kaydedildi" yok (yalnız sorun çipi, aşağıda). */
+  ok('menu: name, username, role and items (super), no save indicators', m1.role === 'menu' && m1.exp === 'true' && m1.f === 'pw' && /Yönetici/.test(m1.txt) && /admin/.test(m1.txt)
+    && /Süper yönetici/.test(m1.txt) && !m1.sync && !/Şimdi kaydet|Tüm değişiklikler kaydedildi/.test(m1.txt) && /Parolamı değiştir/.test(m1.txt)
     && /Koyu tema/.test(m1.txt) && /Klavye kısayolları/.test(m1.txt) && m1.sys && m1.out && /^(true|false)$/.test(m1.theme), JSON.stringify(m1));
-  const live = await A.evaluate(async () => { const p = DB.projects.find(x => x.id === 'p1'); p.description = (p.description || '') + ' ';
-    save(); const a = document.getElementById('acctSync').textContent; await flushAll();
-    await new Promise(r => setTimeout(r, 100)); return [a, document.getElementById('acctSync').textContent]; });
-  ok('menu sync state is live ("Kaydediliyor…" → "Tüm değişiklikler kaydedildi")', live[0] === 'Kaydediliyor…' && live[1] === 'Tüm değişiklikler kaydedildi', JSON.stringify(live));
   await A.keyboard.press('ArrowDown'); const d1 = await A.evaluate(() => document.activeElement.dataset.act);
   await A.keyboard.press('ArrowUp'); await A.keyboard.press('ArrowUp'); const d2 = await A.evaluate(() => document.activeElement.dataset.act);
-  ok('menu ↑/↓ (wraps)', d1 === 'pw' && d2 === 'logout', [d1, d2].join());
+  ok('menu ↑/↓ (wraps)', d1 === 'theme' && d2 === 'logout', [d1, d2].join());
   await A.keyboard.press('Escape'); await sleep(100);
   ok('Esc closes menu, focus back to avatar', await A.evaluate(() => !document.getElementById('acctMenu') && document.activeElement.id === 'acctBtn'
     && document.getElementById('acctBtn').getAttribute('aria-expanded') === 'false'));
@@ -210,6 +207,37 @@ const LABELS = ['Pano', 'İş listesi', 'Zaman planı', 'Yol haritası', 'Zaman 
   await A.click('#acctBtn'); await sleep(100); await A.click('#acctMenu [data-v="system"]'); await sleep(300);
   ok('"Sistem" item opens Sistem', await A.evaluate(() => DB.ui.view === 'system' && !document.getElementById('acctMenu')));
   await A.click('#acctBtn'); await sleep(100); await A.screenshot({ path: SS + 'acct.png' }); await A.keyboard.press('Escape');
+
+  // 10b) kayıt göstergesi yalnız sorun olduğunda: normalde sol altta / üstte hiçbir şey yok; çevrimdışı ve uzun süren kayıtta
+  //      üst çubukta çip, tıklayınca hemen yeniden dener; sayfa kapanırken bekleyen değişiklik uyarısı aynen
+  const quiet = () => A.evaluate(() => ({ chip: document.querySelector('#syncWarn button')?.textContent.trim() || '', fb: !!document.getElementById('fileBar'),
+    rail: /Kaydedildi|otomatik kaydedilir/.test(document.getElementById('rail').textContent) }));
+  const edit = () => A.evaluate(() => { const p = DB.projects.find(x => x.id === 'p1'); p.description = (p.description || '').trim() + ' ' + Date.now(); save(); });
+  await edit(); await sleep(60);
+  const q0 = await quiet(); await A.evaluate(() => flushAll()); await sleep(100); const q1 = await quiet();
+  ok('sync: no indicator while saving normally or after save (no #fileBar)', !q0.chip && !q1.chip && !q0.fb && !q0.rail && !q1.rail, JSON.stringify([q0, q1]));
+  await A.context().setOffline(true); await edit(); await sleep(1200);
+  const off = await A.evaluate(() => { const c = document.querySelector('#syncWarn button'); return { t: c?.textContent.trim(), act: c?.dataset.act, live: document.getElementById('syncWarn').getAttribute('role'),
+    vis: !!c && c.getBoundingClientRect().width > 0, dirty: DIRTY }; });
+  ok('sync: offline → chip "Bağlantı yok — değişiklikler bekliyor" (status, retry button)', off.t === 'Bağlantı yok — değişiklikler bekliyor' && off.act === 'savefile' && off.live === 'status' && off.vis && off.dirty, JSON.stringify(off));
+  ok('sync: pending changes still guarded on page close (beforeunload)', await A.evaluate(() => { const e = new Event('beforeunload', { cancelable: true }); dispatchEvent(e); return e.defaultPrevented; }));
+  /* çevrimdışıyken çipe tıklamak hemen dener (başarısız: çip kalır); bağlantı gelince kendiliğinden gönderilir */
+  await A.click('#syncWarn button'); await sleep(600);
+  ok('sync: chip click while offline retries, chip stays', await A.evaluate(() => SYNC_STATE === 'error' && !!document.querySelector('#syncWarn button')));
+  await A.context().setOffline(false); await sleep(1500);
+  ok('sync: back online → saved automatically, chip gone', await A.evaluate(() => !document.querySelector('#syncWarn button') && SYNC_STATE === 'ok' && !DIRTY));
+  /* gönderim 10 sn'den uzun sürerse "gecikiyor" çipi */
+  await A.route('**/api/sync', async r => { await sleep(11500); try { await r.continue(); } catch (_) { } });
+  await edit(); await sleep(10900);
+  const slow = (await quiet()).chip;
+  await A.unroute('**/api/sync'); await A.evaluate(() => flushAll()); await sleep(1200);
+  ok('sync: saving longer than 10 s → chip, then gone when saved', slow === 'Kaydetme gecikiyor — yeniden dene' && !(await quiet()).chip, slow);
+  /* gönderim başarısız (sunucu hatası) */
+  await A.route('**/api/sync', r => r.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"x"}' }));
+  await edit(); await sleep(1500);
+  const fail = (await quiet()).chip;
+  await A.unroute('**/api/sync'); await A.click('#syncWarn button'); await sleep(1500);
+  ok('sync: failed send → "Kaydedilemedi, yeniden deneniyor", retry clears it', fail === 'Kaydedilemedi, yeniden deneniyor' && !(await quiet()).chip, fail);
 
   // 11) yönetici / üye / izleyici: sekmeler ve menü rol bazlı; üyede Proje ayarları yok, #admin → Pano
   const Dp = await mk('admin-role'); await login(Dp, 'nvd' + RUN, 'Baslangic123', 'GezYon12345!');
