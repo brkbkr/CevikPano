@@ -2,10 +2,11 @@ import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { authRoutes, requireUser, meOf } from './auth.js';
-import { readState, readChanges, applyChanges, HttpError } from './store.js';
+import { readState, readChanges, applyChanges, addContact, HttpError } from './store.js';
 import { listNotifications, unreadCount, markRead } from './notify.js';
 import { createSnapshot, listSnapshots, getSnapshot, replaceAll, listTrash, restoreTrash, activity } from './backup.js';
 import { isAdminRole } from './util.js';
+import { mailRoutes } from './mail.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(here, '..', 'public');
@@ -128,6 +129,11 @@ export function createApp(pool) {
     res.json(await applyChanges(pool, req.user, req.body?.changes));
   });
 
+  /* Hızlı kişi ekleme (görev 12): yönetici + üye; izleyici 403. Yalnız ad, e-posta, telefon. */
+  app.post('/api/customers/:id/contacts', requireUser, async (req, res) => {
+    res.json(await addContact(pool, req.user, req.params.id, req.body));
+  });
+
   /* Tam yedek (yönetici). Parola özetleri dahil edilmez. */
   app.get('/api/export', requireUser, async (req, res) => {
     if (!isAdminRole(req.user.role)) throw new HttpError(403, 'Yalnızca yöneticiler');
@@ -136,6 +142,9 @@ export function createApp(pool) {
     res.setHeader('Content-Disposition', `attachment; filename="pano-yedek-${new Date().toISOString().slice(0, 10)}.json"`);
     res.json(data);
   });
+
+  /* Posta kutuları (görev 11, E2): yalnız yönetici; jetonlar hiçbir yanıtta yok. */
+  mailRoutes(app, pool, requireUser, requireAdmin);
 
   app.use('/api', (_req, _res, next) => next(new HttpError(404, 'Bulunamadı')));
 

@@ -61,6 +61,8 @@ function contactRules(list) {
 /* Proje türü (#12): boş/yok = genel sprint ayarından hesaplanır (kayda yazılmaz). */
 export const PROJECT_TYPES = ['board', 'agile'];
 export const COL_NAME_MAX = 30;
+/* Yeni proje şablonu (görev 10): yalnız bilgi; boş/yok = şablonsuz (eski) proje. */
+export const PROJECT_TEMPLATES = ['kanban', 'scrum', 'gorev', 'uyarlama', 'talep', 'yolharitasi', 'bos'];
 
 const RULES = {
   projects: d => [
@@ -71,6 +73,7 @@ const RULES = {
     [optBool(d.archived), 'Arşiv bilgisi true ya da false olmalı'],
     [d.customerId == null || d.customerId === '' || validId(d.customerId), 'Geçersiz cari'],
     [d.type == null || d.type === '' || PROJECT_TYPES.includes(d.type), 'Geçersiz proje türü'],
+    [d.template == null || d.template === '' || PROJECT_TEMPLATES.includes(d.template), 'Geçersiz şablon'],
   ],
   /* Cariler (#11). İletilerde değer YOK: kişisel veri (T.C. kimlik no, e-posta) günlüğe/yanıta düşmesin. */
   customers: d => [
@@ -110,12 +113,17 @@ const RULES = {
     [typeof d.summary === 'string' && d.summary.length <= 500, 'İş özeti gerekli (en fazla 500 karakter)'],
     [optStr(d.description, 100000), 'Açıklama çok uzun'],
     [date(d.due) && date(d.start), 'Geçersiz tarih'],
+    [d.customerId == null || d.customerId === '' || validId(d.customerId), 'Geçersiz cari'],
     [d.estimate == null || (typeof d.estimate === 'number' && d.estimate >= 0), 'Tahmin negatif olamaz'],
     [d.priority == null || (Number.isInteger(d.priority) && d.priority >= 1 && d.priority <= 5), 'Öncelik 1 ile 5 arasında bir tamsayı olmalı'],
     [d.points == null || (typeof d.points === 'number' && Number.isFinite(d.points) && d.points >= 0 && d.points <= 1000), 'Puan 0 ile 1000 arasında bir sayı olmalı'],
     [d.color == null || d.color === '' || (typeof d.color === 'string' && HEX_RE.test(d.color)), 'Renk #RRGGBB biçiminde olmalı'],
     [d.labels == null || (Array.isArray(d.labels) && d.labels.length <= 50 && d.labels.every(l => typeof l === 'string' && l.length <= 100)),
       'Etiketler en fazla 50 metin olmalı (her biri en fazla 100 karakter)'],
+    /* Talep eden (görev 12): yok/null ya da cari kimliği + o carinin yetkili kişi kimliği. */
+    [d.requester == null || (typeof d.requester === 'object' && !Array.isArray(d.requester)
+      && validId(d.requester.customerId) && validId(d.requester.contactId)), 'Talep eden geçersiz'],
+    [optEmail(d.requesterEmail), 'Talep edenin e-posta adresi geçersiz'],
   ],
   worklogs: d => [
     [str(d.issueId, 200), 'Süre kaydının işi yok'],
@@ -123,11 +131,51 @@ const RULES = {
     [date(d.date) && d.date, 'Süre kaydının tarihi yok'],
     [typeof d.hours === 'number' && Number.isFinite(d.hours) && d.hours >= 0 && d.hours <= 24, 'Saat 0 ile 24 arasında olmalı'],
   ],
+  /* Geçmiş (B2): eski kayıtlarla uyum için gevşek. Canlı yazmada işi olmalı; içe aktarma/geri yükleme
+     işsiz, yazarsız ya da zamansız eski kaydı atlamaz. Metinler önce normalizeHistory ile kırpılır. */
+  history: (d, opts) => [
+    [opts.live ? str(d.issueId, 200) && d.issueId.length > 0
+      : d.issueId == null || typeof d.issueId === 'number' || str(d.issueId, 200), 'Geçmiş kaydının işi yok'],
+    [d.field == null || str(d.field, HIST_FIELD_MAX), `Geçmiş alan adı en fazla ${HIST_FIELD_MAX} karakter`],
+    [histVal(d.from) && histVal(d.to), 'Geçmiş değeri metin, sayı ya da boş olmalı'],
+    [opts.live ? optStr(d.userId, 200) : d.userId == null || ['string', 'number'].includes(typeof d.userId),
+      'Geçmiş kaydının kişisi geçersiz'],
+    [!opts.live || d.at == null || (typeof d.at === 'number' && Number.isFinite(d.at)) || str(d.at, 40),
+      'Geçmiş kaydının zamanı geçersiz'],
+    [['kind', 'key', 'rule'].every(k => d[k] == null || str(d[k], HIST_TEXT_MAX)), 'Geçmiş kaydı alanı geçersiz'],
+  ],
   comments: d => [
     [str(d.issueId, 200), 'Yorumun işi yok'],
     [typeof d.body === 'string' && d.body.length <= 20000, 'Yorum en fazla 20.000 karakter'],
   ],
 };
+
+/* Geçmiş metinleri (B2): alan adı 100, değerler ve diğer metinler 200 karaktere '…' ile kırpılır; nesne/dizi
+   değer (eski veri) JSON metnine çevrilir. Doğrulamadan ÖNCE çağrılır (eski uzun kayıt reddedilmesin/atlanmasın).
+   Değer değiştiyse true döner. */
+export const HIST_TEXT_MAX = 200;
+export const HIST_FIELD_MAX = 100;
+const histVal = v => v == null || ['string', 'number', 'boolean'].includes(typeof v);
+const clip = (s, n) => {
+  if (s.length <= n) return s;
+  let t = s.slice(0, n - 1);
+  if (/[\uD800-\uDBFF]$/.test(t)) t = t.slice(0, -1);   // vekil çifti bölünmesin
+  return t + '…';
+};
+export function normalizeHistory(d) {
+  if (!d || typeof d !== 'object') return false;
+  let changed = false;
+  for (const k of ['field', 'from', 'to', 'kind', 'key', 'rule']) {
+    let v = d[k];
+    if (v === undefined) continue;
+    if (v !== null && typeof v === 'object') { try { v = JSON.stringify(v); } catch { v = String(v); } }
+    else if (typeof v === 'number' && !Number.isFinite(v)) v = null;
+    if (k !== 'from' && k !== 'to' && (typeof v === 'number' || typeof v === 'boolean')) v = String(v);
+    if (typeof v === 'string') v = clip(v, k === 'field' ? HIST_FIELD_MAX : HIST_TEXT_MAX);
+    if (v !== d[k]) { d[k] = v; changed = true; }
+  }
+  return changed;
+}
 
 /* İş önceliği: sayısal metin sayıya çevrilir, geçersiz değer 3 (Orta) olur.
    Alan yoksa (eski kayıt) dokunulmaz. Değer değiştiyse true döner. */

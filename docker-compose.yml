@@ -44,6 +44,15 @@ services:
       PUBLIC_URL: https://${DOMAIN:-localhost}
       PEER_URL: ${PEER_URL:-}
       GITHUB_REPO: ${GITHUB_REPO:-brkbkr/CevikPano}
+      # Posta kutusu bağlantısı (docs/POSTA-KURULUM.md); boşsa özellik kapalı
+      MAIL_TOKEN_KEY: ${MAIL_TOKEN_KEY:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      MS_CLIENT_ID: ${MS_CLIENT_ID:-}
+      MS_CLIENT_SECRET: ${MS_CLIENT_SECRET:-}
+      MS_TENANT: ${MS_TENANT:-common}
+      MAIL_ENABLED: ${MAIL_ENABLED:-false}
+      MAIL_POLL_SEC: ${MAIL_POLL_SEC:-120}
     networks:
       default: {}
       edge:

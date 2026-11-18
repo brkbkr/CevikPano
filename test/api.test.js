@@ -180,6 +180,35 @@ t('yetki (#9 Benim işlerim): izleyici durum/öncelik/atanan değiştiremez, sü
   assert.equal((await a.state()).json.data.ui?.homeProj, undefined);
 });
 
+t('gezinme (A2): sol menü tercihleri (nav, wsOpen, recentProj, recentWs) kişisel; izleyici de yazar, şema değişmez', async () => {
+  const a = client();
+  await a.login('admin', 'test-admin-pw');
+  const v = client();
+  await v.login('izci', 'IzciYeni12345');
+  const ui = { view: 'board', project: 'p1', nav: { order: ['customers', 'recent', 'projects', 'users', 'system'], hidden: ['projects'] },
+    wsOpen: { ws1: false }, recentProj: ['p1'], recentWs: ['ws1'] };
+  const r = await v.sync([{ c: '_prefs', id: 'ui', op: 'put', data: ui }]);
+  assert.equal(r.json.applied, 1);
+  assert.deepEqual(r.json.rejected, []);
+  const v2 = client();
+  await v2.login('izci', 'IzciYeni12345');
+  const got = (await v2.state()).json.data.ui;
+  assert.deepEqual(got.nav, ui.nav);
+  assert.deepEqual(got.wsOpen, ui.wsOpen);
+  assert.deepEqual(got.recentProj, ['p1']);
+  assert.deepEqual(got.recentWs, ['ws1']);
+  /* varsayılana dönünce nav silinir: ui bütün olarak yazılır, eski nav kalmaz */
+  await v.sync([{ c: '_prefs', id: 'ui', op: 'put', data: { ...ui, nav: undefined } }]);
+  assert.equal((await v2.state()).json.data.ui.nav, undefined);
+  /* başkasına gitmez */
+  const au = (await a.state()).json.data.ui;
+  assert.equal(au?.nav, undefined);
+  assert.equal(au?.recentProj, undefined);
+  /* izleyici yine de veri değiştiremez (yetki sunucuda aynen) */
+  const rj = await v.sync([{ c: 'projects', id: 'p_izci', op: 'put', data: { name: 'İzci projesi', key: 'IZC' } }]);
+  assert.equal(rj.json.applied, 0);
+});
+
 t('son aktif yönetici pasifleştirilemez; kendi hesabını silemez', async () => {
   const a = client();
   await a.login('admin', 'test-admin-pw');
@@ -1654,5 +1683,857 @@ describe('proje türü ve kolonlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
       ['Proje üyelerini yalnızca yönetici ya da proje üyesi değiştirebilir']);
     ok(await N.sync([P('pk_bos', { ...bos, members: [] })]));
     ok(await N.sync([P('pk_yeni_n', { members: ['u_admin'] })]));                  // yeni proje: serbest
+  });
+
+  /* Şablon galerisi (görev 10): data.template yalnız bilgi; bilinen değerler ya da boş. */
+  test('şablon: bilinen 7 değer ve boş kabul; "x"/sayı "Geçersiz şablon"; kayıt oluşmaz', async () => {
+    for (const t of ['x', 'Kanban', 42, '<b>talep</b>'])
+      assert.deepEqual(reasons(await A.sync([P('pk_tplx', { template: t })])), ['Geçersiz şablon'], String(t));
+    assert.equal(await row('projects', 'pk_tplx'), undefined);
+    const all = ['kanban', 'scrum', 'gorev', 'uyarlama', 'talep', 'yolharitasi', 'bos'];
+    ok(await A.sync([...all.map(t => P('pk_tpl_' + t, { template: t })), P('pk_tpl_e', { template: '' })]));
+    for (const t of all) assert.equal((await row('projects', 'pk_tpl_' + t)).template, t);
+  });
+
+  test('şablon: Üye Talep projesini kolonlarıyla açar (data.template="talep"); Scrum → Agile; izleyici ret', async () => {
+    const tc = [['Yeni', 'todo'], ['İnceleniyor', 'inprogress'], ['Talep edenden yanıt bekleniyor', 'inprogress'], ['Çözüldü', 'done'], ['Kapandı', 'done']];
+    ok(await M.sync([P('pk_talep', { type: 'board', template: 'talep', members: ['u_k_m'], lead: 'u_k_m', workspaceId: 'ws1' }),
+      ...tc.map(([n, c], k) => S('pk_talep_' + k, 'pk_talep', n, c, k))]));
+    const p = await row('projects', 'pk_talep');
+    assert.deepEqual([p.template, p.type], ['talep', 'board']);
+    assert.deepEqual((await cols('pk_talep')).sort((a, b) => a.ord - b.ord).map(s => [s.name, s.cat]), tc);
+    ok(await M.sync([P('pk_scrum', { type: 'agile', template: 'scrum', members: ['u_k_m'] }), ...flow('pk_scrum')]));
+    assert.deepEqual([(await row('projects', 'pk_scrum')).type, (await row('projects', 'pk_scrum')).template], ['agile', 'scrum']);
+    const r = await V.sync([P('pk_tpl_v', { type: 'board', template: 'kanban', members: ['u_k_v'] })]);
+    assert.deepEqual(reasons(r), ['salt okunur kullanıcı']);
+    assert.equal(await row('projects', 'pk_tpl_v'), undefined);
+  });
+});
+
+describe('geçmiş ve yorum koruması', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  const LOCKED = 'Geçmiş kaydı değiştirilemez';
+  const NOT_OWNER = 'Başkasının yorumunu yalnızca yönetici değiştirebilir';
+  const NO_ISSUE = 'Geçmiş kaydının işi bulunamadı';
+  const I = (id, extra = {}) => ({ c: 'issues', id, op: 'put', data: { projectId: 'ph1', summary: id, statusId: 'ph1_a', ...extra } });
+  const H = (id, data) => ({ c: 'history', id, op: 'put', data: { field: 'Durum', from: 'A', to: 'B', ...data } });
+  const C = (id, data) => ({ c: 'comments', id, op: 'put', data: { body: 'yorum', ...data } });
+  const D = (c, id) => ({ c, id, op: 'del' });
+  const reasons = r => r.json.rejected.map(x => x.reason);
+  const row = async (table, id) => (await pool.query(`SELECT data FROM ${table} WHERE id=$1`, [id])).rows[0]?.data;
+  const ok = r => { assert.equal(r.status, 200, JSON.stringify(r.json)); assert.deepEqual(r.json.rejected, []); return r; };
+  const adj = (r, c, id) => r.json.adjusted.some(x => x.c === c && x.id === id);
+  let A, M, N, V;
+  const newUser = async (id, username, role) => {
+    await A.sync([{ c: 'users', id, op: 'put', data: { username, name: username, role, active: true } }]);
+    const k = client(); await k.login(username, 'Start12345');
+    assert.equal((await k.req('POST', '/api/auth/password', { newPassword: 'GecYeni123456' })).status, 200);
+    return k;
+  };
+
+  before(async () => {
+    A = client(); await A.login('admin', 'test-admin-pw');
+    M = await newUser('u_h_m', 'gecuye', 'member');
+    N = await newUser('u_h_n', 'gecuye2', 'member');
+    V = await newUser('u_h_v', 'gecizci', 'viewer');
+    ok(await A.sync([
+      { c: 'projects', id: 'ph1', op: 'put', data: { name: 'Geçmiş', key: 'GEC', counter: 0 } },
+      { c: 'statuses', id: 'ph1_a', op: 'put', data: { projectId: 'ph1', name: 'Yapılacak', cat: 'todo', ord: 0 } },
+      I('ih1'), I('ih2'),
+    ]));
+  });
+
+  test('üye: sahte userId oturuma düzeltilir (adjusted); zaman ±5 dk kırpılır; zamansız kayda şimdi yazılır', async () => {
+    const t0 = Date.now();
+    const r = ok(await M.sync([
+      H('hh_fake', { issueId: 'ih1', userId: 'u_admin', at: t0 }),
+      H('hh_ileri', { issueId: 'ih1', userId: 'u_h_m', at: t0 + 3600e3 }),
+      H('hh_geri', { issueId: 'ih1', userId: 'u_h_m', at: t0 - 3600e3 }),
+      H('hh_yok', { issueId: 'ih1', userId: 'u_h_m' }),
+      H('hh_dogru', { issueId: 'ih1', userId: 'u_h_m', at: t0 }),
+    ]));
+    assert.equal(r.json.applied, 5);
+    const t1 = Date.now();
+    const fake = await row('history', 'hh_fake');
+    assert.equal(fake.userId, 'u_h_m'); assert.equal(fake.at, t0);
+    assert.ok(adj(r, 'history', 'hh_fake'));
+    const ileri = await row('history', 'hh_ileri'), geri = await row('history', 'hh_geri'), yok = await row('history', 'hh_yok');
+    assert.ok(ileri.at <= t1 + 5 * 60e3 && ileri.at >= t0 + 5 * 60e3, String(ileri.at));
+    assert.ok(geri.at >= t0 - 5 * 60e3 && geri.at <= t1 - 5 * 60e3, String(geri.at));
+    assert.ok(yok.at >= t0 && yok.at <= t1);
+    for (const id of ['hh_ileri', 'hh_geri', 'hh_yok']) assert.ok(adj(r, 'history', id), id);
+    assert.ok(!adj(r, 'history', 'hh_dogru'));
+    assert.equal((await row('history', 'hh_dogru')).at, t0);
+  });
+
+  test('yönetici yazar/zaman zorlamasından muaf (Birleştir/seed)', async () => {
+    const r = ok(await A.sync([H('hh_adm', { issueId: 'ih1', userId: 'u_h_n', at: 1000 })]));
+    const d = await row('history', 'hh_adm');
+    assert.equal(d.userId, 'u_h_n'); assert.equal(d.at, 1000);
+    assert.ok(!adj(r, 'history', 'hh_adm'));
+  });
+
+  test('olmayan işe geçmiş reddedilir; aynı gönderimde açılan işin geçmişi (dizide önce gelse de) kabul edilir', async () => {
+    assert.deepEqual(reasons(await M.sync([H('hh_yetim', { issueId: 'i_yok_h', userId: 'u_h_m', at: Date.now() })])), [NO_ISSUE]);
+    assert.equal(await row('history', 'hh_yetim'), undefined);
+    assert.deepEqual(reasons(await M.sync([H('hh_bos', { userId: 'u_h_m', at: Date.now() })])), ['Geçmiş kaydının işi yok']);
+    ok(await M.sync([H('hh_yeni', { issueId: 'ih_yeni', field: 'Oluşturma', kind: 'create', from: null, to: 'ih_yeni', at: Date.now() }), I('ih_yeni')]));
+    assert.equal((await row('history', 'hh_yeni')).issueId, 'ih_yeni');
+    assert.equal((await row('history', 'hh_yeni')).kind, 'create');
+  });
+
+  test('var olan geçmiş kaydı: aynı veri sessizce geçer; değiştirme ve silme üye ve yöneticide 403', async () => {
+    const cur = await row('history', 'hh_dogru');
+    const same = ok(await M.sync([{ c: 'history', id: 'hh_dogru', op: 'put', data: { ...cur }, base: cur }]));
+    assert.equal(same.json.applied, 0);
+    ok(await A.sync([{ c: 'history', id: 'hh_dogru', op: 'put', data: { ...cur } }]));
+    assert.deepEqual(reasons(await M.sync([{ c: 'history', id: 'hh_dogru', op: 'put', data: { ...cur, to: 'C' }, base: cur }])), [LOCKED]);
+    assert.deepEqual(reasons(await A.sync([{ c: 'history', id: 'hh_dogru', op: 'put', data: { ...cur, to: 'C' }, base: cur }])), [LOCKED]);
+    assert.deepEqual(reasons(await N.sync([{ c: 'history', id: 'hh_dogru', op: 'put', data: { ...cur, issueId: 'ih2' } }])), [LOCKED]);
+    assert.deepEqual(reasons(await M.sync([D('history', 'hh_dogru')])), [LOCKED]);
+    assert.deepEqual(reasons(await A.sync([D('history', 'hh_dogru')])), [LOCKED]);
+    assert.deepEqual(await row('history', 'hh_dogru'), cur);
+    /* Olmayan kaydı silme ret değildir (etkisiz). */
+    const r = ok(await M.sync([D('history', 'hh_hic_yok')]));
+    assert.equal(r.json.applied, 0);
+    /* Yeniden gönderim: sunucunun düzelttiği yazar/zaman dışında aynı veri → ret yok. */
+    const fake = await row('history', 'hh_fake');
+    const re = ok(await M.sync([H('hh_fake', { ...fake, userId: 'u_admin' })]));
+    assert.equal(re.json.applied, 0);
+    assert.deepEqual(await row('history', 'hh_fake'), fake);
+  });
+
+  test('eşzamanlı oluşturma: aynı kimlikli ikinci geçmiş/yorum ilk yazanın kaydını ezmez', async () => {
+    for (const [table, mk] of [['history', id => H(id, { issueId: 'ih1', to: 'ikinci', at: Date.now() })],
+                               ['comments', id => C(id, { issueId: 'ih1', body: 'ikinci' })]]) {
+      const id = table + '_yaris', c = await pool.connect();
+      try {
+        await c.query('BEGIN');
+        await c.query(`INSERT INTO ${table} (id, data) VALUES ($1, $2::jsonb)`,
+          [id, JSON.stringify({ id, issueId: 'ih1', userId: 'u_h_m', at: 1, field: 'Durum', to: 'ilk', body: 'ilk' })]);
+        const pending = N.sync([mk(id)]);
+        await new Promise(r => setTimeout(r, 300));
+        await c.query('COMMIT');
+        assert.deepEqual(reasons(await pending), ['Kayıt aynı anda oluşturuldu, yeniden deneyin'], table);
+      } finally { c.release(); }
+      const d = await row(table, id);
+      assert.equal(d.userId, 'u_h_m', table); assert.equal(table === 'history' ? d.to : d.body, 'ilk', table);
+      /* yeniden denemede kayıt var: koruma kuralları işler */
+      assert.deepEqual(reasons(await N.sync([mk(id)])), [table === 'history' ? LOCKED : NOT_OWNER], table);
+    }
+  });
+
+  test('izleyici geçmiş yazamaz ve silemez', async () => {
+    assert.deepEqual(reasons(await V.sync([H('hh_v', { issueId: 'ih1', userId: 'u_h_v', at: Date.now() }), D('history', 'hh_dogru')])),
+      ['salt okunur kullanıcı', 'salt okunur kullanıcı']);
+    assert.equal(await row('history', 'hh_v'), undefined);
+    assert.ok(await row('history', 'hh_dogru'));
+  });
+
+  test('metinler 200 (alan adı 100) karaktere "…" ile kırpılır; nesne değer metne çevrilir', async () => {
+    const r = ok(await M.sync([H('hh_uzun', { issueId: 'ih1', at: Date.now(), field: 'F'.repeat(150), from: 'x'.repeat(250), to: ['a', 'b'], rule: 'k'.repeat(300) })]));
+    const d = await row('history', 'hh_uzun');
+    assert.equal(d.from.length, 200); assert.ok(d.from.endsWith('…'));
+    assert.equal(d.field.length, 100); assert.ok(d.field.endsWith('…'));
+    assert.equal(d.rule.length, 200);
+    assert.equal(d.to, '["a","b"]');
+    assert.ok(adj(r, 'history', 'hh_uzun'));
+    /* Kısa metinler ve sayı/boolean/null değerler aynen kalır. */
+    ok(await M.sync([H('hh_tur', { issueId: 'ih1', at: Date.now(), from: 3, to: true })]));
+    const t = await row('history', 'hh_tur');
+    assert.strictEqual(t.from, 3); assert.strictEqual(t.to, true);
+  });
+
+  test('iş + geçmiş + yorum silmeleri aynı istekte (dizide önce gelse de): ret yok, hepsi çöp kutusunda; geri yüklemede "Geri yükleme" satırı', async () => {
+    ok(await M.sync([I('ih_sil'), C('ch_sil_n', { issueId: 'ih_sil' }), H('hh_sil', { issueId: 'ih_sil', at: Date.now() })]));
+    ok(await N.sync([C('ch_sil_baska', { issueId: 'ih_sil', userId: 'u_h_n' })]));
+    /* Bugünkü istemci iş silmede yorumları da siler (başkasınınki dahil); proje silmede geçmişi de. */
+    const r = ok(await M.sync([D('history', 'hh_sil'), D('comments', 'ch_sil_baska'), D('comments', 'ch_sil_n'), D('issues', 'ih_sil')]));
+    assert.equal(r.json.applied, 1);
+    for (const [t, id] of [['issues', 'ih_sil'], ['history', 'hh_sil'], ['comments', 'ch_sil_baska']]) assert.equal(await row(t, id), undefined, id);
+    const del = (await pool.query(`SELECT collection, record_id, batch_id FROM deleted_records WHERE record_id IN ('ih_sil','hh_sil','ch_sil_baska','ch_sil_n')`)).rows;
+    assert.equal(del.length, 4);
+    assert.equal(new Set(del.map(x => x.batch_id)).size, 1);
+    const s0 = (await A.state()).json.seq;
+    const it = (await A.req('GET', '/api/trash')).json.find(x => x.record_id === 'ih_sil');
+    const rr = await A.req('POST', `/api/trash/${it.id}/restore`, {});
+    assert.equal(rr.json.restored, 4);                                  // "Geri yükleme" satırı sayılmaz
+    assert.equal((await row('history', 'hh_sil')).issueId, 'ih_sil');   // eski geçmiş geri geldi
+    const hs = (await pool.query(`SELECT data FROM history WHERE issue_id='ih_sil' AND data->>'kind'='restore'`)).rows.map(x => x.data);
+    assert.equal(hs.length, 1);
+    assert.equal(hs[0].field, 'Geri yükleme'); assert.equal(hs[0].userId, 'u_admin');
+    assert.ok(Math.abs(hs[0].at - Date.now()) < 60e3);
+    const ch = (await A.req('GET', `/api/changes?since=${s0}`)).json;
+    assert.ok(ch.items.some(x => x.c === 'history' && x.id === hs[0].id && x.op === 'put'), JSON.stringify(ch.items.map(x => x.c + ':' + x.id)));
+  });
+
+  test('yönetici proje silme (bugünkü istemci sırası: geçmiş/yorum silmeleri işlerden önce): ret yok', async () => {
+    ok(await A.sync([
+      { c: 'projects', id: 'ph2', op: 'put', data: { name: 'Silinecek', key: 'SLN', counter: 0 } },
+      { c: 'statuses', id: 'ph2_a', op: 'put', data: { projectId: 'ph2', name: 'Yapılacak', cat: 'todo', ord: 0 } },
+      { c: 'issues', id: 'ih_p2', op: 'put', data: { projectId: 'ph2', summary: 'x', statusId: 'ph2_a' } },
+    ]));
+    ok(await M.sync([H('hh_p2', { issueId: 'ih_p2', at: Date.now() }), C('ch_p2', { issueId: 'ih_p2' })]));
+    ok(await A.sync([D('comments', 'ch_p2'), D('history', 'hh_p2'), D('issues', 'ih_p2'), D('statuses', 'ph2_a'), D('projects', 'ph2')]));
+    for (const [t, id] of [['projects', 'ph2'], ['issues', 'ih_p2'], ['history', 'hh_p2'], ['comments', 'ch_p2']]) assert.equal(await row(t, id), undefined, id);
+  });
+
+  test('yorumlar: başkasının yorumunu üye değiştiremez/silemez (403); kendi yorumu ve yönetici serbest; yeni yorumda yazar oturum', async () => {
+    let r = ok(await M.sync([C('ch_m', { issueId: 'ih1', userId: 'u_h_n', at: Date.now() })]));
+    assert.equal((await row('comments', 'ch_m')).userId, 'u_h_m');
+    assert.ok(adj(r, 'comments', 'ch_m'));
+    r = ok(await M.sync([C('ch_m2', { issueId: 'ih1', at: Date.now() })]));               // yazarsız → oturum
+    assert.equal((await row('comments', 'ch_m2')).userId, 'u_h_m');
+    const cur = await row('comments', 'ch_m');
+    assert.deepEqual(reasons(await N.sync([{ c: 'comments', id: 'ch_m', op: 'put', data: { ...cur, body: 'değişti' }, base: cur }])), [NOT_OWNER]);
+    assert.deepEqual(reasons(await N.sync([D('comments', 'ch_m')])), [NOT_OWNER]);
+    assert.deepEqual(reasons(await V.sync([D('comments', 'ch_m')])), ['salt okunur kullanıcı']);
+    assert.equal((await row('comments', 'ch_m')).body, 'yorum');
+    /* Kendi yorumu: düzenler; yazarı başkasına aktaramaz (sunucu korur). */
+    r = ok(await M.sync([{ c: 'comments', id: 'ch_m', op: 'put', data: { ...cur, body: 'düzenlendi', userId: 'u_h_n' }, base: cur }]));
+    assert.deepEqual([(await row('comments', 'ch_m')).body, (await row('comments', 'ch_m')).userId], ['düzenlendi', 'u_h_m']);
+    assert.ok(adj(r, 'comments', 'ch_m'));
+    /* Yönetici başkasının yorumunu düzenler ve siler; yönetici yazar muafiyeti yorumda da geçerli. */
+    const c2 = await row('comments', 'ch_m');
+    ok(await A.sync([{ c: 'comments', id: 'ch_m', op: 'put', data: { ...c2, body: 'yönetici düzeltti' }, base: c2 }]));
+    assert.deepEqual([(await row('comments', 'ch_m')).body, (await row('comments', 'ch_m')).userId], ['yönetici düzeltti', 'u_h_m']);
+    ok(await A.sync([C('ch_a', { issueId: 'ih1', userId: 'u_h_n' })]));
+    assert.equal((await row('comments', 'ch_a')).userId, 'u_h_n');
+    ok(await A.sync([D('comments', 'ch_m')]));
+    assert.equal(await row('comments', 'ch_m'), undefined);
+    /* Kendi yorumunu siler; olmayan yorumu silmek ret değildir. */
+    ok(await M.sync([D('comments', 'ch_m2'), D('comments', 'ch_hic_yok')]));
+    assert.equal(await row('comments', 'ch_m2'), undefined);
+  });
+
+  test('geçmiş: bilinmeyen anahtarlar atılır, 2 KB sınırı, üye "restore" türü yazamaz', async () => {
+    let r = ok(await M.sync([H('hh_ek', { issueId: 'ih1', at: Date.now(), body: 'x'.repeat(5000), extra: { a: 1 }, kind: 'edit' })]));
+    assert.deepEqual(Object.keys(await row('history', 'hh_ek')).sort(), ['at', 'field', 'from', 'id', 'issueId', 'kind', 'to', 'userId']);
+    assert.ok(adj(r, 'history', 'hh_ek'));
+    /* Alanlar kırpılsa da toplam 2 KB'ı aşan kayıt (uzun kimlikler) reddedilir. */
+    assert.deepEqual(reasons(await A.sync([H('hh_buyuk', { issueId: 'ih1', userId: 'u'.repeat(200), key: 'k'.repeat(200), rule: 'r'.repeat(200),
+      field: 'f'.repeat(100), from: '€'.repeat(200), to: '€'.repeat(200), kind: '€'.repeat(200) })])), ['Geçmiş kaydı çok büyük']);
+    assert.equal(await row('history', 'hh_buyuk'), undefined);
+    r = ok(await M.sync([H('hh_rst', { issueId: 'ih1', at: Date.now(), field: 'Geri yükleme', kind: 'restore' })]));
+    assert.equal((await row('history', 'hh_rst')).kind, undefined);
+    assert.ok(adj(r, 'history', 'hh_rst'));
+    ok(await A.sync([H('hh_rst_a', { issueId: 'ih1', field: 'Geri yükleme', kind: 'restore' })]));
+    assert.equal((await row('history', 'hh_rst_a')).kind, 'restore');
+  });
+
+  test('yorum: işi var olmalı (aynı gönderimdeki yeni iş dahil); yazarı olmayan eski yorumu yalnız yönetici değiştirir/siler', async () => {
+    assert.deepEqual(reasons(await M.sync([C('ch_yetim', { issueId: 'i_yok_c' })])), ['Yorumun işi bulunamadı']);
+    assert.deepEqual(reasons(await A.sync([C('ch_yetim', { issueId: 'i_yok_c' })])), ['Yorumun işi bulunamadı']);
+    assert.equal(await row('comments', 'ch_yetim'), undefined);
+    ok(await M.sync([C('ch_yeniis', { issueId: 'ih_yorum' }), I('ih_yorum')]));
+    await pool.query(`INSERT INTO comments (id, data) VALUES ('ch_eski', '{"id":"ch_eski","issueId":"ih1","body":"eski"}')`);
+    const cur = await row('comments', 'ch_eski');
+    assert.deepEqual(reasons(await M.sync([{ c: 'comments', id: 'ch_eski', op: 'put', data: { ...cur, body: 'x' }, base: cur }])), [NOT_OWNER]);
+    assert.deepEqual(reasons(await M.sync([D('comments', 'ch_eski')])), [NOT_OWNER]);
+    ok(await A.sync([{ c: 'comments', id: 'ch_eski', op: 'put', data: { ...cur, body: 'yönetici' }, base: cur }]));
+    assert.equal((await row('comments', 'ch_eski')).userId, undefined);
+    ok(await A.sync([D('comments', 'ch_eski')]));
+    assert.equal(await row('comments', 'ch_eski'), undefined);
+  });
+
+  test('içe aktarma (replaceAll) eski, uzun, yazarsız, zamansız geçmişi atlamaz; metinleri kırpar', async () => {
+    const before = (await A.state()).json.data;
+    const data = {
+      projects: [{ id: 'pz', key: 'ESK', name: 'Eski', counter: 1 }],
+      issues: [{ id: 'iz1', projectId: 'pz', key: 'ESK-1', summary: 'eski' }],
+      history: [
+        { id: 'hz_yazarsiz', issueId: 'iz1', field: 'Durum', from: 'A', to: 'B' },
+        { id: 'hz_uzun', issueId: 'iz1', userId: 'u_admin', at: '2019-01-01T00:00:00Z', field: 'Özet', from: 'u'.repeat(5000), to: { eski: 1 } },
+        { id: 'hz_issiz', field: 'Durum', from: 1, to: 2, at: 12 },
+        { id: 'hz_alan', issueId: 'iz1', userId: 7, field: 'A'.repeat(300), from: null, to: false },
+      ],
+      comments: [{ id: 'cz_yetim', issueId: 'iz_yok', body: 'işi silinmiş eski yorum' }],
+    };
+    const r = await A.req('POST', '/api/import', { data });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.equal(r.json.history, 4);
+    assert.equal(r.json.comments, 1);                                    // yorumun işi içe aktarmada denetlenmez
+    assert.ok(!r.json.skipped, JSON.stringify(r.json));
+    const u = await row('history', 'hz_uzun');
+    assert.equal(u.from.length, 200); assert.ok(u.from.endsWith('…')); assert.equal(u.to, '{"eski":1}');
+    assert.equal((await row('history', 'hz_alan')).field.length, 100);
+    assert.equal((await row('history', 'hz_yazarsiz')).userId, undefined);
+    const pre = (await A.req('GET', '/api/backups')).json.find(b => b.kind === 'pre-import');
+    assert.equal((await A.req('POST', `/api/backups/${pre.id}/restore`, {})).status, 200);
+    const after = (await A.state()).json.data;
+    assert.equal(after.history.length, before.history.length);           // geri yükleme de geçmişi atlamadı
+    assert.equal(after.comments.length, before.comments.length);
+  });
+});
+
+/* ---------------- talep eden ve hızlı kişi ekleme (görev 12, E1) ----------------
+   Test verileri uydurmadır. */
+describe('talep eden', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  const reasons = r => r.json.rejected.map(x => x.reason);
+  const ok = r => { assert.equal(r.status, 200); assert.equal(r.json.rejected.length, 0, JSON.stringify(r.json.rejected)); };
+  const rejectedWith = (r, msg) => { assert.equal(r.status, 200); assert.equal(r.json.applied, 0); assert.deepEqual(reasons(r), [msg]); };
+  const row = async (table, id) => (await pool.query(`SELECT * FROM ${table} WHERE id=$1`, [id])).rows[0];
+  let A, U, V;
+  const newUser = async (id, username, role) => {
+    await A.sync([{ c: 'users', id, op: 'put', data: { username, name: username, role, active: true } }]);
+    const k = client(); await k.login(username, 'Start12345');
+    assert.equal((await k.req('POST', '/api/auth/password', { newPassword: 'TlpYeni123456' })).status, 200);
+    return k;
+  };
+  const iss = (id, data) => ({ c: 'issues', id, op: 'put', data: { projectId: 'p_tl', statusId: 'p_tl_s0', summary: 'Talep', ...data } });
+  const R = (customerId, contactId) => ({ customerId, contactId });
+
+  before(async () => {
+    A = client(); await A.login('admin', 'test-admin-pw');
+    U = await newUser('u_tl1', 'tluye', 'member');
+    V = await newUser('u_tlv', 'tlizci', 'viewer');
+    ok(await A.sync([
+      { c: 'customers', id: 'c_tl1', op: 'put', data: { name: 'Talep Bir A.Ş.', kind: 'customer', contacts: [{ id: 'ct_a', name: 'Ayşe Örnek', email: 'ayse@ornek.test' }] } },
+      { c: 'customers', id: 'c_tl2', op: 'put', data: { name: 'Talep İki Ltd.', kind: 'customer', contacts: [{ id: 'ct_b', name: 'Bora Örnek' }] } },
+      { c: 'customers', id: 'c_tlp', op: 'put', data: { name: 'Pasif Ltd.', kind: 'customer', active: false, contacts: [{ id: 'ct_p', name: 'Pasif Kişi' }] } },
+      { c: 'projects', id: 'p_tl', op: 'put', data: { name: 'Destek', key: 'DST', counter: 0, workspaceId: 'ws1', template: 'talep' } },
+      { c: 'projects', id: 'p_tg', op: 'put', data: { name: 'Genel iş', key: 'TGN', counter: 0, workspaceId: 'ws1', customerId: 'c_tl1' } },
+      { c: 'statuses', id: 'p_tl_s0', op: 'put', data: { projectId: 'p_tl', name: 'Yeni', cat: 'todo', ord: 0 } },
+      { c: 'statuses', id: 'p_tg_s0', op: 'put', data: { projectId: 'p_tg', name: 'Yapılacak', cat: 'todo', ord: 0 } },
+    ]));
+  });
+
+  test('talep projesinde talep edensiz yeni iş 400 "Talep eden gerekli"; geçerli kişiyle kabul', async () => {
+    rejectedWith(await U.sync([iss('i_tl1', { key: 'DST-1' })]), 'Talep eden gerekli');
+    rejectedWith(await U.sync([iss('i_tl1', { key: 'DST-1', requester: null })]), 'Talep eden gerekli');
+    ok(await U.sync([iss('i_tl1', { key: 'DST-1', requester: R('c_tl1', 'ct_a') })]));
+    assert.deepEqual((await row('issues', 'i_tl1')).data.requester, R('c_tl1', 'ct_a'));
+    /* var olan işte talep edeni boşaltmak da reddedilir */
+    rejectedWith(await U.sync([iss('i_tl1', { key: 'DST-1', requester: null })]), 'Talep eden gerekli');
+  });
+
+  test('başka carinin kişisi, pasif cari, olmayan cari ve biçimsiz değer reddedilir', async () => {
+    rejectedWith(await U.sync([iss('i_tl2', { key: 'DST-2', requester: R('c_tl1', 'ct_b') })]), 'Talep eden kişi bu caride bulunamadı');
+    rejectedWith(await U.sync([iss('i_tl2', { key: 'DST-2', requester: R('c_tlp', 'ct_p') })]), 'Pasif carinin kişisi talep eden olamaz');
+    rejectedWith(await U.sync([iss('i_tl2', { key: 'DST-2', requester: R('c_yok', 'ct_a') })]), 'Talep edenin carisi bulunamadı');
+    rejectedWith(await U.sync([iss('i_tl2', { key: 'DST-2', requester: { customerId: '<x>', contactId: 'ct_a' } })]), 'Talep eden geçersiz');
+    rejectedWith(await U.sync([iss('i_tl2', { key: 'DST-2', requester: 'ct_a' })]), 'Talep eden geçersiz');
+    assert.equal(await row('issues', 'i_tl2'), undefined);
+  });
+
+  test('eski talep edensiz iş düzenlenebilir; değişmeyen eski bağ (pasifleşen cari, silinen kişi) korunur', async () => {
+    await pool.query(`INSERT INTO issues (id, data) VALUES ('i_tlold', '{"id":"i_tlold","projectId":"p_tl","statusId":"p_tl_s0","key":"DST-50","summary":"Eski"}')`);
+    const cur = (await row('issues', 'i_tlold')).data;
+    ok(await U.sync([{ c: 'issues', id: 'i_tlold', op: 'put', data: { ...cur, summary: 'Eski (başlık)' }, base: cur }]));
+    assert.equal((await row('issues', 'i_tlold')).data.summary, 'Eski (başlık)');
+    /* i_tl1'in carisi pasife alınır ve kişisi silinir: başlık yine değişir */
+    const c1 = (await row('customers', 'c_tl1')).data;
+    ok(await A.sync([{ c: 'customers', id: 'c_tl1', op: 'put', data: { ...c1, active: false, contacts: [] }, base: c1 }]));
+    const i1 = (await row('issues', 'i_tl1')).data;
+    ok(await U.sync([{ c: 'issues', id: 'i_tl1', op: 'put', data: { ...i1, summary: 'Yeni başlık' }, base: i1 }]));
+    assert.deepEqual((await row('issues', 'i_tl1')).data.requester, R('c_tl1', 'ct_a'));
+    const c1b = (await row('customers', 'c_tl1')).data;
+    ok(await A.sync([{ c: 'customers', id: 'c_tl1', op: 'put', data: c1, base: c1b }]));
+  });
+
+  test('cari bağlı diğer projede talep eden isteğe bağlı; verilirse denetlenir', async () => {
+    const g = d => ({ c: 'issues', id: 'i_tg1', op: 'put', data: { projectId: 'p_tg', statusId: 'p_tg_s0', key: 'TGN-1', summary: 'Genel', ...d } });
+    ok(await U.sync([g({})]));
+    rejectedWith(await U.sync([g({ requester: R('c_tl2', 'ct_x') })]), 'Talep eden kişi bu caride bulunamadı');
+    ok(await U.sync([g({ requester: R('c_tl2', 'ct_b') })]));
+    ok(await U.sync([g({ requester: null })]));
+  });
+
+  test('hızlı kişi ekleme: üye ekler (yalnız ad/e-posta/telefon), izleyici 403, değişiklik akışına düşer', async () => {
+    const s0 = (await U.state()).json.seq;
+    const r = await U.req('POST', '/api/customers/c_tl2/contacts',
+      { name: '  Cem Yeni  ', email: 'cem@ornek.test', phone: '0212 000 00 00', title: 'Müdür', id: 'ct_zorla' });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    const ct = r.json.contact;
+    assert.equal(ct.name, 'Cem Yeni'); assert.equal(ct.email, 'cem@ornek.test'); assert.equal(ct.title, undefined);
+    assert.notEqual(ct.id, 'ct_zorla'); assert.match(ct.id, /^ct_[a-f0-9]{16}$/);
+    const d = (await row('customers', 'c_tl2')).data;
+    assert.equal(d.name, 'Talep İki Ltd.');
+    assert.deepEqual(d.contacts.map(x => x.id), ['ct_b', ct.id]);
+    const ch = (await U.req('GET', '/api/changes?since=' + s0)).json;
+    assert.ok(ch.items.some(i => i.c === 'customers' && i.id === 'c_tl2' && i.op === 'put' && i.data.contacts.length === 2));
+    /* yeni kişi hemen talep eden olabilir */
+    ok(await U.sync([iss('i_tl3', { key: 'DST-3', requester: R('c_tl2', ct.id) })]));
+    /* yalnız bu uç: üye cari kaydının kendisini (unvan) yine değiştiremez */
+    rejectedWith(await U.sync([{ c: 'customers', id: 'c_tl2', op: 'put', data: { ...d, name: 'Değişti' }, base: d }]), 'Bu değişiklik için yönetici yetkisi gerekli');
+
+    assert.equal((await V.req('POST', '/api/customers/c_tl2/contacts', { name: 'İzci' })).status, 403);
+    assert.equal((await U.req('POST', '/api/customers/c_tl2/contacts', { name: '   ' })).status, 400);
+    assert.equal((await U.req('POST', '/api/customers/c_tl2/contacts', { name: 'x'.repeat(121) })).status, 400);
+    assert.equal((await U.req('POST', '/api/customers/c_tl2/contacts', { name: 'Kötü', email: 'yok' })).status, 400);
+    const nf = await U.req('POST', '/api/customers/c_yok/contacts', { name: 'Kimse' });
+    assert.equal(nf.status, 404); assert.match(nf.json.error, /Yöneticinize cari ekletin/);
+    assert.equal((await U.req('POST', '/api/customers/c_tlp/contacts', { name: 'Pasife' })).status, 400);
+    assert.equal((await U.req('POST', '/api/customers/c_tl2/contacts', { name: 'CSRF' }, { 'x-pano': '' })).status, 403);
+    assert.equal((await client().req('POST', '/api/customers/c_tl2/contacts', { name: 'Anonim' })).status, 401);
+    assert.equal((await row('customers', 'c_tl2')).data.contacts.length, 2);
+  });
+});
+
+/* ---------------- müşteri atamaları cariden (görev 11b) ----------------
+   005 geçişi: eski "Müşteri" seçim alanının değerleri cariye dönüşür, işler bağlanır, alan gizlenir. */
+describe('müşteri → cari (005)', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  const del = (c, id) => ({ c, id, op: 'del' });
+  const row = async (table, id) => (await pool.query(`SELECT data FROM ${table} WHERE id=$1`, [id])).rows[0]?.data;
+  const reasons = r => r.json.rejected.map(x => x.reason);
+  const ok = r => { assert.equal(r.status, 200); assert.equal(r.json.rejected.length, 0, JSON.stringify(r.json.rejected)); };
+  const rejectedWith = (r, msg) => { assert.equal(r.status, 200); assert.equal(r.json.applied, 0, JSON.stringify(r.json)); assert.deepEqual(reasons(r), [msg]); };
+  const KEYS = { i_mi1: 'GEN-9101', i_mk1: 'GEN-9102', i_mk2: 'GEN-9103', i_mk3: 'GEN-9104' };
+  const iss = (id, extra = {}) => ({ c: 'issues', id, op: 'put', data: { projectId: 'p1', key: KEYS[id], summary: 'Cari işi ' + id, statusId: 'p1_s0', ...extra } });
+  const readRel = async p => (await import('node:fs/promises')).readFile(new globalThis.URL(p, import.meta.url), 'utf8');
+  const rerun = async () => {
+    const sql = await readRel('../server/migrations/005_musteri_cari.sql');
+    const c = await pool.connect();
+    try { await c.query('BEGIN'); await c.query(sql); await c.query('COMMIT'); } finally { c.release(); }
+  };
+  const maxSeq = async () => Number((await pool.query('SELECT max(seq) m FROM changes')).rows[0].m);
+  let A, U;
+  before(async () => {
+    A = client(); await A.login('admin', 'test-admin-pw');
+    await A.sync([{ c: 'users', id: 'u_mc1', op: 'put', data: { username: 'mcuye', name: 'mcuye', role: 'member', active: true } }]);
+    U = client(); await U.login('mcuye', 'Start12345');
+    assert.equal((await U.req('POST', '/api/auth/password', { newPassword: 'McYeni123456' })).status, 200);
+  });
+
+  test('geçiş: demo verisi (Müşteri alanı) → cariler, işler bağlanır, alan gizlenir; tekrar çalıştırınca çift cari yok', async () => {
+    const demo = JSON.parse(await readRel('./fixtures/demo.json'));
+    /* eski yedek gibi doğrudan tablolara: alan + işler (kimlikler önekli, başka testlerle çakışmasın) */
+    const f = demo.fields.find(x => x.key === 'musteri');
+    await pool.query('INSERT INTO fields (id, data) VALUES ($1, $2::jsonb)', ['mc_' + f.id, JSON.stringify({ ...f, id: 'mc_' + f.id })]);
+    const issues = demo.issues.map(i => ({ ...i, id: 'mc_' + i.id, projectId: 'p_mcdemo',
+      cf: Object.fromEntries(Object.entries(i.cf || {}).map(([k, v]) => ['mc_' + k, v])) }));
+    /* yazım farkları: boşluk + büyük/küçük harf aynı cari; önceden bağlı iş değişmez */
+    issues[0].cf.mc_cf_mus = '  acme ';
+    issues[1].cf.mc_cf_mus = 'GLOBEX';
+    const pre = issues.find(i => !i.cf.mc_cf_mus); pre.cf.mc_cf_mus = 'Initech'; pre.customerId = 'c_mc_pre';
+    for (const i of issues) await pool.query('INSERT INTO issues (id, data) VALUES ($1, $2::jsonb)', [i.id, JSON.stringify(i)]);
+    /* "Acme" adlı cari zaten var (farklı yazımla) → yenisi açılmaz, ona bağlanır */
+    ok(await A.sync([{ c: 'customers', id: 'c_mc_acme', op: 'put', data: { name: 'ACME', kind: 'customer' } },
+      { c: 'customers', id: 'c_mc_pre', op: 'put', data: { name: 'Önceden', kind: 'customer' } }]));
+    const seq0 = await maxSeq();
+    await rerun();
+    const byVal = v => issues.filter(i => i !== pre && String(i.cf.mc_cf_mus || '').trim().toLowerCase() === v);
+    const glob = (await pool.query(`SELECT id, data FROM customers WHERE lower(name)='globex'`)).rows;
+    assert.equal(glob.length, 1);
+    assert.match(glob[0].id, /^cu_m_[0-9a-f]{32}$/);
+    assert.deepEqual(glob[0].data, { id: glob[0].id, name: 'Globex', kind: 'customer', active: true, contacts: [] });   // en sık yazım
+    assert.ok(byVal('acme').length >= 9 && byVal('globex').length >= 8);
+    for (const i of byVal('acme')) assert.equal((await row('issues', i.id)).customerId, 'c_mc_acme');
+    for (const i of byVal('globex')) assert.equal((await row('issues', i.id)).customerId, glob[0].id);
+    assert.equal((await row('issues', pre.id)).customerId, 'c_mc_pre');                           // dolu olan değişmez
+    assert.equal((await pool.query(`SELECT count(*) n FROM customers WHERE lower(name) IN ('acme','initech')`)).rows[0].n, '1');
+    for (const i of issues.filter(x => !x.cf.mc_cf_mus)) assert.equal((await row('issues', i.id)).customerId, undefined);
+    assert.equal((await row('issues', issues[0].id)).cf.mc_cf_mus, '  acme ');                     // değerler yerinde
+    const fd = await row('fields', 'mc_cf_mus');
+    assert.equal(fd.archived, true); assert.equal(fd.hidden, true); assert.deepEqual(fd.options, f.options);
+    const ch = (await pool.query('SELECT collection, count(*)::int n FROM changes WHERE seq > $1 GROUP BY 1', [seq0])).rows;
+    const n = Object.fromEntries(ch.map(r => [r.collection, r.n]));
+    assert.equal(n.customers, 1); assert.equal(n.fields, 1);
+    assert.equal(n.issues, byVal('acme').length + byVal('globex').length);
+    assert.ok((await pool.query(`SELECT 1 FROM pg_indexes WHERE indexname='issues_customer_idx'`)).rowCount);
+    /* tekrar: hiçbir şey değişmez */
+    const seq1 = await maxSeq();
+    const cnt = (await pool.query('SELECT count(*) n FROM customers')).rows[0].n;
+    await rerun();
+    assert.equal((await pool.query('SELECT count(*) n FROM customers')).rows[0].n, cnt);
+    assert.equal(await maxSeq(), seq1);
+    /* yeni gelen eski biçimli iş (ör. eski sürümden) sonraki çalıştırmada var olan cariye bağlanır */
+    await pool.query('INSERT INTO issues (id, data) VALUES ($1, $2::jsonb)', ['mc_new', JSON.stringify({ id: 'mc_new', projectId: 'p_mcdemo', summary: 'x', cf: { mc_cf_mus: 'Globex' } })]);
+    await rerun();
+    assert.equal((await row('issues', 'mc_new')).customerId, glob[0].id);
+    assert.equal((await pool.query('SELECT count(*) n FROM customers')).rows[0].n, cnt);
+    /* geçiş kaydı: migrate() 005'i bir kez uygular */
+    await pool.query(`DELETE FROM schema_migrations WHERE id='005_musteri_cari.sql'`);
+    await migrate(pool);
+    assert.equal((await pool.query(`SELECT count(*) n FROM schema_migrations WHERE id='005_musteri_cari.sql'`)).rows[0].n, '1');
+    /* istemciye alan gizli işaretiyle gider */
+    assert.equal((await A.state()).json.data.fields.find(x => x.id === 'mc_cf_mus').hidden, true);
+    await pool.query(`DELETE FROM issues WHERE id LIKE 'mc\\_%'`);
+    await pool.query(`DELETE FROM fields WHERE id='mc_cf_mus'`);
+  });
+
+  test('iş customerId: biçim, var olan ve etkin cari; değişmeyen pasif bağ korunur; kaldırma serbest', async () => {
+    ok(await A.sync([{ c: 'customers', id: 'c_mi1', op: 'put', data: { name: 'İş Carisi', kind: 'customer' } },
+      { c: 'customers', id: 'c_mi2', op: 'put', data: { name: 'Pasif İş Carisi', kind: 'customer', active: false } }]));
+    for (const bad of [7, { x: 1 }, '<b>', 'a b']) rejectedWith(await U.sync([iss('i_mi1', { customerId: bad })]), 'Geçersiz cari');
+    rejectedWith(await U.sync([iss('i_mi1', { customerId: 'c_yok' })]), 'Cari bulunamadı');
+    rejectedWith(await U.sync([iss('i_mi1', { customerId: 'c_mi2' })]), 'Pasif cari işe bağlanamaz');
+    ok(await U.sync([iss('i_mi1', { customerId: 'c_mi1' })]));                        // üye de bağlar
+    assert.equal((await row('issues', 'i_mi1')).customerId, 'c_mi1');
+    assert.equal((await pool.query(`SELECT customer_id FROM issues WHERE id='i_mi1'`)).rows[0].customer_id, 'c_mi1');
+    ok(await A.sync([{ c: 'customers', id: 'c_mi1', op: 'put', data: { name: 'İş Carisi', kind: 'customer', active: false } }]));
+    ok(await U.sync([iss('i_mi1', { customerId: 'c_mi1', summary: 'değişti' })]));   // pasif bağ korunur
+    rejectedWith(await A.sync([del('customers', 'c_mi1')]), 'Bu cariye bağlı 1 iş var; silmek yerine pasife alın');
+    ok(await U.sync([iss('i_mi1', { customerId: '' })]));
+    ok(await U.sync([iss('i_mi1', { customerId: null })]));
+    rejectedWith(await U.sync([iss('i_mi1', { customerId: 'c_mi1' })]), 'Pasif cari işe bağlanamaz');
+    ok(await A.sync([del('issues', 'i_mi1'), del('customers', 'c_mi1'), del('customers', 'c_mi2')]));
+  });
+
+  test('birleştir: proje + iş bağları ve kişiler hedefe, kaynak silinir; tek değişiklik, yalnız yönetici', async () => {
+    ok(await A.sync([
+      { c: 'customers', id: 'c_mk', op: 'put', data: { name: 'Kaynak Ltd', kind: 'customer', contacts: [{ id: 'k1', name: 'Ali' }, { id: 'k2', name: 'Veli' }] } },
+      { c: 'customers', id: 'c_mh', op: 'put', data: { name: 'Hedef A.Ş.', kind: 'customer', contacts: [{ id: 'k1', name: 'Ayşe' }] } },
+      { c: 'customers', id: 'c_mp', op: 'put', data: { name: 'Pasif Hedef', kind: 'customer', active: false } },
+      { c: 'projects', id: 'p_mk1', op: 'put', data: { name: 'Birleşme 1', key: 'MKA', counter: 0, workspaceId: 'ws1', customerId: 'c_mk' } },
+      { c: 'projects', id: 'p_mk2', op: 'put', data: { name: 'Birleşme 2', key: 'MKB', counter: 0, workspaceId: 'ws1', customerId: 'c_mk', archived: true } },
+      iss('i_mk1', { customerId: 'c_mk' }), iss('i_mk2', { customerId: 'c_mk' }), iss('i_mk3', { customerId: 'c_mh' })]));
+    const mrg = to => ({ c: 'customers', id: 'c_mk', op: 'del', mergeInto: to });
+    rejectedWith(await U.sync([mrg('c_mh')]), 'Bu değişiklik için yönetici yetkisi gerekli');
+    rejectedWith(await A.sync([mrg('c_mp')]), 'Pasif cariye birleştirilemez');
+    rejectedWith(await A.sync([mrg('c_mk')]), 'Birleştirilecek cari geçersiz');
+    rejectedWith(await A.sync([mrg('c_yok')]), 'Cari bulunamadı');
+    rejectedWith(await A.sync([mrg(5)]), 'Birleştirilecek cari geçersiz');
+    assert.equal((await row('issues', 'i_mk1')).customerId, 'c_mk');                       // reddedilen birleştirme hiçbir şey yazmaz
+    assert.equal((await row('projects', 'p_mk1')).customerId, 'c_mk');
+    const seq0 = await maxSeq();
+    const r = await A.sync([mrg('c_mh')]);
+    ok(r); assert.equal(r.json.applied, 1);
+    assert.equal(await row('customers', 'c_mk'), undefined);
+    for (const id of ['p_mk1', 'p_mk2']) assert.equal((await row('projects', id)).customerId, 'c_mh');
+    for (const id of ['i_mk1', 'i_mk2', 'i_mk3']) assert.equal((await row('issues', id)).customerId, 'c_mh');
+    assert.equal((await row('projects', 'p_mk2')).archived, true);
+    assert.deepEqual((await row('customers', 'c_mh')).contacts, [{ id: 'k1', name: 'Ayşe' }, { id: 'k1_2', name: 'Ali' }, { id: 'k2', name: 'Veli' }]);
+    const ch = (await pool.query('SELECT collection, record_id, op FROM changes WHERE seq > $1', [seq0])).rows.map(x => `${x.collection}:${x.record_id}:${x.op}`);
+    assert.deepEqual(ch.sort(), ['customers:c_mh:put', 'customers:c_mk:del', 'issues:i_mk1:put', 'issues:i_mk2:put', 'projects:p_mk1:put', 'projects:p_mk2:put'].sort());
+    assert.equal((await A.sync([mrg('c_mh')])).json.applied, 0);                             // kaynak yok: etkisiz
+    ok(await A.sync([del('issues', 'i_mk1'), del('issues', 'i_mk2'), del('issues', 'i_mk3'), del('projects', 'p_mk1'), del('projects', 'p_mk2')]));
+    ok(await A.sync([del('customers', 'c_mh'), del('customers', 'c_mp')]));
+  });
+});
+
+/* ---- Posta kutuları (görev 11, E2): sağlayıcı fetch'i taklit edilir; gerçek ağ isteği yok ---- */
+describe('posta kutuları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  let mail, A, U, V, adminCookie;
+  const ENV = ['MAIL_TOKEN_KEY', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'MS_CLIENT_ID', 'MS_CLIENT_SECRET', 'MS_TENANT', 'MAIL_ENABLED', 'MAIL_POLL_SEC'];
+  const saved = {};
+  const calls = [], seenBodies = [];
+  const routes = [];                      // [regex(origin+path), fn(url, opt) → Response]; en son eklenen önce
+  const J = (status, body, headers = {}) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...headers } });
+  const route = (re, fn) => { routes.unshift([re, fn]); };
+  const configure = () => {
+    process.env.MAIL_TOKEN_KEY = Buffer.alloc(32, 7).toString('base64');
+    process.env.GOOGLE_CLIENT_ID = 'g-istemci'; process.env.GOOGLE_CLIENT_SECRET = 'g-sir';
+    process.env.MS_CLIENT_ID = 'm-istemci'; process.env.MS_CLIENT_SECRET = 'm-sir'; process.env.MS_TENANT = 'common';
+    process.env.MAIL_ENABLED = 'true';
+  };
+  const unconfigure = () => { for (const k of ENV) delete process.env[k]; };
+  /* Ham istek (yönlendirme izlenmez): OAuth başlangıç / dönüş için. */
+  const raw = async (path, cookie) => {
+    const r = await fetch(base + path, { redirect: 'manual', headers: cookie ? { cookie } : {} });
+    return { status: r.status, location: r.headers.get('location') || '' };
+  };
+  const loginCookie = async (u, p) => {
+    const r = await fetch(base + '/api/auth/login', { method: 'POST', headers: { 'x-pano': '1', 'content-type': 'application/json' }, body: JSON.stringify({ username: u, password: p }) });
+    return r.headers.get('set-cookie').split(';')[0];
+  };
+  const track = r => { seenBodies.push(JSON.stringify(r.json)); return r; };
+  const newUser = async (id, username, role) => {
+    await A.sync([{ c: 'users', id, op: 'put', data: { username, name: username, role, active: true } }]);
+    const k = client(); await k.login(username, 'Start12345');
+    assert.equal((await k.req('POST', '/api/auth/password', { newPassword: 'PostaYeni12345' })).status, 200);
+    return k;
+  };
+  const enc64 = s => Buffer.from(s, 'utf8').toString('base64url');
+  const gm = (id, h, { text, html, files = 0, labels = ['INBOX'] } = {}) => ({
+    id, labelIds: labels, internalDate: String(Date.now()),
+    payload: { mimeType: 'multipart/mixed', headers: Object.entries(h).map(([name, value]) => ({ name, value })), parts: [
+      text != null && { mimeType: 'text/plain', headers: [{ name: 'Content-Type', value: 'text/plain; charset="UTF-8"' }], body: { data: enc64(text) } },
+      html != null && { mimeType: 'text/html', headers: [{ name: 'Content-Type', value: 'text/html; charset=utf-8' }], body: { data: enc64(html) } },
+      ...Array.from({ length: files }, (_, i) => ({ mimeType: 'application/pdf', filename: `ek${i}.pdf`, body: { attachmentId: 'at' + i } })),
+    ].filter(Boolean) } });
+  const inbox = new Map();                 // Gmail kimliği → ileti
+  const issuesOf = async pid => (await pool.query(`SELECT data FROM issues WHERE project_id=$1 ORDER BY created_at, id`, [pid])).rows.map(r => r.data);
+  const acct = async addr => (await pool.query('SELECT * FROM mail_accounts WHERE lower(address)=lower($1)', [addr])).rows[0];
+  const poll = async id => track(await A.req('POST', `/api/mail/accounts/${id}/poll`));
+
+  before(async () => {
+    for (const k of ENV) saved[k] = process.env[k];
+    unconfigure();
+    mail = await import('../server/mail.js');
+    mail.setMailFetch(async (url, opt = {}) => {
+      const u = new globalThis.URL(url); calls.push({ url: u.toString(), method: opt.method || 'GET', body: opt.body || '' });
+      for (const [re, fn] of routes) if (re.test(u.origin + u.pathname)) return fn(u, opt);
+      return J(404, { error: 'bulunamadı' });
+    });
+    A = client(); await A.login('admin', 'test-admin-pw');
+    adminCookie = await loginCookie('admin', 'test-admin-pw');
+    U = await newUser('u_pm1', 'postauye', 'member');
+    V = await newUser('u_pmv', 'postaizci', 'viewer');
+    const ok = r => assert.equal(r.json.rejected.length, 0, JSON.stringify(r.json.rejected));
+    ok(await A.sync([
+      { c: 'customers', id: 'c_pm1', op: 'put', data: { name: 'Posta Müşteri A.Ş.', kind: 'customer', contacts: [{ id: 'ct_pm', name: 'Ayşe Posta', email: 'Ayse@Musteri.test' }] } },
+      { c: 'projects', id: 'p_mx', op: 'put', data: { name: 'Destek posta', key: 'PST', counter: 0, workspaceId: 'ws1', template: 'talep' } },
+      { c: 'projects', id: 'p_my', op: 'put', data: { name: 'Muhasebe', key: 'MHS', counter: 0, workspaceId: 'ws1' } },
+      ...[['Yeni', 'todo'], ['İnceleniyor', 'inprogress'], ['Talep edenden yanıt bekleniyor', 'inprogress'], ['Çözüldü', 'done']].map(([n, c], i) =>
+        ({ c: 'statuses', id: `p_mx_s${i}`, op: 'put', data: { projectId: 'p_mx', name: n, cat: c, ord: i } })),
+      { c: 'statuses', id: 'p_my_s0', op: 'put', data: { projectId: 'p_my', name: 'Yapılacak', cat: 'todo', ord: 0 } },
+    ]));
+  });
+  after(() => { mail?.setMailFetch(null); for (const k of ENV) { if (saved[k] === undefined) delete process.env[k]; else process.env[k] = saved[k]; } });
+
+  test('yapılandırma yoksa özellik kapalı: "Sunucu yapılandırılmamış"', async () => {
+    const s = track(await A.req('GET', '/api/mail/status'));
+    assert.equal(s.status, 200);
+    assert.equal(s.json.configured, false); assert.equal(s.json.polling, false);
+    const r = await A.req('GET', '/api/mail/oauth/google/start');
+    assert.equal(r.status, 409); assert.equal(r.json.error, 'Sunucu yapılandırılmamış');
+    /* anahtar var ama 32 bayt değil → yine kapalı */
+    process.env.MAIL_TOKEN_KEY = Buffer.alloc(16).toString('base64'); process.env.GOOGLE_CLIENT_ID = 'x'; process.env.GOOGLE_CLIENT_SECRET = 'y';
+    assert.equal((await A.req('GET', '/api/mail/status')).json.configured, false);
+    unconfigure();
+    assert.equal(calls.length, 0);
+  });
+
+  test('izleyici ve üye posta uçlarına 403; oturumsuz 401', async () => {
+    configure();
+    for (const k of [U, V]) {
+      assert.equal((await k.req('GET', '/api/mail/status')).status, 403);
+      assert.equal((await k.req('GET', '/api/mail/oauth/google/start')).status, 403);
+      assert.equal((await k.req('POST', '/api/mail/rules', { rules: [] })).status, 403);
+      assert.equal((await k.req('POST', '/api/mail/accounts/mb_x', { active: false })).status, 403);
+      assert.equal((await k.req('POST', '/api/mail/accounts/mb_x/delete')).status, 403);
+      assert.equal((await k.req('POST', '/api/mail/accounts/mb_x/poll')).status, 403);
+    }
+    assert.equal((await client().req('GET', '/api/mail/status')).status, 401);
+    /* üye dönüş adresine gelirse bağlanmaz */
+    const uc = await loginCookie('postauye', 'PostaYeni12345');
+    assert.match((await raw('/api/mail/oauth/google/callback?state=x&code=y', uc)).location, /posta=hata&neden=yetki/);
+    assert.equal((await A.req('POST', '/api/mail/rules', { rules: [] }, { 'x-pano': '' })).status, 403);   // CSRF
+  });
+
+  test('OAuth (Google): state + PKCE, kapsamlar; tek kullanımlık state; jeton şifreli', async () => {
+    configure();
+    let challenge = '';
+    route(/oauth2\.googleapis\.com\/token$/, async (_u, opt) => {
+      const f = new URLSearchParams(opt.body);
+      if (f.get('grant_type') === 'authorization_code') {
+        const { createHash } = await import('node:crypto');
+        if (createHash('sha256').update(f.get('code_verifier') || '').digest('base64url') !== challenge || f.get('code') !== 'kod-1')
+          return J(400, { error: 'invalid_grant' });
+        return J(200, { access_token: 'tok_ERISIM_g1', refresh_token: 'tok_YENILEME_g1', expires_in: 3600 });
+      }
+      return J(200, { access_token: 'tok_ERISIM_g2', expires_in: 3600 });
+    });
+    route(/gmail\.googleapis\.com\/gmail\/v1\/users\/me\/profile$/, () => J(200, { emailAddress: 'destek@sirket.test', historyId: '100' }));
+
+    const st = await raw('/api/mail/oauth/google/start', adminCookie);
+    assert.equal(st.status, 302);
+    const L = new globalThis.URL(st.location);
+    assert.equal(L.origin + L.pathname, 'https://accounts.google.com/o/oauth2/v2/auth');
+    const q = L.searchParams;
+    assert.equal(q.get('code_challenge_method'), 'S256'); assert.equal(q.get('access_type'), 'offline'); assert.equal(q.get('prompt'), 'consent');
+    for (const sc of ['gmail.readonly', 'gmail.send', 'openid', 'email']) assert.ok(q.get('scope').includes(sc), sc);
+    assert.match(q.get('redirect_uri'), /\/api\/mail\/oauth\/google\/callback$/);
+    assert.ok(q.get('state').length >= 30);
+    challenge = q.get('code_challenge');
+
+    /* sahte state; başka sağlayıcının dönüşü (state'i tüketir) */
+    assert.match((await raw('/api/mail/oauth/google/callback?state=sahte&code=kod-1', adminCookie)).location, /neden=state/);
+    assert.match((await raw(`/api/mail/oauth/microsoft/callback?state=${q.get('state')}&code=kod-1`, adminCookie)).location, /neden=state/);
+    assert.match((await raw(`/api/mail/oauth/google/callback?state=${q.get('state')}&code=kod-1`, adminCookie)).location, /neden=state/);
+    const st2 = new globalThis.URL((await raw('/api/mail/oauth/google/start', adminCookie)).location).searchParams;
+    challenge = st2.get('code_challenge');
+    /* oturumsuz dönüş bağlanmaz */
+    assert.match((await raw(`/api/mail/oauth/google/callback?state=${st2.get('state')}&code=kod-1`, '')).location, /neden=oturum/);
+    /* yanlış kod (PKCE/kod doğrulaması sağlayıcıda başarısız) */
+    const st3 = new globalThis.URL((await raw('/api/mail/oauth/google/start', adminCookie)).location).searchParams;
+    assert.match((await raw(`/api/mail/oauth/google/callback?state=${st3.get('state')}&code=baska`, adminCookie)).location, /neden=saglayici/);
+    const ok = await raw(`/api/mail/oauth/google/callback?state=${st2.get('state')}&code=kod-1`, adminCookie);
+    assert.equal(ok.location, '/?posta=bagli#system');
+    /* aynı state ikinci kez → reddedilir */
+    assert.match((await raw(`/api/mail/oauth/google/callback?state=${st2.get('state')}&code=kod-1`, adminCookie)).location, /neden=state/);
+
+    const a = await acct('destek@sirket.test');
+    assert.equal(a.provider, 'google'); assert.equal(a.cursor, '100'); assert.equal(a.status, 'ok');
+    assert.match(a.refresh_token_enc, /^v1:/);
+    assert.ok(!a.refresh_token_enc.includes('YENILEME') && !a.access_token_enc.includes('ERISIM'));
+    assert.equal(mail.decrypt(a.refresh_token_enc), 'tok_YENILEME_g1');
+    const s = track(await A.req('GET', '/api/mail/status'));
+    assert.equal(s.json.configured, true); assert.equal(s.json.accounts.length, 1);
+    assert.deepEqual(Object.keys(s.json.accounts[0]).sort(), ['active', 'address', 'backoffUntil', 'createdAt', 'defaultProjectId', 'id', 'lastError', 'lastPollAt', 'provider', 'status']);
+    /* durum / dışa aktarma / yedek: posta tabloları yok */
+    track(await A.req('GET', '/api/state')); track(await A.req('GET', '/api/export'));
+    track(await A.req('POST', '/api/backups', { label: 'posta' }));
+    const snap = (await pool.query('SELECT data::text AS t FROM snapshots ORDER BY id DESC LIMIT 1')).rows[0].t;
+    assert.ok(!snap.includes('v1:') && !snap.includes('mail_accounts'));
+  });
+
+  test('varsayılan proje yalnız talep şablonlu; kurallar sırayla, ilk eşleşen kazanır', async () => {
+    configure();
+    const a = await acct('destek@sirket.test');
+    assert.equal((await A.req('POST', `/api/mail/accounts/${a.id}`, { defaultProjectId: 'p_my' })).status, 400);
+    assert.equal((await A.req('POST', `/api/mail/accounts/${a.id}`, { defaultProjectId: 'p_yok' })).status, 400);
+    const r = track(await A.req('POST', `/api/mail/accounts/${a.id}`, { defaultProjectId: 'p_mx' }));
+    assert.equal(r.status, 200); assert.equal(r.json.defaultProjectId, 'p_mx');
+    assert.equal((await A.req('POST', '/api/mail/rules', { rules: [{ projectId: 'p_yok' }] })).status, 400);
+    assert.equal((await A.req('POST', '/api/mail/rules', { rules: [{ projectId: 'p_my', assigneeId: 'u_yok' }] })).status, 400);
+    const rules = [
+      { id: 'mr_fat', subjectContains: 'FATURA', projectId: 'p_my', assigneeId: 'u_pm1' },
+      { id: 'mr_dom', fromDomain: 'tedarik.test', projectId: 'p_mx' },
+    ];
+    const s = track(await A.req('POST', '/api/mail/rules', { rules }));
+    assert.equal(s.status, 200); assert.deepEqual(s.json.map(x => x.id), ['mr_fat', 'mr_dom']);
+    const R = (await pool.query('SELECT * FROM mail_rules ORDER BY ord')).rows;
+    const msg = { to: ['destek@sirket.test'], subject: 'Fatura sorusu', from: { addr: 'ali@tedarik.test' } };
+    assert.equal(mail.matchRule(R, a.id, msg).id, 'mr_fat');
+    assert.equal(mail.matchRule([...R].reverse(), a.id, msg).id, 'mr_dom');            // sıra değişince diğeri
+    assert.equal(mail.matchRule(R, a.id, { ...msg, subject: 'Merhaba', from: { addr: 'x@alt.tedarik.test' } }).id, 'mr_dom');
+    assert.equal(mail.matchRule(R, a.id, { ...msg, subject: 'Merhaba', from: { addr: 'x@kotutedarik.test' } }), null);
+    assert.equal(mail.matchRule([{ id: 'r', to_match: 'INFO@', active: true }], a.id, { ...msg, to: ['info@sirket.test'] }).id, 'r');
+    assert.equal(mail.matchRule([{ id: 'r', account_id: 'mb_baska', active: true }], a.id, msg), null);
+  });
+
+  test('HTML → düz metin: betik/stil atılır, etiket kalmaz, varlıklar çözülür, alıntı kırpılır', () => {
+    const t = mail.htmlToText('<html><head><style>p{color:red}</style></head><body><p>Merhaba&nbsp;<b>dünya</b> &amp; &lt;x&gt;</p>'
+      + '<script>alert(1)</script><img src=x onerror="alert(2)"><ul><li>bir</li><li>iki</li></ul>&#304;stanbul &#x131;</body></html>');
+    assert.ok(!/script|onerror|color:red|<img|<b>/.test(t), t);
+    assert.match(t, /Merhaba dünya & <x>/); assert.match(t, /• bir\n• iki/); assert.match(t, /İstanbul ı/);
+    assert.equal(mail.stripQuotes('Teşekkürler\n\nOn Mon, 1 Jan 2026 at 10:00 Ali <a@b.c> wrote:\n> eski metin'), 'Teşekkürler');
+    assert.equal(mail.stripQuotes('Tamam.\n\n1 Oca 2026 Pzt 10:00 tarihinde Ali <a@b.c> şunu yazdı:\n> eski'), 'Tamam.');
+    assert.equal(mail.stripQuotes('> yalnız alıntı'), '> yalnız alıntı');
+    assert.equal(mail.decodeHeader('=?UTF-8?B?w5zDp8O8bmPDvCBzb3J1?='), 'Üçüncü soru');
+  });
+
+  test('çekme: yeni iş (kural/varsayılan), eşleşmeyen gönderen havuza, Message-ID tekil, In-Reply-To ve [ANAHTAR] → yorum, döngü önleme', async () => {
+    configure();
+    const a = await acct('destek@sirket.test');
+    route(/gmail\.googleapis\.com\/gmail\/v1\/users\/me\/history$/, () => J(200, {
+      historyId: '200', history: [{ messagesAdded: [...inbox.values()].map(m => ({ message: { id: m.id, labelIds: m.labelIds } })) }] }));
+    route(/gmail\.googleapis\.com\/gmail\/v1\/users\/me\/messages\/[^/]+$/, u => {
+      const m = inbox.get(decodeURIComponent(u.pathname.split('/').pop())); return m ? J(200, m) : J(404, { error: 'yok' });
+    });
+    const H = (from, subject, mid, extra = {}) => ({ From: from, To: 'Destek <destek@sirket.test>', Subject: subject, 'Message-ID': mid, ...extra });
+    inbox.set('g1', gm('g1', H('Ayşe Posta <ayse@musteri.test>', 'Yazıcı çalışmıyor', '<m1@musteri.test>'),
+      { html: '<div>Yazıcı <b>çalışmıyor</b>.<script>window.x=1</script><img src=x onerror=alert(1)></div><blockquote>eski</blockquote>', files: 2 }));
+    inbox.set('g2', gm('g2', H('Bilinmeyen <kimse@yabanci.test>', '<img src=x onerror=alert(1)> Merhaba', '<m2@yabanci.test>'), { text: 'Düz metin gövde' }));
+    inbox.set('g3', gm('g3', H('Ali <ali@yabanci.test>', 'FATURA hakkında', '<m3@yabanci.test>'), { text: 'Fatura' }));
+    inbox.set('g4', gm('g4', H('Kopya <ayse@musteri.test>', 'Yazıcı çalışmıyor', '<m1@musteri.test>'), { text: 'aynı ileti başka kimlikle' }));
+    inbox.set('g5', gm('g5', H('Oto <oto@yabanci.test>', 'İzindeyim', '<m5@yabanci.test>', { 'Auto-Submitted': 'auto-replied' }), { text: 'otomatik' }));
+    inbox.set('g6', gm('g6', H('Biz <destek@sirket.test>', 'Kendi gönderdiğimiz', '<m6@sirket.test>'), { text: 'döngü' }));
+    inbox.set('g7', gm('g7', H('Toplu <bulten@yabanci.test>', 'Bülten', '<m7@yabanci.test>', { Precedence: 'bulk' }), { text: 'bülten' }));
+
+    let r = await poll(a.id);
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    const R = r.json.result;
+    assert.deepEqual({ i: R.issues, d: R.duplicate, s: R.skipped, e: R.errors }, { i: 3, d: 1, s: 3, e: 0 }, JSON.stringify(r.json));
+    const mx = await issuesOf('p_mx'), my = await issuesOf('p_my');
+    const i1 = mx.find(i => i.summary === 'Yazıcı çalışmıyor'), i2 = mx.find(i => i.summary.includes('Merhaba'));
+    assert.ok(i1 && i2); assert.equal(mx.filter(i => i.summary === 'Yazıcı çalışmıyor').length, 1);
+    assert.deepEqual(i1.requester, { customerId: 'c_pm1', contactId: 'ct_pm' });        // harf duyarsız eşleşme
+    assert.deepEqual(i1.labels, []); assert.equal(i1.reporter, 'u_posta'); assert.equal(i1.statusId, 'p_mx_s0');
+    assert.match(i1.key, /^PST-\d+$/);
+    assert.ok(!/[<>]|script|onerror/.test(i1.description), i1.description);
+    assert.match(i1.description, /Yazıcı çalışmıyor\./); assert.ok(!i1.description.includes('eski'));
+    assert.match(i1.description, /2 ek vardı/);
+    assert.equal(i2.requester, undefined); assert.deepEqual(i2.labels, ['Talep eden bekleniyor']); assert.equal(i2.requesterEmail, 'kimse@yabanci.test');
+    assert.equal(i2.summary, '<img src=x onerror=alert(1)> Merhaba');                   // düz metin olarak saklanır; istemci esc() ile basar
+    assert.equal(my.length, 1); assert.equal(my[0].assignee, 'u_pm1');                  // kural: FATURA → Muhasebe + atanan
+    assert.equal((await pool.query(`SELECT count(*)::int AS n FROM mail_messages`)).rows[0].n, 6);
+    assert.equal((await acct('destek@sirket.test')).cursor, '200');
+    const hist = (await pool.query(`SELECT data FROM history WHERE issue_id=$1`, [i1.id])).rows.map(x => x.data);
+    assert.ok(hist.some(h => h.kind === 'create' && h.key === i1.key));
+
+    /* yanıt: In-Reply-To → yorum + "Talep edenden yanıt bekleniyor" → "İnceleniyor" */
+    const cur = (await pool.query('SELECT data FROM issues WHERE id=$1', [i1.id])).rows[0].data;
+    assert.equal((await A.sync([{ c: 'issues', id: i1.id, op: 'put', data: { ...cur, statusId: 'p_mx_s2' }, base: cur }])).json.rejected.length, 0);
+    inbox.set('g8', gm('g8', H('Ayşe Posta <ayse@musteri.test>', 'Re: Yazıcı çalışmıyor', '<m8@musteri.test>', { 'In-Reply-To': '<m1@musteri.test>', References: '<m1@musteri.test>' }),
+      { text: 'Hâlâ çalışmıyor.\n\nOn Tue, 2 Jan 2026 Destek <destek@sirket.test> wrote:\n> eski yazışma' }));
+    inbox.set('g9', gm('g9', H('Bilinmeyen <kimse@yabanci.test>', `Re: Merhaba [${i2.key}]`, '<m9@yabanci.test>'), { text: 'Ek bilgi' }));
+    r = await poll(a.id);
+    assert.deepEqual([r.json.result.issues, r.json.result.comments], [0, 2], JSON.stringify(r.json));
+    const cm = (await pool.query(`SELECT data FROM comments WHERE issue_id=$1`, [i1.id])).rows.map(x => x.data);
+    assert.equal(cm.length, 1); assert.equal(cm[0].userId, 'u_posta');
+    assert.match(cm[0].body, /Hâlâ çalışmıyor\./); assert.ok(!cm[0].body.includes('eski yazışma'));
+    assert.equal((await pool.query('SELECT data FROM issues WHERE id=$1', [i1.id])).rows[0].data.statusId, 'p_mx_s1');
+    assert.equal((await pool.query(`SELECT count(*)::int AS n FROM comments WHERE issue_id=$1`, [i2.id])).rows[0].n, 1);
+    /* aynı iletiler yeniden gelse de bir şey olmaz */
+    r = await poll(a.id);
+    assert.deepEqual([r.json.result.issues, r.json.result.comments], [0, 0]);
+    /* sistem kullanıcısı giriş yapamaz */
+    assert.equal((await client().login('posta-sistemi', 'herhangi')).status, 401);
+  });
+
+  test('429: Retry-After kadar geri çekilir; süre dolmadan otomatik turda istek atılmaz; yoksa üstel', async () => {
+    configure();
+    const a = await acct('destek@sirket.test');
+    route(/gmail\.googleapis\.com\/gmail\/v1\/users\/me\/history$/, () => J(429, { error: { message: 'Too many' } }, { 'retry-after': '120' }));
+    const r = await poll(a.id);
+    assert.equal(r.json.result.error, true); assert.equal(r.json.result.retryIn, 120);
+    const b = await acct('destek@sirket.test');
+    assert.equal(b.fail_count, 1); assert.match(b.last_error, /429/);
+    const left = (new Date(b.backoff_until) - Date.now()) / 1000;
+    assert.ok(left > 100 && left <= 121, String(left));
+    const n = calls.length;
+    await mail.pollAll(pool);
+    assert.equal(calls.length, n);
+    /* Retry-After yoksa üstel: ikinci hata → MAIL_POLL_SEC(120) * 2 */
+    route(/gmail\.googleapis\.com\/gmail\/v1\/users\/me\/history$/, () => J(503, {}));
+    const r2 = await poll(a.id);
+    assert.equal(r2.json.result.retryIn, 240);
+    routes.shift(); routes.shift();                               // 503/429 taklitlerini kaldır
+    await pool.query('UPDATE mail_accounts SET backoff_until=NULL, fail_count=0, last_error=NULL WHERE id=$1', [a.id]);
+  });
+
+  test('Outlook: Graph delta (ilk turda yalnız imleç), HTML gövde düz metin, sabit adres dışına istek yok', async () => {
+    configure();
+    route(/login\.microsoftonline\.com\/common\/oauth2\/v2\.0\/token$/, () => J(200, { access_token: 'tok_ERISIM_m1', refresh_token: 'tok_YENILEME_m1', expires_in: 3600 }));
+    route(/graph\.microsoft\.com\/v1\.0\/me$/, () => J(200, { mail: 'Talep@Outlook.test' }));
+    const L = new globalThis.URL((await raw('/api/mail/oauth/microsoft/start', adminCookie)).location);
+    assert.equal(L.origin + L.pathname, 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize');
+    for (const sc of ['offline_access', 'Mail.Read', 'Mail.Send', 'User.Read', 'openid', 'email']) assert.ok(L.searchParams.get('scope').split(' ').includes(sc), sc);
+    assert.equal((await raw(`/api/mail/oauth/microsoft/callback?state=${L.searchParams.get('state')}&code=k`, adminCookie)).location, '/?posta=bagli#system');
+    const a = await acct('talep@outlook.test');
+    await A.req('POST', `/api/mail/accounts/${a.id}`, { defaultProjectId: 'p_mx' });
+    route(/graph\.microsoft\.com\/v1\.0\/me\/mailFolders\/inbox\/messages\/delta$/, u => {
+      if (u.searchParams.get('$filter')) return J(200, { value: [], '@odata.deltaLink': 'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=d1' });
+      if (u.searchParams.get('$deltatoken') === 'd1') return J(200, { value: [{ id: 'AAMk/1==' }, { id: 'sil', '@removed': { reason: 'deleted' } }],
+        '@odata.deltaLink': 'https://evil.example/steal?$deltatoken=d2' });
+      return J(400, {});
+    });
+    route(/graph\.microsoft\.com\/v1\.0\/me\/messages\/.+$/, u => {
+      assert.equal(u.pathname, '/v1.0/me/messages/AAMk%2F1%3D%3D');                       // kimlik yola kodlanarak girer
+      return J(200, { id: 'AAMk/1==', internetMessageId: '<o1@outlook.test>', subject: 'Outlook talebi',
+        from: { emailAddress: { name: 'Dış Kişi', address: 'dis@kisi.test' } }, toRecipients: [{ emailAddress: { address: 'talep@outlook.test' } }],
+        receivedDateTime: new Date().toISOString(), hasAttachments: true, body: { contentType: 'html', content: '<p>Merhaba <i>ekip</i></p><style>x{}</style>' } });
+    });
+    let r = await poll(a.id);
+    assert.equal(r.json.result.issues, 0, JSON.stringify(r.json));
+    assert.match((await acct('talep@outlook.test')).cursor, /deltatoken=d1$/);
+    r = await poll(a.id);
+    assert.equal(r.json.result.issues, 1, JSON.stringify(r.json));
+    const it = (await issuesOf('p_mx')).find(i => i.summary === 'Outlook talebi');
+    assert.equal(it.description, 'Merhaba ekip\n\n(İletide ek vardı; ekler aktarılmadı.)');
+    /* sonraki turda imleç sabit olmayan adrese işaret ediyor: istek atılmaz, hata kaydedilir */
+    const before = calls.length;
+    r = await poll(a.id);
+    assert.equal(r.json.result.error, true);
+    assert.ok(calls.slice(before).every(c => !c.url.includes('evil.example')));
+    assert.match((await acct('talep@outlook.test')).last_error, /izinli değil/);
+  });
+
+  test('jeton geçersiz → "Yeniden bağlanın" + yöneticiye bildirim; bağlantıyı kes jetonu siler ve Google izni geri alınır', async () => {
+    configure();
+    const a = await acct('destek@sirket.test');
+    await pool.query(`UPDATE mail_accounts SET access_expires_at=now() - interval '1 hour' WHERE id=$1`, [a.id]);
+    route(/oauth2\.googleapis\.com\/token$/, () => J(400, { error: 'invalid_grant', error_description: 'Token has been expired or revoked.' }));
+    const r = await poll(a.id);
+    assert.equal(r.json.result.reconnect, true);
+    const b = await acct('destek@sirket.test');
+    assert.equal(b.status, 'reconnect'); assert.equal(b.refresh_token_enc, null); assert.match(b.last_error, /Yeniden bağlanın/);
+    const n = track(await A.req('GET', '/api/notifications'));
+    assert.ok(n.json.items.some(x => x.kind === 'mail' && x.meta.address === 'destek@sirket.test'));
+    /* yeniden bağlanmış gibi: kesmede revoke çağrılır */
+    await pool.query(`UPDATE mail_accounts SET status='ok', refresh_token_enc=$2 WHERE id=$1`, [a.id, mail.encrypt('tok_YENILEME_g9')]);
+    route(/oauth2\.googleapis\.com\/revoke$/, () => J(200, {}));
+    const d = track(await A.req('POST', `/api/mail/accounts/${a.id}/delete`));
+    assert.equal(d.status, 200); assert.equal(d.json.revoked, true);
+    assert.ok(calls.some(c => c.url === 'https://oauth2.googleapis.com/revoke' && c.method === 'POST' && c.body.includes('tok_YENILEME_g9')));
+    assert.equal(await acct('destek@sirket.test'), undefined);
+    assert.equal((await pool.query('SELECT count(*)::int AS n FROM mail_messages WHERE account_id=$1', [a.id])).rows[0].n, 0);
+  });
+
+  test('jeton ve sır hiçbir yanıtta görünmez', () => {
+    const all = seenBodies.join('\n');
+    for (const s of ['tok_', 'refresh_token', 'access_token', 'g-sir', 'm-sir', '_enc', 'verifier', 'v1:']) assert.ok(!all.includes(s), s);
   });
 });

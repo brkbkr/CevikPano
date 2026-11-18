@@ -51,6 +51,8 @@ jobs:
           nohup node server/index.js > server.log 2>&1 &
           for _ in $(seq 1 30); do curl -fsS http://localhost:3100/healthz && break; sleep 1; done
           node scripts/seed-demo.mjs http://localhost:3100 test/fixtures/demo.json
+          # Demo verisi eski biçimde (Müşteri özel alanı): 005 dönüşümünü yeniden uygula (canlıdaki geçişle aynı hâl).
+          node scripts/apply-sql.mjs server/migrations/005_musteri_cari.sql
       - name: Regresyon testi
         run: node test/e2e/regresyon.cjs
       - name: Kullanıcı yönetimi testi
@@ -69,6 +71,18 @@ jobs:
         run: node test/e2e/gezinme.cjs
       - name: İş detayı, yeni iş ve alt pencereler testi
         run: node test/e2e/kart-detay.cjs
+      - name: İş geçmişi testi (tam geçmiş)
+        run: node test/e2e/gecmis.cjs
+      - name: Şablon galerisiyle yeni proje testi
+        run: node test/e2e/proje-sablonu.cjs
+      - name: Genel raporlar testi (pivot, faturalanabilir saat, Excel, performans)
+        run: node test/e2e/genel-raporlar.cjs
+      - name: Talep eden ve talep havuzu testi
+        run: node test/e2e/talep.cjs
+      - name: Müşteri atamaları cariden testi (iş carisi, birleştirme, raporlar)
+        run: node test/e2e/musteri-cari.cjs
+      - name: Posta kutuları testi (yapılandırılmamış ve bağlı kutu listesi)
+        run: node test/e2e/posta.cjs
       - name: Sunucu günlüğü
         if: failure()
         run: cat server.log

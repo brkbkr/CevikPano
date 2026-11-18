@@ -231,10 +231,11 @@ const PC = 'p_ptc' + RUN, PA = 'p_pta' + RUN;          // kolon testi projesi (P
   // 9) üye formdan proje açar: tür (varsayılan Pano), Basit şablonu, Bitti zorunlu; yenileyince kolonlar var
   await go(Mb, PC, 'projects');
   await Mb.evaluate(() => newProjectForm()); await sleep(200);
-  ok('yeni proje: tür varsayılan Pano; "varsayılan akış" kutusu üyede yok', await Mb.evaluate(() =>
-    document.querySelector('#np_type [data-ptype="board"]').getAttribute('aria-checked') === 'true' && !document.getElementById('np_def')));
-  await Mb.click('[data-tpl="basic"]'); await sleep(100);
-  ok('Basit şablonu: 3 kolon', JSON.stringify(await dlgRows(Mb)) === JSON.stringify(['Yapılacak', 'Devam ediyor', 'Bitti']));
+  ok('yeni proje: galeri açılır, Kanban (Pano) seçili', await Mb.evaluate(() =>
+    document.querySelector('#ps_grid input[value="kanban"]')?.checked === true));
+  await Mb.click('.ps-card[data-pk="gorev"] .ps-pick'); await Mb.click('#ps_next'); await sleep(150);
+  ok('"varsayılan akış" kutusu üyede yok', await Mb.evaluate(() => !document.getElementById('np_def') && !!document.getElementById('np_n')));
+  ok('Görev takibi şablonu: 3 kolon', JSON.stringify(await dlgRows(Mb)) === JSON.stringify(['Yapılacak', 'Devam ediyor', 'Bitti']));
   await Mb.selectOption('[data-cc="2"]', 'inprogress'); await sleep(100);
   await Mb.fill('#np_n', 'Tür Deneme ' + RUN); await Mb.click('#np_ok'); await sleep(200);
   ok('Bitti kolonu olmadan oluşturulmaz', await Mb.evaluate(() => /Projede en az bir Bitti kolonu olmalı/.test(document.getElementById('np_cerr').textContent)

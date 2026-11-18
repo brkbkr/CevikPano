@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
 import { TABLES, PREF_KEYS, IGNORED_KEYS, tx, tableOf, reservedName } from './db.js';
 import { HttpError, cj, same, merge3, isAdminRole } from './util.js';
-import { validate, PROJECT_TYPES, normalizePriority, normalizeArchived, normalizeCustomer, validId, validateCfg, stripBadKeys } from './validate.js';
+import { validate, PROJECT_TYPES, normalizePriority, normalizeArchived, normalizeCustomer, normalizeHistory, validId, validateCfg, stripBadKeys } from './validate.js';
 import { notifyForIssue, notifyForComment } from './notify.js';
 
 export { HttpError };
@@ -16,8 +16,18 @@ const ROLES = ['super', 'admin', 'member', 'viewer'];
    projenin üyesi olan Üye tarafından değiştirilir (canConfigure). */
 export const ADMIN_ONLY = ['fields', 'rules', '_settings', 'customers'];
 const ISSUE_CHILDREN = ['comments', 'worklogs', 'history', 'transitions'];
-/* Yeni kaydı yalnız ekleyerek oluşturan koleksiyonlar (eşzamanlı oluşturmada üzerine yazılmaz). */
-const CREATE_ONCE = ['workspaces', 'customers'];
+/* Yeni kaydı yalnız ekleyerek oluşturan koleksiyonlar (eşzamanlı oluşturmada üzerine yazılmaz). Geçmiş ve
+   yorum: aynı kimlikle eşzamanlı ikinci gönderim ilk yazanın kaydını (yazarını) ezmesin. */
+const CREATE_ONCE = ['workspaces', 'customers', 'history', 'comments'];
+/* Geçmiş yalnız eklenir (B2): var olan kayıt değiştirilemez, tek tek silinemez (yöneticiler dahil); silme yalnız
+   iş silmenin cascade'iyle. Yeni kayıtta yönetici olmayanın yazarı oturuma, zamanı sunucu saatine ±5 dk zorlanır. */
+export const HIST_LOCKED = 'Geçmiş kaydı değiştirilemez';
+export const HIST_SKEW_MS = 5 * 60 * 1000;
+export const COMMENT_FORBIDDEN = 'Başkasının yorumunu yalnızca yönetici değiştirebilir';
+const HIST_KEYS = ['id', 'issueId', 'userId', 'at', 'field', 'from', 'to', 'kind', 'key', 'rule'];
+export const HIST_MAX_BYTES = 2048;
+/* Geçmiş kaydında bilinen anahtarlar dışındakiler atılır; değişiklik olduysa true. */
+const stripHistKeys = d => { let n = 0; for (const k of Object.keys(d)) if (!HIST_KEYS.includes(k)) { delete d[k]; n++; } return n > 0; };
 
 /* ---- kullanıcıyı istemciye gönderilecek biçime çevir (parola özeti yok) ---- */
 export function publicUser(row) {
@@ -113,21 +123,24 @@ export const logChange = (c, collection, id, op, uid, batch) =>
    c === '_settings' → genel ayar (id = anahtar), c === '_prefs' → kişisel tercih.
    Yetkisiz ya da geçersiz değişiklikler atlanır ve `rejected` içinde döner;
    sunucunun değiştirdiği kayıtlar (birleştirme, iş anahtarı) `adjusted` içinde döner. */
-export async function applyChanges(pool, me, changes) {
+/* opts.system: sunucu kaynaklı yazma (e-postadan iş, server/mail.js) — talep edeni bilinmeyen iş havuza düşebilir. */
+export async function applyChanges(pool, me, changes, opts = {}) {
   if (!Array.isArray(changes)) throw new HttpError(400, 'changes dizi olmalı');
   if (changes.length > 5000) throw new HttpError(413, 'Tek seferde en fazla 5000 değişiklik gönderilebilir');
   /* Kararlı gruplama: kullanıcılar → çalışma alanı/cari kayıtları → proje kayıtları → diğerleri (silmeler
      dahil, gönderim sırasıyla) → en sonda kolon silmeleri. Yeni alan/cari ve ona bağlı yeni proje, yeni
      projenin kolonları dizide önce gelse de doğru sırayla yazılır; silinen kolonun işleri aynı gönderimde
-     taşındıysa silme onlardan sonra denetlenir. */
+     taşındıysa silme onlardan sonra denetlenir. Geçmiş ve yorumlar işlerden sonra (B2): yeni işin geçmişi
+     işi bulur; iş silmeyle birlikte gönderilen geçmiş/yorum silmeleri cascade'den sonra "kayıt yok" olur. */
   const rank = ch => (ch?.c === 'users' ? 0
     : ['workspaces', 'customers'].includes(ch?.c) && ch?.op === 'put' ? 1
     : ch?.c === 'projects' && ch?.op === 'put' ? 2
-    : ch?.c === 'statuses' && ch?.op === 'del' ? 4 : 3);
+    : ch?.c === 'statuses' && ch?.op === 'del' ? 5
+    : ['history', 'comments'].includes(ch?.c) ? 4 : 3);
   const ordered = changes.map((ch, i) => [rank(ch), i, ch]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
   /* Kilitlenme (40P01) ya da serileştirme hatası (40001): işlem bir kez yeniden denenir. */
   for (let attempt = 0; ; attempt++) {
-    try { return await applyOnce(pool, me, ordered); }
+    try { return await applyOnce(pool, me, ordered, opts); }
     catch (e) {
       if (!['40P01', '40001'].includes(e?.code)) throw e;
       if (attempt >= 1) throw new HttpError(409, 'Sunucu meşgul, yeniden deneyin');
@@ -135,12 +148,12 @@ export async function applyChanges(pool, me, changes) {
   }
 }
 
-async function applyOnce(pool, me, ordered) {
+async function applyOnce(pool, me, ordered, opts = {}) {
   const rejected = [], adjusted = [];
   let applied = 0;
   const canEdit = me.role !== 'viewer';
   const batch = randomUUID();
-  const ctx = { me, batch, adjusted, touchedIssues: new Set(), cols: new Map(), colNamed: new Set() };
+  const ctx = { me, batch, adjusted, touchedIssues: new Set(), cols: new Map(), colNamed: new Set(), system: opts.system === true };
   const meAdmin = isAdminRole(me.role);
   const rejIdx = new Map();                         // ret listesi gönderim sırasında döner
 
@@ -235,6 +248,22 @@ async function applyRecord(c, ctx, ch) {
       throw new HttpError(403, 'Başkası adına süre kaydı yalnızca yönetici girebilir');
   }
   if (ch.c === 'worklogs') { if (cur?.issueId) ctx.touchedIssues.add(cur.issueId); if (ch.data?.issueId) ctx.touchedIssues.add(ch.data.issueId); }
+  /* Başkasının ya da yazarı olmayan eski yorum: değiştirme/silme yalnız yönetici. Kayıt yoksa silme zaten etkisiz. */
+  if (ch.c === 'comments' && !meAdmin && cur && cur.userId !== me.id) throw new HttpError(403, COMMENT_FORBIDDEN);
+  if (ch.c === 'history') {
+    if (ch.op === 'del') { if (!cur) return false; throw new HttpError(403, HIST_LOCKED); }
+    if (cur) {
+      const inc = { ...ch.data, id: ch.id };
+      normalizeHistory(inc);
+      if (same(cur, inc)) return false;               // aynı veri (yeniden gönderim) sessizce geçer
+      stripHistKeys(inc);
+      if (same(cur, inc)) { ctx.adjusted.push({ c: ch.c, id: ch.id }); return false; }
+      /* Yeniden gönderim: sunucu bu kişinin kaydında yalnız yazarı/zamanı düzeltmişti. */
+      const bare = x => ({ ...x, userId: null, at: null });
+      if (!meAdmin && cur.userId === me.id && same(bare(cur), bare(inc))) { ctx.adjusted.push({ c: ch.c, id: ch.id }); return false; }
+      throw new HttpError(403, HIST_LOCKED);
+    }
+  }
 
   if (ch.op === 'del') {
     if (!cur) return false;
@@ -249,6 +278,8 @@ async function applyRecord(c, ctx, ch) {
     if (ch.c === 'customers') {
       /* Kişisel veri: cari çöp kutusuna gitmez, kalıcı silinir (geri alınamaz). Silinen cari yedeklerden de
          çıkarılır; yetkili kişi silmesi eski yedeklerde saklama süresi dolana kadar kalabilir. */
+      /* Birleştirme (görev 11b): { op:'del', mergeInto: hedef } → bağlar ve kişiler hedefe, kaynak silinir. */
+      if (ch.mergeInto !== undefined) await mergeCustomer(c, ctx, ch.id, ch.mergeInto);
       await checkCustomerDelete(c, ch.id);
       await c.query('DELETE FROM customers WHERE id=$1', [ch.id]);
       await purgeCustomerFromSnapshots(c, ch.id);
@@ -284,7 +315,25 @@ async function applyRecord(c, ctx, ch) {
   if ((ch.c === 'projects' || ch.c === 'workspaces') && normalizeArchived(data)) adjusted = true;
   if (ch.c === 'customers' && normalizeCustomer(data)) adjusted = true;
   if (ch.c === 'workspaces' && enforceCreatedBy(data, cur, me)) adjusted = true;
+  if (ch.c === 'history' && normalizeHistory(data)) adjusted = true;
+  if (ch.c === 'history' && stripHistKeys(data)) adjusted = true;
+  if (ch.c === 'history' && !meAdmin && enforceHistoryAuthor(data, me)) adjusted = true;
+  /* "Geri yükleme" satırını yalnız sunucu (çöp kutusu) ve yönetici yazar. */
+  if (ch.c === 'history' && !meAdmin && data.kind === 'restore') { delete data.kind; adjusted = true; }
+  if (ch.c === 'history' && Buffer.byteLength(JSON.stringify(data)) > HIST_MAX_BYTES) throw new HttpError(400, 'Geçmiş kaydı çok büyük');
+  /* Yeni yorumda yazar oturumdur; var olan yorumun yazarı değişmez (yönetici hariç; yönetici olmayan
+     yalnız kendi yorumunu düzenler, bu durumda cur.userId === me.id). */
+  if (ch.c === 'comments' && !meAdmin && data.userId !== me.id) { data.userId = me.id; adjusted = true; }
   validate(ch.c, data, { live: true, cur });
+  /* Geçmiş kaydının işi var olmalı (aynı gönderimde oluşturulan iş dahil: gruplamada işlerden sonra gelir).
+     FOR SHARE: iş aynı anda silinirse yetim kayıt kalmasın. */
+  if (ch.c === 'history'
+      && !(await c.query('SELECT 1 FROM issues WHERE id=$1 FOR SHARE', [data.issueId])).rowCount)
+    throw new HttpError(400, 'Geçmiş kaydının işi bulunamadı');
+  /* Yorumun işi var olmalı (yeni yorumda ya da işi değişince; içe aktarma gevşek kalır). */
+  if (ch.c === 'comments' && (!cur || data.issueId !== cur.issueId)
+      && !(await c.query('SELECT 1 FROM issues WHERE id=$1 FOR SHARE', [data.issueId])).rowCount)
+    throw new HttpError(400, 'Yorumun işi bulunamadı');
   /* Atanan değiştiyse var olan, aktif bir kullanıcı olmalı. */
   if (ch.c === 'issues' && data.assignee != null && data.assignee !== '' && data.assignee !== cur?.assignee) {
     const ok = typeof data.assignee === 'string'
@@ -298,11 +347,13 @@ async function applyRecord(c, ctx, ch) {
       && (await c.query('SELECT 1 FROM statuses WHERE id=$1 AND project_id=$2 FOR SHARE', [data.statusId, data.projectId])).rowCount > 0;
     if (!ok) throw new HttpError(400, 'Kolon bulunamadı');
   }
+  if (ch.c === 'issues') await checkRequester(c, data, cur, ctx.system);
   if (ch.c === 'issues' && await ensureIssueKey(c, ctx, data, cur)) adjusted = true;
   if (cur && same(cur, data)) { if (adjusted) ctx.adjusted.push({ c: ch.c, id: ch.id }); return false; }
   if (ch.c === 'workspaces') await checkWorkspace(c, me, ch.id, data, cur);
   if (ch.c === 'projects') await checkProjectWorkspace(c, data, cur);
   if (ch.c === 'projects') await checkProjectCustomer(c, data, cur);
+  if (ch.c === 'issues') await checkProjectCustomer(c, data, cur, 'Pasif cari işe bağlanamaz');
   if (ch.c === 'projects' && cur) await checkProjectType(c, me, ch.id, data, cur);
   /* Üye listesini değiştiren yönetici olmayan kişi zaten üye olmalı (ya da liste boş olmalı). Yeni projede serbest. */
   if (ch.c === 'projects' && cur && !same(cur.members ?? [], data.members ?? []))
@@ -419,6 +470,17 @@ export const DEFAULT_WS = 'ws1';
 const WS_LOCK = 727275;
 const wsName = s => String(s ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr');
 
+/* Yönetici olmayanın yeni geçmiş kaydı: yazar = oturum, zaman sunucu saatine ±5 dk (yoksa/geçersizse şimdi). */
+function enforceHistoryAuthor(data, me) {
+  let changed = false;
+  if (data.userId !== me.id) { data.userId = me.id; changed = true; }
+  const now = Date.now();
+  const t = typeof data.at === 'number' ? data.at : typeof data.at === 'string' ? Date.parse(data.at) : NaN;
+  const at = Number.isFinite(t) ? Math.min(now + HIST_SKEW_MS, Math.max(now - HIST_SKEW_MS, t)) : now;
+  if (at !== data.at) { data.at = at; changed = true; }
+  return changed;
+}
+
 /* Açan kişi istemciden alınmaz: yeni alanda oturumdaki kullanıcı, var olanda kayıttaki değer. */
 function enforceCreatedBy(data, cur, me) {
   const before = data.createdBy;
@@ -501,17 +563,102 @@ async function purgeCustomerFromSnapshots(c, id) {
 async function checkCustomerDelete(c, id) {
   const n = Number((await c.query('SELECT count(*) AS n FROM projects WHERE customer_id=$1', [id])).rows[0].n);
   if (n > 0) throw new HttpError(409, `Bu cariye bağlı ${n} proje var; silmek yerine pasife alın`);
+  const k = Number((await c.query('SELECT count(*) AS n FROM issues WHERE customer_id=$1', [id])).rows[0].n);
+  if (k > 0) throw new HttpError(409, `Bu cariye bağlı ${k} iş var; silmek yerine pasife alın`);
+}
+
+/* İki cariyi birleştirir (yönetici; customers ADMIN_ONLY): kaynağa bağlı tüm projeler ve işler (arşivliler dahil)
+   hedefe taşınır, kaynağın yetkili kişileri hedefe eklenir; ardından kaynak silinir (çağıran). Hedef var ve etkin
+   olmalı. Hepsi tek işlemde: bir adım reddedilirse hiçbiri yazılmaz (SAVEPOINT). */
+async function mergeCustomer(c, ctx, id, to) {
+  if (!validId(to) || to === id) throw new HttpError(400, 'Birleştirilecek cari geçersiz');
+  const src = (await c.query('SELECT data FROM customers WHERE id=$1', [id])).rows[0]?.data;
+  const tgt = (await c.query('SELECT data, active FROM customers WHERE id=$1 FOR UPDATE', [to])).rows[0];
+  if (!src || !tgt) throw new HttpError(400, 'Cari bulunamadı');
+  if (!tgt.active) throw new HttpError(400, 'Pasif cariye birleştirilemez');
+  const { me, batch } = ctx;
+  for (const table of ['projects', 'issues']) {
+    const rows = (await c.query(`UPDATE ${table} SET data = data || jsonb_build_object('customerId', $2::text),
+        version = version + 1, updated_at = now(), updated_by = $3 WHERE customer_id = $1 RETURNING id`, [id, to, me.id])).rows;
+    for (const r of rows) { await logChange(c, table, r.id, 'put', me.id, batch); ctx.adjusted.push({ c: table, id: r.id }); }
+  }
+  const list = v => (Array.isArray(v) ? v.filter(x => x && typeof x === 'object' && !Array.isArray(x)) : []);
+  const mine = list(tgt.data.contacts), ids = new Set(mine.map(x => x.id));
+  const add = list(src.contacts).map(x => {
+    let nid = x.id, n = 1;
+    while (ids.has(nid)) nid = `${x.id}_${++n}`;
+    ids.add(nid);
+    return { ...x, id: nid };
+  });
+  if (add.length) {
+    const data = { ...tgt.data, contacts: [...mine, ...add] };
+    validate('customers', data, { live: true, cur: tgt.data });
+    await c.query(`UPDATE customers SET data = $2::jsonb, version = version + 1, updated_at = now(), updated_by = $3 WHERE id = $1`,
+      [to, JSON.stringify(data), me.id]);
+  }
+  await logChange(c, 'customers', to, 'put', me.id, batch);
+  ctx.adjusted.push({ c: 'customers', id: to });
 }
 
 /* Projeye cari yeni bağlanıyorsa ya da değiştiyse (güncel kayda göre) cari var ve etkin olmalı.
    Bağ kaldırma serbest; pasife alınmış carinin değişmeyen bağı korunur. */
-async function checkProjectCustomer(c, data, cur) {
+async function checkProjectCustomer(c, data, cur, passive = 'Pasif cari projeye bağlanamaz') {
   const cid = data.customerId;
   if (cid == null || cid === '') return;
   if (cur && (cur.customerId ?? '') === cid) return;
   const row = (await c.query('SELECT active FROM customers WHERE id=$1 FOR SHARE', [cid])).rows[0];
   if (!row) throw new HttpError(400, 'Cari bulunamadı');
-  if (!row.active) throw new HttpError(400, 'Pasif cari projeye bağlanamaz');
+  if (!row.active) throw new HttpError(400, passive);
+}
+
+/* Talep eden (görev 12): yalnız canlı yazmada, yeni işte ya da talep eden değişince (güncel kayda göre).
+   'talep' şablonlu projede boş bırakılamaz; dolu ise cari var ve etkin, kişi o carinin yetkili kişisi olmalı.
+   Değişmeyen eski bağ (pasife alınmış cari / silinmiş kişi) ve talep edeni olmayan eski iş korunur.
+   İçe aktarma / geri yükleme bu yoldan geçmez. */
+export const REQUESTER_REQUIRED = 'Talep eden gerekli';
+const reqKey = r => (r && typeof r === 'object' ? `${r.customerId ?? ''}|${r.contactId ?? ''}` : '');
+async function checkRequester(c, data, cur, system = false) {
+  const r = data.requester ?? null;
+  if (cur && reqKey(cur.requester) === reqKey(r)) return;
+  if (!r) {
+    if (system) return;                              // e-postadan: "Talep eden bekleniyor" etiketiyle havuza
+    const tpl = (await c.query(`SELECT data->>'template' AS t FROM projects WHERE id=$1`, [data.projectId])).rows[0]?.t;
+    if (tpl === 'talep') throw new HttpError(400, REQUESTER_REQUIRED);
+    return;
+  }
+  const row = (await c.query('SELECT active, data FROM customers WHERE id=$1 FOR SHARE', [r.customerId])).rows[0];
+  if (!row) throw new HttpError(400, 'Talep edenin carisi bulunamadı');
+  if (!row.active) throw new HttpError(400, 'Pasif carinin kişisi talep eden olamaz');
+  const list = Array.isArray(row.data?.contacts) ? row.data.contacts : [];
+  if (!list.some(p => p && p.id === r.contactId)) throw new HttpError(400, 'Talep eden kişi bu caride bulunamadı');
+}
+
+/* Hızlı kişi ekleme (görev 12): yönetici ve üye bir cariye yalnız ad / e-posta / telefon ile yetkili kişi ekler.
+   Cari kaydının geri kalanı (unvan, vergi no...) bu yoldan değişmez. changes'e 'put' yazılır (diğerleri yoklamayla alır). */
+export async function addContact(pool, me, customerId, body) {
+  if (me.role === 'viewer') throw new HttpError(403, 'İzleyiciler kişi ekleyemez');
+  if (!validId(customerId)) throw new HttpError(400, 'Geçersiz cari');
+  const b = body && typeof body === 'object' ? body : {};
+  const name = typeof b.name === 'string' ? b.name.trim() : '';
+  if (!name || name.length > 120) throw new HttpError(400, 'Kişinin adı gerekli (en fazla 120 karakter)');
+  const p = { id: 'ct_' + randomUUID().replace(/-/g, '').slice(0, 16), name };
+  for (const k of ['email', 'phone']) {
+    if (b[k] == null || b[k] === '') continue;
+    if (typeof b[k] !== 'string') throw new HttpError(400, k === 'email' ? 'E-posta adresi geçersiz' : 'Telefon geçersiz');
+    const v = b[k].trim();
+    if (v) p[k] = v;
+  }
+  return tx(pool, async c => {
+    const row = (await c.query('SELECT data, active FROM customers WHERE id=$1 FOR UPDATE', [customerId])).rows[0];
+    if (!row) throw new HttpError(404, 'Cari bulunamadı. Yöneticinize cari ekletin.');
+    if (!row.active) throw new HttpError(400, 'Pasif cariye kişi eklenemez');
+    const data = { ...row.data, contacts: [...(Array.isArray(row.data.contacts) ? row.data.contacts : []), p] };
+    validate('customers', data, { live: true, cur: row.data });
+    await c.query(`UPDATE customers SET data=$2::jsonb, version=version+1, updated_at=now(), updated_by=$3 WHERE id=$1`,
+      [customerId, JSON.stringify(data), me.id]);
+    await logChange(c, 'customers', customerId, 'put', me.id, randomUUID());
+    return { contact: p, customer: data };
+  });
 }
 
 /* Yetkili kişiler kimliğe göre üç yönlü birleşir: başkasının sildiği kişi silinmiş kalır (eski base ile geri

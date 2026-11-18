@@ -43,7 +43,8 @@ const WSA = `Alan A ${RUN} ${XSS}`;                       // 60 karakterin altı
   const openPop = async (p, sel) => { await p.click(`${sel} [data-wsmore]`); await sleep(150); };
 
   const A = await mk('admin'); await login(A, 'admin', 'admin12345');
-  ok('rail: two-level selector present (#projSel kept)', await A.evaluate(() => !!document.querySelector('#wsSwitch #wsCur') && !!document.querySelector('#wsSwitch #projSel')));
+  /* dilim A2: iki katlı seçici yerine çalışma alanı ağacı */
+  ok('rail: workspace tree present (old selectors gone)', await A.evaluate(() => !!document.querySelector('#rail #wsTree') && !document.querySelector('#projSel, #wsCur, #wsSwitch')));
   ok('default workspace "Genel" exists (migration)', await A.evaluate(() => DB.workspaces.some(w => w.id === 'ws1' && w.name && !w.archived)));
   ok('projects without workspaceId count as Genel', await A.evaluate(() => wsOf(DB.projects.find(p => p.id === 'p1')) === 'ws1'));
 
@@ -60,16 +61,17 @@ const WSA = `Alan A ${RUN} ${XSS}`;                       // 60 karakterin altı
     save(); await flushAll();
   }, [RUN, M, V, N, NV]);
 
-  // 1) alan menüsü: klavye ile açılır, Esc kapatır ve odak düğmeye döner
-  await A.focus('#wsCur'); await A.keyboard.press('ArrowDown'); await sleep(150);
-  const menu = await A.evaluate(() => ({ open: !!document.querySelector('#wsMenu[role="menu"]'), exp: document.querySelector('#wsCur').getAttribute('aria-expanded'),
-    focusIn: !!document.activeElement.closest('#wsMenu'), radios: document.querySelectorAll('#wsMenu [role="menuitemradio"]').length, nw: !!document.querySelector('#wsMenu [data-wsnew]') }));
-  ok('ws menu opens with keyboard (menu + menuitemradio, focus inside)', menu.open && menu.exp === 'true' && menu.focusIn && menu.radios >= 1 && menu.nw, JSON.stringify(menu));
+  // 1) "Çalışma alanları" başlığındaki ⋯ menüsü: klavye ile açılır, Esc kapatır ve odak düğmeye döner; "+" yeni alan
+  await A.focus('#rail [data-navws]'); await A.keyboard.press('Enter'); await sleep(150);
+  const menu = await A.evaluate(() => ({ open: !!document.querySelector('#navPop[role="menu"]'), exp: document.querySelector('#rail [data-navws]').getAttribute('aria-expanded'),
+    focusIn: !!document.activeElement.closest('#navPop'), items: document.querySelectorAll('#navPop [role="menuitem"]').length,
+    all: !!document.querySelector('#navPop [data-wsmanage]'), cz: !!document.querySelector('#navPop [data-navcz]'), nw: !!document.querySelector('#rail .nv-sech [data-wsnew]') }));
+  ok('ws ⋯ menu opens with keyboard (menu + items, focus inside; + in header)', menu.open && menu.exp === 'true' && menu.focusIn && menu.items === 2 && menu.all && menu.cz && menu.nw, JSON.stringify(menu));
   await A.keyboard.press('Escape'); await sleep(100);
-  ok('Esc closes ws menu and returns focus', await A.evaluate(() => !document.querySelector('#wsMenu') && document.activeElement.id === 'wsCur'));
+  ok('Esc closes ws menu and returns focus', await A.evaluate(() => !document.querySelector('#navPop') && document.activeElement.matches('#rail [data-navws]')));
 
   // 2) yeni alan: ad çakışması (Türkçe büyük/küçük harf duyarsız) önce istemcide yakalanır
-  await A.click('#wsCur'); await sleep(100); await A.click('#wsMenu [data-wsnew]'); await sleep(250);
+  await A.click('#rail .nv-sech [data-wsnew]'); await sleep(250);
   ok('new workspace dialog opens', await A.isVisible('#wsf_n') && await A.evaluate(() => document.querySelector('#scrim .modal').getAttribute('role') === 'dialog'));
   await A.fill('#wsf_n', '  gENEL '); await A.click('#wsf_ok'); await sleep(150);
   const dup = await A.evaluate(() => ({ e: document.querySelector('#wsf_ne').textContent.trim(), inv: document.querySelector('#wsf_n').getAttribute('aria-invalid'), open: !!document.querySelector('#wsf_n') }));
@@ -82,9 +84,11 @@ const WSA = `Alan A ${RUN} ${XSS}`;                       // 60 karakterin altı
     && document.activeElement.dataset.wsc === '#C2410C' && /Turuncu/.test(document.querySelector('#wsf_cn').textContent)));
   await A.fill('#wsf_d', 'Test alanı'); await A.click('#wsf_ok'); await sleep(300);
   const wsA = await A.evaluate(name => DB.workspaces.find(w => w.name === name)?.id, WSA);
-  const afterCreate = await A.evaluate(id => ({ sel: DB.ui.workspace === id, proj: DB.ui.project, nm: document.querySelector('#wsCur .nm').textContent,
-    opts: [...document.querySelectorAll('#projSel option')].map(o => o.value), dis: document.querySelector('#projSel').disabled }), wsA);
-  ok('created workspace is selected, no project', wsA && afterCreate.sel && !afterCreate.proj && afterCreate.nm === WSA && afterCreate.dis, JSON.stringify(afterCreate));
+  const afterCreate = await A.evaluate(id => { const r = document.querySelector(`#wsTree [data-wstog="${id}"]`), l = document.getElementById('nvp-' + id);
+    return { sel: DB.ui.workspace === id, proj: DB.ui.project, nm: document.querySelector('#wsTree [data-wstog][aria-current="true"] .tx')?.textContent,
+      exp: r?.getAttribute('aria-expanded'), opts: l ? l.querySelectorAll('[data-proj]').length : -1, empty: l?.querySelector('.nv-empty')?.textContent }; }, wsA);
+  ok('created workspace is selected (open in tree), no project', wsA && afterCreate.sel && !afterCreate.proj && afterCreate.nm === WSA && afterCreate.exp === 'true'
+    && afterCreate.opts === 0 && afterCreate.empty === 'Henüz proje yok', JSON.stringify(afterCreate));
 
   // 3) boş durum (a): projeye bağlı ekranlar çökmez, panel görünür; c kısayolu iş formu açmaz
   const empties = [];
@@ -110,6 +114,7 @@ const WSA = `Alan A ${RUN} ${XSS}`;                       // 60 karakterin altı
       first: document.querySelector('[data-wsgrp]').dataset.wsgrp }; }, wsA);
   ok('projects grouped by workspace (Genel first, XSS name as text)', grp && grp.t === WSA && grp.cnt === '0 proje' && grp.empty && grp.first === 'ws1', JSON.stringify(grp));
   await A.click(`[data-wsgrp="${wsA}"] .ws-gh [data-wsnewproj]`); await sleep(250);
+  await A.click('#ps_next'); await sleep(150);
   ok('+ Proje preselects the workspace', await A.evaluate(id => document.querySelector('#np_ws')?.value === id, wsA));
   await A.fill('#np_n', 'WS Proje ' + RUN); await A.click('#np_ok'); await sleep(400);
   const np = await A.evaluate(name => { const p = DB.projects.find(x => x.name === name); return p && { id: p.id, ws: p.workspaceId, sel: DB.ui.project === p.id, uiWs: DB.ui.workspace }; }, 'WS Proje ' + RUN);
@@ -121,8 +126,8 @@ const WSA = `Alan A ${RUN} ${XSS}`;                       // 60 karakterin altı
 
   // 5) üye M ikinci tarayıcıda: Genel'de p1/p2
   const Mb = await mk('member'); await login(Mb, 'wsm' + RUN, 'Baslangic123', 'WsUye12345!');
-  const mInit = await Mb.evaluate(id => ({ vis: visibleWs().map(w => w.id), opts: [...document.querySelectorAll('#projSel option')].map(o => o.value) }), wsA);
-  ok('member: sees only workspaces with own projects', mInit.vis.includes('ws1') && !mInit.vis.includes(wsA), JSON.stringify(mInit));
+  const mInit = await Mb.evaluate(id => ({ vis: visibleWs().map(w => w.id), tree: [...document.querySelectorAll('#wsTree [data-wstog]')].map(b => b.dataset.wstog) }), wsA);
+  ok('member: sees only workspaces with own projects', mInit.vis.includes('ws1') && !mInit.vis.includes(wsA) && !mInit.tree.includes(wsA), JSON.stringify(mInit));
 
   // 6) taşıma (yönetici, ⋯ menüsünden): anahtarlar aynı; üye ≤ 4 sn (+ pay) içinde görür
   const keysBefore = await A.evaluate(() => DB.issues.filter(i => i.projectId === 'p2').map(i => i.id + ':' + i.key).sort().join());
@@ -143,11 +148,14 @@ const WSA = `Alan A ${RUN} ${XSS}`;                       // 60 karakterin altı
   const keysAfter = await Mb.evaluate(() => DB.issues.filter(i => i.projectId === 'p2').map(i => i.id + ':' + i.key).sort().join());
   ok('issue keys and sprints unchanged after move', keysAfter === keysBefore && await Mb.evaluate(() => DB.sprints.filter(s => s.projectId === 'p2').length) === sprintsBefore);
   await Mb.evaluate(() => { DB.ui.project = 'p1'; render(); }); await sleep(200);
-  ok('member: project select narrows to workspace', await Mb.evaluate(() => { const o = [...document.querySelectorAll('#projSel option')].map(x => x.value);
+  ok('member: tree lists projects under their workspace', await Mb.evaluate(() => { const o = [...document.querySelectorAll('#nvp-ws1 [data-proj]')].map(x => x.dataset.proj);
     return o.includes('p1') && !o.includes('p2'); }));
-  await Mb.click('#wsCur'); await sleep(100); await Mb.click(`#wsMenu [data-wspick="${wsA}"]`); await sleep(300);
-  ok('member: switching workspace opens its first project', await Mb.evaluate(id => DB.ui.workspace === id && DB.ui.project === 'p2'
-    && [...document.querySelectorAll('#projSel option')].map(o => o.value).join() === 'p2', wsA));
+  await Mb.click(`#wsTree [data-wstog="${wsA}"]`); await sleep(200);
+  ok('member: opening the workspace row shows its projects', await Mb.evaluate(id => document.querySelector(`#wsTree [data-wstog="${id}"]`).getAttribute('aria-expanded') === 'true'
+    && [...document.querySelectorAll('#nvp-' + id + ' [data-proj]')].map(o => o.dataset.proj).join() === 'p2', wsA));
+  await Mb.click(`#nvp-${wsA} [data-proj="p2"]`); await sleep(300);
+  ok('member: picking a project in another workspace switches workspace', await Mb.evaluate(id => DB.ui.workspace === id && DB.ui.project === 'p2'
+    && document.querySelector('#wsTree [data-proj="p2"]')?.getAttribute('aria-current') === 'page', wsA));
 
   // 7) Benim işlerim: alan çipleri (Tümü + açık işim olan alanlar), altında seçili alanın projeleri
   await A.evaluate(([M, R]) => {
@@ -229,8 +237,8 @@ const WSA = `Alan A ${RUN} ${XSS}`;                       // 60 karakterin altı
 
   // 11) izleyici: oluşturma / taşıma yok
   const Vb = await mk('viewer'); await login(Vb, 'wsv' + RUN, 'Baslangic123', 'WsIzl12345!');
-  await Vb.click('#wsCur'); await sleep(100);
-  const vm = await Vb.evaluate(() => ({ nw: !!document.querySelector('#wsMenu [data-wsnew]'), man: !!document.querySelector('#wsMenu [data-wsmanage]') }));
+  await Vb.click('#rail [data-navws]'); await sleep(100);
+  const vm = await Vb.evaluate(() => ({ nw: !!document.querySelector('#rail [data-wsnew], #navPop [data-wsnew]'), man: !!document.querySelector('#navPop [data-wsmanage]') }));
   await Vb.keyboard.press('Escape');
   await view(Vb, 'projects');
   const vp = await Vb.evaluate(() => ({ btn: !!document.querySelector('#wsNewBtn,#pNew'), more: document.querySelectorAll('[data-wsmore]').length,
@@ -243,7 +251,8 @@ const WSA = `Alan A ${RUN} ${XSS}`;                       // 60 karakterin altı
   const Nb = await mk('noproj'); await login(Nb, 'wsn' + RUN, 'Baslangic123', 'WsProj12345!');
   await view(Nb, 'board');
   const nb = await Nb.evaluate(() => ({ h: document.querySelector('[data-wsempty="b"] h3')?.textContent, btn: !!document.querySelector('[data-wsempty="b"] [data-wsnew]'),
-    sel: document.querySelector('#projSel').disabled, crumb: document.getElementById('crumb').textContent }));
+    sel: document.querySelector('#wsTree .nv-nows')?.textContent === 'Henüz çalışma alanı yok' && !!document.querySelector('#wsTree [data-wsnew]'),
+    crumb: document.getElementById('crumb').textContent }));
   ok('no-project member: empty state (b) with create button', nb.h === 'Henüz bir projeye eklenmedin' && nb.btn && nb.sel, JSON.stringify(nb));
   await Nb.press('body', 'w'); await sleep(250);
   ok('w shortcut without project does not crash', await Nb.evaluate(() => document.getElementById('scrim').classList.contains('on')));
@@ -258,7 +267,8 @@ const WSA = `Alan A ${RUN} ${XSS}`;                       // 60 karakterin altı
   // 13) seçim kişisel ve kalıcı
   await A.evaluate(id => pickWs(id), wsA); await sleep(300); await flush(A);
   await A.reload(); await sleep(2200);
-  ok('admin: selected workspace kept after reload', await A.evaluate(id => DB.ui.workspace === id && document.querySelector('#wsCur .nm').textContent.includes('Alan A'), wsA));
+  ok('admin: selected workspace kept after reload', await A.evaluate(id => DB.ui.workspace === id
+    && document.querySelector('#wsTree [data-wstog][aria-current="true"] .tx').textContent.includes('Alan A'), wsA));
 
   // 14) dar ekran 375px: proje seç penceresi, ≥40px, yatay kaydırma yok
   const Mo = await mk('mobile', { width: 375, height: 812 }); await login(Mo, 'admin', 'admin12345');
@@ -267,16 +277,20 @@ const WSA = `Alan A ${RUN} ${XSS}`;                       // 60 karakterin altı
     more: Math.min(...[...document.querySelectorAll('.ws-more')].map(x => x.getBoundingClientRect().height)) }));
   ok('mobile projects: no horizontal scroll, single column, ≥40px buttons', mo.sw <= 376 && mo.cols === 1 && mo.more >= 40, JSON.stringify(mo));
   /* "Proje ▾" proje sekmelerinin başında (#projPick, sekme listesinin dışında) */
-  await view(Mo, 'board'); await Mo.click('#projPick'); await sleep(250);
-  const sh = await Mo.evaluate(() => { const m = document.querySelector('#scrim .modal'); const r = m.getBoundingClientRect();
-    return { cur: document.querySelector('#pm_ws')?.getBoundingClientRect().height, rows: Math.min(...[...m.querySelectorAll('.ws-prow')].map(x => x.getBoundingClientRect().height)),
+  /* dilim A2: "Proje ▾" ☰ çekmecesini açar ve seçili projeye odaklanır (proje seç penceresi emekli) */
+  await view(Mo, 'board'); await Mo.click('#projPick'); await sleep(400);
+  const sh = await Mo.evaluate(() => { const m = document.getElementById('rail'); const r = m.getBoundingClientRect();
+    return { open: document.body.classList.contains('nav-open'), f: document.activeElement.matches('#wsTree .nv-proj[aria-current="page"]'),
+      cur: Math.min(...[...m.querySelectorAll('#wsTree .nv-ws')].map(x => x.getBoundingClientRect().height)),
+      rows: Math.min(...[...m.querySelectorAll('#wsTree .nv-proj')].map(x => x.getBoundingClientRect().height)),
       l: r.left, r: r.right, sw: document.documentElement.scrollWidth }; });
-  ok('mobile project sheet: workspace selector + rows ≥40px inside viewport', sh.cur >= 40 && sh.rows >= 40 && sh.l >= 0 && sh.r <= 375 && sh.sw <= 376, JSON.stringify(sh));
-  await Mo.click('#pm_ws'); await sleep(200);
-  await Mo.click('[data-wspick="ws1"][data-wssheet]'); await sleep(300);
-  ok('mobile sheet: picking workspace shows its projects', await Mo.evaluate(() => DB.ui.workspace === 'ws1' && !!document.querySelector('#scrim .ws-prow[data-proj]')));
+  ok('mobile "Proje ▾": drawer open, focus on current project, rows ≥44px inside viewport', sh.open && sh.f && sh.cur >= 44 && sh.rows >= 44 && sh.l >= 0 && sh.r <= 375 && sh.sw <= 376, JSON.stringify(sh));
+  if (!await Mo.$('#wsTree [data-wstog="ws1"]')) { await Mo.click('#wsTree [data-wsother]'); await sleep(200); }
+  if (await Mo.evaluate(() => document.querySelector('#wsTree [data-wstog="ws1"]').getAttribute('aria-expanded') !== 'true')) { await Mo.click('#wsTree [data-wstog="ws1"]'); await sleep(200); }
   await Mo.screenshot({ path: SS + 'mobile.png' });
-  await Mo.evaluate(() => closeModal());
+  await Mo.click('#nvp-ws1 [data-proj]'); await sleep(400);
+  ok('mobile drawer: picking a project of another workspace switches and closes', await Mo.evaluate(() => DB.ui.workspace === 'ws1' && DB.ui.view === 'board'
+    && !document.body.classList.contains('nav-open')));
 
   // 15) XSS: alan adları metin olarak
   ok('no XSS from workspace names', await A.evaluate(() => window.__xss === undefined) && await Mb.evaluate(() => window.__xss === undefined) && await Mo.evaluate(() => window.__xss === undefined));

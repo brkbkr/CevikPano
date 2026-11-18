@@ -1,8 +1,9 @@
 import bcrypt from 'bcryptjs';
+import { randomUUID } from 'node:crypto';
 import { TABLES, IGNORED_KEYS, PREF_KEYS, tx, tableOf, reservedName } from './db.js';
 import { HttpError } from './util.js';
 import { readAll, publicUser, logChange, DEFAULT_USER_PASSWORD, ensureDefaultWorkspace, DEFAULT_WS } from './store.js';
-import { validate, normalizePriority, normalizeArchived, normalizeCustomer, validId, stripBadKeys } from './validate.js';
+import { validate, normalizePriority, normalizeArchived, normalizeCustomer, normalizeHistory, validId, stripBadKeys } from './validate.js';
 
 const KEEP_AUTO = 14, KEEP_OTHER = 30;
 
@@ -123,6 +124,7 @@ export async function replaceAll(pool, me, data, kind) {
           if (k === 'issues') normalizePriority(d);    // eski yedekte metin/geçersiz öncelik atlanmasın
           if (k === 'projects' || k === 'workspaces') normalizeArchived(d);   // "true"/"false" metni atlanmasın
           if (k === 'customers') normalizeCustomer(d);   // "123 456-7890" → "1234567890"
+          if (k === 'history') normalizeHistory(d);      // eski uzun geçmiş metni 200'e kırpılır, atlanmaz
           try { validate(k, d); } catch (e) { stats.skipped = (stats.skipped || 0) + 1; continue; }
           /* Vergi numarası tekil: dosyada ikinci kez geçen cari atlanır (geri yükleme 500 vermesin). */
           if (k === 'customers' && d.taxNo) {
@@ -179,6 +181,7 @@ export async function restoreTrash(pool, me, id) {
       ? (await c.query('SELECT * FROM deleted_records WHERE batch_id=$1 ORDER BY id', [r.batch_id])).rows
       : [r];
     let n = 0;
+    const issues = [];
     for (const x of rows) {
       if (x.collection === 'users') {
         const u = x.data;
@@ -197,10 +200,19 @@ export async function restoreTrash(pool, me, id) {
           : await c.query(`INSERT INTO misc_records (collection, id, data, updated_by) VALUES ($1,$2,$3::jsonb,$4) ON CONFLICT DO NOTHING`,
             [x.collection, x.record_id, JSON.stringify(x.data), me.id]);
         if (!q.rowCount) continue;
+        if (x.collection === 'issues') issues.push(x.record_id);
       }
       await logChange(c, x.collection, x.record_id, 'put', me.id);
       await c.query('DELETE FROM deleted_records WHERE id=$1', [x.id]);
       n++;
+    }
+    /* Geri yüklenen her işin geçmişine "Geri yükleme" satırı (B2; sayıya katılmaz). */
+    const at = Date.now();
+    for (const issueId of issues) {
+      const id = 'h_' + randomUUID().replace(/-/g, '').slice(0, 16);
+      const data = { id, issueId, userId: me.id, at, field: 'Geri yükleme', kind: 'restore', from: 'Çöp kutusu', to: 'Geri yüklendi' };
+      await c.query('INSERT INTO history (id, data, updated_by) VALUES ($1,$2::jsonb,$3)', [id, JSON.stringify(data), me.id]);
+      await logChange(c, 'history', id, 'put', me.id);
     }
     return { restored: n };
   });
