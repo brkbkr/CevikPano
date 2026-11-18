@@ -1575,6 +1575,27 @@ describe('proje türü ve kolonlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
     assert.deepEqual(reasons(await N.sync([S('pk_yok_s', 'pk_yok', 'X')])), ['Durumun projesi yok']);
   });
 
+  test('kolon kilidi yetkiden sonra: yetkisiz istek (üye olmayan, izleyici) kilidi beklemez ve kilit almaz; yetkili bekler', async () => {
+    const pending = async p => Promise.race([p.then(() => 'bitti'), new Promise(r => setTimeout(() => r('bekliyor'), 500))]);
+    const h = await pool.connect();
+    try {
+      await h.query('BEGIN');
+      await h.query('SELECT pg_advisory_xact_lock(727276, hashtext($1))', ['pk1']);   // başka bir kolon düzenlemesi sürüyor
+      const n = N.sync([S('pk1_n2', 'pk1', 'Yabancı 2', 'todo', 6), D('statuses', 'pk1_b')]);
+      assert.equal(await pending(n), 'bitti');
+      assert.deepEqual(reasons(await n), Array(2).fill('Kolonları yalnızca alan yöneticisi değiştirebilir'));
+      const v = V.sync([S('pk1_v2', 'pk1', 'İzleyici 2', 'todo', 6)]);
+      assert.equal(await pending(v), 'bitti');
+      assert.deepEqual(reasons(await v), ['salt okunur kullanıcı']);
+      /* yetkisiz istek sürerken kilit tutmaz: başka bağlantı kilidi hemen alabilir */
+      const m = M.sync([S('pk1_m2', 'pk1', 'Üye kolonu', 'todo', 6)]);
+      assert.equal(await pending(m), 'bekliyor');
+      await h.query('COMMIT');
+      ok(await m);
+    } finally { h.release(); }
+    ok(await M.sync([D('statuses', 'pk1_m2')]));
+  });
+
   test('içinde iş kalan kolon silinmez (409); işler aynı gönderimde taşınınca (silme dizide önce gelse de) silinir', async () => {
     ok(await M.sync([S('pk1_t', 'pk1', 'Geçici', 'inprogress', 4), I('i_k1', 'pk1', 'pk1_t'), I('i_k2', 'pk1', 'pk1_t')]));
     let r = await M.sync([D('statuses', 'pk1_t'), I('i_k1', 'pk1', 'pk1_b')]);
