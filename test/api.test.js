@@ -1478,6 +1478,38 @@ describe('cariler', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     assert.equal(r.status, 200); assert.equal(r.json.customers, undefined);
     assert.deepEqual((await A.state()).json.data.customers, []);
   });
+
+  test('yetim cari bağı: silinmiş cariye işaret eden proje/iş yedekten ya da çöp kutusundan bağsız geri gelir', async () => {
+    const P = (id, extra = {}) => ({ c: 'projects', id, op: 'put', data: { name: 'Yetim ' + id, key: id.toUpperCase().replace(/_/g, ''), counter: 0, workspaceId: 'ws1', ...extra } });
+    const I = (id, pid, extra = {}) => ({ c: 'issues', id, op: 'put', data: { projectId: pid, summary: 'Yetim işi ' + id, ...extra } });
+    const req = { customerId: 'c_yt', contactId: 'ct_yt' };
+    ok(await A.sync([cu('c_yt', firm('Yetim Carisi', { contacts: [{ id: 'ct_yt', name: 'Yetim Kişi' }] })), cu('c_yk2', firm('Kalan Cari')),
+      P('p_yt', { customerId: 'c_yt' }), P('p_yt2'),
+      I('i_yt', 'p_yt', { customerId: 'c_yt', requester: req }), I('i_yt2', 'p_yt2', { customerId: 'c_yt' }), I('i_yk', 'p_yt2', { customerId: 'c_yk2' })]));
+    const b = (await A.req('POST', '/api/backups', { label: 'yetim öncesi' })).json;
+    /* i_yt2 çöpe; p_yt ve i_yt bağı kalkar; cari silinir (yedekten de çıkar) */
+    ok(await A.sync([del('issues', 'i_yt2')]));
+    const p = (await row('projects', 'p_yt')).data, i = (await row('issues', 'i_yt')).data;
+    const { customerId: _a, ...p0 } = p, { customerId: _b, requester: _c, ...i0 } = i;
+    ok(await A.sync([{ c: 'projects', id: 'p_yt', op: 'put', data: p0, base: p }, { c: 'issues', id: 'i_yt', op: 'put', data: i0, base: i }]));
+    ok(await A.sync([del('customers', 'c_yt')]));
+    /* çöp kutusundan: bağsız */
+    const t = (await A.req('GET', '/api/trash')).json.find(x => x.record_id === 'i_yt2');
+    assert.equal((await A.req('POST', `/api/trash/${t.id}/restore`, {})).json.restored, 1);
+    let r2 = await row('issues', 'i_yt2');
+    assert.equal(r2.customer_id, null); assert.equal(r2.data.customerId, undefined);
+    /* yedekten: proje ve işlerde silinmiş cari bağı (ve talep eden) kalkar; var olan cari bağı korunur */
+    assert.equal((await A.req('POST', `/api/backups/${b.id}/restore`, {})).status, 200);
+    const pr = await row('projects', 'p_yt'), ir = await row('issues', 'i_yt');
+    r2 = await row('issues', 'i_yt2');
+    assert.equal(pr.customer_id, null); assert.equal(pr.data.customerId, undefined);
+    assert.equal(ir.customer_id, null); assert.equal(ir.data.customerId, undefined); assert.equal(ir.data.requester, undefined);
+    assert.equal(r2.customer_id, null);
+    assert.equal((await row('issues', 'i_yk')).customer_id, 'c_yk2');
+    assert.equal(await row('customers', 'c_yt'), undefined);
+    const st = (await A.state()).json.data;
+    assert.ok(!st.projects.some(x => x.customerId === 'c_yt') && !st.issues.some(x => x.customerId === 'c_yt' || x.requester?.customerId === 'c_yt'));
+  });
 });
 
 /* ---------------- proje türü ve kolonlar (#12) ---------------- */

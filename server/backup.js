@@ -152,10 +152,24 @@ export async function replaceAll(pool, me, data, kind) {
     await c.query(`UPDATE projects p SET data = p.data - 'workspaceId'
       WHERE p.data ? 'workspaceId' AND coalesce(p.workspace_id, '') <> ''
         AND NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = p.workspace_id)`);
+    /* Silinmiş cariye işaret eden bağ (cari silinince yedekten çıkarılır, bağlı kayıt kalabilir): bağ kalkar. */
+    await dropOrphanCustomerLinks(c);
     await c.query('DELETE FROM user_prefs');            // eski ekran seçimleri artık geçersiz olabilir
     await logChange(c, '_reload', kind, 'put', me.id);
   });
   return stats;
+}
+
+/* Olmayan cariye bağlı proje/iş: customerId (işte ayrıca o carinin talep edeni) kaldırılır. Yalnız geri yükleme yollarında. */
+const ORPHAN = cid => `coalesce(${cid}, '') <> '' AND NOT EXISTS (SELECT 1 FROM customers cu WHERE cu.id = ${cid})`;
+async function dropOrphanCustomerLinks(c) {
+  for (const t of ['projects', 'issues'])
+    await c.query(`UPDATE ${t} r SET data = r.data - 'customerId' WHERE ${ORPHAN(`r.data->>'customerId'`)}`);
+  await c.query(`UPDATE issues r SET data = r.data - 'requester'
+    WHERE jsonb_typeof(r.data->'requester') = 'object' AND ${ORPHAN(`r.data->'requester'->>'customerId'`)}`);
+}
+async function customerGone(c, id) {
+  return typeof id === 'string' && id !== '' && !(await c.query('SELECT 1 FROM customers WHERE id=$1', [id])).rowCount;
 }
 
 /* ---- çöp kutusu ---- */
@@ -194,6 +208,12 @@ export async function restoreTrash(pool, me, id) {
             await bcrypt.hash(DEFAULT_USER_PASSWORD(), 10), JSON.stringify(extra)]);
       } else {
         const table = tableOf(x.collection);
+        /* Çöpteyken carisi silinmiş proje/iş: bağsız geri gelir (yetim customerId kalmaz). */
+        if (['projects', 'issues'].includes(x.collection) && x.data && typeof x.data === 'object') {
+          if (await customerGone(c, x.data.customerId)) delete x.data.customerId;
+          if (x.collection === 'issues' && x.data.requester && typeof x.data.requester === 'object'
+              && await customerGone(c, x.data.requester.customerId)) delete x.data.requester;
+        }
         const q = table
           ? await c.query(`INSERT INTO ${table} (id, data, updated_by) VALUES ($1,$2::jsonb,$3) ON CONFLICT (id) DO NOTHING`,
             [x.record_id, JSON.stringify(x.data), me.id])
