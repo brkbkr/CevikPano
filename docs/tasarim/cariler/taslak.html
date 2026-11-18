@@ -1,0 +1,747 @@
+<!doctype html>
+<html lang="tr" data-theme="light"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cariler taslağı (issue #11, 1. dilim)</title>
+<script>if (/theme=dark/.test(location.search)) document.documentElement.dataset.theme = 'dark';</script>
+<style>
+/* ---- uygulamadan kopyalanan token'lar (tasarım dili v3 + sol menü v4 + kart v5 + hm- + ws-) ---- */
+:root{
+  --paper:#F3F6FB; --surface:#FFFFFF; --surface2:#F6F9FD; --surface3:#EBF1F9;
+  --line:#E1E8F2; --line2:#CCD7E6;
+  --ink:#0B1B33; --ink2:#43546E; --ink3:#7E8CA3;
+  --accent:#2563EB; --accent-d:#1D4ED8; --accent-soft:#EAF1FE; --accent-ink:#FFFFFF;
+  --btn-grad:linear-gradient(180deg,#3B82F6,#2563EB);
+  --ring:0 0 0 3px rgba(37,99,235,.20);
+  --shadow-sm:0 1px 2px rgba(11,27,51,.05);
+  --shadow:0 1px 2px rgba(11,27,51,.04),0 8px 20px -6px rgba(11,27,51,.10);
+  --shadow-lg:0 30px 60px -15px rgba(11,27,51,.30),0 2px 6px rgba(11,27,51,.06);
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --sans:Inter,system-ui,sans-serif;
+  --risk:#B91C1C; --risk-bg:#FEF2F2; --risk-line:#FECACA;
+  --done:#047857;
+  --rail-bg:#FFFFFF; --rail-ink:#334155; --rail-ink2:#94A3B8; --rail-line:#E5EAF2;
+  --rail-hover:#F3F7FD; --rail-on:#EAF2FF; --rail-on-ink:#1D4ED8; --rail-icon:#3B82F6; --rail-bar:#2563EB; --rail-field:#F3F7FD;
+  --meta:#64748B;
+  --ws-badge-ink:#FFFFFF;
+  --ws-info-bg:#EFF5FF; --ws-info-ln:#CFE0FB; --ws-info-ink:#1E3A8A;
+  /* ---- yeni: cariler (cu-) ---- */
+  --cu-c-bg:#EAF1FE; --cu-c-ink:#1D4ED8;   /* Müşteri */
+  --cu-s-bg:#EEF2F7; --cu-s-ink:#334155;   /* Tedarikçi */
+  --cu-b-bg:#E0F2FE; --cu-b-ink:#075985;   /* İkisi */
+  --cu-off-bg:#F4F6F9;                     /* pasif satır zemini (opaklık YOK; metin ≥4.5:1 kalır) */
+  --cu-danger-bg:#DC2626; --cu-danger-ink:#FFFFFF;
+  --cu-dlg-w:780px;
+}
+[data-theme="dark"]{
+  --paper:#060B16; --surface:#0C1424; --surface2:#101A2E; --surface3:#16223A;
+  --line:#1B2842; --line2:#273857;
+  --ink:#E6EDF8; --ink2:#A3B2CB; --ink3:#6B7C99;
+  --accent:#60A5FA; --accent-d:#93C5FD; --accent-soft:rgba(96,165,250,.14); --accent-ink:#06101F;
+  --btn-grad:linear-gradient(180deg,#60A5FA,#3B82F6);
+  --ring:0 0 0 3px rgba(96,165,250,.28);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 20px -6px rgba(0,0,0,.55);
+  --shadow-lg:0 30px 60px -15px rgba(0,0,0,.75),0 2px 6px rgba(0,0,0,.4);
+  --risk:#FCA5A5; --risk-bg:rgba(248,113,113,.12); --risk-line:rgba(248,113,113,.32);
+  --done:#34D399;
+  --rail-bg:#0C1424; --rail-ink:#C3CEE0; --rail-ink2:#5F6F8C; --rail-line:#1B2842;
+  --rail-hover:#121D33; --rail-on:rgba(96,165,250,.14); --rail-on-ink:#BFDBFE; --rail-icon:#60A5FA; --rail-bar:#60A5FA; --rail-field:#101A2E;
+  --meta:#8494AE;
+  --ws-info-bg:rgba(96,165,250,.10); --ws-info-ln:rgba(96,165,250,.28); --ws-info-ink:#BFDBFE;
+  --cu-c-bg:rgba(96,165,250,.15); --cu-c-ink:#BFDBFE;
+  --cu-s-bg:rgba(148,163,184,.14); --cu-s-ink:#CBD5E1;
+  --cu-b-bg:rgba(56,189,248,.14); --cu-b-ink:#BAE6FD;
+  --cu-off-bg:#0A1220;
+  --cu-danger-bg:#F87171; --cu-danger-ink:#1F0707;
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:var(--sans);background:var(--paper);color:var(--ink);padding:24px;-webkit-font-smoothing:antialiased;font-size:13px}
+button,input,textarea,select{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,tr:focus-visible{outline:none;box-shadow:var(--ring)}
+svg.i{width:14px;height:14px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.doc-h{font-size:20px;margin:0 0 4px;letter-spacing:-.02em}
+.lead{color:var(--ink2);font-size:13px;margin:0 0 18px;max-width:980px;line-height:1.5}
+.sec-t{font-size:13px;font-weight:700;margin:28px 0 10px;color:var(--ink2)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ================= uygulama çerçevesi (ws- taslağından) ================= */
+.app{display:grid;grid-template-columns:232px minmax(0,1fr);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow);background:var(--paper)}
+.rail{background:var(--rail-bg);border-right:1px solid var(--rail-line);display:flex;flex-direction:column;padding:16px 10px;gap:2px;color:var(--rail-ink)}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 14px}
+.brand-ic,.tb-logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#38BDF8 0%,#2563EB 52%,#1E3A8A 100%);box-shadow:0 4px 12px rgba(37,99,235,.35);flex-shrink:0}
+.brand b{font-size:15.5px;letter-spacing:-.02em;color:var(--ink)}
+.projsel{margin:0 0 6px;height:38px;border-radius:10px;border:1px solid var(--rail-line);background:var(--rail-field);display:flex;align-items:center;gap:8px;padding:0 10px;font-size:13px;font-weight:600;color:var(--ink)}
+.projsel svg.i{width:16px;height:16px;color:var(--rail-icon)} .projsel .chev{margin-left:auto;color:var(--meta)}
+.navgroup{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:12px 10px 5px;color:var(--rail-ink2)}
+.nav a{display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:10px;font-size:13.2px;font-weight:500;color:var(--rail-ink);text-decoration:none}
+.nav a svg.i{width:18px;height:18px;color:var(--rail-icon)}
+.nav a.on{background:var(--rail-on);color:var(--rail-on-ink);box-shadow:inset 3px 0 0 var(--rail-bar);font-weight:600}
+.nav a.on svg.i{color:var(--rail-bar)}
+.nav a .n{margin-left:auto;font-family:var(--mono);font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--surface3);color:var(--ink2)}
+.nav a .new{margin-left:auto;font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:1px 6px;border-radius:999px;background:var(--accent-soft);color:var(--accent-d)}
+.who{margin-top:auto;display:flex;align-items:center;gap:9px;padding:9px;border-radius:12px;font-size:12px;background:var(--surface2);border:1px solid var(--rail-line)}
+.who b{display:block;color:var(--ink)} .who span{font-size:10px;color:var(--meta);font-family:var(--mono);letter-spacing:.06em}
+.main{min-width:0;display:flex;flex-direction:column;background:radial-gradient(900px 420px at 100% -10%,color-mix(in srgb,var(--accent) 7%,transparent),transparent 70%),var(--paper)}
+.topbar{background:color-mix(in srgb,var(--surface) 78%,transparent);border-bottom:1px solid var(--line);padding:14px 20px 12px}
+.tb-head{display:flex;align-items:center;gap:12px}
+.tb-title{flex:1;min-width:0}
+.crumb{font-family:var(--mono);font-size:10.5px;color:var(--meta);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
+.topbar h1{margin:0;font-size:22px;font-weight:750;letter-spacing:-.025em}
+.tb-actions{display:flex;gap:8px;align-items:center}
+.iconbtn{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:var(--ink2);border:1px solid var(--line);background:var(--surface);padding:0}
+.iconbtn svg.i{width:18px;height:18px}
+.iconbtn.ghost{border-color:transparent;background:none}
+.iconbtn.ghost:hover{background:var(--surface2);border-color:var(--line)}
+.vtabs{display:none}
+.content{padding:16px 20px 26px;min-width:0}
+.c-av{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:9px;flex-shrink:0}
+
+/* ortak denetimler (v3) */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 12px;border-radius:9px;font-size:13px;font-weight:550;
+  border:1px solid var(--line2);background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm);white-space:nowrap;text-decoration:none}
+.btn:hover{background:var(--surface2)}
+.btn.pri{background:var(--btn-grad);border-color:transparent;color:var(--accent-ink);box-shadow:0 1px 2px rgba(11,27,51,.12),0 4px 12px -2px color-mix(in srgb,var(--accent) 45%,transparent)}
+.btn.ghost{border-color:transparent;background:none;box-shadow:none;color:var(--accent-d)}
+.btn.ghost:hover{background:var(--accent-soft)}
+.btn.danger-ghost{border-color:transparent;background:none;box-shadow:none;color:var(--risk)}
+.btn.danger-ghost:hover{background:var(--risk-bg)}
+.btn.danger{background:var(--cu-danger-bg);border-color:transparent;color:var(--cu-danger-ink)}
+.btn svg.i{width:16px;height:16px}
+.inp{display:block;width:100%;height:38px;border:1px solid var(--line2);background:var(--surface);padding:0 11px;border-radius:9px;font-size:13.5px;color:var(--ink)}
+.inp::placeholder{color:var(--ink3)}
+textarea.inp{height:auto;padding:9px 11px;resize:vertical;line-height:1.45}
+select.inp{appearance:none;-webkit-appearance:none;padding-right:34px;background:var(--surface) no-repeat right 11px center/14px
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")}
+.inp:focus{outline:none;border-color:var(--accent);box-shadow:var(--ring)}
+.chip{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:6px;font-size:11px;font-weight:650;white-space:nowrap;border:1px solid var(--line);background:var(--surface2);color:var(--ink2)}
+.chip svg.i{width:12px;height:12px}
+.ws-key{font-family:var(--mono);font-size:11px;font-weight:650;color:var(--ink2);background:var(--surface3);border-radius:6px;padding:3px 7px;flex-shrink:0}
+.ws-badge{width:18px;height:18px;border-radius:5px;display:inline-grid;place-items:center;flex-shrink:0;background:var(--ws-c,#64748B);color:var(--ws-badge-ink);font-size:9.5px;font-weight:750;line-height:1;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.ws-badge.is-arch{filter:saturate(.35);opacity:.8}
+.ws-alert{display:flex;gap:10px;padding:11px 12px;border-radius:10px;background:var(--risk-bg);border:1px solid var(--risk-line);color:var(--risk);font-size:12.5px;line-height:1.5}
+.ws-alert svg.i{width:17px;height:17px;margin-top:1px} .ws-alert .tx{color:var(--ink)} .ws-alert b{color:var(--risk)}
+.ws-info{display:flex;gap:10px;padding:11px 12px;border-radius:10px;background:var(--ws-info-bg);border:1px solid var(--ws-info-ln);color:var(--ws-info-ink);font-size:12.5px;line-height:1.5}
+.ws-info svg.i{width:17px;height:17px;margin-top:1px}
+
+/* ================= Cariler: araç satırı ================= */
+.cu-tools{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+.cu-tools .spacer{flex:1}
+.cu-search{position:relative;width:300px;max-width:100%}
+.cu-search svg.i{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--meta);pointer-events:none}
+.cu-search .inp{height:36px;padding-left:34px}
+.cu-seg{display:inline-flex;gap:2px;padding:1px;border-radius:10px;background:var(--surface2);border:1px solid var(--line)}
+.cu-seg button{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border:0;border-radius:8px;background:none;font-size:12.5px;font-weight:550;color:var(--ink2);white-space:nowrap}
+.cu-seg button .n{font-family:var(--mono);font-size:10.5px;color:var(--meta)}
+.cu-seg button[aria-checked="true"]{background:var(--surface);color:var(--accent-d);box-shadow:var(--shadow-sm),inset 0 0 0 1px color-mix(in srgb,var(--accent) 35%,transparent);font-weight:650}
+.cu-seg button[aria-checked="true"] .n{color:var(--accent-d)}
+.cu-tog{display:inline-flex;align-items:center;gap:9px;height:36px;padding:0 10px 0 8px;border:1px solid transparent;border-radius:9px;background:none;font-size:12.5px;font-weight:550;color:var(--ink2)}
+.cu-tog:hover{background:var(--surface);border-color:var(--line)}
+.cu-tog .n{font-family:var(--mono);font-size:11px;color:var(--meta)}
+.cu-sw{width:32px;height:18px;border-radius:999px;background:var(--line2);position:relative;flex-shrink:0}
+.cu-sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--surface);box-shadow:var(--shadow-sm);transition:left .15s}
+[aria-pressed="true"] > .cu-sw,[aria-checked="true"] > .cu-sw{background:var(--accent)}
+[aria-pressed="true"] > .cu-sw::after,[aria-checked="true"] > .cu-sw::after{left:16px;background:#fff}
+
+/* ================= Cariler: liste ================= */
+.cu-meta{display:flex;align-items:center;gap:8px;margin:0 2px 10px;font-size:12px;color:var(--meta)}
+.cu-meta b{font-family:var(--mono);color:var(--ink2);font-weight:650}
+.cu-wrap{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-sm);overflow:hidden}
+.cu-tbl{width:100%;border-collapse:collapse;table-layout:fixed}
+.cu-tbl th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta);background:var(--surface2);padding:9px 12px;border-bottom:1px solid var(--line)}
+.cu-tbl th .srt{display:inline-flex;align-items:center;gap:4px;color:var(--ink2)} .cu-tbl th .srt svg.i{width:12px;height:12px}
+.cu-tbl th.r,.cu-tbl td.r{text-align:right}
+.cu-tbl td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle;font-size:13px}
+.cu-tbl tr:last-child td{border-bottom:0}
+.cu-row{cursor:pointer}
+.cu-row:hover td{background:var(--surface2)}
+.cu-nm{display:block;font-weight:650;font-size:13.5px;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cu-sn{display:block;font-size:12px;color:var(--meta);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cu-tax{font-family:var(--mono);font-size:12.5px;color:var(--ink);letter-spacing:.02em}
+.cu-tax.none{color:var(--meta);font-family:var(--sans)}
+.cu-pj{font-family:var(--mono);font-weight:650;font-size:12.5px}
+.cu-pj.zero{color:var(--meta);font-weight:500}
+.cu-go{width:18px;height:18px;color:var(--ink3)}
+.cu-row.is-off td{background:var(--cu-off-bg)}
+.cu-row.is-off .cu-nm{color:var(--ink2);font-weight:600}
+.cu-row.is-off .cu-tax{color:var(--ink2)}
+.cu-row.is-off .cu-kind{background:transparent;border:1px solid var(--line2);color:var(--ink2)}
+/* tür rozeti: ikon + metin (renk tek başına anlam taşımaz) */
+.cu-kind{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px 0 7px;border-radius:999px;font-size:11.5px;font-weight:650;white-space:nowrap}
+.cu-kind svg.i{width:13px;height:13px}
+.cu-kind[data-k="c"]{background:var(--cu-c-bg);color:var(--cu-c-ink)}
+.cu-kind[data-k="s"]{background:var(--cu-s-bg);color:var(--cu-s-ink)}
+.cu-kind[data-k="b"]{background:var(--cu-b-bg);color:var(--cu-b-ink)}
+/* durum */
+.cu-st{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.cu-st svg.i{width:15px;height:15px}
+.cu-st.on{color:var(--done)}
+.cu-st.off{height:22px;padding:0 8px 0 6px;border-radius:6px;border:1px dashed var(--line2);background:var(--surface);color:var(--ink2);font-size:11.5px;font-weight:650}
+.mob-l{display:none}
+
+/* ================= Cari kartı (pencere) ================= */
+.cu-dlg{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-lg);overflow:hidden;width:100%;max-width:var(--cu-dlg-w);display:flex;flex-direction:column}
+.cu-dlg.narrow{max-width:500px}
+.cu-dlg .m-h{display:flex;align-items:center;gap:12px;padding:14px 12px 14px 18px;border-bottom:1px solid var(--line)}
+.cu-dlg .m-h .tx{flex:1;min-width:0}
+.cu-dlg .m-h b{display:block;font-size:15px;font-weight:700;letter-spacing:-.01em;overflow-wrap:anywhere}
+.cu-dlg .m-h .s{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:3px;font-size:12px;color:var(--meta)}
+.cu-dlg .m-b{padding:16px 18px 8px;min-height:0}
+.cu-dlg .m-f{display:flex;align-items:center;gap:8px;padding:12px 18px;background:var(--surface2);border-top:1px solid var(--line)}
+.cu-dlg .m-f .spacer{flex:1}
+.cu-ic{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);flex-shrink:0}
+.cu-ic svg.i{width:20px;height:20px}
+.cu-ro-chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:6px;font-size:11px;font-weight:650;background:var(--surface3);color:var(--ink2)}
+.cu-ro-chip svg.i{width:12px;height:12px}
+
+.cu-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 16px}
+.cu-form .full{grid-column:1 / -1}
+.cu-fld{margin-bottom:14px;min-width:0}
+.cu-fld > label,.cu-fld > .lb{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:6px}
+.cu-fld .req{color:var(--risk);font-weight:700;margin-left:2px}
+.cu-fld .opt{font-weight:500;color:var(--meta)}
+.cu-cnt{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--meta)}
+.cu-fld.has-err .inp{border-color:var(--risk);box-shadow:0 0 0 3px color-mix(in srgb,var(--risk) 16%,transparent)}
+.cu-err{display:flex;align-items:flex-start;gap:6px;margin-top:6px;font-size:12px;font-weight:550;color:var(--risk);line-height:1.45}
+.cu-err svg.i{width:15px;height:15px;margin-top:1px}
+.cu-err a{color:var(--accent-d);font-weight:650;text-decoration:underline;text-underline-offset:2px;white-space:nowrap}
+.cu-hint{display:flex;align-items:flex-start;gap:6px;margin-top:6px;font-size:12px;color:var(--meta);line-height:1.45}
+.cu-hint svg.i{width:14px;height:14px;margin-top:1px}
+.cu-hint.warn{color:var(--ink2)} .cu-hint.warn svg.i{color:var(--accent)}
+/* tür: segmentli radyo */
+.cu-kseg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px;padding:2px;border-radius:10px;background:var(--surface2);border:1px solid var(--line2)}
+.cu-kseg button{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:34px;border:0;border-radius:8px;background:none;font-size:12.5px;font-weight:550;color:var(--ink2);min-width:0;white-space:nowrap}
+.cu-kseg button svg.i{width:15px;height:15px}
+.cu-kseg button[aria-checked="true"]{background:var(--surface);color:var(--accent-d);font-weight:650;box-shadow:var(--shadow-sm),inset 0 0 0 1px color-mix(in srgb,var(--accent) 45%,transparent)}
+/* etkin/pasif anahtarı */
+.cu-active{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface2)}
+.cu-active button{display:inline-flex;align-items:center;gap:10px;min-height:36px;padding:0 4px;border:0;background:none;font-weight:650;font-size:13px;color:var(--ink)}
+.cu-active .tx{flex:1;font-size:12px;color:var(--meta);line-height:1.45}
+/* yetkili kişiler */
+.cu-sech{display:flex;align-items:center;gap:8px;margin:6px 0 10px;padding-top:14px;border-top:1px solid var(--line)}
+.cu-sech h3{flex:1;margin:0;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
+.cu-sech h3 svg.i{width:16px;height:16px;color:var(--accent)}
+.cu-sech .n{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink2);background:var(--surface3);padding:1px 7px;border-radius:999px}
+.cu-ct{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.cu-cthead,.cu-ctrow{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1.3fr) minmax(0,1fr) 36px;gap:8px;align-items:start}
+.cu-cthead{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta);padding:0 2px}
+.cu-ctrow .inp{height:36px;font-size:13px}
+.cu-ctrow .cu-cl{display:none}
+.cu-ctrow.has-err .c-name .inp{border-color:var(--risk);box-shadow:0 0 0 3px color-mix(in srgb,var(--risk) 16%,transparent)}
+.cu-ctrow .cu-err{margin-top:4px}
+.cu-ctrow .del{color:var(--ink2)} .cu-ctrow .del:hover{color:var(--risk);background:var(--risk-bg);border-color:var(--risk-line)}
+.cu-ctrow .cu-ctno{display:none}
+.cu-add{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;height:38px;border:1px dashed var(--line2);border-radius:10px;background:none;color:var(--accent-d);font-weight:600;font-size:12.5px}
+.cu-add:hover{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+.cu-add svg.i{width:16px;height:16px}
+
+/* salt okunur kart */
+.cu-ro{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px}
+.cu-dl{display:grid;grid-template-columns:130px minmax(0,1fr);gap:9px 12px;margin:0 0 6px;font-size:13px}
+.cu-dl dt{color:var(--meta);font-size:12px;font-weight:600;padding-top:1px}
+.cu-dl dd{margin:0;color:var(--ink);overflow-wrap:anywhere;line-height:1.45}
+.cu-dl dd.mono{font-family:var(--mono);font-size:12.5px;letter-spacing:.02em}
+.cu-mask{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cu-mask .why{display:inline-flex;align-items:center;gap:4px;font-family:var(--sans);font-size:11px;font-weight:600;color:var(--ink2);background:var(--surface3);border-radius:6px;padding:2px 7px;letter-spacing:0}
+.cu-mask .why svg.i{width:12px;height:12px}
+.cu-dl dd a{color:var(--accent-d);text-decoration:none;font-weight:550}
+.cu-person{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.cu-person:first-of-type{border-top:0;padding-top:2px}
+.cu-person .c-av{width:30px;height:30px;font-size:11px}
+.cu-person .tx{min-width:0;flex:1}
+.cu-person b{font-size:13px;font-weight:650} .cu-person .r{font-size:12px;color:var(--meta)}
+.cu-person .ln{display:flex;flex-wrap:wrap;gap:2px 14px;margin-top:3px;font-size:12px;color:var(--ink2)}
+.cu-person .ln span{display:inline-flex;align-items:center;gap:5px;overflow-wrap:anywhere} .cu-person .ln svg.i{width:13px;height:13px;color:var(--meta)}
+/* özet */
+.cu-sum{display:flex;flex-direction:column;gap:10px;min-width:0}
+.cu-sum h4{margin:0;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta)}
+.cu-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.cu-kpi{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:11px 12px;border-radius:11px;border:1px solid var(--line);background:var(--surface2);text-align:left;min-width:0;color:var(--ink)}
+.cu-kpi .l{font-size:11.5px;font-weight:600;color:var(--ink2);display:flex;align-items:center;gap:5px}
+.cu-kpi .l svg.i{width:13px;height:13px;color:var(--meta)}
+.cu-kpi .v{font-family:var(--mono);font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
+.cu-kpi .v small{font-size:12px;font-weight:600;color:var(--meta)}
+.cu-kpi .go{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:650;color:var(--accent-d)}
+.cu-kpi .go svg.i{width:13px;height:13px}
+button.cu-kpi:hover{border-color:color-mix(in srgb,var(--accent) 45%,transparent);background:var(--accent-soft)}
+.cu-kpi.time{grid-column:1 / -1}
+.cu-time{display:grid;grid-template-columns:1fr 1fr;width:100%;margin-top:2px}
+.cu-time > div{display:flex;flex-direction:column;gap:1px}
+.cu-time > div + div{border-left:1px solid var(--line);padding-left:12px}
+.cu-time .k{font-size:11px;color:var(--meta);font-weight:600}
+.cu-prjs{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.cu-prj{display:flex;align-items:center;gap:8px;min-height:44px;padding:6px 10px;border-top:1px solid var(--line);text-decoration:none;color:var(--ink);min-width:0}
+.cu-prj:first-child{border-top:0}
+.cu-prj:hover{background:var(--surface2)}
+.cu-prj .tx{flex:1;min-width:0}
+.cu-prj .nm{display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cu-prj .ws{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--meta);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cu-prj.is-arch{background:var(--cu-off-bg)} .cu-prj.is-arch .nm{color:var(--ink2)}
+
+/* proje formu / kartı: cari seçimi */
+.cu-lb{margin-top:6px;border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);background:var(--surface);padding:4px;max-height:none}
+.cu-lb div{display:flex;align-items:center;gap:8px;min-height:32px;padding:0 10px;border-radius:7px;font-size:13px;color:var(--ink)}
+.cu-lb div.none{color:var(--ink2);font-style:italic}
+.cu-lb div[aria-selected="true"]{background:var(--accent-soft);color:var(--accent-d);font-weight:650}
+.cu-lb div svg.i{margin-left:auto;width:15px;height:15px}
+.cu-lb .sep{height:1px;min-height:0;padding:0;margin:3px 6px;background:var(--line)}
+.cu-pcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:10px;min-width:0}
+.cu-pcard .ph{display:flex;align-items:center;gap:8px;min-width:0}
+.cu-pcard .ph b{flex:1;min-width:0;font-size:14.5px;font-weight:680;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cu-pcard .stats{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--ink2)}
+.cu-pcard .stats b{font-family:var(--mono);color:var(--ink)}
+.cu-plink{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:6px 10px;padding-top:10px;border-top:1px solid var(--line)}
+.cu-plink .lbl{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta);display:flex;align-items:center;gap:5px}
+.cu-plink .lbl svg.i{width:13px;height:13px}
+.cu-plink .inp{height:34px;font-size:13px}
+.cu-plink .cu-hint{grid-column:1 / -1;margin-top:0}
+.cu-plink .val{display:flex;align-items:center;gap:6px;min-width:0;font-size:13px;font-weight:600}
+.cu-plink .val a{color:var(--accent-d);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* silme pencereleri */
+.cu-plist{margin:10px 0 2px;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.cu-plist li{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink);min-width:0}
+.cu-plist li span.t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cu-confirm{font-size:13px;line-height:1.55;color:var(--ink);margin:0 0 12px}
+.cu-confirm b{overflow-wrap:anywhere}
+
+/* boş durum — uygulamadaki .hm-empty ile aynı (yeniden kullan) */
+.hm-empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:34px 20px 30px;background:var(--surface);border:1px dashed var(--line2);border-radius:14px}
+.hm-empty-ic{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);margin-bottom:12px}
+.hm-empty-ic svg.i{width:24px;height:24px}
+.hm-empty h3{margin:0 0 4px;font-size:15px;font-weight:700;letter-spacing:-.01em}
+.hm-empty p{margin:0 0 16px;font-size:12.5px;color:var(--ink2);max-width:340px;line-height:1.5}
+.hm-empty p:last-child{margin-bottom:0}
+.hm-empty .acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.cu-q{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--ink2);background:var(--surface2);border:1px solid var(--line);border-radius:999px;padding:3px 10px;margin-bottom:12px;max-width:100%;overflow-wrap:anywhere}
+.cu-q svg.i{width:12px;height:12px}
+
+/* ================= sunum yardımcıları ================= */
+.states{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.states.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.panel{background:var(--surface2);border:1px solid var(--line);border-radius:14px;padding:16px;min-width:0}
+.panel.wide{grid-column:1 / -1}
+.panel h2{font-size:13px;font-weight:700;margin:0 0 12px;color:var(--ink2)}
+.panel h2 small{font-weight:500;color:var(--meta)}
+.panel p.note{font-size:12px;color:var(--ink2);margin:12px 0 0;line-height:1.5}
+.panel code,.legend code{font-family:var(--mono);font-size:11.5px;color:var(--ink)}
+.stack{display:flex;flex-direction:column;gap:14px}
+.side{display:grid;grid-template-columns:minmax(0,var(--cu-dlg-w)) minmax(0,1fr);gap:20px;align-items:start}
+.side > p.note{margin:0}
+.legend{margin-top:26px;font-size:12.5px;color:var(--ink2);background:var(--surface);border-radius:14px;padding:14px 18px;border:1px solid var(--line);line-height:1.6}
+.legend b{color:var(--ink)} .legend ol{margin:6px 0 0;padding-left:18px} .legend li{margin:3px 0}
+
+/* ================= orta ekran: tablo → kart (≤900px) ================= */
+@media (max-width:900px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .app > .rail{display:none}
+  .vtabs{display:flex;gap:2px;margin:10px -14px 0;padding:0 14px;overflow-x:auto;border-top:1px solid var(--line);scrollbar-width:none}
+  .vtabs::-webkit-scrollbar{display:none}
+  .vtabs button{white-space:nowrap;padding:10px 12px;font-size:12.5px;color:var(--meta);border:0;border-bottom:2px solid transparent;background:none;min-height:40px}
+  .vtabs button.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+  .states,.states.three{grid-template-columns:minmax(0,1fr)}
+  .cu-wrap{background:none;border:0;box-shadow:none;overflow:visible}
+  .cu-tbl,.cu-tbl tbody{display:block}
+  .cu-tbl thead{display:none}
+  .cu-tbl tr.cu-row{display:grid;grid-template-columns:auto auto minmax(0,1fr);grid-template-areas:"nm nm st" "kd tx pj";gap:8px 10px;align-items:center;
+    padding:12px 14px;margin-bottom:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-sm);min-height:44px}
+  .cu-tbl tr.cu-row.is-off{background:var(--cu-off-bg)}
+  .cu-tbl tr.cu-row td{display:block;padding:0;border:0;background:none!important;min-width:0}
+  .cu-tbl td.c-nm{grid-area:nm} .cu-tbl td.c-st{grid-area:st;justify-self:end;align-self:start}
+  .cu-tbl td.c-kd{grid-area:kd} .cu-tbl td.c-tx{grid-area:tx} .cu-tbl td.c-pj{grid-area:pj;justify-self:end}
+  .cu-tbl tr.cu-row td.c-go{display:none}
+  .cu-sn.empty{display:none}
+  .cu-nm{white-space:normal;overflow-wrap:anywhere}
+  .mob-l{display:inline;font-family:var(--sans);font-weight:500;color:var(--meta);font-size:12px;letter-spacing:0}
+  .cu-pj{display:inline-flex;align-items:center;gap:4px}
+  .cu-tbl tr.cu-row.is-on td.c-st{display:none}
+  .cu-tbl tr.cu-row.is-on{grid-template-areas:"nm nm nm" "kd tx pj"}
+  .cu-ro{grid-template-columns:minmax(0,1fr)}
+  .side{grid-template-columns:minmax(0,1fr)}
+}
+/* ================= mobil (≤640px) ================= */
+@media (max-width:640px){
+  body{padding:0}
+  .doc-h,.lead,.sec-t,.legend,.states{margin-left:12px;margin-right:12px}
+  .doc-h{margin-top:16px}
+  .app{border-radius:0;border-left:0;border-right:0;box-shadow:none}
+  .topbar{padding:12px 14px}
+  .topbar h1{font-size:19px}
+  .content{padding:12px 12px 18px}
+  .btn,.iconbtn{height:40px} .iconbtn{width:40px}
+  .inp,.cu-search .inp,.cu-ctrow .inp,.cu-plink .inp{height:42px;font-size:15px}
+  textarea.inp{height:auto}
+  .cu-tools{gap:8px}
+  .cu-tools .spacer{display:none}
+  .cu-tools .add{order:-1;width:100%}
+  .cu-search{width:100%}
+  .cu-seg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));width:100%}
+  .cu-seg button{height:40px;padding:0 4px;justify-content:center;font-size:12px;gap:4px}
+  .cu-tog{width:100%;height:40px;border-color:var(--line);background:var(--surface)}
+  .cu-tog .cu-sw{margin-left:auto;order:2}
+  .panel{padding:14px 12px}
+  .cu-dlg{border-radius:14px}
+  .cu-dlg .m-h{padding:10px 8px 10px 14px}
+  .cu-dlg .m-b{padding:14px 14px 6px}
+  .cu-dlg .m-f{padding:10px 12px;gap:8px}
+  .cu-dlg .m-f .btn{flex:1}
+  .cu-dlg .m-f .btn.icon-m{flex:0 0 44px;padding:0}
+  .cu-dlg .m-f .btn.icon-m .lbl{display:none}
+  .cu-dlg .m-f .spacer{display:none}
+  /* düzenleme penceresi: tam ekran gibi; gövde kayar, Kaydet/İptal altta sabit */
+  .cu-dlg.edit{height:760px}
+  .cu-dlg.edit .m-b{flex:1;overflow-y:auto;overscroll-behavior:contain}
+  .cu-dlg.edit .m-f{box-shadow:0 -8px 16px -10px rgba(11,27,51,.25)}
+  .cu-form{grid-template-columns:minmax(0,1fr)}
+  .cu-kseg button{height:40px}
+  .cu-active{flex-wrap:wrap}
+  .cu-active button{min-height:40px}
+  .cu-cthead{display:none}
+  .cu-ctrow{grid-template-columns:minmax(0,1fr) 40px;grid-template-areas:"no del" "name name" "title title" "mail mail" "tel tel";gap:8px;
+    padding:10px 12px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface2)}
+  .cu-ctrow .cu-ctno{display:block;grid-area:no;align-self:center;font-size:12px;font-weight:700;color:var(--ink2)}
+  .cu-ctrow .del{grid-area:del}
+  .cu-ctrow .c-name{grid-area:name} .cu-ctrow .c-title{grid-area:title} .cu-ctrow .c-mail{grid-area:mail} .cu-ctrow .c-tel{grid-area:tel}
+  .cu-ctrow .cu-cl{display:block;font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:5px}
+  .cu-add{height:44px}
+  .cu-dl{grid-template-columns:minmax(0,1fr);gap:2px}
+  .cu-dl dd{margin-bottom:8px}
+  .cu-prj{min-height:48px}
+  .cu-plink{grid-template-columns:minmax(0,1fr)}
+  .hm-empty .acts{width:100%} .hm-empty .acts .btn{flex:1}
+  .desk-only{display:none}
+}
+@media (min-width:641px){ .mob-only{display:none} .tb-logo{display:none} }
+</style></head><body>
+
+<h1 class="doc-h">Cariler — taslak</h1>
+<p class="lead">Issue #11, 1. dilim. Müşteri ve tedarikçilerin ortak listesi (çalışma alanından bağımsız). Sol menüde <b>Yapılandırma → Projeler</b>'in hemen altında "Cariler".
+  Liste: masaüstünde tablo, 900px altında kart. Cari kartı yöneticide düzenleme penceresi, üye/izleyicide salt okunur + özet. Tüm veriler uydurmadır.
+  Örnek oturum: Ayşe Demir (yönetici); salt okunur örnekte izleyici.</p>
+
+<!-- ================= 1: uygulama görünümü (Cariler listesi, yönetici) ================= -->
+<div class="app">
+  <aside class="rail">
+    <div class="brand"><span class="brand-ic"></span><b>ÇevikPano</b></div>
+    <div class="projsel" id="projsel"></div>
+    <div id="railNav"></div>
+    <div class="who"><span class="c-av" style="background:#2563EB;width:30px;height:30px;font-size:11px">AD</span>
+      <div><b>Ayşe Demir</b><span>YÖNETİCİ</span></div></div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div class="tb-head">
+        <span class="tb-logo"></span>
+        <div class="tb-title"><div class="crumb">Yönetim</div><h1>Cariler</h1></div>
+        <div class="tb-actions"><button class="iconbtn" aria-label="Ara veya komut" id="icSearch"></button><button class="iconbtn" aria-label="Tema değiştir" id="icTheme"></button></div>
+      </div>
+      <div class="vtabs"><button>Benim işlerim</button><button>Pano</button><button>Raporlar</button><button>Projeler</button><button class="on">Cariler</button><button>Ayarlar</button></div>
+      <div class="cu-tools" id="tools"></div>
+    </header>
+    <div class="content">
+      <div class="cu-meta" id="meta"></div>
+      <div class="cu-wrap"><table class="cu-tbl" aria-label="Cariler"><thead><tr>
+        <th style="width:auto" aria-sort="ascending"><span class="srt">Unvan <span id="srtIc"></span></span></th>
+        <th style="width:140px">Tür</th><th style="width:150px">Vergi no</th><th class="r" style="width:96px">Projeler</th><th style="width:108px">Durum</th><th style="width:44px"><span class="sr">Aç</span></th>
+      </tr></thead><tbody id="rows"></tbody></table></div>
+    </div>
+  </main>
+</div>
+
+<!-- ================= 2-3: cari kartı ================= -->
+<h2 class="sec-t">Cari kartı</h2>
+<div class="states">
+  <div class="panel wide">
+    <h2>Düzenleme penceresi <small>· yönetici / süper · vergi no çakışması ve adsız kişi hatası</small></h2>
+    <div class="side"><div id="dlgEdit"></div>
+    <p class="note">Hatalar "Kaydet"e basınca ve alandan çıkınca gösterilir (<code>aria-invalid</code> + <code>aria-describedby</code>); ilk hatalı alana odak gider. Vergi no çakışma bağlantısı diğer carinin kartını açar
+      (yalnız istemci ön denetimi; sunucu 409'da yalnız kimlik döner, istemci unvanı kendi <code>DB.customers</code>'ından bulur). Vergi no girişte boşluk/tire kabul eder, kayıtta temizlenir; altta "10 hane: VKN · 11 hane: T.C. kimlik no" ipucu.
+      Yeni cari: başlık "Yeni cari", Etkin açık, "Cariyi sil" yok, kişi listesi boş + "Kişi ekle".<br><br>Kişi silme anında satırı kaldırır (kayıt "Kaydet"le); kaydedilince kişi kayıttan tamamen kalkar. En çok 200 kişi; sınırda "Kişi ekle" pasif ve nedenini yazar.</p></div>
+  </div>
+  <div class="panel wide mob-only">
+    <h2>Mobil: aynı pencere, yetkili kişilere kaydırılmış <small>· kişi satırları kutu, etiketler görünür</small></h2>
+    <div id="dlgEdit2"></div>
+  </div>
+  <div class="panel wide">
+    <h2>Salt okunur görünüm + özet <small>· izleyici (T.C. kimlik no maskeli) · üyede aynı, numara açık</small></h2>
+    <div class="side"><div id="dlgRo"></div>
+    <p class="note">Düzenleme düğmeleri hiç çizilmez. "Açık iş" kutusu düğmedir: Arama görünümünü <code>proje IN (…) AND kategori != Bitti</code> sorgusuyla açar; kutudaki sayı oradaki sonuç sayısıyla aynıdır.
+      Süreler efor raporuyla aynı biçim (<code>efFmt</code>), arşivli projeler dahil. Proje satırı projeye geçer; arşivli proje "Arşivli" etiketli ve soluk zeminli (metin kontrastı korunur).<br><br>Maske sunucuda uygulanır (izleyiciye 11 haneli numara hiç gitmez); 10 haneli VKN maskelenmez. Üye aynı görünümü görür, numara açık, "Salt okunur" etiketi yine vardır.</p></div>
+  </div>
+</div>
+
+<!-- ================= 4: projeye bağlama ================= -->
+<h2 class="sec-t">Projeye cari bağlama</h2>
+<div class="states">
+  <div class="panel">
+    <h2>Yeni proje penceresi <small>· liste açık hâli</small></h2>
+    <div id="dlgProj"></div>
+    <p class="note">Yerel <code>select</code>; ilk seçenek "— Cari yok —" (varsayılan). Yalnız etkin cariler, unvana göre A→Z. Cari yoksa seçim kutusu yerine "Henüz cari yok" satırı ve yöneticide "Cariler"e bağlantı.</p>
+  </div>
+  <div class="panel">
+    <h2>Projeler kartında cari <small>· proje düzenleyebilen / düzenleyemeyen</small></h2>
+    <div class="stack" id="pcards"></div>
+    <p class="note">Bağlı cari pasife alınmışsa seçim kutusunda "(Pasif)" ekiyle görünür ve korunur; başka bir pasif cari seçilemez. Proje düzenleyemeyen (izleyici) cari adını bağlantı olarak görür; bağlantı cari kartını açar.</p>
+  </div>
+</div>
+
+<!-- ================= 5: silme ================= -->
+<h2 class="sec-t">Silme</h2>
+<div class="states">
+  <div class="panel"><h2>Bağlı projesi olan cari <small>· silinemez</small></h2><div id="delBlocked"></div>
+    <p class="note">Arşivli projeler de sayılır. "Pasife al" karttaki anahtarla aynı işi yapar ve pencereyi kapatır; sunucu da 409 ile aynı metni döner (yarış durumunda kırmızı uyarı olarak çıkar).</p></div>
+  <div class="panel"><h2>Bağsız cari <small>· kalıcı silme onayı</small></h2><div id="delOk"></div>
+    <p class="note">Kırmızı düğme yalnız burada. Silinen cari ve yetkili kişileri çöp kutusuna/değişiklik geçmişine gitmez; geri alınamaz. Odak açılışta "Vazgeç"te durur.</p></div>
+</div>
+
+<!-- ================= 6: boş durumlar ================= -->
+<h2 class="sec-t">Boş durumlar</h2>
+<div class="states three">
+  <div class="panel"><h2>Hiç cari yok <small>· yönetici</small></h2><div id="emA"></div></div>
+  <div class="panel"><h2>Hiç cari yok <small>· üye / izleyici</small></h2><div id="emB"></div></div>
+  <div class="panel"><h2>Arama sonuçsuz <small>· herkes</small></h2><div id="emC"></div></div>
+</div>
+
+<div class="legend"><b>Tasarım kararları</b>
+  <ol>
+    <li><b>Menü:</b> "Cariler" Yapılandırma grubunda Projeler'in hemen altında, bina ikonu (Lucide <i>building-2</i> tarzı). Herkese görünür. Mobil sekme satırında Projeler'den sonra.</li>
+    <li><b>Liste:</b> tablo 6 sütun (unvan + kısa ad iki satır, tür, vergi no mono, proje sayısı sağa yaslı mono, durum, ok). Satırın tamamı tıklanır (<code>tabindex=0</code>, Enter açar). Sıralama sabit unvan A→Z (tr), başlıkta ok ile belirtilir.</li>
+    <li><b>Tür rozeti:</b> ikon + metin; Müşteri mavi, Tedarikçi arduvaz, İkisi gök mavisi. Hepsi metinle ≥4.5:1. Tür süzgecinde "Müşteri" ve "Tedarikçi" İkisi'ni de içerir (sayılar buna göre).</li>
+    <li><b>Pasif:</b> opaklık kullanılmaz (kontrast düşer); satır zemini <code>--cu-off-bg</code>, ad <code>--ink2</code>, rozet çerçeveli; Durum sütununda kesik çizgili "Pasif" etiketi (ikon + metin). Etkin: yeşil onay + "Etkin".</li>
+    <li><b>Kart:</b> 780px pencere, iki sütun; yetkili kişiler tek satır ızgara (ad · görev · e-posta · telefon · sil). Kırmızı yalnız hata metinleri, sil düğmeleri ve kalıcı silme onayı.</li>
+    <li><b>Mobil (≤640px):</b> liste kartlar; araç satırı alt alta (Cari ekle en üstte tam genişlik, tür süzgeci 4 eşit dilim); form tek sütun; kişi satırları kutulara dönüşür, etiketler görünür; pencere gövdesi kayar, Kaydet/İptal altta sabit. Tüm denetimler ≥40px, yatay kaydırma yok.</li>
+  </ol>
+</div>
+
+<script>
+const I = {
+  down:'<path d="m6 9 6 6 6-6"/>', up:'<path d="m18 15-6-6-6 6"/>', check:'<path d="m5 12.5 4.5 4.5L19 7.5"/>', plus:'<path d="M12 5v14M5 12h14"/>', x:'<path d="M6 6l12 12M18 6 6 18"/>',
+  chevr:'<path d="m9 6 6 6-6 6"/>', arrow:'<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
+  folder:'<path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/>',
+  building:'<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4M10 10h4M10 14h4M10 18h4"/>',
+  briefcase:'<rect x="2.5" y="7" width="19" height="13" rx="2.5"/><path d="M16 7V5.5A1.5 1.5 0 0 0 14.5 4h-5A1.5 1.5 0 0 0 8 5.5V7"/><path d="M2.5 12.5h19"/>',
+  truck:'<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62L18.3 8.38A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>',
+  swap:'<path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/>',
+  checkc:'<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>', pause:'<circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/>',
+  trash:'<path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 12.5A1.5 1.5 0 0 0 8.5 21h7a1.5 1.5 0 0 0 1.5-1.5L18 7"/><path d="M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7"/>',
+  alert:'<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16.2v.3"/>', info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.8v.2"/>',
+  shield:'<path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6z"/><path d="M12 8.5v4M12 15.5v.2"/>',
+  lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/>', eye:'<path d="M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7z"/><circle cx="12" cy="12" r="3"/>',
+  users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.3A6.5 6.5 0 0 1 21.5 20"/>',
+  userplus:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M19 8v6M16 11h6"/>',
+  mail:'<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6 8.5-6"/>',
+  phone:'<path d="M5 4h3.5l1.5 4.5-2 1.5a11 11 0 0 0 6 6l1.5-2 4.5 1.5V19a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
+  circle:'<circle cx="12" cy="12" r="8.5"/>', hour:'<path d="M6.5 3h11M6.5 21h11"/><path d="M7.5 3v2.5a4.5 4.5 0 0 0 9 0V3M7.5 21v-2.5a4.5 4.5 0 0 1 9 0V21"/>',
+  archive:'<rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V9"/><path d="M10 13h4"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>', moon:'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  filterx:'<path d="M3 5h18l-7 8.5V19l-4 2v-7.5z"/>',
+  list:'<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>', board:'<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 7v7M12 7v4M16 7v9"/>',
+  backlog:'<path d="M10 6h11M10 12h11M10 18h11"/><path d="m3 6 1.5 1.5L7 5"/><path d="m3 12 1.5 1.5L7 11"/><path d="M3 18h4"/>',
+  plan:'<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M16 2v4M8 2v4M3 10h18M7 14h5M11 18h6"/>', clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  effort:'<path d="M3.3 19a9 9 0 1 1 17.4 0"/><path d="m12 14 4-4"/>', reports:'<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/>',
+  settings:'<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
+  db:'<ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+};
+const ic = (n, s = '') => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true" ${s}>${I[n]}</svg>`;
+const $ = s => document.querySelector(s);
+const set = (s, h) => { $(s).innerHTML = h; };
+
+/* ---- sol menü (uygulamadaki gruplar) ---- */
+const NAV = [
+  ['list','Benim işlerim'], ['g','Planlama'], ['board','Pano'], ['backlog','Backlog'], ['plan','Zaman planı'],
+  ['g','Takip'], ['clock','Zaman çizelgesi'], ['effort','Efor raporu'], ['reports','Raporlar'], ['search','Arama'],
+  ['g','Yapılandırma'], ['folder','Projeler'], ['building','Cariler',1], ['settings','Proje ayarları'], ['users','Kullanıcılar'], ['db','Sistem'],
+];
+set('#railNav', '<nav class="nav">' + NAV.map(([i, t, on]) => i === 'g' ? `</nav><div class="navgroup">${t}</div><nav class="nav">`
+  : `<a href="#" class="${on ? 'on' : ''}" ${on ? 'aria-current="page"' : ''}>${ic(i)}${t}</a>`).join('') + '</nav>');
+set('#projsel', `${ic('folder')}Depo Yönetimi Geçişi${ic('down', 'class="i chev"')}`);
+set('#icSearch', ic('search')); set('#icTheme', ic('moon'));
+
+/* ---- örnek veri (uydurma) ---- */
+const KIND = { c:['Müşteri','briefcase'], s:['Tedarikçi','truck'], b:['İkisi','swap'] };
+const kind = k => `<span class="cu-kind" data-k="${k}">${ic(KIND[k][1])}${KIND[k][0]}</span>`;
+const CU = [
+  { n:'Deneme Danışmanlık Hizmetleri Ltd. Şti.', s:'Deneme Danışmanlık', k:'c', t:'1112223334', p:2 },
+  { n:'Deneme Yazılım Ltd. Şti.', s:'Deneme Yazılım', k:'s', t:'9876543210', p:1 },
+  { n:'Eski Deneme Ticaret Ltd. Şti.', s:'Eski Deneme', k:'c', t:'5556667778', p:1, off:true },
+  { n:'Örnek Gıda Sanayi ve Ticaret A.Ş.', s:'Örnek Gıda', k:'b', t:'4445556667', p:2 },
+  { n:'Örnek Lojistik A.Ş.', s:'Örnek Lojistik', k:'c', t:'1234567890', p:3 },
+  { n:'Örnek Mali Müşavirlik', s:'', k:'s', t:'12345678901', p:0 },
+  { n:'Sample Trading GmbH', s:'Sample Trading', k:'c', t:'', p:1 },
+  { n:'Test Muhasebe Ltd. Şti.', s:'Test Muhasebe', k:'s', t:'7778889990', p:0 },
+];
+
+/* ---- araç satırı ---- */
+set('#tools', `<label class="cu-search"><span class="sr">Cari ara</span>${ic('search')}<input class="inp" type="search" placeholder="Unvan, vergi no, yetkili ara…"></label>
+  <div class="cu-seg" role="radiogroup" aria-label="Tür">
+    <button role="radio" aria-checked="true">Tümü <span class="n">8</span></button>
+    <button role="radio" aria-checked="false">Müşteri <span class="n">5</span></button>
+    <button role="radio" aria-checked="false">Tedarikçi <span class="n">4</span></button>
+    <button role="radio" aria-checked="false">İkisi <span class="n">1</span></button></div>
+  <button class="cu-tog" aria-pressed="true"><span class="cu-sw" aria-hidden="true"></span>Pasifleri de göster <span class="n">(1)</span></button>
+  <span class="spacer"></span>
+  <button class="btn pri add">${ic('plus')}Cari ekle</button>`);
+set('#meta', `<b>8</b> cari · <b>1</b> pasif dahil · unvana göre A→Z`);
+set('#srtIc', ic('up'));
+set('#rows', CU.map(c => `<tr class="cu-row ${c.off ? 'is-off' : 'is-on'}" tabindex="0" aria-label="${c.n}${c.off ? ' (Pasif)' : ''}">
+  <td class="c-nm"><span class="cu-nm">${c.n}</span><span class="cu-sn ${c.s ? '' : 'empty'}">${c.s || '<span class="sr">Kısa ad yok</span>&nbsp;'}</span></td>
+  <td class="c-kd">${kind(c.k)}</td>
+  <td class="c-tx">${c.t ? `<span class="cu-tax"><span class="mob-l">${c.t.length === 11 ? 'TCKN' : 'VKN'} </span>${c.t}</span>` : '<span class="cu-tax none">— <span class="mob-l">vergi no yok</span></span>'}</td>
+  <td class="c-pj r"><span class="cu-pj ${c.p ? '' : 'zero'}"><span class="mob-only">${ic('folder')}</span>${c.p}<span class="mob-l"> proje</span></span></td>
+  <td class="c-st">${c.off ? `<span class="cu-st off">${ic('pause')}Pasif</span>` : `<span class="cu-st on">${ic('checkc')}Etkin</span>`}</td>
+  <td class="c-go r">${ic('chevr', 'class="i cu-go"')}</td></tr>`).join(''));
+
+/* ---- düzenleme penceresi ---- */
+const ctrow = (i, c, o = {}) => `<div class="cu-ctrow ${o.err ? 'has-err' : ''}" role="group" aria-label="Yetkili ${i}">
+  <span class="cu-ctno">Yetkili ${i}</span>
+  <div class="c-name"><label class="cu-cl" for="ct${i}n">Ad soyad <span style="color:var(--risk)">*</span></label>
+    <input class="inp" id="ct${i}n" value="${c[0]}" placeholder="Ad soyad" aria-label="Ad soyad" ${o.err ? `aria-invalid="true" aria-describedby="ct${i}e"` : ''}>
+    ${o.err ? `<div class="cu-err" id="ct${i}e">${ic('alert')}Ad zorunlu</div>` : ''}</div>
+  <div class="c-title"><label class="cu-cl" for="ct${i}g">Görev</label><input class="inp" id="ct${i}g" value="${c[1]}" placeholder="Görev" aria-label="Görev"></div>
+  <div class="c-mail"><label class="cu-cl" for="ct${i}m">E-posta</label><input class="inp" id="ct${i}m" type="email" value="${c[2]}" placeholder="ad@ornek.example" aria-label="E-posta"></div>
+  <div class="c-tel"><label class="cu-cl" for="ct${i}t">Telefon</label><input class="inp" id="ct${i}t" value="${c[3]}" placeholder="0212 555 00 00" aria-label="Telefon"></div>
+  <button class="iconbtn del" aria-label="Yetkili ${i}: ${c[0] || 'boş satır'} sil" title="Kişiyi sil">${ic('trash')}</button></div>`;
+
+set('#dlgEdit', `<div class="cu-dlg edit" role="dialog" aria-labelledby="e-t">
+  <div class="m-h"><span class="cu-ic">${ic('building')}</span>
+    <div class="tx"><b id="e-t">Cari kartı</b><div class="s">Deneme Yazılım Ltd. Şti. ${kind('s')}</div></div>
+    <button class="iconbtn ghost" aria-label="Kapat">${ic('x')}</button></div>
+  <div class="m-b">
+    <div class="cu-form">
+      <div class="cu-fld full"><label for="f-n"><span>Unvan<span class="req" aria-hidden="true">*</span></span><span class="cu-cnt">24 / 200</span></label>
+        <input class="inp" id="f-n" value="Deneme Yazılım Ltd. Şti." required></div>
+      <div class="cu-fld"><label for="f-s"><span>Kısa ad <span class="opt">(boşsa unvan)</span></span><span class="cu-cnt">14 / 60</span></label>
+        <input class="inp" id="f-s" value="Deneme Yazılım"></div>
+      <div class="cu-fld"><div class="lb" id="f-k"><span>Tür<span class="req" aria-hidden="true">*</span></span></div>
+        <div class="cu-kseg" role="radiogroup" aria-labelledby="f-k" aria-required="true">
+          <button role="radio" aria-checked="false">${ic('briefcase')}Müşteri</button>
+          <button role="radio" aria-checked="true">${ic('truck')}Tedarikçi</button>
+          <button role="radio" aria-checked="false">${ic('swap')}İkisi</button></div></div>
+      <div class="cu-fld"><label for="f-vd">Vergi dairesi</label><input class="inp" id="f-vd" value="Örnek Vergi Dairesi"></div>
+      <div class="cu-fld has-err"><label for="f-vn"><span>Vergi no</span><span class="opt">10 hane VKN · 11 hane TCKN</span></label>
+        <input class="inp" id="f-vn" value="123 456 7890" inputmode="numeric" aria-invalid="true" aria-describedby="f-vn-e" style="font-family:var(--mono)">
+        <div class="cu-err" id="f-vn-e" role="alert">${ic('alert')}<span>Bu vergi numarasıyla kayıtlı cari var: Örnek Lojistik A.Ş. · <a href="#">Kartı aç</a></span></div></div>
+      <div class="cu-fld full"><label for="f-a"><span>Adres</span><span class="cu-cnt">52 / 500</span></label>
+        <textarea class="inp" id="f-a" rows="2">Örnek Mah. Deneme Cad. No: 1 Kat: 2, Merkez / Ankara</textarea></div>
+      <div class="cu-fld"><label for="f-p">Telefon</label><input class="inp" id="f-p" value="0312 555 01 23" inputmode="tel"></div>
+      <div class="cu-fld"><label for="f-m">E-posta</label><input class="inp" id="f-m" type="email" value="info@deneme-yazilim.example"></div>
+      <div class="cu-fld full"><label for="f-no"><span>Notlar</span><span class="cu-cnt">66 / 2000</span></label>
+        <textarea class="inp" id="f-no" rows="2" aria-describedby="f-no-h">Yıllık bakım sözleşmesi Ocak ayında yenilenir. Fatura e-posta ile.</textarea>
+        <div class="cu-hint warn" id="f-no-h">${ic('shield')}Kişisel veya hassas bilgi yazmayın (T.C. kimlik no, sağlık, banka bilgisi vb.).</div></div>
+      <div class="cu-fld full"><div class="cu-active">
+        <button role="switch" aria-checked="true"><span class="cu-sw" aria-hidden="true"></span>Etkin</button>
+        <span class="tx">Pasif cariler yeni projelere bağlanamaz; mevcut bağlar ve geçmiş süreler korunur.</span></div></div>
+    </div>
+    <div class="cu-sech"><h3>${ic('users')}Yetkili kişiler <span class="n">3</span></h3></div>
+    <div class="cu-ct">
+      <div class="cu-cthead" aria-hidden="true"><span>Ad soyad *</span><span>Görev</span><span>E-posta</span><span>Telefon</span><span></span></div>
+      ${ctrow(1, ['Elif Örnek', 'Satış sorumlusu', 'elif.ornek@deneme-yazilim.example', '0312 555 01 24'])}
+      ${ctrow(2, ['Murat Deneme', 'Muhasebe', 'muhasebe@deneme-yazilim.example', ''])}
+      ${ctrow(3, ['', 'Teknik destek', 'destek@deneme-yazilim.example', ''], { err:true })}
+    </div>
+    <button class="cu-add">${ic('userplus')}Kişi ekle</button>
+    <div style="height:10px"></div>
+  </div>
+  <div class="m-f"><button class="btn danger-ghost icon-m" aria-label="Cariyi sil">${ic('trash')}<span class="lbl">Cariyi sil</span></button><span class="spacer"></span>
+    <button class="btn">İptal</button><button class="btn pri">${ic('check')}Kaydet</button></div>
+</div>`);
+
+/* mobil ikinci kopya: kimlikler çakışmasın, gövde sona kaydırılsın */
+set('#dlgEdit2', $('#dlgEdit').innerHTML.replace(/id="/g, 'id="m2-').replace(/(for|aria-describedby|aria-labelledby)="/g, '$1="m2-'));
+requestAnimationFrame(() => { const b = $('#dlgEdit2 .m-b'); b.scrollTop = b.scrollHeight; });
+
+/* ---- salt okunur kart + özet (izleyici) ---- */
+const WSC = { G:['Genel','#64748B'], D:['Danışmanlık','#2563EB'], L:['Lojistik Projeleri','#0E7490'] };
+const wsb = (w, a) => `<span class="ws-badge ${a ? 'is-arch' : ''}" style="--ws-c:${WSC[w][1]}" aria-hidden="true">${WSC[w][0][0]}</span>`;
+const prj = (k, n, w, a) => `<a class="cu-prj ${a ? 'is-arch' : ''}" href="#"><span class="ws-key">${k}</span>
+  <span class="tx"><span class="nm">${n}</span><span class="ws">${wsb(w, a)}${WSC[w][0]}</span></span>
+  ${a ? `<span class="chip">${ic('archive')}Arşivli</span>` : ic('chevr', 'class="i cu-go"')}</a>`;
+set('#dlgRo', `<div class="cu-dlg" role="dialog" aria-labelledby="r-t">
+  <div class="m-h"><span class="cu-ic">${ic('building')}</span>
+    <div class="tx"><b id="r-t">Örnek Mali Müşavirlik</b><div class="s">${kind('s')}<span class="cu-st on">${ic('checkc')}Etkin</span><span class="cu-ro-chip">${ic('eye')}Salt okunur</span></div></div>
+    <button class="iconbtn ghost" aria-label="Kapat">${ic('x')}</button></div>
+  <div class="m-b"><div class="cu-ro">
+    <div>
+      <dl class="cu-dl">
+        <dt>Kısa ad</dt><dd style="color:var(--meta)">— (unvan kullanılır)</dd>
+        <dt>Vergi dairesi</dt><dd>Örnek Vergi Dairesi</dd>
+        <dt>T.C. kimlik no</dt><dd class="mono"><span class="cu-mask"><span aria-label="Maskeli: 1 2 3, altı gizli hane, 0 1">123******01</span><span class="why">${ic('lock')}İzleyiciye maskeli</span></span></dd>
+        <dt>Adres</dt><dd>Deneme Sok. No: 5, Merkez / İzmir</dd>
+        <dt>Telefon</dt><dd>0232 555 00 11</dd>
+        <dt>E-posta</dt><dd><a href="#">iletisim@ornek-mm.example</a></dd>
+        <dt>Notlar</dt><dd>Aylık beyanname dönemlerinde yoğunluk; talepler ayın 20'sine kadar.</dd>
+      </dl>
+      <div class="cu-sech"><h3>${ic('users')}Yetkili kişiler <span class="n">2</span></h3></div>
+      <div class="cu-person"><span class="c-av" style="background:#0E7490">AÖ</span><div class="tx"><b>Ali Örnek</b> <span class="r">· Mali müşavir</span>
+        <div class="ln"><span>${ic('mail')}ali@ornek-mm.example</span><span>${ic('phone')}0232 555 00 12</span></div></div></div>
+      <div class="cu-person"><span class="c-av" style="background:#7C3AED">ZD</span><div class="tx"><b>Zehra Deneme</b> <span class="r">· Asistan</span>
+        <div class="ln"><span>${ic('mail')}zehra@ornek-mm.example</span></div></div></div>
+    </div>
+    <aside class="cu-sum" aria-label="Özet">
+      <h4>Özet</h4>
+      <div class="cu-kpis">
+        <button class="cu-kpi" aria-label="14 açık iş, iş listesinde aç"><span class="l">${ic('circle')}Açık iş</span><span class="v">14</span><span class="go">İş listesi${ic('arrow')}</span></button>
+        <div class="cu-kpi"><span class="l">${ic('folder')}Bağlı proje</span><span class="v">3</span><span class="l" style="font-weight:500;color:var(--meta)">1 arşivli</span></div>
+        <div class="cu-kpi time"><span class="l">${ic('hour')}Harcanan süre</span>
+          <div class="cu-time"><div><span class="k">Bu ay</span><span class="v">18.5h</span></div><div><span class="k">Toplam</span><span class="v">342h</span></div></div></div>
+      </div>
+      <h4 style="margin-top:4px">Bağlı projeler</h4>
+      <div class="cu-prjs">${prj('BRD', 'Bordro Hizmetleri', 'D')}${prj('BYN', 'Beyanname Takibi', 'D')}${prj('DNT', '2025 Yıl Sonu Denetimi', 'G', true)}</div>
+    </aside>
+  </div></div>
+  <div class="m-f"><span class="spacer"></span><button class="btn">Kapat</button></div>
+</div>`);
+
+/* ---- proje formu ---- */
+const ACTIVE = CU.filter(c => !c.off);
+set('#dlgProj', `<div class="cu-dlg narrow" role="dialog" aria-labelledby="p-t">
+  <div class="m-h"><div class="tx"><b id="p-t">Yeni proje</b></div><button class="iconbtn ghost" aria-label="Kapat">${ic('x')}</button></div>
+  <div class="m-b">
+    <div class="cu-fld"><label for="np_n">Proje adı</label><input class="inp" id="np_n" value="Depo Yönetimi Geçişi"></div>
+    <div class="cu-fld"><label for="np_c"><span>Cari</span><span class="opt">isteğe bağlı</span></label>
+      <select class="inp" id="np_c"><option>Örnek Lojistik A.Ş.</option></select>
+      <div class="cu-lb" aria-hidden="true"><div class="none">— Cari yok —</div><div class="sep"></div>
+        ${ACTIVE.map(c => `<div ${c.n.startsWith('Örnek Lojistik') ? 'aria-selected="true"' : ''}>${c.n}${c.n.startsWith('Örnek Lojistik') ? ic('check') : ''}</div>`).join('')}</div>
+      <div class="cu-hint">${ic('info')}Yalnız etkin cariler listelenir. Bir projeye en çok bir cari bağlanır.</div></div>
+  </div>
+  <div class="m-f"><span class="spacer"></span><button class="btn">Vazgeç</button><button class="btn pri">Oluştur</button></div>
+</div>`);
+
+set('#pcards', `<article class="cu-pcard"><div class="ph"><span class="ws-key">EDT</span><b>Eski Dönem Taşıma</b></div>
+    <div class="stats"><span><b>12</b> iş</span><span><b>2</b> açık</span><span><b>48h</b> efor</span></div>
+    <div class="cu-plink"><label class="lbl" for="pc1">${ic('building')}Cari</label>
+      <select class="inp" id="pc1"><option>Eski Deneme Ticaret Ltd. Şti. (Pasif)</option></select>
+      <div class="cu-hint">${ic('pause')}Bağlı cari pasif; bağ korunur. Değiştirirseniz yalnız etkin cariler seçilebilir.</div></div></article>
+  <article class="cu-pcard"><div class="ph"><span class="ws-key">BRD</span><b>Bordro Hizmetleri</b><span class="cu-ro-chip">${ic('eye')}Salt okunur</span></div>
+    <div class="stats"><span><b>42</b> iş</span><span><b>14</b> açık</span><span><b>186h</b> efor</span></div>
+    <div class="cu-plink"><span class="lbl">${ic('building')}Cari</span><span class="val"><a href="#">Örnek Mali Müşavirlik</a></span></div></article>`);
+
+/* ---- silme ---- */
+set('#delBlocked', `<div class="cu-dlg narrow" role="alertdialog" aria-labelledby="d1-t" aria-describedby="d1-d">
+  <div class="m-h"><div class="tx"><b id="d1-t">Cari silinemez</b><div class="s">Örnek Lojistik A.Ş.</div></div><button class="iconbtn ghost" aria-label="Kapat">${ic('x')}</button></div>
+  <div class="m-b" style="padding-bottom:14px"><div class="ws-alert" id="d1-d">${ic('alert')}<div class="tx"><b>Bu cariye bağlı 3 proje var; silmek yerine pasife alın.</b>
+    <ul class="cu-plist">
+      <li><span class="ws-key">DYG</span><span class="t">Depo Yönetimi Geçişi</span>${wsb('L')}</li>
+      <li><span class="ws-key">FTP</span><span class="t">Filo Takip Portalı</span>${wsb('L')}</li>
+      <li><span class="ws-key">LJS</span><span class="t">2025 Sözleşme Yenileme</span><span class="chip">${ic('archive')}Arşivli</span></li></ul></div></div></div>
+  <div class="m-f"><span class="spacer"></span><button class="btn">Kapat</button><button class="btn pri">${ic('pause')}Pasife al</button></div>
+</div>`);
+set('#delOk', `<div class="cu-dlg narrow" role="alertdialog" aria-labelledby="d2-t" aria-describedby="d2-d">
+  <div class="m-h"><div class="tx"><b id="d2-t">Cariyi sil</b></div><button class="iconbtn ghost" aria-label="Kapat">${ic('x')}</button></div>
+  <div class="m-b" style="padding-bottom:14px"><p class="cu-confirm" id="d2-d"><b>Test Muhasebe Ltd. Şti.</b> ve 2 yetkili kişisi <b>kalıcı olarak silinir, çöp kutusuna gitmez.</b> Bu işlem geri alınamaz.</p>
+    <div class="ws-info">${ic('info')}<span>Bu cariye bağlı proje yok. Kaydı saklamak istiyorsanız silmek yerine pasife alabilirsiniz.</span></div></div>
+  <div class="m-f"><span class="spacer"></span><button class="btn">Vazgeç</button><button class="btn danger">${ic('trash')}Kalıcı olarak sil</button></div>
+</div>`);
+
+/* ---- boş durumlar ---- */
+set('#emA', `<div class="hm-empty"><span class="hm-empty-ic">${ic('building')}</span><h3>Henüz cari yok</h3>
+  <p>Müşteri ve tedarikçilerinizi ekleyin; projelerinizi bir cariye bağlayabilirsiniz.</p><div class="acts"><button class="btn pri">${ic('plus')}Cari ekle</button></div></div>`);
+set('#emB', `<div class="hm-empty"><span class="hm-empty-ic">${ic('building')}</span><h3>Henüz cari yok</h3>
+  <p>Cari eklemek için yöneticinize başvurun.</p></div>`);
+set('#emC', `<div class="hm-empty"><span class="hm-empty-ic">${ic('search')}</span><h3>Aramanızla eşleşen cari yok</h3>
+  <span class="cu-q">${ic('search')}"Kuzey" · Tedarikçi · yalnız etkin</span>
+  <p>Unvan, kısa ad, vergi no ve yetkili adı/e-postası içinde arandı.</p><div class="acts"><button class="btn">${ic('x')}Süzgeçleri temizle</button></div></div>`);
+</script>
+</body></html>

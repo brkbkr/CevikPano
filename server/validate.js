@@ -10,6 +10,8 @@ const date = v => v == null || v === '' || (typeof v === 'string' && /^\d{4}-\d{
 const KEY_RE = /^[\p{L}\p{N}_-]{1,20}$/u;
 const ISSUE_KEY_RE = /^[\p{L}\p{N}_-]{1,20}-\d{1,9}$/u;
 const HEX_RE = /^#[0-9a-f]{3,8}$/i;
+/* Üretilen sütunlar (archived) ::boolean dönüşümü yapar: metin gelirse 500 yerine 400. */
+const optBool = v => v == null || typeof v === 'boolean';
 const optKey = (v, re) => v == null || v === '' || (typeof v === 'string' && re.test(v));
 
 /* Kayıt kimlikleri ekranda HTML özniteliklerine basılır: yalnız güvenli karakterler.
@@ -34,6 +36,15 @@ const RULES = {
     [str(d.name, 200) && d.name.trim(), 'Proje adı gerekli'],
     [optKey(d.key, KEY_RE), 'Proje anahtarı yalnızca harf, rakam, _ ve - içerebilir (en fazla 20)'],
     [optKey(d.code, KEY_RE), 'Proje kodu geçersiz'],
+    [d.workspaceId == null || d.workspaceId === '' || validId(d.workspaceId), 'Geçersiz çalışma alanı'],
+    [optBool(d.archived), 'Arşiv bilgisi true ya da false olmalı'],
+  ],
+  workspaces: d => [
+    [str(d.name, 100) && d.name.trim().length >= 1 && d.name.trim().length <= 60,
+      'Çalışma alanı adı gerekli (en fazla 60 karakter)'],
+    [d.color == null || d.color === '' || (typeof d.color === 'string' && HEX_RE.test(d.color)), 'Renk #RRGGBB biçiminde olmalı'],
+    [optStr(d.description, 500), 'Açıklama en fazla 500 karakter'],
+    [optBool(d.archived), 'Arşiv bilgisi true ya da false olmalı'],
   ],
   statuses: d => [
     [str(d.projectId, 200), 'Durumun projesi yok'],
@@ -78,6 +89,18 @@ export function normalizePriority(d) {
   return true;
 }
 
+/* Arşiv bilgisi: eski (SharePoint) verideki "true"/"false" metni (büyük/küçük harf duyarsız) ve 1/0
+   boolean'a çevrilir; diğer değerlere dokunulmaz (doğrulama reddeder). Değer değiştiyse true döner. */
+export function normalizeArchived(d) {
+  if (!d || d.archived == null || typeof d.archived === 'boolean') return false;
+  const v = d.archived;
+  const s = typeof v === 'string' ? v.trim().toLowerCase() : v;
+  if (s === 'true' || s === 1) d.archived = true;
+  else if (s === 'false' || s === 0) d.archived = false;
+  else return false;
+  return true;
+}
+
 /* Genel ayar `cfg`: iş tipleri kartta rozet olarak basılır (harf, ad, renk). */
 export function validateCfg(v) {
   if (v == null || typeof v !== 'object' || Array.isArray(v)) throw new HttpError(400, 'Geçersiz ayar');
@@ -92,7 +115,7 @@ export function validateCfg(v) {
 
 export function validate(collection, data) {
   if (JSON.stringify(data).length > MAX_RECORD) throw new HttpError(400, 'Kayıt çok büyük');
-  const r = RULES[collection];
+  const r = Object.hasOwn(RULES, collection) ? RULES[collection] : undefined;   // `constructor` kural değildir
   if (!r) return;
   for (const [ok, msg] of r(data)) if (!ok) throw new HttpError(400, msg);
 }

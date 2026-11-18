@@ -1,7 +1,7 @@
 /* API testleri — gerçek bir PostgreSQL veritabanına karşı çalışır.
    TEST_DATABASE_URL tanımlı değilse atlanır. Veritabanı her çalıştırmada SIFIRLANIR.
    Örnek: TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/pano_test npm test */
-import { test, before, after } from 'node:test';
+import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createPool, migrate } from '../server/db.js';
 import { bootstrap } from '../server/store.js';
@@ -147,6 +147,37 @@ t('yetki: izleyici veri değiştiremez ama kendi ekran tercihini kaydedebilir', 
   assert.equal(r.json.rejected[0].reason, 'salt okunur kullanıcı');
   assert.equal((await v.state()).json.data.ui.view, 'board');
   assert.equal((await a.state()).json.data.ui, undefined);       // tercihler kişiye özel
+});
+
+t('yetki (#9 Benim işlerim): izleyici durum/öncelik/atanan değiştiremez, süre giremez; ana ekran süzgeci kalıcı', async () => {
+  const a = client();
+  await a.login('admin', 'test-admin-pw');
+  let r = await a.sync([{ c: 'issues', id: 'i_hm9', op: 'put',
+    data: { projectId: 'p1', summary: 'Benim işlerim', statusId: 'p1_s0', priority: 3, assignee: 'u_viewer' } }]);
+  assert.equal(r.json.applied, 1);
+  const v = client();
+  await v.login('izci', 'IzciYeni12345');
+  const base = (await v.state()).json.data.issues.find(i => i.id === 'i_hm9');
+  for (const patch of [{ statusId: 'p1_s1' }, { priority: 1 }, { assignee: null }, { assignee: 'u_admin' }]) {
+    r = await v.sync([{ c: 'issues', id: 'i_hm9', op: 'put', data: { ...base, ...patch }, base }]);
+    assert.equal(r.json.applied, 0, JSON.stringify(patch));
+    assert.equal(r.json.rejected[0].reason, 'salt okunur kullanıcı');
+  }
+  r = await v.sync([{ c: 'worklogs', id: 'w_hm9', op: 'put',
+    data: { issueId: 'i_hm9', userId: 'u_viewer', date: '2026-11-18', hours: 1, comment: 'izleyici' } }]);
+  assert.equal(r.json.applied, 0);
+  const row = (await pool.query(`SELECT data FROM issues WHERE id='i_hm9'`)).rows[0].data;
+  assert.deepEqual([row.statusId, row.priority, row.assignee], ['p1_s0', 3, 'u_viewer']);
+  assert.equal((await pool.query(`SELECT count(*)::int AS n FROM worklogs WHERE id='w_hm9'`)).rows[0].n, 0);
+  /* Süzgeç kişisel tercihtir: izleyici de yazar, yeni oturumda geri gelir, başkasına gitmez. */
+  r = await v.sync([{ c: '_prefs', id: 'ui', op: 'put', data: { view: 'home', homeProj: 'p1' } }]);
+  assert.equal(r.json.applied, 1);
+  const v2 = client();
+  await v2.login('izci', 'IzciYeni12345');
+  const ui = (await v2.state()).json.data.ui;
+  assert.equal(ui.homeProj, 'p1');
+  assert.equal(ui.view, 'home');
+  assert.equal((await a.state()).json.data.ui?.homeProj, undefined);
 });
 
 t('son aktif yönetici pasifleştirilemez; kendi hesabını silemez', async () => {
@@ -522,6 +553,27 @@ t('kullanıcı görünüm alanları doğrulanır (XSS)', async () => {
   assert.equal(r2.json.rejected.length, 1);
 });
 
+t('prototip adları (constructor, __proto__, hasOwnProperty) koleksiyon/ayar adı olamaz: 500 yok, ret', async () => {
+  const a = client(); await a.login('admin', 'test-admin-pw');
+  const names = ['constructor', '__proto__', 'hasOwnProperty', 'toString'];
+  const r = await a.sync([...names.map(c => ({ c, id: 'x1', op: 'put', data: { a: 1 } })),
+    ...names.map(c => ({ c, id: 'x2', op: 'del' })),
+    ...names.map(id => ({ c: '_settings', id, op: 'put', data: { a: 1 } }))]);
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.equal(r.json.applied, 0);
+  assert.equal(r.json.rejected.length, names.length * 3);
+  assert.deepEqual([...new Set(r.json.rejected.slice(0, names.length * 2).map(x => x.reason))], ['geçersiz koleksiyon']);
+  assert.equal((await pool.query(`SELECT count(*) n FROM misc_records WHERE collection = ANY($1)`, [names])).rows[0].n, '0');
+  /* eski sürümün yazmış olabileceği misc kaydı durumu bozmaz */
+  await pool.query(`INSERT INTO misc_records (collection, id, data) VALUES ('constructor','x9','{"id":"x9"}'), ('__proto__','x9','{"id":"x9"}')`);
+  try {
+    const st = await a.state();
+    assert.equal(st.status, 200);
+    assert.ok(!Object.hasOwn(st.json.data, 'constructor') && !Object.hasOwn(st.json.data, '__proto__'));
+    assert.equal((await a.req('GET', '/api/changes?since=0')).status, 200);
+  } finally { await pool.query(`DELETE FROM misc_records WHERE collection IN ('constructor','__proto__')`); }
+});
+
 /* ---------------- kullanıcı yönetimi ---------------- */
 t('yönetici: rastgele parola üretir (bir kez döner), oturumları kapatır, ek bilgileri görür', async () => {
   const a = client(); await a.login('admin', 'test-admin-pw');
@@ -552,4 +604,402 @@ t('yönetici: rastgele parola üretir (bir kez döner), oturumları kapatır, ek
   assert.equal((await m.req('GET', '/api/admin/users')).status, 403);
   assert.equal((await m.req('POST', '/api/users/u_admin/sessions/revoke', {})).status, 403);
   assert.equal((await m.req('POST', '/api/users/u_km/password', { generate: true })).status, 403);
+});
+
+/* ---------------- çalışma alanları (#22) ---------------- */
+describe('çalışma alanları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  const ws = (id, data) => ({ c: 'workspaces', id, op: 'put', data });
+  const row = async (table, id) => (await pool.query(`SELECT * FROM ${table} WHERE id=$1`, [id])).rows[0];
+  const reasons = r => r.json.rejected.map(x => x.reason);
+  let A, U1, U2, V;
+  const newUser = async (id, username, role) => {
+    await A.sync([{ c: 'users', id, op: 'put', data: { username, name: username, role, active: true } }]);
+    const k = client(); await k.login(username, 'Start12345');
+    assert.equal((await k.req('POST', '/api/auth/password', { newPassword: 'WsYeni123456' })).status, 200);
+    return k;
+  };
+
+  before(async () => {
+    A = client(); await A.login('admin', 'test-admin-pw');
+    U1 = await newUser('u_ws1', 'wsuye', 'member');
+    U2 = await newUser('u_ws2', 'wsuye2', 'member');
+    V = await newUser('u_wsv', 'wsizci', 'viewer');
+  });
+
+  test('göç: temiz kurulumda Genel (ws1) var ve p1 ona bağlı', async () => {
+    const w = await row('workspaces', 'ws1');
+    assert.equal(w.name, 'Genel'); assert.equal(w.archived, false); assert.equal(w.data.createdBy, null);
+    assert.equal(w.data.color, '#64748B');
+    assert.equal((await row('projects', 'p1')).workspace_id, 'ws1');
+    const st = (await A.state()).json.data;
+    assert.deepEqual(st.workspaces.map(x => x.id), ['ws1']);
+  });
+
+  test('göç: alanı olmayan projeler (arşivliler dahil) 003 yeniden çalışınca Genel\'e bağlanır; ws1 tek satır; değişiklik akışında görünür', async () => {
+    await pool.query(`INSERT INTO projects (id, data) VALUES
+      ('p_gc1', '{"id":"p_gc1","name":"Eski","key":"ESK","counter":7}'),
+      ('p_gc2', '{"id":"p_gc2","name":"Eski arşiv","key":"ESA","archived":true,"workspaceId":""}')`);
+    const s0 = (await A.state()).json.seq;
+    const p1v = (await row('projects', 'p1')).version;
+    await pool.query(`DELETE FROM schema_migrations WHERE id='003_workspaces.sql'`);
+    await migrate(pool);
+    assert.equal((await pool.query(`SELECT count(*) n FROM schema_migrations WHERE id='003_workspaces.sql'`)).rows[0].n, '1');
+    const g1 = await row('projects', 'p_gc1'), g2 = await row('projects', 'p_gc2');
+    assert.equal(g1.workspace_id, 'ws1'); assert.equal(g2.workspace_id, 'ws1');
+    assert.equal(g1.data.counter, 7); assert.equal(g1.data.key, 'ESK'); assert.equal(g2.archived, true);
+    assert.equal(g1.version, 2);
+    assert.equal((await row('projects', 'p1')).version, p1v);          // zaten bağlı olana dokunulmaz
+    assert.equal((await pool.query(`SELECT count(*) n FROM workspaces`)).rows[0].n, '1');
+    const ch = (await A.req('GET', `/api/changes?since=${s0}`)).json;
+    assert.equal(ch.reload, undefined);
+    const got = ch.items.filter(i => i.c === 'projects');
+    assert.ok(got.every(i => i.op === 'put' && i.data.workspaceId === 'ws1'), JSON.stringify(got));
+    for (const id of ['p_gc1', 'p_gc2', 'p_y']) assert.ok(got.some(i => i.id === id), id);   // p_y: önceki testte alansız açıldı
+    assert.ok(!got.some(i => i.id === 'p1'));
+    assert.ok(!ch.items.some(i => i.c === 'workspaces'));           // var olan ws1 yeniden yazılmadı
+    await pool.query(`DELETE FROM projects WHERE id IN ('p_gc1','p_gc2')`);
+  });
+
+  test('eski sürümün misc_records\'a yazdığı workspaces kayıtları çift görünmez', async () => {
+    await pool.query(`INSERT INTO misc_records (collection, id, data) VALUES ('workspaces','ws1','{"id":"ws1","name":"Kopya"}')`);
+    const st = (await A.state()).json.data;
+    assert.deepEqual(st.workspaces.map(x => [x.id, x.name]), [['ws1', 'Genel']]);
+    await pool.query(`DELETE FROM misc_records WHERE collection='workspaces'`);
+  });
+
+  test('oluşturma: açan kişi sunucuda yazılır (sahte createdBy düzeltilir), güncellemede korunur', async () => {
+    let r = await U1.sync([ws('ws_a', { name: 'Ar-Ge', color: '#3E7BC4', description: 'açıklama', createdBy: 'u_admin' })]);
+    assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+    assert.deepEqual(r.json.adjusted, [{ c: 'workspaces', id: 'ws_a' }]);
+    let w = await row('workspaces', 'ws_a');
+    assert.equal(w.created_by, 'u_ws1'); assert.equal(w.archived, false);
+    r = await U1.sync([ws('ws_a', { ...w.data, description: 'yeni', createdBy: 'u_ws2' })]);
+    assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+    assert.ok(r.json.adjusted.some(x => x.id === 'ws_a'));
+    w = await row('workspaces', 'ws_a');
+    assert.equal(w.created_by, 'u_ws1'); assert.equal(w.data.description, 'yeni');
+    /* createdBy alanı gönderilmese de korunur. */
+    const { createdBy, ...rest } = w.data;
+    r = await U1.sync([ws('ws_a', { ...rest, color: '#1F6F5C' })]);
+    assert.equal(r.json.applied, 1);
+    assert.equal((await row('workspaces', 'ws_a')).created_by, 'u_ws1');
+    assert.equal(createdBy, 'u_ws1');
+    /* Yeni alanda doğru createdBy gönderilirse düzeltme bildirilmez. */
+    r = await U1.sync([ws('ws_dogru', { name: 'Doğru açan', createdBy: 'u_ws1' })]);
+    assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+    assert.deepEqual(r.json.adjusted, []);
+  });
+
+  test('ad: zorunlu, en fazla 60, etkin alanlarda Türkçe büyük/küçük harf ve boşluk duyarsız tekil', async () => {
+    let r = await U1.sync([ws('ws_ik', { name: 'İnsan Kaynakları' })]);
+    assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+    for (const name of ['insan kaynakları', '  İNSAN   KAYNAKLARI ', 'İnsan Kaynakları']) {
+      r = await U2.sync([ws('ws_ik2', { name })]);
+      assert.equal(r.json.applied, 0, name);
+      assert.deepEqual(reasons(r), ['Bu adla etkin bir çalışma alanı zaten var'], name);
+    }
+    for (const name of ['', '   ', 'x'.repeat(61), 12, null, ['a']]) {
+      r = await U2.sync([ws('ws_bad', { name })]);
+      assert.equal(r.json.applied, 0, String(name));
+      assert.match(reasons(r)[0], /Çalışma alanı adı gerekli/, String(name));
+    }
+    r = await U2.sync([ws('ws_60', { name: 'y'.repeat(60) })]);
+    assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+    /* Kendi adını büyük/küçük harf değiştirerek güncellemek çakışma sayılmaz. */
+    const ik = (await row('workspaces', 'ws_ik')).data;
+    r = await U1.sync([ws('ws_ik', { ...ik, name: 'insan kaynakları' })]);
+    assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+    /* Arşivli alanla aynı ad serbest; arşivden çıkarmada etkin adla çakışırsa reddedilir. */
+    r = await U1.sync([ws('ws_ik', { ...ik, name: 'insan kaynakları', archived: true })]);
+    assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+    r = await U2.sync([ws('ws_ik2', { name: 'İnsan Kaynakları' })]);
+    assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+    r = await U1.sync([ws('ws_ik', { ...ik, name: 'insan kaynakları', archived: false })]);
+    assert.deepEqual(reasons(r), ['Bu adla etkin bir çalışma alanı zaten var']);
+    assert.equal((await row('workspaces', 'ws_ik')).archived, true);
+    /* Başka bir etkin alanın adına yeniden adlandırma da reddedilir. */
+    r = await U2.sync([ws('ws_60', { ...(await row('workspaces', 'ws_60')).data, name: 'ar-ge' })]);
+    assert.deepEqual(reasons(r), ['Bu adla etkin bir çalışma alanı zaten var']);
+  });
+
+  test('ad tekilliği eşzamanlı oluşturmada da korunur', async () => {
+    const [r1, r2] = await Promise.all([U1.sync([ws('ws_es1', { name: 'Eşzamanlı' })]), U2.sync([ws('ws_es2', { name: 'eşzamanlı' })])]);
+    assert.equal(r1.json.applied + r2.json.applied, 1, JSON.stringify([r1.json, r2.json]));
+    assert.equal((await pool.query(`SELECT count(*) n FROM workspaces WHERE id IN ('ws_es1','ws_es2')`)).rows[0].n, '1');
+  });
+
+  test('aynı kimlikle eşzamanlı oluşturma: ikincisi üzerine yazmaz (409), açan kişi değişmez', async () => {
+    const [r1, r2] = await Promise.all([U1.sync([ws('ws_ayni', { name: 'Aynı kimlik' })]), U2.sync([ws('ws_ayni', { name: 'Aynı kimlik' })])]);
+    assert.equal(r1.status, 200); assert.equal(r2.status, 200);
+    assert.equal(r1.json.applied + r2.json.applied, 1, JSON.stringify([r1.json, r2.json]));
+    const winner = r1.json.applied ? 'u_ws1' : 'u_ws2';
+    assert.equal((await row('workspaces', 'ws_ayni')).created_by, winner);
+    /* Kesin yarış: ilk kayıt henüz onaylanmamışken ikinci oluşturma gelir → bekler, üzerine yazmaz. */
+    const c = await pool.connect();
+    try {
+      await c.query('BEGIN');
+      await c.query(`INSERT INTO workspaces (id, data) VALUES ('ws_yaris', '{"id":"ws_yaris","name":"Yarış alanı","createdBy":"u_ws1"}')`);
+      const pending = U2.sync([ws('ws_yaris', { name: 'Yarış alanı', description: 'ikinci' })]);
+      await new Promise(r => setTimeout(r, 300));
+      await c.query('COMMIT');
+      const r = await pending;
+      assert.equal(r.status, 200); assert.equal(r.json.applied, 0);
+      assert.deepEqual(reasons(r), ['Kayıt aynı anda oluşturuldu, yeniden deneyin']);
+    } finally { c.release(); }
+    const w = await row('workspaces', 'ws_yaris');
+    assert.equal(w.created_by, 'u_ws1'); assert.equal(w.data.description, undefined);
+    /* yeniden denemede kayıt var: güncelleme kuralları işler (başkasının alanı) */
+    assert.deepEqual(reasons(await U2.sync([ws('ws_yaris', { name: 'Yarış alanı', description: 'ikinci' })])),
+      ['Bu çalışma alanını yalnızca açan kişi ya da yönetici değiştirebilir']);
+    await pool.query(`DELETE FROM workspaces WHERE id IN ('ws_ayni','ws_yaris')`);
+  });
+
+  test('doğrulama: renk HEX, açıklama ≤500, archived boolean (metin 500 değil ret)', async () => {
+    const r = await U1.sync([
+      ws('ws_c1', { name: 'Renk 1', color: 'red' }), ws('ws_c2', { name: 'Renk 2', color: '#fff;' + XSS }),
+      ws('ws_c3', { name: 'Renk 3', color: 12 }), ws('ws_d1', { name: 'Açıklama', description: 'x'.repeat(501) }),
+      ws('ws_ar', { name: 'Arşiv', archived: 'evet' }),
+      { c: 'projects', id: 'p_ar', op: 'put', data: { name: 'Arşiv metin', key: 'PAR', archived: 'evet' } },
+      { c: 'projects', id: 'p_wsid', op: 'put', data: { name: 'Kötü alan', key: 'PKA', workspaceId: 'ws' + XSS } },
+    ]);
+    assert.equal(r.status, 200);
+    assert.equal(r.json.applied, 0, JSON.stringify(r.json));
+    assert.deepEqual(reasons(r), ['Renk #RRGGBB biçiminde olmalı', 'Renk #RRGGBB biçiminde olmalı', 'Renk #RRGGBB biçiminde olmalı',
+      'Açıklama en fazla 500 karakter', 'Arşiv bilgisi true ya da false olmalı', 'Arşiv bilgisi true ya da false olmalı',
+      'Geçersiz çalışma alanı']);
+    const ok = await U1.sync([ws('ws_c4', { name: 'Renk 4', color: '#abc', description: '' }), ws('ws_c5', { name: 'Renk 5', color: '' })]);
+    assert.equal(ok.json.applied, 2, JSON.stringify(ok.json.rejected));
+  });
+
+  test('archived: "true"/"false" metni ve 1/0 boolean\'a çevrilir (adjusted), diğer değerler reddedilir', async () => {
+    const { normalizeArchived, validate } = await import('../server/validate.js');
+    for (const [v, want] of [['true', true], [' TRUE ', true], ['False', false], [1, true], [0, false]]) {
+      const d = { archived: v }; assert.equal(normalizeArchived(d), true, String(v)); assert.strictEqual(d.archived, want, String(v));
+    }
+    for (const v of [true, false, null, undefined, 'evet', '1', 2, {}]) {
+      const d = { archived: v }; assert.equal(normalizeArchived(d), false, String(v)); assert.strictEqual(d.archived, v);
+    }
+    assert.throws(() => validate('projects', { name: 'x', archived: 'evet' }), /Arşiv bilgisi/);
+    let r = await U1.sync([
+      { c: 'projects', id: 'p_arm', op: 'put', data: { name: 'Metin arşiv', key: 'PAM', archived: 'true' } },
+      { c: 'projects', id: 'p_arm0', op: 'put', data: { name: 'Sayı arşiv', key: 'PA0', archived: 0 } },
+      ws('ws_arm', { name: 'Metin arşivli alan', archived: 'FALSE' }),
+      { c: 'projects', id: 'p_arx', op: 'put', data: { name: 'Kötü arşiv', key: 'PAX', archived: 'evet' } },
+      ws('ws_arx', { name: 'Kötü arşivli alan', archived: 'hayır' }),
+    ]);
+    assert.equal(r.json.applied, 3, JSON.stringify(r.json));
+    assert.deepEqual(reasons(r), ['Arşiv bilgisi true ya da false olmalı', 'Arşiv bilgisi true ya da false olmalı']);
+    assert.deepEqual(r.json.adjusted.map(x => x.id).sort(), ['p_arm', 'p_arm0', 'ws_arm']);
+    assert.strictEqual((await row('projects', 'p_arm')).data.archived, true);
+    assert.equal((await row('projects', 'p_arm')).archived, true);
+    assert.strictEqual((await row('projects', 'p_arm0')).data.archived, false);
+    assert.strictEqual((await row('workspaces', 'ws_arm')).data.archived, false);
+    /* Var olan alan "true" metniyle arşivlenince arşiv kuralları uygulanır. */
+    r = await A.sync([ws('ws1', { ...(await row('workspaces', 'ws1')).data, archived: 'true' })]);
+    assert.deepEqual(reasons(r), ['Genel çalışma alanı arşivlenemez']);
+    await pool.query(`DELETE FROM projects WHERE id IN ('p_arm','p_arm0')`);
+  });
+
+  test('ad HTML olarak değil metin olarak saklanır', async () => {
+    const name = '<script>alert(1)</script>';
+    const r = await U1.sync([ws('ws_xss', { name })]);
+    assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+    assert.equal((await A.state()).json.data.workspaces.find(x => x.id === 'ws_xss').name, name);
+  });
+
+  test('izleyici çalışma alanı açamaz, değiştiremez, proje taşıyamaz', async () => {
+    const p1 = (await row('projects', 'p1')).data;
+    const r = await V.sync([ws('ws_v', { name: 'İzleyici' }), ws('ws_a', { name: 'Değişti' }), { c: 'workspaces', id: 'ws_c4', op: 'del' },
+      { c: 'projects', id: 'p1', op: 'put', data: { ...p1, workspaceId: 'ws_a' } }]);
+    assert.equal(r.json.applied, 0);
+    assert.deepEqual(reasons(r), Array(4).fill('salt okunur kullanıcı'));
+    assert.equal(await row('workspaces', 'ws_v'), undefined);
+  });
+
+  test('başkasının alanını yalnız açan kişi ya da yönetici değiştirir/arşivler', async () => {
+    const a = (await row('workspaces', 'ws_a')).data;
+    const MSG = 'Bu çalışma alanını yalnızca açan kişi ya da yönetici değiştirebilir';
+    let r = await U2.sync([ws('ws_a', { ...a, name: 'Ele geçirildi' }), ws('ws_a', { ...a, archived: true }),
+      ws('ws_a', { ...a, createdBy: 'u_ws2' })]);
+    assert.equal(r.json.applied, 0);
+    assert.deepEqual(reasons(r), [MSG, MSG]);                           // createdBy denemesi değişiklik sayılmaz
+    assert.equal((await row('workspaces', 'ws_a')).name, 'Ar-Ge');
+    /* Değişmemiş kaydı yeniden göndermek reddedilmez (istemci gereksiz yeniden yükleme yapmasın). */
+    r = await U2.sync([ws('ws_a', a)]);
+    assert.deepEqual(r.json.rejected, []);
+    r = await A.sync([ws('ws_a', { ...a, name: 'Ar-Ge Merkezi' })]);
+    assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+    const w = await row('workspaces', 'ws_a');
+    assert.equal(w.name, 'Ar-Ge Merkezi'); assert.equal(w.created_by, 'u_ws1');   // yönetici düzenlese de açan değişmez
+    r = await U1.sync([ws('ws_a', { ...w.data, name: 'Ar-Ge' })]);
+    assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+  });
+
+  test('Genel (ws1): arşivlenemez, silinemez, adını yalnız yönetici değiştirir', async () => {
+    const g = (await row('workspaces', 'ws1')).data;
+    let r = await A.sync([ws('ws1', { ...g, archived: true }), { c: 'workspaces', id: 'ws1', op: 'del' }]);
+    assert.deepEqual(reasons(r), ['Genel çalışma alanı arşivlenemez', 'Genel çalışma alanı silinemez']);
+    r = await U1.sync([ws('ws1', { ...g, name: 'Benim' })]);
+    assert.deepEqual(reasons(r), ['Bu çalışma alanını yalnızca açan kişi ya da yönetici değiştirebilir']);
+    r = await A.sync([ws('ws1', { ...g, name: 'Ortak' })]);
+    assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+    assert.equal((await row('workspaces', 'ws1')).name, 'Ortak');
+    assert.equal((await row('workspaces', 'ws1')).data.createdBy, null);
+    await A.sync([ws('ws1', g)]);
+    assert.equal((await row('workspaces', 'ws1')).name, 'Genel');
+  });
+
+  test('son etkin çalışma alanı arşivlenemez', async () => {
+    const prev = (await pool.query(`SELECT id, data FROM workspaces WHERE NOT archived AND id <> 'ws_c4'`)).rows;
+    await pool.query(`UPDATE workspaces SET data = data || '{"archived":true}' WHERE id = ANY($1)`, [prev.map(x => x.id)]);
+    try {
+      const c4 = (await row('workspaces', 'ws_c4')).data;
+      const r = await U1.sync([ws('ws_c4', { ...c4, archived: true })]);
+      assert.deepEqual(reasons(r), ['Son etkin çalışma alanı arşivlenemez']);
+    } finally {
+      for (const x of prev) await pool.query(`UPDATE workspaces SET data=$2::jsonb WHERE id=$1`, [x.id, JSON.stringify(x.data)]);
+    }
+  });
+
+  test('silme: yalnız yönetici; boş alan silinir ve çöp kutusundan geri gelir', async () => {
+    let r = await U1.sync([{ c: 'workspaces', id: 'ws_c5', op: 'del' }]);   // kendi alanı olsa da
+    assert.deepEqual(reasons(r), ['Bu değişiklik için yönetici yetkisi gerekli']);
+    assert.ok(await row('workspaces', 'ws_c5'));
+    r = await A.sync([{ c: 'workspaces', id: 'ws_c5', op: 'del' }]);
+    assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+    assert.equal(await row('workspaces', 'ws_c5'), undefined);
+    const ch = (await U2.req('GET', `/api/changes?since=${r.json.seq - 1}`)).json;
+    assert.deepEqual(ch.items.map(i => [i.c, i.id, i.op]), [['workspaces', 'ws_c5', 'del']]);
+    const it = (await A.req('GET', '/api/trash')).json.find(x => x.collection === 'workspaces' && x.record_id === 'ws_c5');
+    assert.equal(it.title, 'Renk 5');
+    assert.equal((await A.req('POST', `/api/trash/${it.id}/restore`, {})).json.restored, 1);
+    assert.equal((await row('workspaces', 'ws_c5')).created_by, 'u_ws1');
+  });
+
+  test('silme: projesi olan alan silinmez (arşivli proje dahil) — "Önce projeleri taşıyın"', async () => {
+    let r = await U1.sync([{ c: 'projects', id: 'p_dolu', op: 'put', data: { name: 'Dolu', key: 'DOL', workspaceId: 'ws_c5', archived: true } }]);
+    assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+    r = await A.sync([{ c: 'workspaces', id: 'ws_c5', op: 'del' }]);
+    assert.deepEqual(reasons(r), ['Önce projeleri taşıyın']);
+    assert.ok(await row('workspaces', 'ws_c5'));
+  });
+
+  test('taşıma: anahtar, sayaç, işler, sprint, süre ve üyeler aynı kalır; diğer istemci görür', async () => {
+    await U1.sync([
+      { c: 'projects', id: 'p_ts', op: 'put', data: { name: 'Taşınan', key: 'TS', counter: 0, members: ['u_ws1', 'u_ws2'], workspaceId: 'ws1' } },
+      { c: 'sprints', id: 'sp_ts', op: 'put', data: { projectId: 'p_ts', name: 'Sprint 1', state: 'active' } },
+      { c: 'issues', id: 'i_ts1', op: 'put', data: { projectId: 'p_ts', key: 'TS-1', summary: 'bir', sprintId: 'sp_ts' } },
+      { c: 'issues', id: 'i_ts2', op: 'put', data: { projectId: 'p_ts', key: 'TS-2', summary: 'iki' } },
+      { c: 'links', id: 'l_ts', op: 'put', data: { from: 'i_ts1', to: 'i_ts2', type: 'blocks' } },
+      { c: 'worklogs', id: 'w_ts', op: 'put', data: { issueId: 'i_ts1', userId: 'u_ws1', date: '2026-03-03', hours: 2 } },
+    ]);
+    const snap = async () => {
+      const q = async (sql) => (await pool.query(sql)).rows;
+      return JSON.stringify([await q(`SELECT id, data FROM issues WHERE project_id='p_ts' ORDER BY id`),
+        await q(`SELECT id, data FROM sprints WHERE project_id='p_ts'`), await q(`SELECT id, data FROM links WHERE id='l_ts'`),
+        await q(`SELECT id, data FROM worklogs WHERE id='w_ts'`)]);
+    };
+    const before = await snap();
+    const p = (await row('projects', 'p_ts')).data;
+    assert.equal(p.counter, 2);
+    const s0 = (await U2.state()).json.seq;
+    const r = await U2.sync([{ c: 'projects', id: 'p_ts', op: 'put', base: p, data: { ...p, workspaceId: 'ws_a' } }]);
+    assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+    const after = (await row('projects', 'p_ts')).data;
+    assert.deepEqual({ ...after, workspaceId: 'ws1' }, p);
+    assert.equal(after.workspaceId, 'ws_a');
+    assert.equal(await snap(), before);
+    const ch = (await A.req('GET', `/api/changes?since=${s0}`)).json;
+    assert.deepEqual(ch.items.map(i => [i.c, i.id, i.data.workspaceId]), [['projects', 'p_ts', 'ws_a']]);
+    /* Alanı olmayan (eski istemcinin açtığı) proje kabul edilir ve sonradan taşınabilir. */
+    const r2 = await U1.sync([{ c: 'projects', id: 'p_alansiz', op: 'put', data: { name: 'Alansız', key: 'ALS' } }]);
+    assert.equal(r2.json.applied, 1, JSON.stringify(r2.json.rejected));
+    assert.equal((await row('projects', 'p_alansiz')).workspace_id, null);
+    const r3 = await U1.sync([{ c: 'projects', id: 'p_alansiz', op: 'put', data: { name: 'Alansız', key: 'ALS', workspaceId: 'ws_a' } }]);
+    assert.equal(r3.json.applied, 1, JSON.stringify(r3.json.rejected));
+  });
+
+  test('taşıma: arşivli ya da olmayan alana taşınamaz, orada proje açılamaz; arşivli alandaki proje düzenlenebilir', async () => {
+    const c4 = (await row('workspaces', 'ws_c4')).data;
+    await U1.sync([{ c: 'projects', id: 'p_arsws', op: 'put', data: { name: 'Arşivli alanda', key: 'AAP', workspaceId: 'ws_c4' } }]);
+    let r = await U1.sync([ws('ws_c4', { ...c4, archived: true })]);
+    assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+    const p = (await row('projects', 'p_ts')).data;
+    r = await U2.sync([
+      { c: 'projects', id: 'p_ts', op: 'put', data: { ...p, workspaceId: 'ws_c4' } },
+      { c: 'projects', id: 'p_ts', op: 'put', data: { ...p, workspaceId: 'ws_yok' } },
+      { c: 'projects', id: 'p_yeni', op: 'put', data: { name: 'Yeni', key: 'YEN', workspaceId: 'ws_c4' } },
+      { c: 'projects', id: 'p_yeni2', op: 'put', data: { name: 'Yeni 2', key: 'YN2', workspaceId: 'ws_yok' } },
+    ]);
+    assert.equal(r.json.applied, 0);
+    assert.deepEqual(reasons(r), ['Arşivlenmiş çalışma alanına proje taşınamaz', 'Çalışma alanı bulunamadı',
+      'Arşivlenmiş çalışma alanına proje taşınamaz', 'Çalışma alanı bulunamadı']);
+    assert.equal((await row('projects', 'p_ts')).workspace_id, 'ws_a');
+    const ap = (await row('projects', 'p_arsws')).data;
+    r = await U2.sync([{ c: 'projects', id: 'p_arsws', op: 'put', base: ap, data: { ...ap, name: 'Yeni ad' } }]);
+    assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+    /* Arşivli alandan etkin bir alana taşınabilir. */
+    r = await U2.sync([{ c: 'projects', id: 'p_arsws', op: 'put', data: { ...ap, name: 'Yeni ad', workspaceId: 'ws1' } }]);
+    assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+  });
+
+  test('taşıma: eşzamanlı düzenlemede alan ve ad birleşir; eski hâlle gelen değişiklik taşımayı geri almaz', async () => {
+    const p = (await row('projects', 'p_ts')).data;          // ws_a
+    let r = await U1.sync([{ c: 'projects', id: 'p_ts', op: 'put', base: p, data: { ...p, workspaceId: 'ws_60' } }]);
+    assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+    /* U2 taşımadan habersiz (base = eski hâl) adı değiştirir. */
+    r = await U2.sync([{ c: 'projects', id: 'p_ts', op: 'put', base: p, data: { ...p, name: 'Taşınan 2' } }]);
+    assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+    assert.deepEqual(r.json.adjusted, [{ c: 'projects', id: 'p_ts' }]);
+    const d = (await row('projects', 'p_ts')).data;
+    assert.equal(d.workspaceId, 'ws_60'); assert.equal(d.name, 'Taşınan 2');
+    /* Hedef alan sonradan arşivlenirse projenin başka alanları yine düzenlenebilir (kıyas güncel kayda göre). */
+    const w60 = (await row('workspaces', 'ws_60')).data;
+    r = await U2.sync([ws('ws_60', { ...w60, archived: true })]);
+    assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+    r = await U1.sync([{ c: 'projects', id: 'p_ts', op: 'put', base: d, data: { ...d, name: 'Taşınan 3' } }]);
+    assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+    const d2 = (await row('projects', 'p_ts')).data;
+    assert.equal(d2.workspaceId, 'ws_60'); assert.equal(d2.name, 'Taşınan 3');
+  });
+
+  test('içe aktarma / geri yükleme: dosyada alan yoksa Genel yeniden oluşur', async () => {
+    const r = await A.req('POST', '/api/import', { data: { projects: [{ id: 'pi', key: 'IMP', name: 'İthal' },
+      { id: 'pi2', key: 'IM2', name: 'Eski arşivli', archived: 'TRUE' }, { id: 'pi3', key: 'IM3', name: 'Eski etkin', archived: 'false' },
+      { id: 'pi4', key: 'IM4', name: 'Bozuk arşiv', archived: 'evet' }], issues: [] } });
+    assert.equal(r.status, 200);
+    assert.equal(r.json.projects, 3); assert.equal(r.json.skipped, 1);   // metin arşiv bilgisi atlanmaz, düzeltilir
+    const st = (await A.state()).json.data;
+    assert.deepEqual(st.projects.map(p => [p.id, p.archived]), [['pi', undefined], ['pi2', true], ['pi3', false]]);
+    assert.deepEqual(st.workspaces, [{ id: 'ws1', name: 'Genel', color: '#64748B', description: '', archived: false, createdBy: null }]);
+    const pre = (await A.req('GET', '/api/backups')).json.find(b => b.kind === 'pre-import');
+    assert.ok(pre.counts.workspaces > 1);
+    assert.equal((await A.req('POST', `/api/backups/${pre.id}/restore`, {})).status, 200);
+    const st2 = (await A.state()).json.data;
+    assert.equal(st2.workspaces.length, pre.counts.workspaces);
+    assert.equal(st2.workspaces.find(x => x.id === 'ws_a').createdBy, 'u_ws1');
+    assert.equal(st2.projects.find(x => x.id === 'p_ts').workspaceId, 'ws_60');
+  });
+
+  test('içe aktarma: arşivli Genel arşivden çıkar; olmayan alana bağlı projenin bağı kalkar; prototip adlı dizi 500 vermez', async () => {
+    const r = await A.req('POST', '/api/import', { data: {
+      workspaces: [{ id: 'ws1', name: 'Genel', archived: true }, { id: 'ws_i', name: 'İthal alan' }],
+      projects: [{ id: 'pw1', key: 'PW1', name: 'Olmayan alanda', workspaceId: 'ws_yok' },
+        { id: 'pw2', key: 'PW2', name: 'Var olan alanda', workspaceId: 'ws_i' },
+        { id: 'pw3', key: 'PW3', name: 'Alansız' }, { id: 'pw4', key: 'PW4', name: 'Boş alan', workspaceId: '' }],
+      issues: [], constructor: [{ id: 'k1' }], hasOwnProperty: [{ id: 'k2' }] } });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.equal(r.json.skipped, 2);
+    const st = (await A.state()).json.data;
+    assert.equal(st.workspaces.find(x => x.id === 'ws1').archived, false);
+    assert.equal((await row('workspaces', 'ws1')).archived, false);
+    assert.deepEqual(st.projects.map(p => [p.id, p.workspaceId]),
+      [['pw1', undefined], ['pw2', 'ws_i'], ['pw3', undefined], ['pw4', '']]);
+    assert.equal((await row('projects', 'pw1')).workspace_id, null);
+    assert.ok(!Object.hasOwn(st, 'constructor') && !Object.hasOwn(st, 'hasOwnProperty'));
+    /* önceki duruma dön (sonraki testler) */
+    const pre = (await A.req('GET', '/api/backups')).json.find(b => b.kind === 'pre-import');
+    assert.equal((await A.req('POST', `/api/backups/${pre.id}/restore`, {})).status, 200);
+    assert.ok((await A.state()).json.data.workspaces.some(x => x.id === 'ws_a'));
+  });
 });

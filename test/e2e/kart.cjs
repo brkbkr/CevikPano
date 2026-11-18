@@ -309,6 +309,20 @@ const XSS = '<img src=x onerror="window.__xss=1">';
   await X.screenshot({ path: SS + 'xss.png' });
   await X.context().close();
 
+  // 14b) çalışma günü ayarı kaydedilince diğer yapılandırma (modüller, türler, varsayılan akış) silinmez
+  await A.evaluate(() => { location.hash = 'admin'; }); await sleep(500);
+  await A.evaluate(() => { DB.ui.adminTab = 'people'; render(); }); await sleep(200);
+  const setH = v => A.evaluate(v => { const el = document.getElementById('cfgH'); el.value = v; el.dispatchEvent(new Event('change')); }, v);
+  const h0 = await A.evaluate(() => { window.__cfg0 = JSON.parse(JSON.stringify(DB.cfg)); return DB.cfg.h || 8; });
+  await setH('7'); await sleep(1500);
+  const cfg1 = await A.evaluate(async () => { const srv = (await API.get('/api/state')).data.cfg, c0 = window.__cfg0;
+    const J = v => JSON.stringify(v, (k, x) => x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort()) : x);   // jsonb anahtar sırası
+    return Object.fromEntries(['modules', 'types', 'defaultStatuses'].flatMap(k => [['loc_' + k, J(DB.cfg[k]) === J(c0[k])], ['srv_' + k, J(srv[k]) === J(c0[k])]])
+      .concat([['h', DB.cfg.h === 7 && srv.h === 7], ['had', !!c0.modules && !!c0.types && !!c0.defaultStatuses]])); });
+  ok('work-day setting keeps other cfg (modules, types, default flow)', Object.values(cfg1).every(Boolean), JSON.stringify(cfg1));
+  await setH(String(h0)); await sleep(1200);
+  await A.evaluate(() => { DB.ui.adminTab = 'workflow'; save(); });
+
   // 15) koyu tema ekran görüntüsü + temizlik
   const D = await mk('dark', undefined, 'dark'); await login(D, 'admin', 'admin12345');
   await board(D); await D.screenshot({ path: SS + 'dark.png' });
