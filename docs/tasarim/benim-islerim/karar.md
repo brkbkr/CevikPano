@@ -31,3 +31,15 @@ Boyut M · migration YOK · sunucu değişikliği YOK (yalnız `public/index.htm
 
 ## Kapsam dışı (ayrı issue)
 9b Benim açtıklarım (reporter) · 9c İzlediklerim (migration) · 9d Ekibin iş yükü (yönetici) · sürükle-bırak, bugüne çek.
+
+## Tasarım onayı ve kalan kararlar
+- Kullanıcı taslağı onayladı ("benim işlerim olsun"). Ek isteği: projelerin üstünde **çalışma alanları (workspace)**. Bu ayrı bir iş
+  (yeni issue); bu dilimde ekranın veri modeli değişmez, proje süzgeci proje düzeyinde kalır.
+- PO: öncelik bu ekranda ikon + metin (`priBadge`), yer var. Beklemede satırında alt satır sarılabilir (proje adı kesilmesin).
+- İlerlet düğmesi metni = sonraki durumun adı (ok ikonu); sonraki durum "done" kategorisindeyse yeşil onay. Son durumda masaüstünde
+  `visibility:hidden`, mobilde hiç yok.
+- Bitiş metni için yeni kısa tarih yardımcısı: "Cum 20 Kas", "Başlangıç 30 Kas", "Tarih yok". Satırda iş tipi ikonu yok.
+- Durum çipi nötr zemin + kategori renkli nokta (mevcut `.chip.cat-*` kontrastı yetersiz).
+- CSS: `hm-` önekli yeni katman (sınıf ve token listesi taslak.html'de); mobil `@media (max-width:640px)`.
+- Bildirim: mevcut `toast` genişletilir (eylem düğmesi, kapat, 6 sn süre çizgisi, üzerine gelince durur, `role=status`).
+  `.content` alt boşluğu ~96px. "Geri alınamadı" çeşidi 4 sn, düğmesiz.
