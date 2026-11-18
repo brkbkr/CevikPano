@@ -1488,6 +1488,247 @@ button.c-av::after{content:"";position:absolute;inset:-6px}
   .ws-dlg .inp{min-height:42px;font-size:15px}
   .ws-tb .btn{min-height:40px;flex:1;justify-content:center}
 }
+
+/* ==========================================================================
+   Cariler (issue #11, docs/tasarim/cariler) — cu- sınıfları
+   ========================================================================== */
+:root{ --cu-c-bg:#EAF1FE; --cu-c-ink:#1D4ED8; --cu-s-bg:#EEF2F7; --cu-s-ink:#334155; --cu-b-bg:#E0F2FE; --cu-b-ink:#075985;
+  --cu-off-bg:#F4F6F9; --cu-danger-bg:#DC2626; --cu-danger-ink:#FFFFFF; }
+:root[data-theme="dark"]{ --cu-c-bg:rgba(96,165,250,.15); --cu-c-ink:#BFDBFE; --cu-s-bg:rgba(148,163,184,.14); --cu-s-ink:#CBD5E1;
+  --cu-b-bg:rgba(56,189,248,.14); --cu-b-ink:#BAE6FD; --cu-off-bg:#0A1220; --cu-danger-bg:#F87171; --cu-danger-ink:#1F0707; }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --cu-c-bg:rgba(96,165,250,.15); --cu-c-ink:#BFDBFE; --cu-s-bg:rgba(148,163,184,.14); --cu-s-ink:#CBD5E1;
+    --cu-b-bg:rgba(56,189,248,.14); --cu-b-ink:#BAE6FD; --cu-off-bg:#0A1220; --cu-danger-bg:#F87171; --cu-danger-ink:#1F0707; }
+}
+.btn.cu-danger{background:var(--cu-danger-bg);border-color:transparent;color:var(--cu-danger-ink)}
+.btn.cu-danger:hover{background:var(--cu-danger-bg);filter:brightness(.95)}
+.cu-tools{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.cu-tools .spacer{flex:1}
+.cu-search{position:relative;width:300px;max-width:100%}
+.cu-search svg.i{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--meta);pointer-events:none}
+.cu-search .inp{height:36px;padding-left:34px;width:100%}
+.cu-seg{display:inline-flex;gap:2px;padding:1px;border-radius:10px;background:var(--surface2);border:1px solid var(--line)}
+.cu-seg button{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border:0;border-radius:8px;background:none;font-size:12.5px;font-weight:550;color:var(--ink2);white-space:nowrap;cursor:pointer}
+.cu-seg button .n{font-family:var(--mono);font-size:10.5px;color:var(--meta)}
+.cu-seg button[aria-checked="true"]{background:var(--surface);color:var(--accent-d);box-shadow:var(--shadow-sm),inset 0 0 0 1px color-mix(in srgb,var(--accent) 35%,transparent);font-weight:650}
+.cu-seg button[aria-checked="true"] .n{color:var(--accent-d)}
+.cu-tog{display:inline-flex;align-items:center;gap:9px;height:36px;padding:0 10px 0 8px;border:1px solid transparent;border-radius:9px;background:none;font-size:12.5px;font-weight:550;color:var(--ink2);cursor:pointer}
+.cu-tog:hover{background:var(--surface);border-color:var(--line)}
+.cu-tog .n{font-family:var(--mono);font-size:11px;color:var(--meta)}
+.cu-sw{width:32px;height:18px;border-radius:999px;background:var(--line2);position:relative;flex-shrink:0}
+.cu-sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--surface);box-shadow:var(--shadow-sm);transition:left .15s}
+[aria-pressed="true"] > .cu-sw,[aria-checked="true"] > .cu-sw{background:var(--accent)}
+[aria-pressed="true"] > .cu-sw::after,[aria-checked="true"] > .cu-sw::after{left:16px;background:#fff}
+.cu-meta{display:flex;align-items:center;gap:8px;margin:0 2px 10px;font-size:12px;color:var(--meta)}
+.cu-meta b{font-family:var(--mono);color:var(--ink2);font-weight:650}
+.cu-wrap{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-sm);overflow:hidden}
+.cu-tbl{width:100%;border-collapse:collapse;table-layout:fixed}
+.cu-tbl th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta);background:var(--surface2);padding:9px 12px;border-bottom:1px solid var(--line)}
+.cu-tbl th .srt{display:inline-flex;align-items:center;gap:4px;color:var(--ink2)} .cu-tbl th .srt svg.i{width:12px;height:12px}
+.cu-tbl th.r,.cu-tbl td.r{text-align:right}
+.cu-tbl td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle;font-size:13px}
+.cu-tbl tr:last-child td{border-bottom:0}
+.cu-row{cursor:pointer}
+.cu-row:hover td{background:var(--surface2)}
+.cu-row:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.cu-nm{display:block;font-weight:650;font-size:13.5px;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cu-sn{display:block;font-size:12px;color:var(--meta);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cu-tax{font-family:var(--mono);font-size:12.5px;color:var(--ink);letter-spacing:.02em}
+.cu-tax.none{color:var(--meta);font-family:var(--sans)}
+.cu-pj{font-family:var(--mono);font-weight:650;font-size:12.5px}
+.cu-pj.zero{color:var(--meta);font-weight:500}
+.cu-pj svg.i{width:13px;height:13px}
+.cu-go{display:inline-flex;color:var(--ink3)} .cu-go svg.i{width:18px;height:18px}
+.cu-row.is-off td{background:var(--cu-off-bg)}
+.cu-row.is-off .cu-nm{color:var(--ink2);font-weight:600}
+.cu-row.is-off .cu-tax{color:var(--ink2)}
+.cu-row.is-off .cu-kind{background:transparent;border:1px solid var(--line2);color:var(--ink2)}
+.cu-kind{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px 0 7px;border-radius:999px;font-size:11.5px;font-weight:650;white-space:nowrap}
+.cu-kind svg.i{width:13px;height:13px}
+.cu-kind[data-k="customer"]{background:var(--cu-c-bg);color:var(--cu-c-ink)}
+.cu-kind[data-k="supplier"]{background:var(--cu-s-bg);color:var(--cu-s-ink)}
+.cu-kind[data-k="both"]{background:var(--cu-b-bg);color:var(--cu-b-ink)}
+.cu-st{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.cu-st svg.i{width:15px;height:15px}
+.cu-st.on{color:var(--done)}
+.cu-st.off{height:22px;padding:0 8px 0 6px;border-radius:6px;border:1px dashed var(--line2);background:var(--surface);color:var(--ink2);font-size:11.5px;font-weight:650}
+.mob-l,.cu-mob{display:none}
+
+/* pencere */
+.modal.cu-m{max-width:780px;display:flex;flex-direction:column}
+.modal.cu-m.narrow{max-width:500px}
+.cu-m .cu-h{gap:12px;padding:14px 12px 14px 18px}
+.cu-m .cu-h .tx{flex:1;min-width:0}
+.cu-m .cu-h b{display:block;font-size:15px;font-weight:700;letter-spacing:-.01em;overflow-wrap:anywhere}
+.cu-m .cu-h .s{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:3px;font-size:12px;color:var(--meta)}
+.cu-m .cu-body{padding:16px 18px 8px;min-height:0}
+.cu-m .m-f .spacer{flex:1}
+.cu-m .m-f{justify-content:flex-start}
+.cu-ic{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);flex-shrink:0}
+.cu-ic svg.i{width:20px;height:20px}
+.cu-ro-chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:6px;font-size:11px;font-weight:650;background:var(--surface3);color:var(--ink2)}
+.cu-ro-chip svg.i{width:12px;height:12px}
+.cu-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 16px}
+.cu-form .full{grid-column:1 / -1}
+.cu-fld{margin-bottom:14px;min-width:0}
+.cu-fld > label,.cu-fld > .lb{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:6px}
+.cu-fld .inp{width:100%}
+.cu-fld .req{color:var(--risk);font-weight:700;margin-left:2px}
+.cu-fld .opt{font-weight:500;color:var(--meta)}
+.cu-cnt{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--meta)}
+.cu-fld.has-err .inp{border-color:var(--risk);box-shadow:0 0 0 3px color-mix(in srgb,var(--risk) 16%,transparent)}
+.cu-err{display:flex;align-items:flex-start;gap:6px;margin-top:6px;font-size:12px;font-weight:550;color:var(--risk);line-height:1.45}
+.cu-err:empty{display:none}
+.cu-err svg.i{width:15px;height:15px;margin-top:1px;flex-shrink:0}
+.cu-err a{color:var(--accent-d);font-weight:650;text-decoration:underline;text-underline-offset:2px;white-space:nowrap;cursor:pointer}
+.cu-hint{display:flex;align-items:flex-start;gap:6px;margin-top:6px;font-size:12px;color:var(--meta);line-height:1.45}
+.cu-hint svg.i{width:14px;height:14px;margin-top:1px;flex-shrink:0}
+.cu-hint.warn{color:var(--ink2)} .cu-hint.warn svg.i{color:var(--accent)}
+.cu-hint a{color:var(--accent-d);font-weight:650;cursor:pointer}
+.cu-kseg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px;padding:2px;border-radius:10px;background:var(--surface2);border:1px solid var(--line2)}
+.cu-kseg button{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:34px;border:0;border-radius:8px;background:none;font-size:12.5px;font-weight:550;color:var(--ink2);min-width:0;white-space:nowrap;cursor:pointer}
+.cu-kseg button svg.i{width:15px;height:15px}
+.cu-kseg button[aria-checked="true"]{background:var(--surface);color:var(--accent-d);font-weight:650;box-shadow:var(--shadow-sm),inset 0 0 0 1px color-mix(in srgb,var(--accent) 45%,transparent)}
+.cu-fld.has-err .cu-kseg{border-color:var(--risk)}
+.cu-active{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface2)}
+.cu-active button{display:inline-flex;align-items:center;gap:10px;min-height:36px;padding:0 4px;border:0;background:none;font-weight:650;font-size:13px;color:var(--ink);cursor:pointer}
+.cu-active .tx{flex:1;font-size:12px;color:var(--meta);line-height:1.45}
+.cu-sech{display:flex;align-items:center;gap:8px;margin:6px 0 10px;padding-top:14px;border-top:1px solid var(--line)}
+.cu-sech h3{flex:1;margin:0;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
+.cu-sech h3 svg.i{width:16px;height:16px;color:var(--accent)}
+.cu-sech .n{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink2);background:var(--surface3);padding:1px 7px;border-radius:999px}
+.cu-ct{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.cu-cthead,.cu-ctrow{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1.3fr) minmax(0,1fr) 36px;gap:8px;align-items:start}
+.cu-cthead{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta);padding:0 2px}
+.cu-ctrow .inp{height:36px;font-size:13px;width:100%}
+.cu-ctrow .cu-cl{display:none}
+.cu-ctrow .has-err .inp{border-color:var(--risk);box-shadow:0 0 0 3px color-mix(in srgb,var(--risk) 16%,transparent)}
+.cu-ctrow .cu-err{margin-top:4px}
+.cu-ctrow .del{color:var(--ink2)} .cu-ctrow .del:hover{color:var(--risk);background:var(--risk-bg);border-color:var(--risk-line)}
+.cu-ctrow .cu-ctno{display:none}
+.cu-add{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;height:38px;border:1px dashed var(--line2);border-radius:10px;background:none;color:var(--accent-d);font-weight:600;font-size:12.5px;cursor:pointer}
+.cu-add:hover{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+.cu-add:disabled{cursor:not-allowed;color:var(--meta)}
+.cu-add svg.i{width:16px;height:16px}
+.cu-ro{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px}
+.cu-dl{display:grid;grid-template-columns:130px minmax(0,1fr);gap:9px 12px;margin:0 0 6px;font-size:13px}
+.cu-dl dt{color:var(--meta);font-size:12px;font-weight:600;padding-top:1px}
+.cu-dl dd{margin:0;color:var(--ink);overflow-wrap:anywhere;line-height:1.45;white-space:pre-line}
+.cu-dl dd.mono{font-family:var(--mono);font-size:12.5px;letter-spacing:.02em}
+.cu-dl dd.none{color:var(--meta)}
+.cu-mask{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cu-mask .why{display:inline-flex;align-items:center;gap:4px;font-family:var(--sans);font-size:11px;font-weight:600;color:var(--ink2);background:var(--surface3);border-radius:6px;padding:2px 7px;letter-spacing:0}
+.cu-mask .why svg.i{width:12px;height:12px}
+.cu-dl dd a{color:var(--accent-d);text-decoration:none;font-weight:550}
+.cu-person{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.cu-person:first-of-type{border-top:0;padding-top:2px}
+.cu-person .cu-av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;background:#475569;flex-shrink:0}
+.cu-person .tx{min-width:0;flex:1}
+.cu-person b{font-size:13px;font-weight:650} .cu-person .r{font-size:12px;color:var(--meta)}
+.cu-person .ln{display:flex;flex-wrap:wrap;gap:2px 14px;margin-top:3px;font-size:12px;color:var(--ink2)}
+.cu-person .ln span{display:inline-flex;align-items:center;gap:5px;overflow-wrap:anywhere} .cu-person .ln svg.i{width:13px;height:13px;color:var(--meta)}
+.cu-sum{display:flex;flex-direction:column;gap:10px;min-width:0}
+.cu-sum h4{margin:0;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta)}
+.cu-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.cu-kpi{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:11px 12px;border-radius:11px;border:1px solid var(--line);background:var(--surface2);text-align:left;min-width:0;color:var(--ink);font:inherit}
+.cu-kpi .l{font-size:11.5px;font-weight:600;color:var(--ink2);display:flex;align-items:center;gap:5px}
+.cu-kpi .l svg.i{width:13px;height:13px;color:var(--meta)}
+.cu-kpi .v{font-family:var(--mono);font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
+.cu-kpi .go{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:650;color:var(--accent-d)}
+.cu-kpi .go svg.i{width:13px;height:13px}
+button.cu-kpi{cursor:pointer}
+button.cu-kpi:hover:not(:disabled){border-color:color-mix(in srgb,var(--accent) 45%,transparent);background:var(--accent-soft)}
+button.cu-kpi:disabled{cursor:default}
+.cu-kpi.time{grid-column:1 / -1}
+.cu-time{display:grid;grid-template-columns:1fr 1fr;width:100%;margin-top:2px}
+.cu-time > div{display:flex;flex-direction:column;gap:1px}
+.cu-time > div + div{border-left:1px solid var(--line);padding-left:12px}
+.cu-time .k{font-size:11px;color:var(--meta);font-weight:600}
+.cu-prjs{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.cu-prj{display:flex;align-items:center;gap:8px;min-height:44px;padding:6px 10px;border:0;border-top:1px solid var(--line);background:none;text-align:left;color:var(--ink);min-width:0;width:100%;font:inherit}
+button.cu-prj{cursor:pointer}
+.cu-prj:first-child{border-top:0}
+button.cu-prj:hover{background:var(--surface2)}
+.cu-prj .tx{flex:1;min-width:0}
+.cu-prj .nm{display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cu-prj .ws{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--meta);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cu-prj.is-arch{background:var(--cu-off-bg)} .cu-prj.is-arch .nm{color:var(--ink2)}
+.cu-prjs .none{padding:12px;font-size:12.5px;color:var(--meta)}
+.cu-plink{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:6px 10px;padding-top:10px;border-top:1px solid var(--line)}
+.cu-plink .lbl{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta);display:flex;align-items:center;gap:5px}
+.cu-plink .lbl svg.i{width:13px;height:13px}
+.cu-plink .inp{height:34px;font-size:13px;width:100%}
+.cu-plink .cu-hint{grid-column:1 / -1;margin-top:0}
+.cu-plink .val{display:flex;align-items:center;gap:6px;min-width:0;font-size:13px;font-weight:600}
+.cu-plink .val a{color:var(--accent-d);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.cu-plist{margin:10px 0 2px;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.cu-plist li{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink);min-width:0}
+.cu-plist li span.t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cu-confirm{font-size:13px;line-height:1.55;color:var(--ink);margin:0 0 12px}
+.cu-confirm b{overflow-wrap:anywhere}
+.cu-alert{display:flex;gap:10px;padding:11px 12px;border-radius:10px;background:var(--risk-bg);border:1px solid var(--risk-line);color:var(--ink);font-size:12.5px;line-height:1.5}
+.cu-alert > svg.i{width:17px;height:17px;margin-top:1px;color:var(--risk);flex-shrink:0}
+.cu-alert .tx{flex:1;min-width:0}
+.cu-q{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--ink2);background:var(--surface2);border:1px solid var(--line);border-radius:999px;padding:3px 10px;margin-bottom:12px;max-width:100%;overflow-wrap:anywhere}
+.cu-q svg.i{width:12px;height:12px}
+.cu-empty p:last-child{margin-bottom:0}
+
+@media (max-width:900px){
+  .cu-wrap{background:none;border:0;box-shadow:none;overflow:visible}
+  .cu-tbl,.cu-tbl tbody{display:block}
+  .cu-tbl thead{display:none}
+  .cu-tbl tr.cu-row{display:grid;grid-template-columns:auto auto minmax(0,1fr);grid-template-areas:"nm nm st" "kd tx pj";gap:8px 10px;align-items:center;
+    padding:12px 14px;margin-bottom:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-sm);min-height:44px}
+  .cu-tbl tr.cu-row.is-off{background:var(--cu-off-bg)}
+  .cu-tbl tr.cu-row td{display:block;padding:0;border:0;background:none!important;min-width:0}
+  .cu-tbl td.c-nm{grid-area:nm} .cu-tbl td.c-st{grid-area:st;justify-self:end;align-self:start}
+  .cu-tbl td.c-kd{grid-area:kd} .cu-tbl td.c-tx{grid-area:tx} .cu-tbl td.c-pj{grid-area:pj;justify-self:end}
+  .cu-tbl tr.cu-row td.c-go{display:none}
+  .cu-sn.empty{display:none}
+  .cu-nm{white-space:normal;overflow-wrap:anywhere}
+  .mob-l{display:inline;font-family:var(--sans);font-weight:500;color:var(--meta);font-size:12px;letter-spacing:0}
+  .cu-mob{display:inline}
+  .cu-pj{display:inline-flex;align-items:center;gap:4px}
+  .cu-tbl tr.cu-row.is-on td.c-st{display:none}
+  .cu-tbl tr.cu-row.is-on{grid-template-areas:"nm nm nm" "kd tx pj"}
+  .cu-ro{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:640px){
+  .cu-tools .spacer{display:none}
+  .cu-tools .add{order:-1;width:100%;min-height:40px;justify-content:center}
+  .cu-search{width:100%}
+  .cu-search .inp{height:42px;font-size:15px}
+  .cu-seg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));width:100%}
+  .cu-seg button{height:40px;padding:0 4px;justify-content:center;font-size:12px;gap:4px}
+  .cu-tog{width:100%;height:40px;border-color:var(--line);background:var(--surface)}
+  .cu-tog .cu-sw{margin-left:auto;order:2}
+  .modal.cu-m{height:100dvh;min-height:0}
+  .cu-m .cu-body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:14px 14px 6px}
+  .cu-m .cu-h{padding:10px 8px 10px 14px}
+  .cu-m .m-f{padding:10px 12px;gap:8px;box-shadow:0 -8px 16px -10px rgba(11,27,51,.25)}
+  .cu-m .m-f .btn{flex:1;min-height:40px;justify-content:center}
+  .cu-m .m-f .btn.icon-m{flex:0 0 44px;padding:0}
+  .cu-m .m-f .btn.icon-m .lbl{display:none}
+  .cu-m .m-f .spacer{display:none}
+  .cu-m .inp,.cu-plink .inp{min-height:42px;font-size:15px}
+  .cu-form{grid-template-columns:minmax(0,1fr)}
+  .cu-kseg button{height:40px}
+  .cu-active{flex-wrap:wrap}
+  .cu-active button{min-height:40px}
+  .cu-cthead{display:none}
+  .cu-ctrow{grid-template-columns:minmax(0,1fr) 40px;grid-template-areas:"no del" "name name" "title title" "mail mail" "tel tel";gap:8px;
+    padding:10px 12px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface2)}
+  .cu-ctrow .cu-ctno{display:block;grid-area:no;align-self:center;font-size:12px;font-weight:700;color:var(--ink2)}
+  .cu-ctrow .del{grid-area:del;width:40px;height:40px}
+  .cu-ctrow .c-name{grid-area:name} .cu-ctrow .c-title{grid-area:title} .cu-ctrow .c-mail{grid-area:mail} .cu-ctrow .c-tel{grid-area:tel}
+  .cu-ctrow .cu-cl{display:block;font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:5px}
+  .cu-add{height:44px}
+  .cu-dl{grid-template-columns:minmax(0,1fr);gap:2px}
+  .cu-dl dd{margin-bottom:8px}
+  .cu-prj{min-height:48px}
+  .cu-plink{grid-template-columns:minmax(0,1fr)}
+  .cu-empty .acts{width:100%} .cu-empty .acts .btn{flex:1;justify-content:center;min-height:40px}
+}
 </style>
 </head>
 <body>
@@ -1518,6 +1759,7 @@ button.c-av::after{content:"";position:absolute;inset:-6px}
     <div class="navgroup">Yapılandırma</div>
     <nav class="nav">
       <a href="#projects"  data-v="projects"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg>Projeler</a>
+      <a href="#customers" data-v="customers"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4M10 10h4M10 14h4M10 18h4"/></svg>Cariler</a>
       <a href="#admin"     data-v="admin"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>Proje ayarları</a>
       <a href="#users"     data-v="users"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M21.5 20a6.5 6.5 0 0 0-4-6"/></svg>Kullanıcılar</a>
       <a href="#system"    data-v="system"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>Sistem</a>
@@ -1559,6 +1801,7 @@ button.c-av::after{content:"";position:absolute;inset:-6px}
         <button data-v="reports">Raporlar</button>
         <button data-v="search">Arama</button>
         <button data-v="projects">Projeler</button>
+        <button data-v="customers">Cariler</button>
         <button data-v="admin">Ayarlar</button>
         <button data-v="users">Kullanıcılar</button>
         <button data-v="system">Sistem</button>
@@ -1684,7 +1927,7 @@ async function flushSync() {
     let ch = diffSnap(SNAP, now);
     if (typeof canEdit === 'function' && !canEdit()) ch = ch.filter(x => x.c === '_prefs');
     else if (typeof isAdmin === 'function' && !isAdmin())
-      ch = ch.filter(x => !['statuses', 'fields', 'rules', '_settings'].includes(x.c) && !(['projects', 'workspaces'].includes(x.c) && x.op === 'del')
+      ch = ch.filter(x => !['statuses', 'fields', 'rules', '_settings', 'customers'].includes(x.c) && !(['projects', 'workspaces'].includes(x.c) && x.op === 'del')
         && !(x.c === 'users' && x.id !== ME.id));
     if (!ch.length) { SNAP = now; setSync('ok'); return; }
     setSync('saving');
@@ -1699,8 +1942,11 @@ async function flushSync() {
       /* Sunucu bir kaydı birleştirdi ya da iş numarasını değiştirdi: güncel hâli hemen al. */
       if (adjusted.length) setTimeout(poll, 30);
       if (rejected.length) {
-        toast('Kaydedilemeyen değişiklik: ' + (rejected[0].reason || 'yetki yok') + (rejected.length > 1 ? ` (+${rejected.length - 1})` : ''));
+        /* Cari vergi no çakışması: sunucu yalnız kimlik döner; unvan ve "Kartı aç" yeniden yüklemeden sonra (#11). */
+        const cuTaken = /^Bu vergi numarasıyla kayıtlı cari var \(#([^)]+)\)$/.exec(rejected[0].reason || '');
+        if (!cuTaken) toast('Kaydedilemeyen değişiklik: ' + (rejected[0].reason || 'yetki yok') + (rejected.length > 1 ? ` (+${rejected.length - 1})` : ''));
         await reloadState();
+        if (cuTaken) cuTakenToast(cuTaken[1]);
       }
     } catch (e) {
       if (e.status === 401) return sessionLost();
@@ -2217,7 +2463,7 @@ async function load() {
   if (ME.defaultPassword) DEFAULT_PW = ME.defaultPassword;
   const d = r.data || {};
   for (const k of ['users', 'projects', 'statuses', 'sprints', 'issues', 'worklogs', 'comments', 'history',
-                   'fields', 'rules', 'links', 'transitions', 'filters', 'workspaces']) if (!Array.isArray(d[k])) d[k] = [];
+                   'fields', 'rules', 'links', 'transitions', 'filters', 'workspaces', 'customers']) if (!Array.isArray(d[k])) d[k] = [];
   if (!d.cfg) d.cfg = { h: 8, d: 5, modules: { ...MODULE_DEFAULTS }, types: TYPE_DEFAULTS.map(t => ({ ...t })),
     defaultStatuses: STATUS_TEMPLATES.uyarlama[1].map(x => [...x]) };
   /* Sunucunun gördüğü hâl — kişisel tercihler varsayılanlardan ÖNCE alınır ki ilk kez kaydedilsin. */
@@ -2324,6 +2570,16 @@ const SVG = {
   grid: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>',
   issues: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
   circle: '<circle cx="12" cy="12" r="8.5"/>',
+  /* Cariler (docs/tasarim/cariler) */
+  building: '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4M10 10h4M10 14h4M10 18h4"/>',
+  briefcase: '<rect x="2.5" y="7" width="19" height="13" rx="2.5"/><path d="M16 7V5.5A1.5 1.5 0 0 0 14.5 4h-5A1.5 1.5 0 0 0 8 5.5V7"/><path d="M2.5 12.5h19"/>',
+  truck: '<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62L18.3 8.38A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>',
+  swap: '<path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/>',
+  shield: '<path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6z"/><path d="M12 8.5v4M12 15.5v.2"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6 8.5-6"/>',
+  phone: '<path d="M5 4h3.5l1.5 4.5-2 1.5a11 11 0 0 0 6 6l1.5-2 4.5 1.5V19a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
+  chevr: '<path d="m9 6 6 6-6 6"/>',
+  up: '<path d="m18 15-6-6-6 6"/>',
 };
 const ic = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${SVG[n] || ''}</svg>`;
 const tIcon = t => { const x = TYPE[t] || ['?', t, t, '#7B8794'];
@@ -3460,6 +3716,7 @@ function dataMenu() {
 const VIEWS = {
   home:      { t: 'Benim işlerim',     c: 'Genel bakış',       r: renderHome,      tb: toolbarHome },
   projects:  { t: 'Projeler',          c: 'Yönetim',           r: renderProjects,  tb: toolbarProjects },
+  customers: { t: 'Cariler',           c: 'Yönetim',           r: renderCustomers, tb: () => '' },
   board:     { t: 'Pano',              c: 'Çevik pano',        r: renderBoard,     tb: toolbarBoard },
   backlog:   { t: 'Backlog',           c: 'Planlama',          r: renderBacklog,   tb: toolbarBacklog },
   plan:      { t: 'Zaman planı',       c: 'Planlama',          r: renderPlan,      tb: toolbarPlan },
@@ -6113,6 +6370,10 @@ function wireWsSwitch() {
     if (open && !open.parentElement.contains(e.target)) wsPopClose(open);
   });
   document.addEventListener('click', wsClick);
+  document.addEventListener('click', cuClick);
+  document.addEventListener('keydown', cuKey);
+  document.addEventListener('change', cuChange);
+  document.addEventListener('input', cuInput);
 }
 
 /* Alan işlemleri tek yerden (olay devri): Projeler ekranı, boş durumlar, sol menü, dar ekran penceresi. */
@@ -6315,6 +6576,404 @@ function wsEmptyView() {
       : '<p>Bir yönetici bu alana proje eklediğinde burada görünecek.</p>'}</div>`;
 }
 
+/* ============================ CARİLER (issue #11) ============================
+   Müşteri ve tedarikçiler (docs/tasarim/cariler); çalışma alanından bağımsız, ortak liste. Ekle/düzenle/pasife al/sil
+   yalnız yönetici. Yetki ve bütünlük sunucuda (store.js: ADMIN_ONLY, vergi no tekilliği, bağlı projesi olan cari silinmez,
+   pasif cari projeye bağlanmaz); buradaki denetimler yalnız kullanıcı deneyimi içindir. İzleyiciye 11 haneli vergi no
+   sunucudan maskeli gelir. Arama metni DB.ui'ye YAZILMAZ (kişisel veri tercihlere gitmesin). */
+const CU_KIND = { customer: ['Müşteri', 'briefcase'], supplier: ['Tedarikçi', 'truck'], both: ['İkisi', 'swap'] };
+const CU_MAX_CT = 200;
+const CU_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+let CU_Q = '', CU_KEYS = new Map();
+const cuList = () => (DB.customers || []).filter(c => c && c.id);
+const cuById = id => id ? cuList().find(c => c.id === id) : undefined;
+const cuActive = c => c?.active !== false;
+const cuSort = (a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'tr');
+const cuKindBadge = k => { const x = CU_KIND[k]; return x ? `<span class="cu-kind" data-k="${k}">${ic(x[1])}${x[0]}</span>` : ''; };
+const cuStatus = c => cuActive(c) ? `<span class="cu-st on">${ic('checkc')}Etkin</span>` : `<span class="cu-st off">${ic('pause')}Pasif</span>`;
+const cuProjects = id => DB.projects.filter(p => p.customerId === id);
+/* Tür süzgecinde Müşteri ve Tedarikçi "İkisi"ni de içerir. */
+const cuKindMatch = (c, k) => k === 'all' || c.kind === k || (k !== 'both' && c.kind === 'both');
+const cuCurKind = () => CU_KIND[DB.ui.cuKind] ? DB.ui.cuKind : 'all';
+/* Arama anahtarı: unvan, kısa ad, yetkili adı/e-postası (tr harf ve büyük/küçük duyarsız). Vergi no ayrıca. */
+const cuSearchKey = c => qmKey([c.name, c.shortName, ...(Array.isArray(c.contacts) ? c.contacts.flatMap(x => [x?.name, x?.email]) : [])]
+  .filter(Boolean).join('\n'));
+const cuIni = n => String(n || '').trim().split(/\s+/).map(w => [...w][0] || '').join('').slice(0, 2).toLocaleUpperCase('tr') || '?';
+
+function renderCustomers() {
+  const all = cuList(), admin = isAdmin();
+  CU_KEYS = new Map(all.map(c => [c.id, cuSearchKey(c)]));
+  if (!all.length) return `<div class="hm-empty cu-empty" data-cuempty="none"><span class="hm-empty-ic">${ic('building')}</span><h3>Henüz cari yok</h3>${admin
+    ? `<p>Müşteri ve tedarikçilerinizi ekleyin; projelerinizi bir cariye bağlayabilirsiniz.</p>
+       <div class="acts"><button type="button" class="btn pri" data-cunew>${ic('plus')}Cari ekle</button></div>`
+    : '<p>Cari eklemek için yöneticinize başvurun.</p>'}</div>`;
+  const kind = cuCurKind(), pas = !!DB.ui.cuPassive;
+  const base = all.filter(c => pas || cuActive(c)), nPas = all.filter(c => !cuActive(c)).length;
+  const seg = [['all', 'Tümü'], ['customer', 'Müşteri'], ['supplier', 'Tedarikçi'], ['both', 'İkisi']].map(([k, l]) =>
+    `<button type="button" role="radio" data-cukind="${k}" aria-checked="${kind === k}" tabindex="${kind === k ? 0 : -1}">${l} <span class="n">${base.filter(c => cuKindMatch(c, k)).length}</span></button>`).join('');
+  return `<div class="cu-tools">
+      <label class="cu-search"><span class="ws-sr">Cari ara</span>${ic('search')}<input class="inp" type="search" id="cuQ" value="${esc(CU_Q)}" placeholder="Unvan, vergi no, yetkili ara…" autocomplete="off"></label>
+      <div class="cu-seg" role="radiogroup" aria-label="Tür">${seg}</div>
+      <button type="button" class="cu-tog" data-cupas aria-pressed="${pas}"><span class="cu-sw" aria-hidden="true"></span>Pasifleri de göster <span class="n">(${nPas})</span></button>
+      <span class="spacer"></span>
+      ${admin ? `<button type="button" class="btn pri add" data-cunew>${ic('plus')}Cari ekle</button>` : ''}
+    </div>
+    <div id="cuList">${cuListHtml()}</div>`;
+}
+
+/* Liste (arama yazılırken yalnız bu bölüm yeniden çizilir; arama kutusunun odağı korunur). */
+function cuListHtml() {
+  const kind = cuCurKind(), pas = !!DB.ui.cuPassive, raw = CU_Q.trim();
+  const q = qmKey(raw), d = raw.replace(/[\s-]/g, ''), qd = /^\d+$/.test(d) ? d : '';
+  const nProj = new Map();
+  DB.projects.forEach(p => { if (p.customerId) nProj.set(p.customerId, (nProj.get(p.customerId) || 0) + 1); });
+  const rows = cuList().filter(c => (pas || cuActive(c)) && cuKindMatch(c, kind)
+    && (!q || (CU_KEYS.get(c.id) ?? cuSearchKey(c)).includes(q) || (qd && String(c.taxNo || '').includes(qd)))).sort(cuSort);
+  if (!rows.length) {
+    const desc = [raw ? `"${raw}"` : '', kind !== 'all' ? CU_KIND[kind][0] : '', pas ? 'pasifler dahil' : 'yalnız etkin'].filter(Boolean).join(' · ');
+    return `<div class="hm-empty cu-empty" data-cuempty="search"><span class="hm-empty-ic">${ic('search')}</span><h3>Aramanızla eşleşen cari yok</h3>
+      <span class="cu-q">${ic('search')}${esc(desc)}</span>
+      <p>Unvan, kısa ad, vergi no ve yetkili adı/e-postası içinde arandı.</p>
+      <div class="acts"><button type="button" class="btn" data-cuclear>${ic('x')}Süzgeçleri temizle</button></div></div>`;
+  }
+  const nOff = rows.filter(c => !cuActive(c)).length;
+  return `<div class="cu-meta"><span><b>${rows.length}</b> cari${nOff ? ` · <b>${nOff}</b> pasif dahil` : ''} · unvana göre A→Z</span></div>
+    <div class="cu-wrap"><table class="cu-tbl" aria-label="Cariler"><thead><tr>
+      <th aria-sort="ascending"><span class="srt">Unvan ${ic('up')}</span></th><th style="width:140px">Tür</th><th style="width:150px">Vergi no</th>
+      <th class="r" style="width:96px">Projeler</th><th style="width:108px">Durum</th><th style="width:44px"><span class="ws-sr">Aç</span></th></tr></thead>
+    <tbody>${rows.map(c => { const off = !cuActive(c), n = nProj.get(c.id) || 0, tx = String(c.taxNo || '');
+      return `<tr class="cu-row ${off ? 'is-off' : 'is-on'}" tabindex="0" data-cuopen="${esc(c.id)}" aria-label="${esc(c.name)}${off ? ' (Pasif)' : ''}">
+        <td class="c-nm"><span class="cu-nm">${esc(c.name)}</span><span class="cu-sn ${c.shortName ? '' : 'empty'}">${c.shortName ? esc(c.shortName) : '<span class="ws-sr">Kısa ad yok</span>&nbsp;'}</span></td>
+        <td class="c-kd">${cuKindBadge(c.kind)}</td>
+        <td class="c-tx">${tx ? `<span class="cu-tax"><span class="mob-l">${tx.length === 11 ? 'TCKN' : 'VKN'} </span>${esc(tx)}</span>` : '<span class="cu-tax none">— <span class="mob-l">vergi no yok</span></span>'}</td>
+        <td class="c-pj r"><span class="cu-pj ${n ? '' : 'zero'}"><span class="cu-mob">${ic('folder')}</span>${n}<span class="mob-l"> proje</span></span></td>
+        <td class="c-st">${cuStatus(c)}</td>
+        <td class="c-go r"><span class="cu-go">${ic('chevr')}</span></td></tr>`; }).join('')}</tbody></table></div>`;
+}
+
+function openCustomer(id) {
+  const c = cuById(id);
+  if (!c) return toast('Cari bulunamadı');
+  closeModal();
+  return isAdmin() ? customerForm(id) : customerView(c);
+}
+
+/* Kart özeti: bağlı projeler (arşivliler dahil), açık iş (Arama ekranındaki sonuçla aynı), harcanan süre (efor raporuyla aynı). */
+function cuSummary(id) {
+  const projs = cuProjects(id), ids = new Set(projs.map(p => p.id));
+  const open = DB.issues.filter(i => ids.has(i.projectId) && stat(i.statusId).cat !== 'done' && (MOD('epic') || i.type !== 'epic')).length;
+  const mon = TODAY.slice(0, 7);
+  let total = 0, month = 0;
+  for (const w of DB.worklogs) {
+    const i = issue(w.issueId); if (!i || !ids.has(i.projectId)) continue;
+    const h = +w.hours || 0; total += h;
+    if (String(w.date || '').slice(0, 7) === mon) month += h;
+  }
+  return { projs, open, total, month };
+}
+function cuSummaryHtml(c) {
+  const s = cuSummary(c.id), nA = s.projs.filter(p => p.archived).length;
+  const prj = p => { const w = wsById(wsOf(p)), a = !!p.archived;
+    const inner = `<span class="ws-key">${esc(p.key)}</span><span class="tx"><span class="nm">${esc(p.name)}</span>
+      <span class="ws">${wsBadge(w, 'sm' + (a ? ' is-arch' : ''))}${esc(w?.name || '')}</span></span>${a ? `<span class="ws-chip">${ic('archive')}Arşivli</span>` : `<span class="cu-go">${ic('chevr')}</span>`}`;
+    return a ? `<div class="cu-prj is-arch">${inner}</div>` : `<button type="button" class="cu-prj" data-cugoproj="${esc(p.id)}">${inner}</button>`; };
+  return `<aside class="cu-sum" aria-label="Özet"><h4>Özet</h4>
+    <div class="cu-kpis">
+      <button type="button" class="cu-kpi" data-cuissues="${esc(c.id)}" ${s.open ? '' : 'disabled'} aria-label="${s.open} açık iş, iş listesinde aç">
+        <span class="l">${ic('circle')}Açık iş</span><span class="v" data-cun="open">${s.open}</span>${s.open ? `<span class="go">İş listesi${ic('arrow')}</span>` : ''}</button>
+      <div class="cu-kpi"><span class="l">${ic('folder')}Bağlı proje</span><span class="v" data-cun="proj">${s.projs.length}</span>${nA ? `<span class="l" style="font-weight:500;color:var(--meta)">${nA} arşivli</span>` : ''}</div>
+      <div class="cu-kpi time"><span class="l">${ic('hour')}Harcanan süre</span>
+        <div class="cu-time"><div><span class="k">Bu ay</span><span class="v" data-cun="month">${efFmt(s.month)}</span></div><div><span class="k">Toplam</span><span class="v" data-cun="total">${efFmt(s.total)}</span></div></div></div>
+    </div>
+    <h4 style="margin-top:4px">Bağlı projeler</h4>
+    <div class="cu-prjs">${s.projs.length ? s.projs.map(prj).join('') : '<div class="none">Bu cariye bağlı proje yok.</div>'}</div></aside>`;
+}
+
+/* Üye / izleyici: salt okunur kart + özet (düzenleme düğmesi hiç çizilmez). */
+function customerView(c) {
+  const ct = Array.isArray(c.contacts) ? c.contacts.filter(x => x && typeof x === 'object') : [];
+  const tx = String(c.taxNo || ''), masked = tx.includes('*');
+  const dd = v => v ? `<dd>${esc(v)}</dd>` : '<dd class="none">—</dd>';
+  const person = x => `<div class="cu-person"><span class="cu-av" aria-hidden="true">${esc(cuIni(x.name))}</span><div class="tx"><b>${esc(x.name)}</b>${x.title ? ` <span class="r">· ${esc(x.title)}</span>` : ''}
+      ${x.email || x.phone ? `<div class="ln">${x.email ? `<span>${ic('mail')}${esc(x.email)}</span>` : ''}${x.phone ? `<span>${ic('phone')}${esc(x.phone)}</span>` : ''}</div>` : ''}</div></div>`;
+  openModal(`<div class="m-h cu-h"><span class="cu-ic">${ic('building')}</span>
+      <div class="tx"><b id="cu_t">${esc(c.name)}</b><div class="s">${cuKindBadge(c.kind)}${cuStatus(c)}<span class="cu-ro-chip">${ic('eye')}Salt okunur</span></div></div>
+      <button class="x" data-close aria-label="Kapat">×</button></div>
+    <div class="cu-body"><div class="cu-ro"><div>
+      <dl class="cu-dl">
+        <dt>Kısa ad</dt>${c.shortName ? `<dd>${esc(c.shortName)}</dd>` : '<dd class="none">— (unvan kullanılır)</dd>'}
+        <dt>Vergi dairesi</dt>${dd(c.taxOffice)}
+        <dt>${tx.length === 11 ? 'T.C. kimlik no' : 'Vergi no'}</dt>${tx ? `<dd class="mono" id="cu_tx">${masked
+          ? `<span class="cu-mask"><span>${esc(tx)}</span><span class="why">${ic('lock')}İzleyiciye maskeli</span></span>` : esc(tx)}</dd>` : '<dd class="none">—</dd>'}
+        <dt>Adres</dt>${dd(c.address)}
+        <dt>Telefon</dt>${dd(c.phone)}
+        <dt>E-posta</dt>${c.email ? `<dd><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></dd>` : '<dd class="none">—</dd>'}
+        <dt>Notlar</dt>${dd(c.notes)}
+      </dl>
+      <div class="cu-sech"><h3>${ic('users')}Yetkili kişiler <span class="n">${ct.length}</span></h3></div>
+      ${ct.length ? ct.map(person).join('') : '<div class="cu-hint">Yetkili kişi yok.</div>'}
+    </div>${cuSummaryHtml(c)}</div></div>
+    <div class="m-f"><span class="spacer"></span><button class="btn" data-close>Kapat</button></div>`, 'cu-m');
+  wsDialog('cu_t');
+}
+
+/* Yönetici: ekleme / düzenleme penceresi. Alan altı uyarılar sunucu kurallarıyla aynı (validate.js → customers). */
+function customerForm(id) {
+  if (!isAdmin()) return toast('Cari ekleme ve düzenleme yalnızca yöneticiler içindir');
+  const c = id ? cuById(id) : null;
+  if (id && !c) return toast('Cari bulunamadı');
+  let kind = CU_KIND[c?.kind] ? c.kind : '', active = c ? cuActive(c) : true, shown = new Set(), all = false;
+  const cts = (Array.isArray(c?.contacts) ? c.contacts : []).filter(x => x && typeof x === 'object').map(x => ({ ...x }));
+  const v = k => String(c?.[k] ?? '');
+  const cnt = (fid, max) => `<span class="cu-cnt" id="${fid}_c">${v({ cu_n: 'name', cu_s: 'shortName', cu_a: 'address', cu_no: 'notes' }[fid]).length} / ${max}</span>`;
+  const fld = (fid, label, input, o = {}) => `<div class="cu-fld ${o.full ? 'full' : ''}" id="${fid}_f"><label for="${fid}"><span>${label}${o.req ? '<span class="req" aria-hidden="true">*</span>' : ''}</span>${o.right || ''}</label>
+      ${input}<div class="cu-err" id="${fid}_e" role="alert"></div>${o.hint || ''}</div>`;
+  const inp = (fid, key, max, extra = '') => `<input class="inp" id="${fid}" value="${esc(v(key))}" maxlength="${max}" ${extra}>`;
+  openModal(`<div class="m-h cu-h"><span class="cu-ic">${ic('building')}</span>
+      <div class="tx"><b id="cu_t">${c ? 'Cari kartı' : 'Yeni cari'}</b>${c ? `<div class="s">${esc(c.name)} ${cuKindBadge(c.kind)}</div>` : ''}</div>
+      <button class="x" data-close aria-label="Kapat">×</button></div>
+    <div class="cu-body">
+      <div class="cu-form">
+        ${fld('cu_n', 'Unvan', inp('cu_n', 'name', 200, 'required aria-required="true"'), { full: true, req: true, right: cnt('cu_n', 200) })}
+        ${fld('cu_s', 'Kısa ad <span class="opt">(boşsa unvan)</span>', inp('cu_s', 'shortName', 60), { right: cnt('cu_s', 60) })}
+        <div class="cu-fld" id="cu_k_f"><div class="lb" id="cu_k_l"><span>Tür<span class="req" aria-hidden="true">*</span></span></div>
+          <div class="cu-kseg" role="radiogroup" aria-labelledby="cu_k_l" aria-required="true" aria-describedby="cu_k_e">
+            ${Object.entries(CU_KIND).map(([k, [l, i]]) => `<button type="button" role="radio" data-cuk="${k}" aria-checked="${kind === k}" tabindex="${kind === k || (!kind && k === 'customer') ? 0 : -1}">${ic(i)}${l}</button>`).join('')}</div>
+          <div class="cu-err" id="cu_k_e" role="alert"></div></div>
+        ${fld('cu_vd', 'Vergi dairesi', inp('cu_vd', 'taxOffice', 100))}
+        ${fld('cu_vn', 'Vergi no', inp('cu_vn', 'taxNo', 40, 'inputmode="numeric" style="font-family:var(--mono)" aria-describedby="cu_vn_h"'),
+          { right: '<span class="opt" id="cu_vn_h">10 hane VKN · 11 hane TCKN</span>' })}
+        ${fld('cu_a', 'Adres', `<textarea class="inp" id="cu_a" rows="2" maxlength="500">${esc(v('address'))}</textarea>`, { full: true, right: cnt('cu_a', 500) })}
+        ${fld('cu_p', 'Telefon', inp('cu_p', 'phone', 30, 'inputmode="tel"'))}
+        ${fld('cu_m', 'E-posta', inp('cu_m', 'email', 200, 'type="email"'))}
+        ${fld('cu_no', 'Notlar', `<textarea class="inp" id="cu_no" rows="2" maxlength="2000" aria-describedby="cu_no_h">${esc(v('notes'))}</textarea>`,
+          { full: true, right: cnt('cu_no', 2000), hint: `<div class="cu-hint warn" id="cu_no_h">${ic('shield')}Kişisel veya hassas bilgi yazmayın (T.C. kimlik no, sağlık, banka bilgisi vb.).</div>` })}
+        <div class="cu-fld full"><div class="cu-active">
+          <button type="button" role="switch" id="cu_act" aria-checked="${active}"><span class="cu-sw" aria-hidden="true"></span><span id="cu_act_l">${active ? 'Etkin' : 'Pasif'}</span></button>
+          <span class="tx">Pasif cariler yeni projelere bağlanamaz; mevcut bağlar ve geçmiş süreler korunur.</span></div></div>
+      </div>
+      <div class="cu-sech"><h3>${ic('users')}Yetkili kişiler <span class="n" id="cu_ctn">${cts.length}</span></h3></div>
+      <div class="cu-ct" id="cu_ct"></div>
+      <button type="button" class="cu-add" id="cu_add">${ic('userplus')}Kişi ekle</button>
+      <div class="cu-hint" id="cu_add_h" hidden>${ic('info')}En çok ${CU_MAX_CT} yetkili kişi eklenebilir.</div>
+      ${c ? `<div class="cu-sech"><h3>${ic('folder')}Özet</h3></div>${cuSummaryHtml(c)}` : ''}
+      <div style="height:10px"></div>
+    </div>
+    <div class="m-f">${c ? `<button type="button" class="btn danger icon-m" id="cu_del" aria-label="Cariyi sil">${ic('trash')}<span class="lbl">Cariyi sil</span></button>` : ''}<span class="spacer"></span>
+      <button class="btn" data-close>İptal</button><button class="btn pri" id="cu_ok">${ic('check')}Kaydet</button></div>`, 'cu-m');
+  wsDialog('cu_t');
+
+  const ctErr = {};
+  const drawCts = () => {
+    $('#cu_ct').innerHTML = cts.length ? `<div class="cu-cthead" aria-hidden="true"><span>Ad soyad *</span><span>Görev</span><span>E-posta</span><span>Telefon</span><span></span></div>`
+      + cts.map((x, k) => { const e = all || shown.has('ct' + k) ? ctErr[k] || {} : {};
+        const cell = (f, cls, label, max, extra = '') => `<div class="${cls} ${e[f] ? 'has-err' : ''}"><label class="cu-cl" for="ct_${k}_${f}">${label}</label>
+          <input class="inp" id="ct_${k}_${f}" data-ctf="${f}" data-cti="${k}" value="${esc(x[f] || '')}" maxlength="${max}" placeholder="${label.replace(/ <.*$/, '')}" aria-label="${label.replace(/ <.*$/, '')}" ${extra}
+            ${e[f] ? `aria-invalid="true" aria-describedby="ct_${k}_${f}_e"` : ''}>${e[f] ? `<div class="cu-err" id="ct_${k}_${f}_e">${ic('alert')}<span>${e[f]}</span></div>` : ''}</div>`;
+        return `<div class="cu-ctrow" role="group" aria-label="Yetkili ${k + 1}" data-ctrow="${k}"><span class="cu-ctno">Yetkili ${k + 1}</span>
+          ${cell('name', 'c-name', 'Ad soyad <span style="color:var(--risk)">*</span>', 120)}${cell('title', 'c-title', 'Görev', 120)}
+          ${cell('email', 'c-mail', 'E-posta', 200, 'type="email"')}${cell('phone', 'c-tel', 'Telefon', 30, 'inputmode="tel"')}
+          <button type="button" class="iconbtn del" data-ctdel="${k}" aria-label="Yetkili ${k + 1}: ${esc(x.name || 'boş satır')} sil" title="Kişiyi sil">${ic('trash')}</button></div>`; }).join('') : '';
+    $('#cu_ctn').textContent = cts.length;
+    $('#cu_add').disabled = cts.length >= CU_MAX_CT; $('#cu_add_h').hidden = cts.length < CU_MAX_CT;
+  };
+  const blankCt = x => !['name', 'title', 'email', 'phone'].some(f => String(x[f] || '').trim());
+  /* Hatalar: { alan kimliği: html } — alan "Kaydet"e basınca ya da alandan çıkınca gösterilir. */
+  const check = () => {
+    const e = {}, val = fid => $('#' + fid).value;
+    const name = val('cu_n').trim();
+    if (!name) e.cu_n = 'Unvan gerekli'; else if (name.length > 200) e.cu_n = 'Unvan en fazla 200 karakter';
+    if (!kind) e.cu_k = 'Tür seçin';
+    if (val('cu_s').trim().length > 60) e.cu_s = 'Kısa ad en fazla 60 karakter';
+    if (val('cu_vd').trim().length > 100) e.cu_vd = 'Vergi dairesi en fazla 100 karakter';
+    const tn = val('cu_vn').replace(/[\s-]/g, '');
+    if (tn && !/^\d{10,11}$/.test(tn)) e.cu_vn = 'Vergi numarası 10 ya da 11 haneli olmalı';
+    else if (tn) { const o = cuList().find(x => x.id !== c?.id && x.taxNo === tn);
+      if (o) e.cu_vn = `Bu vergi numarasıyla kayıtlı cari var: ${esc(o.name)} · <a href="#" role="button" data-cuopen="${esc(o.id)}">Kartı aç</a>`; }
+    if (val('cu_a').trim().length > 500) e.cu_a = 'Adres en fazla 500 karakter';
+    if (val('cu_p').trim().length > 30) e.cu_p = 'Telefon en fazla 30 karakter';
+    const em = val('cu_m').trim();
+    if (em && (em.length > 200 || !CU_EMAIL.test(em))) e.cu_m = 'E-posta adresi geçersiz';
+    if (val('cu_no').length > 2000) e.cu_no = 'Notlar en fazla 2000 karakter';
+    for (const k of Object.keys(ctErr)) delete ctErr[k];
+    cts.forEach((x, k) => { if (blankCt(x)) return; const r = {};
+      if (!String(x.name || '').trim()) r.name = 'Ad zorunlu';
+      if (String(x.title || '').trim().length > 120) r.title = 'Görev en fazla 120 karakter';
+      const m = String(x.email || '').trim(); if (m && (m.length > 200 || !CU_EMAIL.test(m))) r.email = 'E-posta adresi geçersiz';
+      if (String(x.phone || '').trim().length > 30) r.phone = 'Telefon en fazla 30 karakter';
+      if (Object.keys(r).length) ctErr[k] = r; });
+    return e;
+  };
+  const FIELDS = ['cu_n', 'cu_k', 'cu_s', 'cu_vd', 'cu_vn', 'cu_a', 'cu_p', 'cu_m', 'cu_no'];
+  const paint = () => {
+    const e = check();
+    for (const fid of FIELDS) {
+      const on = (all || shown.has(fid)) && e[fid], box = $('#' + fid + '_f'), el = $('#' + fid), er = $('#' + fid + '_e');
+      box.classList.toggle('has-err', !!on);
+      er.innerHTML = on ? `${ic('alert')}<span>${e[fid]}</span>` : '';
+      if (el) { if (on) { el.setAttribute('aria-invalid', 'true'); el.setAttribute('aria-describedby', [fid + '_e', fid === 'cu_vn' ? 'cu_vn_h' : fid === 'cu_no' ? 'cu_no_h' : ''].filter(Boolean).join(' ')); }
+        else { el.removeAttribute('aria-invalid'); if (fid === 'cu_vn') el.setAttribute('aria-describedby', 'cu_vn_h'); else if (fid === 'cu_no') el.setAttribute('aria-describedby', 'cu_no_h'); else el.removeAttribute('aria-describedby'); } }
+    }
+    return e;
+  };
+  drawCts();
+  const body = $('#scrim .cu-body');
+  body.addEventListener('input', ev => {
+    const t = ev.target;
+    if (t.dataset.ctf) { cts[+t.dataset.cti][t.dataset.ctf] = t.value; return; }
+    const ce = $('#' + t.id + '_c'); if (ce) ce.textContent = `${t.value.length} / ${t.maxLength}`;
+    if (shown.has(t.id) || all) paint();
+  });
+  body.addEventListener('focusout', ev => {
+    const t = ev.target;
+    if (t.dataset?.ctf) { if (!shown.has('ct' + t.dataset.cti) && !all) { shown.add('ct' + t.dataset.cti); } return; }
+    if (FIELDS.includes(t.id) && t.value !== '') { shown.add(t.id); paint(); }
+  });
+  body.addEventListener('click', ev => {
+    const k = ev.target.closest('[data-cuk]');
+    if (k) { kind = k.dataset.cuk; $$('[data-cuk]').forEach(b => { b.setAttribute('aria-checked', String(b === k)); b.tabIndex = b === k ? 0 : -1; }); shown.add('cu_k'); paint(); return; }
+    const d = ev.target.closest('[data-ctdel]');
+    if (d) { cts.splice(+d.dataset.ctdel, 1); check(); drawCts(); ($('#cu_ct .del') || $('#cu_add')).focus(); return; }
+  });
+  $('.cu-kseg').onkeydown = ev => {
+    const keys = Object.keys(CU_KIND), cur = Math.max(0, keys.indexOf(kind)), to = { ArrowRight: cur + 1, ArrowDown: cur + 1, ArrowLeft: cur - 1, ArrowUp: cur - 1 }[ev.key];
+    if (to === undefined) return; ev.preventDefault();
+    const b = $(`[data-cuk="${keys[(to + keys.length) % keys.length]}"]`); b.click(); b.focus();
+  };
+  $('#cu_act').onclick = () => { active = !active; $('#cu_act').setAttribute('aria-checked', String(active)); $('#cu_act_l').textContent = active ? 'Etkin' : 'Pasif'; };
+  $('#cu_add').onclick = () => {
+    if (cts.length >= CU_MAX_CT) return;
+    cts.push({ id: uid('ct'), name: '', title: '', email: '', phone: '' }); check(); drawCts();
+    $(`#ct_${cts.length - 1}_name`)?.focus();
+  };
+  if (c) $('#cu_del').onclick = () => customerDelete(c.id);
+  $('#cu_ok').onclick = () => {
+    all = true;
+    const e = paint(); drawCts();
+    const firstCt = Object.keys(ctErr)[0];
+    if (FIELDS.some(f => e[f]) || firstCt !== undefined) {
+      const f = FIELDS.find(x => e[x]);
+      (f ? (f === 'cu_k' ? $('[data-cuk][tabindex="0"]') : $('#' + f)) : $(`#ct_${firstCt}_${Object.keys(ctErr[firstCt])[0]}`))?.focus();
+      return;
+    }
+    const val = fid => $('#' + fid).value.trim();
+    const contacts = cts.filter(x => !blankCt(x)).map(x => { const o = { id: x.id, name: String(x.name).trim() };
+      for (const f of ['title', 'email', 'phone']) { const s = String(x[f] || '').trim(); if (s) o[f] = s; }
+      return o; });
+    const data = { name: val('cu_n'), shortName: val('cu_s'), kind, taxOffice: val('cu_vd'), taxNo: val('cu_vn').replace(/[\s-]/g, ''),
+      address: val('cu_a'), phone: val('cu_p'), email: val('cu_m'), notes: val('cu_no'), active, contacts };
+    if (c) Object.assign(c, data);
+    else (DB.customers ||= []).push({ id: uid('cu'), ...data });
+    closeModal(); save(); render(); toast(c ? `${data.name} kaydedildi` : `${data.name} eklendi`);
+  };
+  setTimeout(() => $('#cu_n')?.focus(), 40);
+}
+
+/* Silme: bağlı projesi (arşivli dahil) olan cari silinmez → "Pasife al". Bağsızsa kalıcı silme onayı (çöp kutusuna gitmez). */
+function customerDelete(id) {
+  if (!isAdmin()) return toast('Cari silme yalnızca yöneticiler içindir');
+  const c = cuById(id); if (!c) return toast('Cari bulunamadı');
+  const projs = cuProjects(id), nCt = Array.isArray(c.contacts) ? c.contacts.length : 0;
+  closeModal();
+  if (projs.length) {
+    openModal(`<div class="m-h cu-h"><div class="tx"><b id="cud_t">Cari silinemez</b><div class="s">${esc(c.name)}</div></div><button class="x" data-close aria-label="Kapat">×</button></div>
+      <div class="cu-body" style="padding-bottom:14px"><div class="cu-alert" id="cud_d">${ic('alert')}<div class="tx"><b>Bu cariye bağlı ${projs.length} proje var; silmek yerine pasife alın.</b>
+        <ul class="cu-plist">${projs.map(p => `<li><span class="ws-key">${esc(p.key)}</span><span class="t">${esc(p.name)}</span>${p.archived
+          ? `<span class="ws-chip">${ic('archive')}Arşivli</span>` : wsBadge(wsById(wsOf(p)), 'sm')}</li>`).join('')}</ul></div></div></div>
+      <div class="m-f"><span class="spacer"></span><button class="btn" data-close>Kapat</button>${cuActive(c) ? `<button class="btn pri" id="cud_pas">${ic('pause')}Pasife al</button>` : ''}</div>`, 'narrow cu-m');
+    const m = $('#scrim .modal'); m.setAttribute('role', 'alertdialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-labelledby', 'cud_t'); m.setAttribute('aria-describedby', 'cud_d');
+    const pb = $('#cud_pas');
+    if (pb) { pb.onclick = () => { c.active = false; closeModal(); save(); render(); toast(`${c.name} pasife alındı`); }; setTimeout(() => pb.focus(), 40); }
+    return;
+  }
+  openModal(`<div class="m-h cu-h"><div class="tx"><b id="cud_t">Cariyi sil</b></div><button class="x" data-close aria-label="Kapat">×</button></div>
+    <div class="cu-body" style="padding-bottom:14px"><p class="cu-confirm" id="cud_d"><b>${esc(c.name)}</b>${nCt ? ` ve ${nCt} yetkili kişisi` : ''} <b>kalıcı olarak silinir, çöp kutusuna gitmez.</b> Bu işlem geri alınamaz.</p>
+      <div class="ws-info">${ic('info')}<span>Bu cariye bağlı proje yok. Kaydı saklamak istiyorsanız silmek yerine pasife alabilirsiniz.</span></div></div>
+    <div class="m-f"><span class="spacer"></span><button class="btn" data-close id="cud_no">Vazgeç</button><button class="btn cu-danger" id="cud_ok">${ic('trash')}Kalıcı olarak sil</button></div>`, 'narrow cu-m');
+  const m = $('#scrim .modal'); m.setAttribute('role', 'alertdialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-labelledby', 'cud_t'); m.setAttribute('aria-describedby', 'cud_d');
+  setTimeout(() => $('#cud_no')?.focus(), 40);
+  $('#cud_ok').onclick = () => {
+    DB.customers = cuList().filter(x => x.id !== id);
+    closeModal(); save(); render(); toast(`${c.name} silindi`);
+  };
+}
+
+/* Sunucu vergi no çakışmasında yalnız kimlik döner; unvan yerel listeden bulunur. */
+function cuTakenToast(id) {
+  const o = cuById(id);
+  toast(o ? `Bu vergi numarasıyla kayıtlı cari var: ${o.name}` : 'Bu vergi numarasıyla kayıtlı cari var',
+    o ? { warn: true, label: 'Kartı aç', fn: () => openCustomer(id), ms: 8000 } : { warn: true });
+}
+
+/* Proje formu ve Projeler kartı: cari seçimi. Yalnız etkin cariler; projenin bağlı olduğu pasif cari "(Pasif)" ekiyle korunur. */
+function cuOptions(cur) {
+  const c = cuById(cur), act = cuList().filter(cuActive).sort(cuSort);
+  return `<option value="">— Cari yok —</option>${cur && !c ? `<option value="${esc(cur)}" selected>(Bulunamayan cari)</option>` : ''}${
+    c && !cuActive(c) ? `<option value="${esc(c.id)}" selected>${esc(c.name)} (Pasif)</option>` : ''}${
+    act.map(x => `<option value="${esc(x.id)}" ${x.id === cur ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}`;
+}
+function cuProjRow(p) {
+  const cur = p.customerId || '', c = cuById(cur), pid = esc(p.id);
+  if (!cur && !cuList().length) return '';
+  if (canEdit()) return `<div class="cu-plink"><label class="lbl" for="pcu-${pid}">${ic('building')}Cari</label>
+      <select class="inp" id="pcu-${pid}" data-pcust="${pid}">${cuOptions(cur)}</select>
+      ${c && !cuActive(c) ? `<div class="cu-hint">${ic('pause')}Bağlı cari pasif; bağ korunur. Değiştirirseniz yalnız etkin cariler seçilebilir.</div>` : ''}</div>`;
+  return `<div class="cu-plink"><span class="lbl">${ic('building')}Cari</span><span class="val">${c
+    ? `<a href="#" data-cuopen="${esc(c.id)}">${esc(c.name)}</a>${cuActive(c) ? '' : `<span class="cu-st off">${ic('pause')}Pasif</span>`}`
+    : '<span style="color:var(--meta);font-weight:500">—</span>'}</span></div>`;
+}
+
+/* Olay devri: liste, süzgeçler, kart bağlantıları. */
+function cuClick(e) {
+  const t = e.target; if (!(t instanceof Element)) return;
+  const b = t.closest('[data-cunew],[data-cuopen],[data-cukind],[data-cupas],[data-cuclear],[data-cugoproj],[data-cuissues],[data-cugo]');
+  if (!b || b.disabled) return;
+  const d = b.dataset;
+  if (b.tagName === 'A') e.preventDefault();
+  if ('cunew' in d) return customerForm();
+  if ('cuopen' in d) return openCustomer(d.cuopen);
+  if ('cukind' in d) { DB.ui.cuKind = d.cukind; save(); render(); $(`[data-cukind="${d.cukind}"]`)?.focus(); return; }
+  if ('cupas' in d) { DB.ui.cuPassive = !DB.ui.cuPassive; save(); render(); $('[data-cupas]')?.focus(); return; }
+  if ('cuclear' in d) { CU_Q = ''; DB.ui.cuKind = 'all'; DB.ui.cuPassive = !cuList().some(cuActive); save(); render(); $('#cuQ')?.focus(); return; }
+  if ('cugo' in d) { closeModal(); DB.ui.view = 'customers'; save(); return render(); }
+  if ('cugoproj' in d) {
+    const p = DB.projects.find(x => x.id === d.cugoproj); if (!p) return;
+    DB.ui.project = p.id; DB.board.q = ''; DB.ui.view = 'board'; closeModal(); save(); return render();
+  }
+  if ('cuissues' in d) {
+    const keys = cuProjects(d.cuissues).map(p => p.key).filter(Boolean);
+    if (!keys.length) return;
+    DB.ui.pql = `proje IN (${keys.map(k => `"${String(k).replace(/"/g, '')}"`).join(', ')}) AND kategori != Bitti`;
+    DB.ui.view = 'search'; closeModal(); save(); return render();
+  }
+}
+function cuKey(e) {
+  const t = e.target; if (!(t instanceof Element)) return;
+  if ((e.key === 'Enter' || e.key === ' ') && t.matches('tr.cu-row[data-cuopen]')) { e.preventDefault(); return openCustomer(t.dataset.cuopen); }
+  if (t.matches('.cu-seg [data-cukind]') && /^Arrow(Left|Right|Up|Down)$/.test(e.key)) {
+    e.preventDefault();
+    const bs = [...t.parentElement.querySelectorAll('[data-cukind]')], k = bs.indexOf(t) + (/Right|Down/.test(e.key) ? 1 : -1);
+    bs[(k + bs.length) % bs.length].click();
+  }
+}
+function cuInput(e) {
+  if (e.target?.id !== 'cuQ') return;
+  CU_Q = e.target.value;
+  const l = $('#cuList'); if (l) l.innerHTML = cuListHtml();
+}
+function cuChange(e) {
+  const s = e.target; if (!(s instanceof Element) || !s.matches('[data-pcust]')) return;
+  const p = DB.projects.find(x => x.id === s.dataset.pcust); if (!p) return;
+  if (!canEdit()) return toast('İzleyiciler projeyi değiştiremez');
+  const v = s.value;
+  if (!v) { if (p.customerId === undefined) return; delete p.customerId; save(); render(); return toast(`${p.name}: cari bağı kaldırıldı`); }
+  if (v === p.customerId) return;
+  const c = cuById(v);
+  if (!c) { render(); return toast('Cari bulunamadı'); }
+  if (!cuActive(c)) { render(); return toast('Pasif cari projeye bağlanamaz'); }
+  p.customerId = v; save(); render(); toast(`${p.name}, ${c.name} carisine bağlandı`);
+}
+
 /* ============================ PROJELER ============================ */
 function toolbarProjects() {
   return `${canEdit() ? `<span class="ws-tb" style="display:contents"><button class="btn pri" id="pNew">${ic('plus')}Yeni proje</button>
@@ -6389,6 +7048,7 @@ function wsProjCard(p, arch) {
       ${p.archived ? `<span class="ws-chip">${ic('archive')}arşiv</span>` : cur ? `<span class="ws-chip cur">${ic('check')}seçili</span>` : ''}
       ${items ? wsPopMenu(`${p.name}: işlemler`, 'Proje işlemleri', items) : ''}</div>
     <div class="ws-pstats"><span>${ic('issues')}<b>${all.length}</b> iş</span><span>${ic('circle')}<b>${open}</b> açık</span><span>${ic('hour')}<b>${efFmtSafe(hours)}</b> efor</span></div>
+    ${cuProjRow(p)}
     <div><div class="ws-plbl">Üyeler (${memsOf(p).length})</div>
       <div class="ws-mems">${DB.users.filter(u => u.active).map(u => {
         const on = isMember(p, u.id);
@@ -6411,6 +7071,10 @@ function newProjectForm(preset = {}) {
       <div class="form-row"><label class="field" for="np_n">Proje adı</label><input class="inp" id="np_n" placeholder="Mobil Uygulama"></div>
       <div class="form-row"><label class="field" for="np_ws">Çalışma alanı</label><select class="inp" id="np_ws">
         ${wsl.map(w => `<option value="${esc(w.id)}" ${w.id === def ? 'selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
+      <div class="form-row"><label class="field" for="np_cu">Cari <span style="text-transform:none;letter-spacing:0;color:var(--meta)">(isteğe bağlı)</span></label>${cuList().some(cuActive)
+        ? `<select class="inp" id="np_cu">${cuOptions('')}</select>
+           <div class="cu-hint">${ic('info')}Yalnız etkin cariler listelenir. Bir projeye en çok bir cari bağlanır.</div>`
+        : `<div class="cu-hint" id="np_cu_none">${ic('info')}<span>Henüz cari yok.${isAdmin() ? ' <a href="#customers" data-cugo>Cariler</a>' : ''}</span></div>`}</div>
       <div class="form-row"><label class="field">İş akışı şablonu</label><select class="inp" id="np_w">
         <option value="default">Varsayılan akış</option>
         ${Object.entries(STATUS_TEMPLATES).map(([k, [l, r]]) => `<option value="${k}">${l} — ${r.map(x => x[0]).join(' · ')}</option>`).join('')}
@@ -6454,6 +7118,9 @@ function newProjectForm(preset = {}) {
     const ws = $('#np_ws').value;
     if (!wsById(ws)) return $('#np_err').textContent = 'Çalışma alanı bulunamadı';
     if (wsArchived(ws)) return $('#np_err').textContent = 'Arşivlenmiş çalışma alanına proje taşınamaz';
+    const cu = $('#np_cu')?.value || '';
+    if (cu && !cuById(cu)) return $('#np_err').textContent = 'Cari bulunamadı';
+    if (cu && !cuActive(cuById(cu))) return $('#np_err').textContent = 'Pasif cari projeye bağlanamaz';
     const key = projCode(name, new Set(DB.projects.map(p => p.code || p.key)));
     const clean = flow.filter(r => r[0].trim());
     if (!clean.length) return $('#np_err').textContent = 'En az bir durum gerekli.';
@@ -6461,7 +7128,7 @@ function newProjectForm(preset = {}) {
     clean.forEach(([n, c], k) => DB.statuses.push({ id: uid('st'), projectId: pid, name: n.trim(), cat: c, wip: 0, ord: k }));
     if ($('#np_def').checked) DB.cfg.defaultStatuses = clean.map(r => [r[0].trim(), r[1]]);
     picked.add(SESSION);
-    DB.projects.push({ id: pid, key, code: key, name, lead: SESSION, counter: 0, members: [...picked], archived: false, workspaceId: ws });
+    DB.projects.push({ id: pid, key, code: key, name, lead: SESSION, counter: 0, members: [...picked], archived: false, workspaceId: ws, ...(cu ? { customerId: cu } : {}) });
     DB.ui.project = pid; DB.ui.view = 'board';
     closeModal(); save(); startApp(); toast(`${name} oluşturuldu`);
   };
