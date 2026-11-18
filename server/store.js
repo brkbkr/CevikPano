@@ -16,8 +16,9 @@ const ROLES = ['super', 'admin', 'member', 'viewer'];
    projenin üyesi olan Üye tarafından değiştirilir (canConfigure). */
 export const ADMIN_ONLY = ['fields', 'rules', '_settings', 'customers'];
 const ISSUE_CHILDREN = ['comments', 'worklogs', 'history', 'transitions'];
-/* Yeni kaydı yalnız ekleyerek oluşturan koleksiyonlar (eşzamanlı oluşturmada üzerine yazılmaz). */
-const CREATE_ONCE = ['workspaces', 'customers'];
+/* Yeni kaydı yalnız ekleyerek oluşturan koleksiyonlar (eşzamanlı oluşturmada üzerine yazılmaz). Geçmiş ve
+   yorum: aynı kimlikle eşzamanlı ikinci gönderim ilk yazanın kaydını (yazarını) ezmesin. */
+const CREATE_ONCE = ['workspaces', 'customers', 'history', 'comments'];
 /* Geçmiş yalnız eklenir (B2): var olan kayıt değiştirilemez, tek tek silinemez (yöneticiler dahil); silme yalnız
    iş silmenin cascade'iyle. Yeni kayıtta yönetici olmayanın yazarı oturuma, zamanı sunucu saatine ±5 dk zorlanır. */
 export const HIST_LOCKED = 'Geçmiş kaydı değiştirilemez';

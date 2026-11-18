@@ -1749,6 +1749,26 @@ describe('geçmiş ve yorum koruması', { skip: !URL && 'TEST_DATABASE_URL yok' 
     assert.deepEqual(await row('history', 'hh_fake'), fake);
   });
 
+  test('eşzamanlı oluşturma: aynı kimlikli ikinci geçmiş/yorum ilk yazanın kaydını ezmez', async () => {
+    for (const [table, mk] of [['history', id => H(id, { issueId: 'ih1', to: 'ikinci', at: Date.now() })],
+                               ['comments', id => C(id, { issueId: 'ih1', body: 'ikinci' })]]) {
+      const id = table + '_yaris', c = await pool.connect();
+      try {
+        await c.query('BEGIN');
+        await c.query(`INSERT INTO ${table} (id, data) VALUES ($1, $2::jsonb)`,
+          [id, JSON.stringify({ id, issueId: 'ih1', userId: 'u_h_m', at: 1, field: 'Durum', to: 'ilk', body: 'ilk' })]);
+        const pending = N.sync([mk(id)]);
+        await new Promise(r => setTimeout(r, 300));
+        await c.query('COMMIT');
+        assert.deepEqual(reasons(await pending), ['Kayıt aynı anda oluşturuldu, yeniden deneyin'], table);
+      } finally { c.release(); }
+      const d = await row(table, id);
+      assert.equal(d.userId, 'u_h_m', table); assert.equal(table === 'history' ? d.to : d.body, 'ilk', table);
+      /* yeniden denemede kayıt var: koruma kuralları işler */
+      assert.deepEqual(reasons(await N.sync([mk(id)])), [table === 'history' ? LOCKED : NOT_OWNER], table);
+    }
+  });
+
   test('izleyici geçmiş yazamaz ve silemez', async () => {
     assert.deepEqual(reasons(await V.sync([H('hh_v', { issueId: 'ih1', userId: 'u_h_v', at: Date.now() }), D('history', 'hh_dogru')])),
       ['salt okunur kullanıcı', 'salt okunur kullanıcı']);
