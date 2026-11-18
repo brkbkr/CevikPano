@@ -33,15 +33,20 @@ export function stripBadKeys(v, depth = 0) {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const optEmail = v => v == null || v === '' || (typeof v === 'string' && v.length <= 200 && EMAIL_RE.test(v));
+/* Cari ve yetkili kişi e-postası mailto: bağlantısına basılır: canlı yazmada yeni/değişen adreste ? & " < > ve
+   boşluk yok (konu/gövde/alıcı parametresi enjeksiyonu). Değişmeyen eski adres ve içe aktarma/geri yükleme korunur. */
+const MAILTO_BAD = /[?&"<>\s]/;
+const cuEmail = (v, old, live) => optEmail(v) && (!live || v == null || v === '' || v === old || !MAILTO_BAD.test(v));
 export const CUSTOMER_KINDS = ['customer', 'supplier', 'both'];
 const TAX_NO_RE = /^\d{10,11}$/;
 const MAX_CONTACTS = 200;
 
 /* Yetkili kişiler: dizi; her biri güvenli kimlik ve ad taşır. İlk hata döner (yoksa boş). */
-function contactRules(list) {
+function contactRules(list, opts = {}) {
   if (list == null) return [];
   if (!Array.isArray(list) || list.length > MAX_CONTACTS) return [[false, `Yetkili kişiler en fazla ${MAX_CONTACTS} kişilik bir liste olmalı`]];
   const ids = new Set();
+  const prev = new Map((Array.isArray(opts.cur?.contacts) ? opts.cur.contacts : []).filter(x => x && typeof x === 'object').map(x => [x.id, x.email]));
   for (const p of list) {
     if (!p || typeof p !== 'object' || Array.isArray(p) || !validId(p.id)) return [[false, 'Yetkili kişinin kimliği geçersiz']];
     if (ids.has(p.id)) return [[false, 'Yetkili kişi kimlikleri tekil olmalı']];
@@ -49,7 +54,7 @@ function contactRules(list) {
     const checks = [
       [typeof p.name === 'string' && p.name.trim().length >= 1 && p.name.length <= 120, 'Yetkili kişinin adı gerekli (en fazla 120 karakter)'],
       [optStr(p.title, 120), 'Yetkili kişinin görevi en fazla 120 karakter'],
-      [optEmail(p.email), 'Yetkili kişinin e-posta adresi geçersiz'],
+      [cuEmail(p.email, prev.get(p.id), opts.live), 'Yetkili kişinin e-posta adresi geçersiz'],
       [optStr(p.phone, 30), 'Yetkili kişinin telefonu en fazla 30 karakter'],
     ];
     const bad = checks.find(([ok]) => !ok);
@@ -78,7 +83,7 @@ const RULES = {
       'Sprint süresi 1 ile 8 hafta arasında bir tamsayı olmalı'],
   ],
   /* Cariler (#11). İletilerde değer YOK: kişisel veri (T.C. kimlik no, e-posta) günlüğe/yanıta düşmesin. */
-  customers: d => [
+  customers: (d, opts) => [
     [typeof d.name === 'string' && d.name.trim().length >= 1 && d.name.length <= 200, 'Unvan gerekli (en fazla 200 karakter)'],
     [CUSTOMER_KINDS.includes(d.kind), 'Tür müşteri, tedarikçi ya da ikisi olmalı'],
     [optStr(d.shortName, 60), 'Kısa ad en fazla 60 karakter'],
@@ -86,11 +91,11 @@ const RULES = {
     [d.taxNo == null || d.taxNo === '' || (typeof d.taxNo === 'string' && TAX_NO_RE.test(d.taxNo)),
       'Vergi numarası 10 ya da 11 haneli olmalı'],
     [optStr(d.address, 500), 'Adres en fazla 500 karakter'],
-    [optEmail(d.email), 'E-posta adresi geçersiz'],
+    [cuEmail(d.email, opts.cur?.email, opts.live), 'E-posta adresi geçersiz'],
     [optStr(d.phone, 30), 'Telefon en fazla 30 karakter'],
     [optStr(d.notes, 2000), 'Notlar en fazla 2000 karakter'],
     [optBool(d.active), 'Durum (etkin) true ya da false olmalı'],
-    ...contactRules(d.contacts),
+    ...contactRules(d.contacts, opts),
   ],
   workspaces: d => [
     [str(d.name, 100) && d.name.trim().length >= 1 && d.name.trim().length <= 60,
