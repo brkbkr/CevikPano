@@ -4113,7 +4113,7 @@ function wireAdmin() {
   const ch = $('#cfgH'); if (ch) { const apply = () => {
     H_PER_DAY = Math.max(1, parseFloat($('#cfgH').value) || 8);
     D_PER_WEEK = Math.max(1, parseFloat($('#cfgD').value) || 5);
-    DB.cfg = { h: H_PER_DAY, d: D_PER_WEEK }; save(); render(); toast(`1d = ${H_PER_DAY}h, 1w = ${D_PER_WEEK}d`); };
+    DB.cfg = Object.assign(DB.cfg || {}, { h: H_PER_DAY, d: D_PER_WEEK }); save(); render(); toast(`1d = ${H_PER_DAY}h, 1w = ${D_PER_WEEK}d`); };
     ch.onchange = apply; $('#cfgD').onchange = apply; }
 }
 
