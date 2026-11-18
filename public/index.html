@@ -920,6 +920,48 @@ body{background:var(--paper)}
   .cmdk span,.cmdk kbd{display:none}
   .cmdk{min-width:0;width:34px;height:34px;padding:0;justify-content:center}
 }
+
+/* ==========================================================================
+   Sol menü v4 — beyaz + mavi vurgu (docs/tasarim/sol-menu, seçenek C)
+   ========================================================================== */
+:root{
+  --rail-bg:#FFFFFF; --rail-ink:#334155; --rail-ink2:#94A3B8; --rail-line:#E5EAF2;
+  --rail-hover:#F3F7FD; --rail-on:#EAF2FF; --rail-on-ink:#1D4ED8; --rail-icon:#3B82F6; --rail-bar:#2563EB;
+  --rail-field:#F3F7FD;
+}
+:root[data-theme="dark"]{
+  --rail-bg:#0C1424; --rail-ink:#C3CEE0; --rail-ink2:#5F6F8C; --rail-line:#1B2842;
+  --rail-hover:#121D33; --rail-on:rgba(96,165,250,.14); --rail-on-ink:#BFDBFE; --rail-icon:#60A5FA; --rail-bar:#60A5FA;
+  --rail-field:#101A2E;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --rail-bg:#0C1424; --rail-ink:#C3CEE0; --rail-ink2:#5F6F8C; --rail-line:#1B2842;
+    --rail-hover:#121D33; --rail-on:rgba(96,165,250,.14); --rail-on-ink:#BFDBFE; --rail-icon:#60A5FA; --rail-bar:#60A5FA;
+    --rail-field:#101A2E;
+  }
+}
+.rail{background:var(--rail-bg);color:var(--rail-ink);border-right:1px solid var(--rail-line)}
+.brand b{color:var(--ink)}
+.projsel select{background:var(--rail-field);border:1px solid var(--rail-line);color:var(--ink)}
+.navgroup{color:var(--rail-ink2)}
+.nav a{color:var(--rail-ink);gap:11px;padding:8px 10px}
+.nav a svg.g{width:18px;height:18px;flex-shrink:0;fill:none;stroke:var(--rail-icon);stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round;opacity:1}
+.nav a:hover{background:var(--rail-hover);color:var(--ink)}
+.nav a.on{background:var(--rail-on);color:var(--rail-on-ink);box-shadow:inset 3px 0 0 var(--rail-bar);font-weight:600}
+.nav a.on svg.g{stroke:var(--rail-bar)}
+.whoami{background:var(--surface2);border:1px solid var(--rail-line);color:var(--ink)}
+.whoami .nm span{color:var(--ink3)}
+.whoami .nm span[style]{color:var(--risk)!important}
+.whoami .btn{background:var(--surface);border-color:var(--line2);color:var(--ink);box-shadow:var(--shadow-sm)}
+.whoami .btn:hover{background:var(--surface2)}
+.whoami .iconbtn{background:var(--surface);border-color:var(--line2);color:var(--ink)}
+.fnote{color:var(--ink3)}
+.filebar .fnote:first-child{color:var(--ink2)}
+.online .navgroup{color:var(--rail-ink2)}
+.onl::after{box-shadow:0 0 0 2px var(--rail-bg)}
+.rail .av{box-shadow:none}
 </style>
 </head>
 <body>
@@ -928,28 +970,28 @@ body{background:var(--paper)}
     <div class="brand"><img src="/img/icon.svg" alt="" class="brand-ic"><b>ÇevikPano</b></div>
     <div class="projsel"><select id="projSel" class="inp"></select></div>
     <nav class="nav" style="margin-top:6px">
-      <a href="#home" data-v="home"><span class="g">⌂</span>Ana menü</a>
+      <a href="#home" data-v="home"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3.5l9 7"/><path d="M5.5 9v11.5h13V9"/><path d="M10 20.5v-6h4v6"/></svg>Ana menü</a>
     </nav>
     <div class="navgroup">Planlama</div>
     <nav class="nav" id="nav">
-      <a href="#board"     data-v="board"><span class="g">▤</span>Pano</a>
-      <a href="#backlog"   data-v="backlog"><span class="g">≡</span>Backlog</a>
-      <a href="#plan"      data-v="plan"><span class="g">▬</span>Zaman planı</a>
-      <a href="#roadmap"   data-v="roadmap"><span class="g">▭</span>Yol haritası</a>
+      <a href="#board"     data-v="board"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 7v7M12 7v4M16 7v9"/></svg>Pano</a>
+      <a href="#backlog"   data-v="backlog"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h11M10 12h11M10 18h11"/><path d="m3 6 1.5 1.5L7 5"/><path d="m3 12 1.5 1.5L7 11"/><path d="M3 18h4"/></svg>Backlog</a>
+      <a href="#plan"      data-v="plan"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M16 2v4M8 2v4M3 10h18M7 14h5M11 18h6"/></svg>Zaman planı</a>
+      <a href="#roadmap"   data-v="roadmap"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h8M4 12h12M4 18h6"/><circle cx="15" cy="6" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="13" cy="18" r="2"/></svg>Yol haritası</a>
     </nav>
     <div class="navgroup">Takip</div>
     <nav class="nav">
-      <a href="#timesheet" data-v="timesheet"><span class="g">◷</span>Zaman çizelgesi</a>
-      <a href="#effort"    data-v="effort"><span class="g">Σ</span>Efor raporu</a>
-      <a href="#reports"   data-v="reports"><span class="g">◲</span>Raporlar</a>
-      <a href="#search"    data-v="search"><span class="g">⌕</span>Arama</a>
+      <a href="#timesheet" data-v="timesheet"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Zaman çizelgesi</a>
+      <a href="#effort"    data-v="effort"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.3 19a9 9 0 1 1 17.4 0"/><path d="m12 14 4-4"/></svg>Efor raporu</a>
+      <a href="#reports"   data-v="reports"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg>Raporlar</a>
+      <a href="#search"    data-v="search"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Arama</a>
     </nav>
     <div class="navgroup">Yapılandırma</div>
     <nav class="nav">
-      <a href="#projects"  data-v="projects"><span class="g">▦</span>Projeler</a>
-      <a href="#admin"     data-v="admin"><span class="g">⚙</span>Proje ayarları</a>
-      <a href="#users"     data-v="users"><span class="g">◎</span>Kullanıcılar</a>
-      <a href="#system"    data-v="system"><span class="g">⛁</span>Sistem</a>
+      <a href="#projects"  data-v="projects"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg>Projeler</a>
+      <a href="#admin"     data-v="admin"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>Proje ayarları</a>
+      <a href="#users"     data-v="users"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M21.5 20a6.5 6.5 0 0 0-4-6"/></svg>Kullanıcılar</a>
+      <a href="#system"    data-v="system"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>Sistem</a>
     </nav>
     <div class="online" id="online"></div>
     <div class="whoami" id="whoami"></div>
