@@ -344,6 +344,15 @@ async function applyRecord(c, ctx, ch) {
       && (await c.query('SELECT 1 FROM users WHERE id=$1 AND active', [data.assignee])).rowCount > 0;
     if (!ok) throw new HttpError(400, 'Atanan kullanıcı bulunamadı ya da pasif');
   }
+  /* Yalnız projesi değişen iş eski projenin kolonunda kalmaz: kolonu yeni projede yoksa yeni projenin ilk
+     "yapılacak" kolonuna (yoksa ilk kolonuna) taşınır — istemcideki moveIssueTo ile aynı. */
+  if (ch.c === 'issues' && cur && data.projectId !== cur.projectId && (data.statusId ?? '') === (cur.statusId ?? '')
+      && !(typeof data.statusId === 'string' && data.statusId
+        && (await c.query('SELECT 1 FROM statuses WHERE id=$1 AND project_id=$2', [data.statusId, data.projectId])).rowCount)) {
+    const s0 = (await c.query(`SELECT id FROM statuses WHERE project_id=$1 ORDER BY (data->>'cat' = 'todo') DESC NULLS LAST,
+        coalesce(CASE WHEN jsonb_typeof(data->'ord') = 'number' THEN (data->'ord')::text::numeric END, 0), id LIMIT 1`, [data.projectId])).rows[0]?.id;
+    if (s0) { data.statusId = s0; adjusted = true; }
+  }
   /* Kolonu değişen iş var olan bir kolona gider. FOR SHARE: kolon aynı anda silinirse biri bekler
      (silme, işi gördükten sonra "Önce içindeki işleri taşıyın" der). */
   if (ch.c === 'issues' && data.statusId != null && data.statusId !== '' && data.statusId !== cur?.statusId) {
