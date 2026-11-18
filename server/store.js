@@ -806,9 +806,11 @@ async function purgeCustomerFromSnapshots(c, id) {
       FROM n WHERE n.id = s.id`, [id]);
 }
 
-/* Bağlı projesi (arşivliler dahil) olan cari silinmez. Satır FOR UPDATE ile kilitli: aynı anda bağlayan
-   proje (FOR SHARE) ya önce biter ve sayılır ya da cariyi bulamaz. */
+/* Bağlı projesi/işi (arşivliler dahil) olan cari silinmez. Cari satırı sayımdan ÖNCE burada FOR UPDATE ile
+   kilitlenir (çağıran yoldan bağımsız): aynı anda bağlayan proje/iş (checkProjectCustomer, FOR SHARE) ya önce
+   biter ve sayılır ya da cariyi bulamaz ("Cari bulunamadı"). */
 async function checkCustomerDelete(c, id) {
+  await c.query('SELECT 1 FROM customers WHERE id=$1 FOR UPDATE', [id]);
   const n = Number((await c.query('SELECT count(*) AS n FROM projects WHERE customer_id=$1', [id])).rows[0].n);
   if (n > 0) throw new HttpError(409, `Bu cariye bağlı ${n} proje var; silmek yerine pasife alın`);
   const k = Number((await c.query('SELECT count(*) AS n FROM issues WHERE customer_id=$1', [id])).rows[0].n);
