@@ -365,7 +365,7 @@ async function applyRecord(c, ctx, ch) {
   if (ch.c === 'projects' && cur && !same(cur.members ?? [], data.members ?? []))
     await canConfigure(c, me, ch.id, 'Proje üyelerini yalnızca alan yöneticisi değiştirebilir');
   if (ch.c === 'projects' && cur && (cur.sprintWeeks ?? null) !== (data.sprintWeeks ?? null))
-    await canConfigure(c, me, ch.id, SPRINT_WEEKS_FORBIDDEN);
+    await canManageSprint(c, me, ch.id, SPRINT_WEEKS_FORBIDDEN);
   if (ch.c === 'sprints') await checkSprintState(c, me, data, cur);
   if (ch.c === 'sprints') await checkSprintStart(c, data, cur);
   if (ch.c === 'statuses') {
@@ -433,14 +433,21 @@ async function checkProjectType(c, me, id, data, cur) {
     throw new HttpError(409, 'Önce aktif sprinti tamamlayın');
 }
 
-/* Sprint başlatma (aktif olmayan → aktif, ya da aktif sprintin projesi değişir) ve tamamlama (aktif → kapalı)
-   proje yöneticisi ister (bugün canConfigure: yönetici ya da proje üyesi). İstemcideki canManageProject ile aynı. */
-const SPRINT_FORBIDDEN = 'Sprinti yalnızca proje yöneticisi başlatıp bitirebilir';
-const SPRINT_WEEKS_FORBIDDEN = 'Sprint süresini yalnızca proje yöneticisi değiştirebilir';
+/* Sprint başlatma (aktif olmayan → aktif, ya da aktif sprintin projesi değişir), tamamlama (aktif → kapalı) ve
+   projenin sprint süresi: projenin alanında Yönetici (wsRole === 'admin'; sistem yöneticisi ve alan sahibi dahil).
+   Üye listesi tanımsız eski alanda yalnız sistem yöneticisi. İstemcideki canManageProject ile aynı. */
+const SPRINT_FORBIDDEN = 'Sprinti yalnızca alan yöneticisi başlatıp bitirebilir';
+const SPRINT_WEEKS_FORBIDDEN = 'Sprint süresini yalnızca alan yöneticisi değiştirebilir';
+async function canManageSprint(c, me, pid, forbidden = SPRINT_FORBIDDEN) {
+  if (isAdminRole(me.role)) return;
+  const p = await projById(c, pid);
+  if (!p) throw new HttpError(400, 'Sprintin projesi yok');
+  if (wsRole(me, await wsOfProjectData(c, p)) !== 'admin') throw new HttpError(403, forbidden);
+}
 async function checkSprintState(c, me, data, cur) {
   if (data.state === 'active' && (cur?.state !== 'active' || cur?.projectId !== data.projectId))
-    await canConfigure(c, me, data.projectId, SPRINT_FORBIDDEN);
-  if (cur?.state === 'active' && data.state === 'closed') await canConfigure(c, me, cur.projectId, SPRINT_FORBIDDEN);
+    await canManageSprint(c, me, data.projectId);
+  if (cur?.state === 'active' && data.state === 'closed') await canManageSprint(c, me, cur.projectId);
 }
 
 /* Türü açıkça Pano (type === 'board') olan projede sprint başlatılamaz (aktif olan ya da projesi değişen
