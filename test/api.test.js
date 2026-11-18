@@ -2596,3 +2596,211 @@ describe('posta kutuları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     for (const s of ['tok_', 'refresh_token', 'access_token', 'g-sir', 'm-sir', '_enc', 'verifier', 'v1:']) assert.ok(!all.includes(s), s);
   });
 });
+
+/* ---------------- çalışma alanı üyelikleri ve rolleri (22b) ----------------
+   Rol matrisi: sistem yöneticisi sınırsız; alan Yöneticisi (sahip dahil) proje tasarımı + alan üyeleri; alan Üyesi
+   iş/yorum/süre/sprint; alan İzleyicisi salt okunur; listede olmayan erişemez. Üyesiz (eski) alanda genel rol. */
+describe('alan rolleri', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  const reasons = r => r.json.rejected.map(x => x.reason);
+  const ok = r => { assert.equal(r.status, 200, JSON.stringify(r.json)); assert.deepEqual(r.json.rejected, []); return r; };
+  const rej = (r, msg) => { assert.equal(r.status, 200); assert.equal(r.json.applied, 0, JSON.stringify(r.json)); assert.deepEqual(reasons(r), [msg]); };
+  const row = async (table, id) => (await pool.query(`SELECT data FROM ${table} WHERE id=$1`, [id])).rows[0]?.data;
+  const put = (c, id, data, base) => ({ c, id, op: 'put', data, ...(base ? { base } : {}) });
+  const NO = 'Bu çalışma alanına erişiminiz yok', RO = 'Bu çalışma alanında yalnızca görüntüleme yetkiniz var';
+  const DES = 'Bu değişiklik için alan yöneticisi yetkisi gerekli', WSE = 'Bu çalışma alanını yalnızca alan yöneticisi değiştirebilir';
+  const C = {};
+  const newUser = async (id, username, role) => {
+    ok(await C.A.sync([put('users', id, { username, name: username, role, active: true })]));
+    const k = client(); await k.login(username, 'Start12345');
+    assert.equal((await k.req('POST', '/api/auth/password', { newPassword: 'RolYeni123456' })).status, 200);
+    return k;
+  };
+  let nKey = 100;
+  const iss = (id, pid, extra = {}) => put('issues', id, { projectId: pid, key: `${pid.toUpperCase().replace(/_/g, "")}-${nKey++}`, summary: 'iş', statusId: `${pid}_s0`, ...extra });
+
+  before(async () => {
+    C.A = client(); await C.A.login('admin', 'test-admin-pw');
+    C.O = await newUser('u_ro', 'rolsahip', 'member');      // alan sahibi
+    C.Y = await newUser('u_ry', 'rolyon', 'member');        // alan Yöneticisi
+    C.M = await newUser('u_rm', 'roluye', 'member');        // alan Üyesi
+    C.V = await newUser('u_rv', 'rolizci', 'member');       // alan İzleyicisi (genel rolü Üye)
+    C.X = await newUser('u_rx', 'roldis', 'member');        // alanda yok
+    C.G = await newUser('u_rg', 'rolgenizci', 'viewer');    // genel İzleyici, alanda Üye
+    ok(await C.A.sync([
+      put('workspaces', 'ws_r', { name: 'Rol alanı', ownerId: 'u_ro', members: [
+        { userId: 'u_ry', role: 'admin' }, { userId: 'u_rm', role: 'member' }, { userId: 'u_rv', role: 'viewer' }, { userId: 'u_rg', role: 'member' }] }),
+      put('workspaces', 'ws_r2', { name: 'Rol alanı 2', members: [{ userId: 'u_rm', role: 'viewer' }, { userId: 'u_rv', role: 'member' }] }),
+      put('projects', 'pr', { name: 'Rol projesi', key: 'PR', counter: 0, workspaceId: 'ws_r', members: ['u_admin'] }),
+      put('projects', 'pr2', { name: 'Rol projesi 2', key: 'PR2', counter: 0, workspaceId: 'ws_r2' }),
+      put('statuses', 'pr_s0', { projectId: 'pr', name: 'Yapılacak', cat: 'todo', ord: 0 }),
+      put('statuses', 'pr_s1', { projectId: 'pr', name: 'Bitti', cat: 'done', ord: 1 }),
+      put('statuses', 'pr2_s0', { projectId: 'pr2', name: 'Yapılacak', cat: 'todo', ord: 0 }),
+      put('statuses', 'pr2_s1', { projectId: 'pr2', name: 'Bitti', cat: 'done', ord: 1 }),
+      iss('i_r1', 'pr'), iss('i_r2', 'pr2')]));
+  });
+
+  test('üye listesi: sahip otomatik ve kaldırılamaz Yönetici; biçim, rol ve kişi doğrulanır', async () => {
+    const w = await row('workspaces', 'ws_r');
+    assert.equal(w.ownerId, 'u_ro'); assert.equal(w.createdBy, 'u_admin');
+    assert.deepEqual(w.members[0], { userId: 'u_ro', role: 'admin' });            // sahip listeye eklendi
+    assert.equal((await row('workspaces', 'ws_r2')).members[0].userId, 'u_admin'); // sahip seçilmezse açan yönetici
+    /* Alan yöneticisi sahibi çıkarmaya ya da düşürmeye çalışır: sahip Yönetici olarak kalır. */
+    let r = await C.Y.sync([put('workspaces', 'ws_r', { ...w, members: w.members.filter(m => m.userId !== 'u_ro') }, w)]);
+    assert.deepEqual(r.json.rejected, []);
+    let w2 = await row('workspaces', 'ws_r');
+    assert.ok(w2.members.some(m => m.userId === 'u_ro' && m.role === 'admin'));
+    r = await C.Y.sync([put('workspaces', 'ws_r', { ...w2, members: w2.members.map(m => m.userId === 'u_ro' ? { ...m, role: 'viewer' } : m) }, w2)]);
+    assert.equal(r.json.applied, 0); assert.deepEqual(r.json.rejected, []);
+    assert.ok((await row('workspaces', 'ws_r')).members.some(m => m.userId === 'u_ro' && m.role === 'admin'));
+    for (const [members, msg] of [[[{ userId: 'u_rm', role: 'sahip' }], /Üye kaydı geçersiz/], [[{ userId: 'u_yok', role: 'member' }], /Üye bulunamadı/],
+      [{ u_rm: 'member' }, /Üyeler dizi olmalı/], [['u_rm'], /Üye kaydı geçersiz/]]) {
+      r = await C.A.sync([put('workspaces', 'ws_r', { ...w2, members }, w2)]);
+      assert.match(reasons(r)[0] || '', msg, JSON.stringify(members));
+    }
+    /* Dolu listeyi boşaltmak (alanı herkese açmak) Yönetici/üyeye kapalı. */
+    const r2 = await row('workspaces', 'ws_r2');
+    assert.equal((await C.V.sync([put('workspaces', 'ws_r2', { ...r2, members: [] }, r2)])).json.applied, 0);
+    assert.deepEqual(w2.members, (await row('workspaces', 'ws_r')).members);
+  });
+
+  test('alan üyeleri ve rolleri: yalnız alan Yöneticisi (sahip dahil) ya da sistem yöneticisi değiştirir; sahipliği yalnız sistem yöneticisi devreder', async () => {
+    const w = await row('workspaces', 'ws_r');
+    const add = { ...w, members: [...w.members, { userId: 'u_rx', role: 'viewer' }] };
+    for (const k of [C.M, C.V, C.X, C.G]) assert.equal((await k.sync([put('workspaces', 'ws_r', add, w)])).json.applied, 0);
+    rej(await C.M.sync([put('workspaces', 'ws_r', add, w)]), WSE);
+    ok(await C.Y.sync([put('workspaces', 'ws_r', add, w)]));
+    const w2 = await row('workspaces', 'ws_r');
+    assert.ok(w2.members.some(m => m.userId === 'u_rx' && m.role === 'viewer'));
+    ok(await C.O.sync([put('workspaces', 'ws_r', { ...w2, members: w2.members.filter(m => m.userId !== 'u_rx'), description: 'sahip düzenledi' }, w2)]));
+    const w3 = await row('workspaces', 'ws_r');
+    assert.equal(w3.description, 'sahip düzenledi');
+    /* Sahiplik: Yönetici/sahip ownerId'yi değiştiremez (yok sayılır); sistem yöneticisi devreder. */
+    const r = await C.Y.sync([put('workspaces', 'ws_r', { ...w3, ownerId: 'u_ry' }, w3)]);
+    assert.equal(r.json.applied, 0);
+    assert.equal((await row('workspaces', 'ws_r')).ownerId, 'u_ro');
+    rej(await C.A.sync([put('workspaces', 'ws_r', { ...w3, ownerId: 'u_yok' }, w3)]), 'Alan sahibi bulunamadı ya da pasif');
+    ok(await C.A.sync([put('workspaces', 'ws_r', { ...w3, ownerId: 'u_rx' }, w3)]));
+    const w4 = await row('workspaces', 'ws_r');
+    assert.equal(w4.ownerId, 'u_rx');
+    assert.ok(w4.members.some(m => m.userId === 'u_rx' && m.role === 'admin'));    // yeni sahip otomatik Yönetici
+    assert.ok(w4.members.some(m => m.userId === 'u_ro' && m.role === 'admin'));    // eski sahip Yönetici olarak kalır
+    /* Geri al (sonraki testler): sahip u_ro, u_rx listede yok. */
+    ok(await C.A.sync([put('workspaces', 'ws_r', { ...w4, ownerId: 'u_ro', members: w4.members.filter(m => m.userId !== 'u_rx') }, w4)]));
+    assert.equal((await row('workspaces', 'ws_r')).members.some(m => m.userId === 'u_rx'), false);
+  });
+
+  test('alan Üyesi: iş açar/düzenler, kendi süresini ve yorumunu yazar, sprint açar; tasarım (kolon, tür, proje ayarı/üyeleri, özel alan, alan) 403', async () => {
+    const M = C.M;
+    ok(await M.sync([iss('i_rm1', 'pr'), put('worklogs', 'w_rm1', { issueId: 'i_r1', userId: 'u_rm', date: '2026-11-02', hours: 1 }),
+      put('comments', 'c_rm1', { issueId: 'i_r1', userId: 'u_rm', body: 'yorum' }),
+      put('sprints', 'sp_rm1', { projectId: 'pr', name: 'S1', state: 'future' })]));
+    const i = await row('issues', 'i_r1');
+    ok(await M.sync([put('issues', 'i_r1', { ...i, summary: 'üye düzenledi' }, i)]));
+    rej(await M.sync([put('statuses', 'pr_s2', { projectId: 'pr', name: 'Yeni kolon', cat: 'todo', ord: 2 })]), 'Kolonları yalnızca alan yöneticisi değiştirebilir');
+    const p = await row('projects', 'pr');
+    rej(await M.sync([put('projects', 'pr', { ...p, name: 'Ele geçirildi' }, p)]), DES);
+    rej(await M.sync([put('projects', 'pr', { ...p, type: 'agile' }, p)]), DES);
+    rej(await M.sync([put('projects', 'pr', { ...p, members: [] }, p)]), DES);
+    rej(await M.sync([put('projects', 'pr', { ...p, archived: true }, p)]), DES);
+    rej(await M.sync([put('projects', 'pr_yeni', { name: 'Yeni', key: 'PRY', workspaceId: 'ws_r' })]), DES);
+    rej(await M.sync([put('fields', 'f_rm', { projectId: 'pr', key: 'x', name: 'X', type: 'text' })]), 'Bu değişiklik için yönetici yetkisi gerekli');
+    const w = await row('workspaces', 'ws_r');
+    rej(await M.sync([put('workspaces', 'ws_r', { ...w, name: 'Benim alanım' }, w)]), WSE);
+    /* Yalnız iş sayacı değişen proje kaydı (iş açarken) Üyeye açık. */
+    ok(await M.sync([put('projects', 'pr', { ...p, counter: (p.counter || 0) + 5 }, p)]));
+    /* Başkası adına süre yine yalnız sistem yöneticisi. */
+    rej(await M.sync([put('worklogs', 'w_rm2', { issueId: 'i_r1', userId: 'u_ry', date: '2026-11-02', hours: 1 })]), 'Başkasının süre kaydını yalnızca yönetici değiştirebilir');
+  });
+
+  test('alan İzleyicisi salt okunur; rol alanlar arasında ayrı (bir alanda İzleyici, ötekinde Üye)', async () => {
+    rej(await C.V.sync([iss('i_rv1', 'pr')]), RO);
+    const i = await row('issues', 'i_r1');
+    rej(await C.V.sync([put('issues', 'i_r1', { ...i, summary: 'izci' }, i)]), RO);
+    rej(await C.V.sync([put('comments', 'c_rv1', { issueId: 'i_r1', userId: 'u_rv', body: 'x' })]), RO);
+    rej(await C.V.sync([put('worklogs', 'w_rv1', { issueId: 'i_r1', userId: 'u_rv', date: '2026-11-02', hours: 1 })]), RO);
+    rej(await C.V.sync([put('sprints', 'sp_rv1', { projectId: 'pr', name: 'S', state: 'future' })]), RO);
+    rej(await C.V.sync([{ c: 'issues', id: 'i_r1', op: 'del' }]), RO);
+    /* ws_r2'de Üye: yazar. M ise ws_r2'de İzleyici. */
+    ok(await C.V.sync([iss('i_rv2', 'pr2'), put('worklogs', 'w_rv2', { issueId: 'i_r2', userId: 'u_rv', date: '2026-11-02', hours: 2 })]));
+    rej(await C.M.sync([iss('i_rm2', 'pr2')]), RO);
+    /* İşi erişimli alandan salt okunur alana taşıyamaz. */
+    const mi = await row('issues', 'i_rm1');
+    rej(await C.M.sync([put('issues', 'i_rm1', { ...mi, projectId: 'pr2', statusId: 'pr2_s0' }, mi)]), RO);
+    /* Genel rolü İzleyici olan kişi alanda Üye ise yazar. */
+    ok(await C.G.sync([iss('i_rg1', 'pr'), put('comments', 'c_rg1', { issueId: 'i_rg1', userId: 'u_rg', body: 'g' })]));
+  });
+
+  test('alanda olmayan kişi: o alanın işine, yorumuna, süresine, geçmişine, bağlantısına, sprintine yazamaz (403)', async () => {
+    const X = C.X;
+    rej(await X.sync([iss('i_rx1', 'pr')]), NO);
+    rej(await X.sync([put('worklogs', 'w_rx1', { issueId: 'i_r1', userId: 'u_rx', date: '2026-11-02', hours: 1 })]), NO);
+    rej(await X.sync([put('comments', 'c_rx1', { issueId: 'i_r1', userId: 'u_rx', body: 'x' })]), NO);
+    rej(await X.sync([put('history', 'h_rx1', { issueId: 'i_r1', userId: 'u_rx', at: Date.now(), field: 'summary', from: 'a', to: 'b' })]), NO);
+    rej(await X.sync([put('links', 'l_rx1', { from: 'i_r1', to: 'i_r2', type: 'blocks' })]), NO);
+    rej(await X.sync([put('sprints', 'sp_rx1', { projectId: 'pr', name: 'S', state: 'future' })]), NO);
+    rej(await X.sync([put('statuses', 'pr_s9', { projectId: 'pr', name: 'X', cat: 'todo', ord: 9 })]), NO);
+    const p = await row('projects', 'pr');
+    rej(await X.sync([put('projects', 'pr', { ...p, name: 'X' }, p)]), NO);
+    /* Erişimi olmayan alana proje taşıyamaz ya da açamaz. */
+    ok(await X.sync([put('projects', 'p_rx', { name: 'Dış', key: 'DIS', workspaceId: 'ws1' })]));
+    const px = await row('projects', 'p_rx');
+    rej(await X.sync([put('projects', 'p_rx', { ...px, workspaceId: 'ws_r' }, px)]), NO);
+    rej(await X.sync([put('projects', 'p_rx2', { name: 'Dış 2', key: 'DS2', workspaceId: 'ws_r' })]), NO);
+  });
+
+  test('alan Yöneticisi: kolon, tür, proje ayarı/üyeleri, projeye özel alan, yeni proje, alan düzenle/arşivle; genel alan, kural, proje silme ve başka alan 403', async () => {
+    const Y = C.Y;
+    ok(await Y.sync([put('statuses', 'pr_s2', { projectId: 'pr', name: 'İncelemede', cat: 'inprogress', ord: 2 })]));
+    const p = await row('projects', 'pr');
+    ok(await Y.sync([put('projects', 'pr', { ...p, name: 'Rol projesi (yeni)', type: 'agile', members: ['u_admin', 'u_ry'] }, p)]));
+    assert.equal((await row('projects', 'pr')).type, 'agile');
+    ok(await Y.sync([put('fields', 'f_ry', { projectId: 'pr', key: 'ry', name: 'Alan', type: 'text' })]));
+    rej(await Y.sync([put('fields', 'f_ryg', { key: 'ryg', name: 'Genel', type: 'text' })]), 'Bu değişiklik için yönetici yetkisi gerekli');
+    rej(await Y.sync([put('rules', 'r_ry', { projectId: 'pr', name: 'kural' })]), 'Bu değişiklik için yönetici yetkisi gerekli');
+    ok(await Y.sync([put('projects', 'pr_y', { name: 'Yön. projesi', key: 'PRY', counter: 0, workspaceId: 'ws_r' })]));
+    rej(await Y.sync([{ c: 'projects', id: 'pr_y', op: 'del' }]), 'Bu değişiklik için yönetici yetkisi gerekli');
+    rej(await Y.sync([put('projects', 'pr_y2', { name: 'Öteki alanda', key: 'PY2', workspaceId: 'ws_r2' })]), NO);
+    const py = await row('projects', 'pr_y');
+    rej(await Y.sync([put('projects', 'pr_y', { ...py, workspaceId: 'ws_r2' }, py)]), NO);
+    const w = await row('workspaces', 'ws_r');
+    ok(await Y.sync([put('workspaces', 'ws_r', { ...w, name: 'Rol alanı (Y)', archived: true }, w)]));
+    const w2 = await row('workspaces', 'ws_r');
+    ok(await Y.sync([put('workspaces', 'ws_r', { ...w2, name: 'Rol alanı', archived: false }, w2)]));
+    rej(await Y.sync([{ c: 'workspaces', id: 'ws_r', op: 'del' }]), 'Bu değişiklik için yönetici yetkisi gerekli');
+    /* Proje üye listesinde olmasa da alan yöneticisi kolonları yönetir; Üye listede olsa da yönetemez. */
+    const p2 = await row('projects', 'pr');
+    ok(await C.O.sync([put('projects', 'pr', { ...p2, members: ['u_rm'] }, p2)]));
+    ok(await Y.sync([put('statuses', 'pr_s2', { projectId: 'pr', name: 'İnceleme', cat: 'inprogress', ord: 2 })]));
+    rej(await C.M.sync([put('statuses', 'pr_s2', { projectId: 'pr', name: 'Üye', cat: 'inprogress', ord: 2 })]), 'Kolonları yalnızca alan yöneticisi değiştirebilir');
+  });
+
+  test('sistem yöneticisi her alanda sınırsız (listede olmasa da)', async () => {
+    const A = C.A;
+    const p = await row('projects', 'pr2');
+    ok(await A.sync([iss('i_ra1', 'pr2'), put('statuses', 'pr2_s2', { projectId: 'pr2', name: 'Ara', cat: 'inprogress', ord: 2 }),
+      put('projects', 'pr2', { ...p, name: 'Yön. değiştirdi' }, p), put('fields', 'f_ra', { projectId: 'pr2', key: 'ra', name: 'A', type: 'text' }),
+      put('worklogs', 'w_ra', { issueId: 'i_r2', userId: 'u_rv', date: '2026-11-03', hours: 1 })]));
+    const w = await row('workspaces', 'ws_r2');
+    ok(await A.sync([put('workspaces', 'ws_r2', { ...w, members: [] }, w)]));     // listeyi boşaltmak: sistem yöneticisi
+    assert.deepEqual((await row('workspaces', 'ws_r2')).members, []);                 // boş liste: eski davranış (genel rol)
+  });
+
+  test('üye listesi tanımsız (eski) alan: genel rol geçerli (bugünkü davranış)', async () => {
+    /* Genel (ws1) üyesiz: alanda olmayan genel Üye iş açar, kolon/proje değiştirir (proje üye listesi boşsa); genel İzleyici yazamaz. */
+    ok(await C.X.sync([iss('i_rl1', 'p1', { statusId: 'p1_s0' })]));
+    ok(await C.A.sync([put('projects', 'p_rl', { name: 'Eski alan', key: 'RLE', workspaceId: 'ws1' }),
+      put('statuses', 'p_rl_s0', { projectId: 'p_rl', name: 'Yapılacak', cat: 'todo', ord: 0 })]));
+    ok(await C.X.sync([put('statuses', 'p_rl_s1', { projectId: 'p_rl', name: 'Bitti', cat: 'done', ord: 1 })]));
+    const pl = await row('projects', 'p_rl');
+    ok(await C.X.sync([put('projects', 'p_rl', { ...pl, name: 'Eski alan (Üye)' }, pl)]));
+    rej(await C.G.sync([iss('i_rl2', 'p_rl', { statusId: 'p_rl_s0' })]), 'salt okunur kullanıcı');
+    /* Eski alanda projeye özel alan yine yalnız sistem yöneticisi. */
+    rej(await C.X.sync([put('fields', 'f_rl', { projectId: 'p_rl', key: 'rl', name: 'R', type: 'text' })]), 'Bu değişiklik için yönetici yetkisi gerekli');
+  });
+
+  test('hızlı kişi ekleme: alan Yöneticisi, sahip ve Üye 403 (yalnız sistem yöneticisi)', async () => {
+    ok(await C.A.sync([put('customers', 'c_rl', { name: 'Rol Carisi', kind: 'customer' })]));
+    for (const k of [C.Y, C.M, C.O]) assert.equal((await k.req('POST', '/api/customers/c_rl/contacts', { name: 'Kişi' })).status, 403);
+    assert.equal((await C.A.req('POST', '/api/customers/c_rl/contacts', { name: 'Kişi' })).status, 200);
+  });
+});
