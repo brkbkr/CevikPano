@@ -377,6 +377,10 @@ async function applyRecord(c, ctx, ch) {
   /* Proje üyeleri: alan yöneticisi (üye listesi tanımsız eski alanda: yönetici ya da proje üyesi). Yeni projede serbest. */
   if (ch.c === 'projects' && cur && !same(cur.members ?? [], data.members ?? []))
     await canConfigure(c, me, ch.id, 'Proje üyelerini yalnızca alan yöneticisi değiştirebilir');
+  /* Proje adı ve diğer ayarları (sayaç, üyeler, tür, sprint süresi kendi denetiminde): canConfigure — üyeli alanda
+     alan yöneticisi, eski alanda projenin güncel üye listesindeki Üye (istemcideki canDesign ile aynı). */
+  if (ch.c === 'projects' && cur && !same(projSettings(cur), projSettings(data)))
+    await canConfigure(c, me, ch.id, PROJECT_FORBIDDEN);
   if (ch.c === 'projects' && cur && (cur.sprintWeeks ?? null) !== (data.sprintWeeks ?? null))
     await canManageSprint(c, me, ch.id, SPRINT_WEEKS_FORBIDDEN);
   if (ch.c === 'sprints') await checkSprintState(c, me, data, cur);
@@ -418,6 +422,8 @@ const COL_LOCK = 727276;
 export const MAX_COLUMNS = 12;
 const COLS_FORBIDDEN = 'Kolonları yalnızca alan yöneticisi değiştirebilir';
 const TYPE_FORBIDDEN = 'Proje türünü yalnızca alan yöneticisi değiştirebilir';
+const PROJECT_FORBIDDEN = 'Projeyi yalnızca alan yöneticisi değiştirebilir';
+const projSettings = p => { const { counter: _c, members: _m, type: _t, sprintWeeks: _s, ...rest } = p || {}; return rest; };
 const colName = s => String(s ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr');
 
 const sprintOn = async c =>

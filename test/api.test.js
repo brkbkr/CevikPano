@@ -1813,7 +1813,9 @@ describe('proje türü ve kolonlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
     assert.deepEqual(reasons(await N.sync([P('pk1', { ...pk1, members: [...pk1.members, 'u_k_n'] })])),
       ['Proje üyelerini yalnızca alan yöneticisi değiştirebilir']);
     assert.deepEqual((await row('projects', 'pk1')).members, ['u_admin', 'u_k_m']);
-    ok(await N.sync([P('pk1', { ...pk1, name: 'pk1 yeni ad' })]));                // üye listesine dokunmayan düzenleme serbest
+    /* proje adı/ayarı da canDesign: listede olmayan Üye değiştiremez (önceden serbestti) */
+    assert.deepEqual(reasons(await N.sync([P('pk1', { ...pk1, name: 'pk1 yeni ad' })])), ['Projeyi yalnızca alan yöneticisi değiştirebilir']);
+    ok(await M.sync([P('pk1', { ...pk1, name: 'pk1 yeni ad' })]));
     ok(await M.sync([P('pk1', { ...pk1, members: ['u_admin', 'u_k_m', 'u_k_n'] })]));
     ok(await N.sync([P('pk1', { ...pk1, members: ['u_admin', 'u_k_m'] })]));      // artık üye: değiştirebilir
     ok(await A.sync([P('pk1', { ...pk1, members: ['u_admin', 'u_k_m'] })]));
@@ -2944,6 +2946,28 @@ describe('alan rolleri', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     rej(await C.G.sync([iss('i_rl2', 'p_rl', { statusId: 'p_rl_s0' })]), 'salt okunur kullanıcı');
     /* Eski alanda projeye özel alan yine yalnız sistem yöneticisi. */
     rej(await C.X.sync([put('fields', 'f_rl', { projectId: 'p_rl', key: 'rl', name: 'R', type: 'text' })]), 'Bu değişiklik için yönetici yetkisi gerekli');
+  });
+
+  test('proje adı/ayarı: üyeli alanda yalnız alan Yöneticisi; eski alanda projenin üye listesindeki Üye (canDesign), listede olmayan 403', async () => {
+    /* üyeli alan: Üye ve İzleyici adı değiştiremez, alan Yöneticisi ve sahip değiştirir */
+    let p = await row('projects', 'pr');
+    rej(await C.M.sync([put('projects', 'pr', { ...p, name: 'Üye adı' }, p)]), DES);
+    rej(await C.V.sync([put('projects', 'pr', { ...p, description: 'x' }, p)]), DES);
+    ok(await C.Y.sync([put('projects', 'pr', { ...p, name: 'Rol projesi (Y)' }, p)]));
+    p = await row('projects', 'pr');
+    ok(await C.O.sync([put('projects', 'pr', { ...p, name: 'Rol projesi' }, p)]));
+    /* eski (üyesiz) alan: proje listesi dolu → listede olmayan Üye ad/ayar değiştiremez, kendini de ekleyemez */
+    ok(await C.A.sync([put('projects', 'p_rl2', { name: 'Eski liste', key: 'RLL', counter: 0, workspaceId: 'ws1', members: ['u_rm'] })]));
+    const q = await row('projects', 'p_rl2');
+    rej(await C.X.sync([put('projects', 'p_rl2', { ...q, name: 'Yabancı adı' }, q)]), 'Projeyi yalnızca alan yöneticisi değiştirebilir');
+    rej(await C.X.sync([put('projects', 'p_rl2', { ...q, archived: true }, q)]), 'Projeyi yalnızca alan yöneticisi değiştirebilir');
+    rej(await C.X.sync([put('projects', 'p_rl2', { ...q, members: ['u_rm', 'u_rx'], name: 'Yabancı adı' }, q)]),
+      'Proje üyelerini yalnızca alan yöneticisi değiştirebilir');
+    assert.equal((await row('projects', 'p_rl2')).name, 'Eski liste');
+    ok(await C.M.sync([put('projects', 'p_rl2', { ...q, name: 'Eski liste (Üye)' }, q)]));
+    /* yalnız sayaç (iş açarken) yine serbest */
+    const q2 = await row('projects', 'p_rl2');
+    ok(await C.X.sync([put('projects', 'p_rl2', { ...q2, counter: (q2.counter || 0) + 1 }, q2)]));
   });
 
   test('hızlı kişi ekleme: alan Yöneticisi, sahip ve Üye 403 (yalnız sistem yöneticisi)', async () => {
