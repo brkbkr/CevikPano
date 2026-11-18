@@ -1301,6 +1301,25 @@ describe('cariler', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     assert.equal(r.json.applied, 0); assert.equal(r.json.rejected.length, 0);
   });
 
+  test('e-posta: ? & " < > ve boşluk (mailto: enjeksiyonu) cari, yetkili kişi ve hızlı kişi eklemede ret; değişmeyen eski adres korunur', async () => {
+    const BAD = ['a?cc=x@ornek.com', 'a@ornek.com?subject=x', 'a&b@ornek.com', 'a"b@ornek.com', 'a<b@ornek.com', 'a>b@ornek.com', 'a b@ornek.com', 'a@ornek.com&body=x'];
+    for (const m of BAD) {
+      rejectedWith(await A.sync([cu('c_em', firm('E-posta Carisi', { email: m }))]), 'E-posta adresi geçersiz');
+      rejectedWith(await A.sync([cu('c_em', firm('E-posta Carisi', { contacts: [{ id: 'ct_em', name: 'Kişi', email: m }] }))]),
+        'Yetkili kişinin e-posta adresi geçersiz');
+    }
+    ok(await A.sync([cu('c_em', firm('E-posta Carisi', { email: 'ad.soyad+etiket@ornek.com.tr', contacts: [{ id: 'ct_em', name: 'Kişi', email: 'k_1@ornek.io' }] }))]));
+    for (const m of BAD) assert.equal((await A.req('POST', '/api/customers/c_em/contacts', { name: 'Hızlı', email: m })).status, 400, m);
+    /* eski (bu kuraldan önce yazılmış) adres: düzenlemede değişmedikçe kayıt reddedilmez; yeni bozuk değere geçilemez */
+    await pool.query(`UPDATE customers SET data = data || '{"email":"eski&adres@ornek.com","contacts":[{"id":"ct_em","name":"Kişi","email":"k?x@ornek.io"}]}'::jsonb WHERE id='c_em'`);
+    const d = (await row('customers', 'c_em')).data;
+    ok(await A.sync([cu('c_em', { ...d, notes: 'not' }, d)]));
+    const d2 = (await row('customers', 'c_em')).data;
+    rejectedWith(await A.sync([cu('c_em', { ...d2, email: 'yeni&adres@ornek.com' }, d2)]), 'E-posta adresi geçersiz');
+    rejectedWith(await A.sync([cu('c_em', { ...d2, contacts: [{ id: 'ct_em', name: 'Kişi', email: 'k?y@ornek.io' }] }, d2)]), 'Yetkili kişinin e-posta adresi geçersiz');
+    ok(await A.sync([del('customers', 'c_em')]));
+  });
+
   test('silme ↔ bağlama yarışı: cari satırı kilitli; önce bağlayan sayılır (409), önce silen bağlamayı "Cari bulunamadı" yapar', async () => {
     const pa = (await row('projects', 'p_cu1')).data;
     const pending = async p => Promise.race([p.then(() => 'bitti'), new Promise(r => setTimeout(() => r('bekliyor'), 400))]);

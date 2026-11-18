@@ -5847,7 +5847,7 @@ function quickContact(pre = {}, cb) {
   $('#qc_ok').onclick = async () => {
     const name = $('#qc_n').value.trim(), email = $('#qc_e').value.trim(), phone = $('#qc_p').value.trim(), cid = $('#qc_cu').value;
     if (!name) { err('Ad gerekli.'); return $('#qc_n').focus(); }
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { err('E-posta adresi geçersiz.'); return $('#qc_e').focus(); }
+    if (email && !CU_EMAIL.test(email)) { err('E-posta adresi geçersiz.'); return $('#qc_e').focus(); }
     const b = $('#qc_ok'); b.disabled = true;
     try {
       const r = await API.post(`/api/customers/${encodeURIComponent(cid)}/contacts`, { name, email, phone });
@@ -9820,7 +9820,8 @@ function renderWsPage() {
    sunucudan maskeli gelir. Arama metni DB.ui'ye YAZILMAZ (kişisel veri tercihlere gitmesin). */
 const CU_KIND = { customer: ['Müşteri', 'briefcase'], supplier: ['Tedarikçi', 'truck'], both: ['İkisi', 'swap'] };
 const CU_MAX_CT = 200;
-const CU_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/* mailto: bağlantısına basılır: ? & " < > ve boşluk yok (sunucu validate.js cuEmail ile aynı; değişmeyen eski adres geçer). */
+const CU_EMAIL = /^[^\s@?&"<>]+@[^\s@?&"<>]+\.[^\s@?&"<>]+$/;
 let CU_Q = '', CU_KEYS = new Map();
 const cuList = () => (DB.customers || []).filter(c => c && c.id);
 const cuById = id => id ? cuList().find(c => c.id === id) : undefined;
@@ -10032,13 +10033,14 @@ function customerForm(id) {
     if (val('cu_a').trim().length > 500) e.cu_a = 'Adres en fazla 500 karakter';
     if (val('cu_p').trim().length > 30) e.cu_p = 'Telefon en fazla 30 karakter';
     const em = val('cu_m').trim();
-    if (em && (em.length > 200 || !CU_EMAIL.test(em))) e.cu_m = 'E-posta adresi geçersiz';
+    if (em && em !== c?.email && (em.length > 200 || !CU_EMAIL.test(em))) e.cu_m = 'E-posta adresi geçersiz';
     if (val('cu_no').length > 2000) e.cu_no = 'Notlar en fazla 2000 karakter';
     for (const k of Object.keys(ctErr)) delete ctErr[k];
     cts.forEach((x, k) => { if (blankCt(x)) return; const r = {};
       if (!String(x.name || '').trim()) r.name = 'Ad zorunlu';
       if (String(x.title || '').trim().length > 120) r.title = 'Görev en fazla 120 karakter';
-      const m = String(x.email || '').trim(); if (m && (m.length > 200 || !CU_EMAIL.test(m))) r.email = 'E-posta adresi geçersiz';
+      const m = String(x.email || '').trim(), m0 = (c?.contacts || []).find(o => o && o.id === x.id)?.email;
+      if (m && m !== m0 && (m.length > 200 || !CU_EMAIL.test(m))) r.email = 'E-posta adresi geçersiz';
       if (String(x.phone || '').trim().length > 30) r.phone = 'Telefon en fazla 30 karakter';
       if (Object.keys(r).length) ctErr[k] = r; });
     return e;
