@@ -40,6 +40,12 @@ const XSS = '<img src=x onerror="window.__xss=1">';
   const toastInfo = p => p.evaluate(() => { const t = document.getElementById('toast');
     return { on: t.classList.contains('on'), warn: t.classList.contains('t-warn'), text: t.textContent.trim(),
       undo: !!t.querySelector('.toast-undo'), x: !!t.querySelector('.toast-x'), role: t.getAttribute('role'), live: t.getAttribute('aria-live') }; });
+  /* odak beklentisi (homeRefocus ile aynı kural): aynı gruptaki sonraki, yoksa önceki satırın aynı düğmesi; yoksa "Geri al" */
+  const nextFocus = (p, id, sel) => p.evaluate(([id, sel]) => { const r = document.querySelector(`[data-hmrow="${id}"]`);
+    const rows = [...r.parentElement.children].filter(x => x.dataset.hmrow), k = rows.indexOf(r);
+    const n = [rows[k + 1], rows[k - 1]].find(x => x && x.querySelector(sel)); return n ? n.dataset.hmrow : 'toast'; }, [id, sel]);
+  const focusAt = (p, sel) => p.evaluate(sel => { const a = document.activeElement;
+    return a?.closest('#toast') && a.classList.contains('toast-undo') ? 'toast' : a?.matches(sel) ? a.closest('[data-hmrow]')?.dataset.hmrow || null : a?.tagName; }, sel);
   const waitFor = async (p, fn, arg, ms = 6000) => { const t0 = Date.now();
     while (Date.now() - t0 < ms) { if (await p.evaluate(fn, arg)) return Date.now() - t0; await sleep(250); } return -1; };
 
@@ -196,8 +202,10 @@ const XSS = '<img src=x onerror="window.__xss=1">';
   ok('İlerlet: no sprint / rank change', await M.evaluate(id => issue(id).sprintId == null && issue(id).rank === 1000, ID('adv')));
   ok('İlerlet focus stays on row button', await M.evaluate(id => document.activeElement?.dataset?.hmadv === id, ID('adv')));
   ok('next = done → green check button', await M.evaluate(id => document.querySelector(`[data-hmadv="${id}"]`)?.classList.contains('to-done'), ID('adv')));
+  const fAdv = await nextFocus(M, ID('adv'), '[data-hmadv]');
   await M.click(`[data-hmadv="${ID('adv')}"]`); await sleep(300);
   const t1 = await toastInfo(M);
+  ok('İlerlet to done: focus to neighbour İlerlet (not BODY)', await focusAt(M, '[data-hmadv]') === fAdv, fAdv);
   ok('done → row leaves list, undo toast', !(await has(M, ID('adv'))) && await st(M, ID('adv')) === pc[doneIdx].id && t1.on && t1.undo && t1.x && !t1.warn, JSON.stringify(t1));
   ok('toast is role=status aria-live=polite', t1.role === 'status' && t1.live === 'polite');
   await M.screenshot({ path: SS + 'toast.png' });
@@ -224,23 +232,30 @@ const XSS = '<img src=x onerror="window.__xss=1">';
     && getComputedStyle(document.querySelector(`[data-hmrow="${id}"] .hm-adv.none`)).visibility === 'hidden', ID('bLast')));
   ok('other project: İlerlet label from its own order', await M.evaluate(id => document.querySelector(`[data-hmadv="${id}"]`)?.textContent.trim() === 'Kapandı', ID('bTodo')));
   ok('selected project differs from issue project', await M.evaluate(pb => DB.ui.project !== pb, PB));
-  await M.click(`[data-hmrow="${ID('bTodo')}"] .hm-tick`); await sleep(300);
+  const fTick = await nextFocus(M, ID('bTodo'), '[data-complete]');
+  await M.focus(`[data-hmrow="${ID('bTodo')}"] .hm-tick`); await M.keyboard.press('Enter'); await sleep(300);
   const t3 = await toastInfo(M);
+  ok('keyboard tick: focus to neighbour tick (not BODY)', fTick !== 'toast' && await focusAt(M, '[data-complete]') === fTick, fTick);
   ok('tick completes with own project done status + undo toast', await st(M, ID('bTodo')) === `${PB}_s1` && !(await has(M, ID('bTodo'))) && t3.undo, JSON.stringify(t3));
-  await M.click('#toast .toast-undo'); await sleep(300);
+  await M.click('#toast .toast-undo'); await sleep(400);
   ok('tick undo restores', await st(M, ID('bTodo')) === `${PB}_s0` && await has(M, ID('bTodo')));
 
   // 11) hızlı atama: işin projesinin üyeleri (H2); başkasına atanınca düşer + Geri al
   await M.click(`[data-qas="${ID('bAs')}"]`); await sleep(300);
   const opts = await M.evaluate(() => [...document.querySelectorAll('.qm .qm-opt')].map(o => o.dataset.qv).sort());
   ok('assignee menu = issue project members', JSON.stringify(opts) === JSON.stringify(['', T, 'u3', V].sort()), opts.join());
+  const fAs = await nextFocus(M, ID('bAs'), '[data-qas]');
   await M.click('.qm [data-qv="u3"]'); await sleep(300);
   const t4 = await toastInfo(M);
+  ok('assign away: focus to neighbour assignee (not BODY)', await focusAt(M, '[data-qas]') === fAs, fAs);
+  ok('no neighbour → focus on toast "Geri al"', await M.evaluate(() => { homeRefocus('yok', '[data-complete]', []);
+    return document.activeElement?.classList.contains('toast-undo'); }));
   ok('assign to other → leaves list + undo toast', !(await has(M, ID('bAs'))) && await M.evaluate(id => issue(id).assignee === 'u3', ID('bAs')) && t4.undo && /listenden çıktı/.test(t4.text), JSON.stringify(t4));
   /* üzerine gelince süre durur */
   await M.hover('#toast .tx'); await sleep(6800);
   ok('toast paused while hovered', (await toastInfo(M)).on);
   await M.click('#toast .toast-undo'); await sleep(300);
+  await sleep(200);
   ok('assign undo restores me', await M.evaluate(id => issue(id).assignee === ME.id, ID('bAs')) && await has(M, ID('bAs')));
   ok('assign undo history by name', (await M.evaluate(id => DB.history.filter(x => x.issueId === id && x.field === 'Atanan').map(x => x.to), ID('bAs'))).length === 2);
   await M.mouse.move(5, 5);
@@ -277,6 +292,7 @@ const XSS = '<img src=x onerror="window.__xss=1">';
   await M.evaluate(pa => { DB.ui.homeProj = pa; render(); }, PA); await sleep(200);
   ok('invisible saved project → Tümü', await M.evaluate(() => document.querySelector('[data-hmproj=""]').getAttribute('aria-pressed') === 'true'
     && +document.querySelector('[data-hmsum="open"]').textContent === document.querySelectorAll('[data-hmrow]').length));
+  ok('invisible saved project → homeProj cleared (no comeback on unarchive)', await M.evaluate(() => DB.ui.homeProj === ''));
   await M.evaluate(() => { DB.ui.homeProj = 'p2'; render(); }); await sleep(200);
   const e2 = await M.evaluate(() => ({ h: document.querySelector('.hm-empty h3')?.textContent, btn: !!document.querySelector('.hm-empty [data-hmproj=""]') }));
   ok('filtered empty state', e2.h === 'Bu projede sana atanmış açık iş yok' && e2.btn, JSON.stringify(e2));
@@ -317,6 +333,20 @@ const XSS = '<img src=x onerror="window.__xss=1">';
   await Mo.evaluate(() => toast('PANO-1 Bitti olarak işaretlendi.', { label: 'Geri al', fn: () => {} }));
   const mt = await Mo.evaluate(() => { const r = document.getElementById('toast').getBoundingClientRect(); return r.left >= 0 && r.right <= 375 && r.bottom <= 812; });
   ok('mobile toast inside viewport', mt);
+
+  // 15b) bayat İlerlet işlem yapmaz; yeniden açma / kolon: doneFrom yalnız var olan ve kendi projesinin durumuysa
+  const stale = await M.evaluate(id => { const s0 = issue(id).statusId; homeAdvance(id, 'yok_durum');
+    const t = document.getElementById('toast'); return issue(id).statusId === s0 && t.classList.contains('t-warn') && /Durumlar değişti/.test(t.textContent); }, ID('bTodo'));
+  ok('stale İlerlet target: no change + "Durumlar değişti" toast', stale);
+  const ro = await M.evaluate(([id, pb]) => { const i = issue(id), p1 = statsOf('p1'), r = {};
+    i.doneFrom = 'yok_durum'; r.colMissing = colOf(i) === i.statusId;
+    i.doneFrom = pb + '_s0'; r.colOther = colOf(i) === i.statusId;
+    i.doneFrom = p1[1].id; r.colOwn = colOf(i) === p1[1].id;
+    i.doneFrom = pb + '_s0'; reopenIssue(id); r.reOther = i.statusId === p1[0].id && !i.doneFrom;
+    completeIssue(id); i.doneFrom = 'yok_durum'; reopenIssue(id); r.reMissing = i.statusId === p1[0].id;
+    completeIssue(id); i.doneFrom = p1[1].id; reopenIssue(id); r.reOwn = i.statusId === p1[1].id;
+    return r; }, [ID('done'), PB]);
+  ok('doneFrom of other project / deleted → first status; own → back', Object.values(ro).every(Boolean), JSON.stringify(ro));
 
   // 16) izleyici: boş durumda yalnız "Projelere git"; atanmış işte düğme yok
   const Vp = await mk('viewer'); await login(Vp, 'hmv' + RUN, 'Baslangic123', 'HmvYeni12345');

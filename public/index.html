@@ -2361,15 +2361,16 @@ function pickQuick(v) {
   const q = QM; if (!q) return;
   closeQuick(false);
   const i = issue(q.id); if (!i || !canEdit()) return;
-  const was = i.assignee || null;
+  const was = i.assignee || null, near = DB.ui.view === 'home' ? homeNeighbors(i.id) : [];
   const changed = q.kind === 'pri' ? setPriority(i, +v) : setAssignee(i, v || null);
   if (changed) save();
   render();
   /* Benim işlerim: başkasına (ya da atanmamışa) verilen iş listeden düşer → "Geri al". */
   if (changed && q.kind === 'as' && DB.ui.view === 'home' && was === CU().id && (i.assignee || null) !== was) {
     const u = user(i.assignee);
-    return homeUndo(`${i.key} ${u ? u.name + ' kişisine atandı' : 'atanmamış yapıldı'}; listenden çıktı.`,
+    homeUndo(`${i.key} ${u ? u.name + ' kişisine atandı' : 'atanmamış yapıldı'}; listenden çıktı.`,
       [{ id: i.id, f: 'assignee', was, now: i.assignee || null }]);
+    return homeRefocus(i.id, '[data-qas]', near);
   }
   qmTrig(q)?.focus({ preventScroll: true });
 }
@@ -5579,6 +5580,8 @@ function homeRow(i, c) {
 function renderHome() {
   const me = CU(), today = iso(new Date()), edit = canEdit();
   const B = homeBuckets(me.id, DB.ui.homeProj || '', today);
+  /* kayıtlı süzgeç artık görünmüyor (arşiv, üyelik, silme): Tümü'ye kalıcı düş, proje geri gelince kendiliğinden dönmesin */
+  if (DB.ui.homeProj && !B.proj) { DB.ui.homeProj = ''; save(); }
   const c = { today, edit, blocker: B.blocker };
   const pname = id => projName(id);
 
@@ -5634,23 +5637,42 @@ function renderHome() {
 
 /* İlerlet: işin projesinin durum sırasında bir sonraki. Sprint/rank ataması yok (panodaki sürüklemeden farkı). */
 function homeAdvance(id, to) {
-  const i = issue(id); if (!i || !canEdit()) return;
+  if (!canEdit()) return;
+  const i = issue(id); if (!i) return;
   const nx = nextStatus(i);
-  if (!nx || nx.id !== to) return render();             // bu arada değişmiş: güncel hâli göster
-  const was = i.statusId, me = i.assignee || null;
+  /* bu arada durumlar değişmiş (sonraki durum yok/başka ya da silinmiş): işlem yok, güncel hâli göster */
+  if (!nx || nx.id !== to || !DB.statuses.some(s => s.id === to)) {
+    toast('Durumlar değişti, yeniden deneyin', { warn: true }); return render(); }
+  const was = i.statusId, me = i.assignee || null, near = homeNeighbors(i.id);
   setStatus(i, nx.id); save(); render();
   const now = i.assignee || null, items = [{ id: i.id, f: 'statusId', was, now: i.statusId }];
   /* Otomasyon başkasına atadıysa iş yine listeden düşer: durum önce, atanan sonra geri yazılır. */
   if (now !== me) { items.push({ id: i.id, f: 'assignee', was: me, now });
     const u = user(now);
-    return homeUndo(`${i.key} ${stat(i.statusId).name} durumuna geçti, ${u ? u.name + ' kişisine atandı' : 'ataması kaldırıldı'}; listenden çıktı.`, items); }
-  if (stat(i.statusId).cat === 'done') return homeUndo(`${i.key} ${stat(i.statusId).name} olarak işaretlendi.`, items);
-  $(`[data-hmadv="${CSS.escape(i.id)}"]`)?.focus({ preventScroll: true });
+    homeUndo(`${i.key} ${stat(i.statusId).name} durumuna geçti, ${u ? u.name + ' kişisine atandı' : 'ataması kaldırıldı'}; listenden çıktı.`, items); }
+  else if (stat(i.statusId).cat === 'done') homeUndo(`${i.key} ${stat(i.statusId).name} olarak işaretlendi.`, items);
+  homeRefocus(i.id, '[data-hmadv]', near);
 }
-/* Listeden düşen iş için "Geri al". Önceki değer kapanışta tutulur; iş hâlâ varsa ve alan hâlâ bizim
-   yazdığımız değerse geri yazılır (setStatus/setAssignee: geçmiş + otomasyon), değilse uyarı. */
+/* Satır listeden düşerken odak BODY'ye kaçmasın: aynı gruptaki sonraki, yoksa önceki satırın id'si (render'dan önce). */
+function homeNeighbors(id) {
+  const r = $(`[data-hmrow="${CSS.escape(id)}"]`);
+  const rows = r ? [...r.parentElement.children].filter(x => x.dataset.hmrow) : [], k = rows.indexOf(r);
+  return k < 0 ? [] : [rows[k + 1], rows[k - 1]].filter(Boolean).map(x => x.dataset.hmrow);
+}
+/* render'dan sonra: satır duruyorsa kendi düğmesi; yoksa komşu satırın aynı türden düğmesi; o da yoksa "Geri al". */
+function homeRefocus(id, sel, near) {
+  const at = rid => $(`[data-hmrow="${CSS.escape(rid)}"] ${sel}`);
+  const el = at(id) || near.map(at).find(Boolean) || $('#toast.on .toast-undo');
+  el?.focus({ preventScroll: true });
+}
+/* Listeden düşen iş için "Geri al". Önceki değer kapanışta tutulur. Denetimden önce bekleyen değişiklikler
+   gönderilir ve başkalarınınki çekilir; iş hâlâ varsa ve alan hâlâ bizim yazdığımız değerse geri yazılır
+   (setStatus/setAssignee: geçmiş + otomasyon), değilse uyarı. Bu sırada ikinci tıklama yok sayılır. */
 function homeUndo(msg, items) {
-  toast(msg, { label: 'Geri al', fn: () => {
+  let busy = false;
+  toast(msg, { label: 'Geri al', fn: async () => {
+    if (busy) return; busy = true;
+    try { await flushAll(); await poll(); } catch { /* ağ hatası: eldeki en güncel hâlle denetle */ }
     const head = items[0], i0 = issue(head.id);
     if (!canEdit() || !i0 || (i0[head.f] || null) !== (head.now || null))
       return toast(`${i0 ? i0.key : 'İş'} bu arada değişti, geri alınamadı.`, { warn: true });
@@ -6446,6 +6468,7 @@ const statsOf = pid => DB.statuses.filter(s => s.projectId === pid).sort((a, b) 
 const doneStatus = (pid = DB.ui.project) => statsOf(pid).find(s => s.cat === 'done');
 /* undo: ana ekrandan çağrılınca "Geri al" düğmeli bildirim (iş ve tamamlanan alt işleri geri döner). */
 function completeIssue(id, undo = false) {
+  if (!canEdit()) return;
   const i = issue(id); if (!i) return;
   const ds = doneStatus(i.projectId);
   if (!ds) return toast('Bu projede "Bitti" kategorisinde durum yok');
@@ -6457,20 +6480,28 @@ function completeIssue(id, undo = false) {
   if ((i.assignee || null) !== as0) prev.push({ id: i.id, f: 'assignee', was: as0, now: i.assignee || null });
   kidsOf(i.id).forEach(k => { if (stat(k.statusId).cat !== 'done') {
     prev.push({ id: k.id, f: 'statusId', was: k.statusId, now: ds.id, df: true }); k.doneFrom = k.statusId; setStatus(k, ds.id); } });
+  const near = undo ? homeNeighbors(i.id) : [];
   save(); render();
-  if (undo) homeUndo(`${i.key} ${ds.name} olarak işaretlendi.`, prev); else toast(i.key + ' tamamlandı');
+  if (!undo) return toast(i.key + ' tamamlandı');
+  homeUndo(`${i.key} ${ds.name} olarak işaretlendi.`, prev);
+  homeRefocus(i.id, '[data-complete]', near);
 }
 function reopenIssue(id) {
   const i = issue(id); if (!i) return;
   const first = statsOf(i.projectId)[0];
-  const back = i.doneFrom && stat(i.doneFrom) ? i.doneFrom : first?.id;
+  const back = doneFromOk(i) || first?.id;
   if (!back) return;
   delete i.doneFrom;
   setStatus(i, back);
   save(); render(); toast(i.key + ' yeniden açıldı');
 }
 /* Bir kolonun kartları: tamamlananlar, tamamlandığı kolonun altında kalır. */
-const colOf = i => (i.doneFrom && stat(i.doneFrom)) ? i.doneFrom : i.statusId;
+const colOf = i => doneFromOk(i) || i.statusId;
+/* doneFrom yalnız hâlâ var olan ve işin kendi projesine ait bir durumsa geçerli (stat() bulamayınca yedek nesne döndürür). */
+function doneFromOk(i) {
+  const s = i.doneFrom && DB.statuses.find(x => x.id === i.doneFrom);
+  return s && s.projectId === i.projectId ? s.id : null;
+}
 
 /* ============================================================
    ALT İŞ PANELİ  (tarayıcı pop-up'ı yok)
