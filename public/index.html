@@ -962,6 +962,149 @@ body{background:var(--paper)}
 .online .navgroup{color:var(--rail-ink2)}
 .onl::after{box-shadow:0 0 0 2px var(--rail-bg)}
 .rail .av{box-shadow:none}
+
+/* ==========================================================================
+   Kart v5 — modern pano kartı ve 4 seviyeli öncelik (docs/tasarim/kart, issue #8)
+   ========================================================================== */
+:root{
+  --meta:#64748B;
+  --late:#B91C1C; --today:#B45309; --ok:#15803D; --over:#B45309;
+  --p-acil:#B91C1C;   --p-acil-bg:#FEF2F2;   --p-acil-ln:#FECACA;
+  --p-yuksek:#C2410C; --p-yuksek-bg:#FFF7ED; --p-yuksek-ln:#FED7AA;
+  --p-orta:#41587A;   --p-orta-bg:#EEF2F7;   --p-orta-ln:#D3DCE8;
+  --p-dusuk:#64748B;  --p-dusuk-bg:#F8FAFC;  --p-dusuk-ln:#E5E9F0;
+  --c-track:#E6ECF4;
+}
+:root[data-theme="dark"]{
+  --meta:#8494AE; --late:#F87171; --today:#FBBF24; --ok:#34D399; --over:#FBBF24;
+  --p-acil:#FCA5A5;   --p-acil-bg:rgba(248,113,113,.14);  --p-acil-ln:rgba(248,113,113,.30);
+  --p-yuksek:#FDBA74; --p-yuksek-bg:rgba(251,146,60,.14); --p-yuksek-ln:rgba(251,146,60,.30);
+  --p-orta:#B4C2D8;   --p-orta-bg:rgba(148,163,184,.14);  --p-orta-ln:rgba(148,163,184,.28);
+  --p-dusuk:#8A97AB;  --p-dusuk-bg:rgba(148,163,184,.06); --p-dusuk-ln:rgba(148,163,184,.18);
+  --c-track:#1E2B45;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --meta:#8494AE; --late:#F87171; --today:#FBBF24; --ok:#34D399; --over:#FBBF24;
+    --p-acil:#FCA5A5;   --p-acil-bg:rgba(248,113,113,.14);  --p-acil-ln:rgba(248,113,113,.30);
+    --p-yuksek:#FDBA74; --p-yuksek-bg:rgba(251,146,60,.14); --p-yuksek-ln:rgba(251,146,60,.30);
+    --p-orta:#B4C2D8;   --p-orta-bg:rgba(148,163,184,.14);  --p-orta-ln:rgba(148,163,184,.28);
+    --p-dusuk:#8A97AB;  --p-dusuk-bg:rgba(148,163,184,.06); --p-dusuk-ln:rgba(148,163,184,.18);
+    --c-track:#1E2B45;
+  }
+}
+svg.i{width:14px;height:14px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---- kart ---- */
+.card{position:relative;padding:12px 12px 10px;border-radius:12px}
+.card .sum{margin:0 0 8px;font-size:13.5px;font-weight:600;line-height:1.4;letter-spacing:-.005em;color:var(--ink);
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;padding-right:4px}
+.card.is-done{opacity:1;background:color-mix(in srgb,var(--surface) 70%,var(--surface2))}
+.card.is-done .sum{text-decoration:none;color:var(--meta);font-weight:550}
+.card .epic-tag{margin-bottom:8px}
+
+.c-tags{display:flex;gap:4px;margin:0 0 8px;flex-wrap:wrap;min-width:0}
+.c-tag{font-size:10.5px;font-weight:550;color:var(--ink2);background:var(--surface3);border-radius:6px;padding:2px 7px;
+  display:inline-flex;align-items:center;gap:5px;max-width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.c-tag i{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0}
+
+.c-meta{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--meta);flex-wrap:wrap;row-gap:4px;min-height:24px;white-space:nowrap}
+.c-sep{width:3px;height:3px;border-radius:50%;background:var(--line2);flex-shrink:0}
+.c-due{display:inline-flex;align-items:center;gap:4px;font-weight:500}
+.c-due.d-late{color:var(--late);font-weight:650}
+.c-due.d-today{color:var(--today);font-weight:650}
+.c-due.d-ok{color:var(--ok);font-weight:600}
+.c-est{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10.5px;margin-left:auto}
+.c-est .b{width:30px;height:4px;border-radius:4px;background:var(--c-track);overflow:hidden}
+.c-est .b i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.c-est.e-over{color:var(--over)} .c-est.e-over .b i{background:var(--over)}
+.c-est.e-full .b i{background:var(--ok)}
+
+/* öncelik rozeti: kartta ikon + metin (tıklanabilir) */
+.prio{position:relative;display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 7px 0 5px;border-radius:7px;
+  font-size:11px;font-weight:650;border:1px solid transparent;font-family:inherit;flex-shrink:0;line-height:1}
+button.prio{cursor:pointer}
+button.prio::after{content:"";position:absolute;inset:-7px -3px}
+button.prio:hover{filter:brightness(.97)}
+.prio svg.i{width:13px;height:13px;stroke-width:2.2}
+.prio.acil{color:var(--p-acil);background:var(--p-acil-bg);border-color:var(--p-acil-ln)}
+.prio.yuksek{color:var(--p-yuksek);background:var(--p-yuksek-bg);border-color:var(--p-yuksek-ln)}
+.prio.orta{color:var(--p-orta);background:var(--p-orta-bg);border-color:var(--p-orta-ln)}
+.prio.dusuk{color:var(--p-dusuk);background:var(--p-dusuk-bg);border-color:var(--p-dusuk-ln)}
+.prio.open{box-shadow:var(--ring)}
+/* dar alanlar: yalnız ikon */
+.pr{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:6px;border:1px solid transparent;flex-shrink:0}
+.pr svg.i{width:13px;height:13px;stroke-width:2.2}
+.pr.acil{color:var(--p-acil);background:var(--p-acil-bg);border-color:var(--p-acil-ln)}
+.pr.yuksek{color:var(--p-yuksek);background:var(--p-yuksek-bg);border-color:var(--p-yuksek-ln)}
+.pr.orta{color:var(--p-orta);background:var(--p-orta-bg);border-color:var(--p-orta-ln)}
+.pr.dusuk{color:var(--p-dusuk);background:var(--p-dusuk-bg);border-color:var(--p-dusuk-ln)}
+
+/* alt satır */
+.c-foot{display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
+.c-foot .ti{width:18px;height:18px;border-radius:5px;font-size:10px}
+.c-key{font-size:11px;font-weight:500;color:var(--meta)}
+.c-sub{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10.5px;color:var(--meta);
+  padding:1px 6px;border-radius:6px;background:var(--surface2);border:1px solid var(--line);cursor:pointer}
+.c-sub svg.i{width:12px;height:12px}
+.c-av{position:relative;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;
+  font-size:9.5px;letter-spacing:.02em;flex-shrink:0;border:0;padding:0;font-family:var(--sans);box-shadow:0 0 0 2px var(--surface)}
+button.c-av{cursor:pointer}
+button.c-av::after{content:"";position:absolute;inset:-6px}
+.c-av.none{background:transparent;color:var(--meta);border:1.5px dashed var(--line2);box-shadow:none}
+.c-av.none svg.i{width:12px;height:12px}
+.c-av.open{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent)}
+
+/* tamamla: masaüstünde üzerine gelince, dokunmatik/dar ekranda her zaman */
+.c-tick{position:absolute;top:9px;right:9px;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--line2);
+  background:var(--surface);display:grid;place-items:center;color:var(--meta);padding:0;opacity:0;transition:opacity .12s,color .12s,border-color .12s}
+.c-tick svg.i{width:12px;height:12px;stroke-width:2.2}
+.c-tick:hover{color:var(--ok);border-color:var(--ok)}
+.c-tick.on{background:var(--ok);border-color:var(--ok);color:#fff}
+.card:hover .c-tick,.card:focus-within .c-tick{opacity:1}
+.card:hover .sum,.card:focus-within .sum{padding-right:30px}
+@media (hover:none),(max-width:900px){
+  .c-tick{opacity:1}
+  .card .sum{padding-right:30px}
+}
+
+/* ---- hızlı menüler ---- */
+.qm{position:fixed;z-index:120;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);
+  padding:6px;width:220px;max-height:min(440px,calc(100vh - 16px));overflow:auto;color:var(--ink)}
+.qm.as{width:260px}
+.qm-h{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta);padding:6px 8px}
+.qm-opt{display:flex;align-items:center;gap:9px;width:100%;min-height:36px;padding:4px 8px;border-radius:8px;font-size:13px;
+  color:var(--ink);text-align:left;background:none;border:0}
+.qm-opt:hover,.qm-opt:focus-visible{background:var(--surface3);outline:none}
+.qm-l{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.qm-sub{display:block;font-size:11px;color:var(--meta);font-weight:400}
+.qm-chk{color:var(--accent);display:inline-flex}
+.qm-chk svg.i{width:16px;height:16px;stroke-width:2.2}
+.qm .kbd{font-family:var(--mono);font-size:10.5px;color:var(--meta);border:1px solid var(--line);border-radius:5px;padding:0 5px;line-height:17px}
+.qm-ic.prio{padding:0;width:22px;height:22px;justify-content:center}
+.qm .c-av{width:26px;height:26px;font-size:10px;box-shadow:none}
+.qm hr{border:0;border-top:1px solid var(--line);margin:6px 2px}
+.qm-q{display:flex;align-items:center;gap:8px;margin:2px 2px 6px;height:36px;padding:0 10px;border-radius:9px;
+  border:1px solid var(--line2);background:var(--surface);color:var(--meta)}
+.qm-q:focus-within{border-color:var(--accent);box-shadow:var(--ring)}
+.qm-in{flex:1;min-width:0;border:0;outline:none;background:none;font-size:13px;color:var(--ink);padding:0}
+.qm-empty{padding:10px 8px;font-size:12.5px;color:var(--meta)}
+.qm-grab{width:38px;height:4px;border-radius:4px;background:var(--line2);margin:2px auto 10px}
+.qm-ttl{font-size:14px;font-weight:700;padding:0 6px 6px}
+.qm-ttl small{display:block;font-weight:500;font-size:12px;color:var(--meta);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qm-dim{position:fixed;inset:0;z-index:119;background:rgba(11,27,51,.38)}
+:root[data-theme="dark"] .qm-dim{background:rgba(0,0,0,.55)}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .qm-dim{background:rgba(0,0,0,.55)} }
+.qm-wrap.sheet .qm{left:0;right:0;bottom:0;top:auto;width:auto;max-height:80vh;border-radius:18px 18px 0 0;
+  border-bottom:0;padding:8px 12px calc(16px + env(safe-area-inset-bottom))}
+.qm-wrap.sheet .qm-opt{min-height:48px;font-size:14px}
+.qm-wrap.sheet .kbd{display:none}
+@media (max-width:640px){
+  .card .sum{font-size:14px}
+  .prio{height:26px;font-size:11.5px}
+  .c-av{width:28px;height:28px;font-size:10.5px}
+}
+@media (prefers-reduced-motion:reduce){.c-tick{transition:none}}
 </style>
 </head>
 <body>
@@ -1243,6 +1386,7 @@ function tryRerender() {
   if (MODAL_STALE && OPEN_ISSUE && !typing && issue(OPEN_ISSUE)) { MODAL_STALE = false; try { openIssue(OPEN_ISSUE); } catch (e) { } }
   const busy = document.getElementById('scrim')?.classList.contains('on')
     || (typeof DRAG !== 'undefined' && DRAG)
+    || (typeof QM !== 'undefined' && QM)
     || (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)
         && document.activeElement.id !== 'projSel');
   if (busy) return;
@@ -1735,10 +1879,58 @@ function logHist(i, field, from, to) {
 const ISSUE_TYPES = () => [...(MOD('epic') ? ['epic'] : []), ...(DB.cfg?.types || []).map(t => t.id)];
 let TYPE = { task: ['G', 'task', 'Görev', '#3E7BC4'], bug: ['H', 'bug', 'Hata', '#C0392B'],
              epic: ['E', 'epic', 'Epik', '#6B4FBB'], sub: ['↳', 'sub', 'Alt görev', '#7B8794'] };
-const PRI  = { 1: ['⇈', 'Kritik'], 2: ['↑', 'Yüksek'], 3: ['=', 'Orta'], 4: ['↓', 'Düşük'], 5: ['⇊', 'Önemsiz'] };
+/* Öncelik: veri 1–5 olarak kalır (eski kayıtlar), gösterim 4 seviyedir.
+   lvl(): 1 Acil, 2 Yüksek, 3 Orta, 4 ve 5 Düşük; boş/geçersiz → Orta. Yeni yazımlar yalnız 1–4. */
+const PRI  = { 1: ['acil', 'Acil'], 2: ['yuksek', 'Yüksek'], 3: ['orta', 'Orta'], 4: ['dusuk', 'Düşük'] };
+const LVLS = [1, 2, 3, 4];
+const lvl  = p => { const n = Number(p); return n === 1 || n === 2 || n === 3 ? n : n === 4 || n === 5 ? 4 : 3; };
+const priName = p => PRI[lvl(p)][1];
+/* Seçici seçenekleri: seçili değer her zaman lvl(eski). */
+const priOpts = cur => LVLS.map(p => `<option value="${p}" ${lvl(cur) === p ? 'selected' : ''}>${PRI[p][1]}</option>`).join('');
+/* Satır içi çizgi ikonlar (docs/tasarim/kart). */
+const SVG = {
+  acil: '<path d="m7 11 5-5 5 5"/><path d="m7 18 5-5 5 5"/>',
+  yuksek: '<path d="m6 15 6-6 6 6"/>',
+  orta: '<path d="M6 9h12M6 15h12"/>',
+  dusuk: '<path d="m6 9 6 6 6-6"/>',
+  cal: '<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M16 3v4M8 3v4M3.5 10h17"/>',
+  alert: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16.2v.3"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  checkc: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
+  subs: '<path d="M5 4v12a2 2 0 0 0 2 2h3"/><path d="M5 9h5"/><rect x="12" y="6" width="8" height="5" rx="1.5"/><rect x="12" y="15" width="8" height="5" rx="1.5"/>',
+  userplus: '<circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 11.5-4.2"/><path d="M19 14v6M16 17h6"/>',
+  userx: '<circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 11.5-4.2"/><path d="m17 15 4 4M21 15l-4 4"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+};
+const ic = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${SVG[n] || ''}</svg>`;
 const tIcon = t => { const x = TYPE[t] || ['?', t, t, '#7B8794'];
   return `<span class="ti" style="background:${x[3] || '#7B8794'}" title="${esc(x[2])}">${esc(x[0])}</span>`; };
-const pIcon = p => `<span class="pr p${p}" title="${PRI[p][1]}">${PRI[p][0]}</span>`;
+/* Dar alanlar (backlog satırı, liste, ana sayfa): yalnız ikon + title/aria-label. Tanımsız değerde çökmez. */
+const pIcon = p => { const [c, n] = PRI[lvl(p)];
+  return `<span class="pr ${c}" role="img" title="Öncelik: ${n}" aria-label="Öncelik: ${n}">${ic(c)}</span>`; };
+/* Kart rozeti: ikon + metin; düzenleyebilen için hızlı menü düğmesi. */
+const priBadge = (i, edit) => { const [c, n] = PRI[lvl(i.priority)];
+  return edit
+    ? `<button type="button" class="prio ${c}" data-qpri="${esc(i.id)}" aria-haspopup="menu" title="Öncelik: ${n}" aria-label="Öncelik: ${n} (değiştir)">${ic(c)}${n}</button>`
+    : `<span class="prio ${c}" title="Öncelik: ${n}">${ic(c)}${n}</span>`; };
+/* Öncelik ve atanan değişimi tek kapıdan: aynı seviye/kişi ise hiçbir şey yazılmaz,
+   geçmişe adla yazılır; atanan değişince "Atanan değişince" otomasyonu çalışır. */
+function setPriority(i, p) {
+  p = lvl(p);
+  if (lvl(i.priority) === p) return false;
+  logHist(i, 'Öncelik', priName(i.priority), PRI[p][1]);
+  i.priority = p;
+  return true;
+}
+function setAssignee(i, id) {
+  id = id || null;
+  if ((i.assignee || null) === id) return false;
+  logHist(i, 'Atanan', user(i.assignee)?.name || '—', user(id)?.name || '—');
+  i.assignee = id;
+  runRules(i, 'assigned');
+  return true;
+}
 const safeColor = c => /^#[0-9a-f]{3,8}$/i.test(String(c || '')) ? c : '#64748B';
 const avat  = (id, lg) => { const u = user(id); return u
   ? `<span class="av ${lg ? 'lg' : ''}" style="background:${safeColor(u.color)}" title="${esc(u.name)}">${esc(u.ini || '?')}</span>`
@@ -1797,53 +1989,174 @@ function toolbarBoard() {
     ${canEdit() ? '<button class="btn pri" id="newIssue">+ İş oluştur</button>' : ''}`;
 }
 
+/* Kart v5 (docs/tasarim/kart): başlık · etiketler · tek satır meta (öncelik · bitiş · ilerleme) ·
+   alt satır (tip, anahtar, alt iş, puan, kişi). Başlangıç, iş günü ve faturalama iş detayında. */
+const TAG_COLORS = ['#2563EB', '#7C3AED', '#0F766E', '#B45309', '#BE185D', '#15803D', '#0891B2', '#9333EA'];
+const tagColor = t => { let h = 0; for (const ch of String(t)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return TAG_COLORS[h % TAG_COLORS.length]; };
+function cardDue(i, done) {
+  if (done) return `<span class="c-due d-ok">${ic('checkc')}Tamamlandı</span>`;
+  if (!i.due) return '';
+  if (planState(i) === 'late') return `<span class="c-due d-late" title="Bitiş ${fmtD(i.due)}">${ic('alert')}${workdaysBetween(i.due, TODAY)} gün gecikti</span>`;
+  if (i.due === TODAY) return `<span class="c-due d-today" title="Bitiş bugün">${ic('clock')}Bugün</span>`;
+  return `<span class="c-due" title="Bitiş">${ic('cal')}${fmtD(i.due)}</span>`;
+}
+function cardEst(i) {
+  const est = rollEstimate(i), sp = rollSpent(i);
+  /* Kartta kısa saat gösterimi (6h/8h); ayrıntı title'da ve iş detayında. */
+  const hr = h => String(Math.round(h * 10) / 10).replace('.', ',') + 'h';
+  if (!est) return sp ? `<span class="c-est" title="Harcanan ${fmtDur(sp)}">${hr(sp)}</span>` : '';
+  const pct = Math.min(100, Math.round(sp / est * 100));
+  const cls = sp > est ? 'e-over' : sp === est ? 'e-full' : '';
+  return `<span class="c-est ${cls}" title="Harcanan ${fmtDur(sp)} / tahmin ${fmtDur(est)} · kalan ${fmtDur(rollRemaining(i))}"><span class="b"><i style="width:${pct}%"></i></span>${hr(sp)}/${hr(est)}</span>`;
+}
+function cardAv(i, edit) {
+  const u = user(i.assignee);
+  const lab = u ? 'Atanan: ' + esc(u.name) : 'Atanmamış';
+  const st = u ? ` style="background:${safeColor(u.color)}"` : '';
+  const inner = u ? esc(u.ini || '?') : ic('userplus');
+  return edit
+    ? `<button type="button" class="c-av ${u ? '' : 'none'}"${st} data-qas="${esc(i.id)}" aria-haspopup="menu" title="${lab}" aria-label="${u ? lab : 'Atanmamış (kişi ata)'} (değiştir)">${inner}</button>`
+    : `<span class="c-av ${u ? '' : 'none'}"${st} role="img" title="${lab}" aria-label="${lab}">${inner}</span>`;
+}
 function card(i) {
   const ep = MOD('epic') && i.epicId && issue(i.epicId);
-  const prog = rollEstimate(i) ? Math.min(100, Math.round(rollSpent(i) / rollEstimate(i) * 100)) : 0;
-  const over = rollEstimate(i) && rollSpent(i) > rollEstimate(i);
-  const st = planState(i);
-  const nd = planDays(i);
-  const dateStr = (i.start || i.due)
-    ? `${i.start ? fmtD(i.start) : '?'} → ${i.due ? fmtD(i.due) : '?'}`
-    : '';
-  /* Kalan gün: bitiş tarihine kaç iş günü var (geçmişse eksi). */
-  const leftD = i.due ? (i.due >= TODAY ? workdaysBetween(TODAY, i.due) : -workdaysBetween(i.due, TODAY)) : null;
-
-  return `<article class="card ${stat(i.statusId).cat === 'done' ? 'is-done' : ''}" draggable="${canEdit()}" data-id="${i.id}">
+  const done = stat(i.statusId).cat === 'done';
+  const edit = canEdit();
+  const kids = kidsOf(i.id), kd = kids.filter(k => stat(k.statusId).cat === 'done').length;
+  const tags = i.labels || [];
+  /* İlerleme sağa yaslanır: dar kolonda alt satıra geçse de sarkan ayraç kalmaz. */
+  const meta = [priBadge(i, edit), cardDue(i, done)].filter(Boolean);
+  return `<article class="card ${done ? 'is-done' : ''}" draggable="${edit}" data-id="${i.id}">
+    ${edit ? (done
+      ? `<button type="button" class="c-tick on" data-reopen="${i.id}" title="Yeniden aç" aria-label="Yeniden aç">${ic('check')}</button>`
+      : `<button type="button" class="c-tick" data-complete="${i.id}" title="Tamamla" aria-label="Tamamla">${ic('check')}</button>`) : ''}
     ${ep ? `<span class="epic-tag" style="background:${ep.color || '#6B4FBB'}">${esc(ep.summary)}</span>` : ''}
     <p class="sum">${esc(i.summary)}</p>
-
-    ${dateStr ? `<div class="c-plan ${st}">
-      <span class="c-dates">${dateStr}</span>
-      ${nd ? `<span class="c-days">${nd} ig</span>` : ''}
-      ${st === 'late' ? `<span class="c-late">${Math.abs(leftD)} gün gecikme</span>`
-        : st === 'active' && leftD != null && leftD <= 3 ? `<span class="c-soon">${leftD === 0 ? 'bugün' : leftD + ' gün kaldı'}</span>` : ''}
-    </div>` : ''}
-
-    ${kidsOf(i.id).length ? `<div class="c-subs" data-open="${i.id}">
-      <span>${kidsOf(i.id).filter(k => stat(k.statusId).cat === 'done').length}/${kidsOf(i.id).length} alt iş</span>
-      <span class="c-subbar"><i style="width:${kidsOf(i.id).filter(k => stat(k.statusId).cat === 'done').length / kidsOf(i.id).length * 100}%"></i></span>
-    </div>` : ''}
-    ${rollEstimate(i) ? `<div class="c-est">
-      <span class="c-est-l">Tahmin <b class="num">${fmtDur(rollEstimate(i))}</b></span>
-      <span class="c-est-r ${over ? 'bad' : ''}">${rollSpent(i) ? `${fmtDur(rollSpent(i))} harcandı` : 'başlanmadı'}</span>
-    </div>
-    <div class="bar" title="${fmtDur(rollSpent(i))} / ${fmtDur(rollEstimate(i))} · kalan ${fmtDur(rollRemaining(i))}">
-      <i style="width:${prog}%;${over ? 'background:var(--risk)' : ''}"></i></div>` : ''}
-
-    <div class="meta">
-      ${canEdit() ? (stat(i.statusId).cat === 'done'
-        ? `<button class="cbox on" data-reopen="${i.id}" title="Yeniden aç">✓</button>`
-        : `<button class="cbox" data-complete="${i.id}" title="Görevi tamamla"></button>`) : ''}
-      ${tIcon(i.type)}<span class="k">${i.key}</span>${pIcon(i.priority)}
+    ${tags.length ? `<div class="c-tags">${tags.slice(0, 2).map(t => `<span class="c-tag"><i style="background:${tagColor(t)}"></i>${esc(t)}</span>`).join('')}${
+      tags.length > 2 ? `<span class="c-tag" title="${esc(tags.slice(2).join(', '))}">+${tags.length - 2}</span>` : ''}</div>` : ''}
+    <div class="c-meta">${meta.join('<span class="c-sep"></span>')}${cardEst(i)}</div>
+    <div class="c-foot">
+      ${tIcon(i.type)}<span class="k c-key">${i.key}</span>
+      ${kids.length ? `<span class="c-sub" data-open="${i.id}" title="Alt işler: ${kd}/${kids.length} tamamlandı">${ic('subs')}${kd}/${kids.length}</span>` : ''}
       ${MOD('points') && i.points != null ? `<span class="chip pt">${i.points}</span>` : ''}
       <span class="spacer"></span>
-      ${billOf(i) === 'Faturalanmayacak' ? '<span class="chip lbl" title="Faturalanmayacak">F✗</span>' : ''}
-      ${!i.estimate && i.spent ? `<span class="k" style="color:var(--ink3)" title="Harcanan">${fmtDur(i.spent)}</span>` : ''}
-      ${avat(i.assignee)}
+      ${cardAv(i, edit)}
     </div>
   </article>`;
 }
+
+/* ---- karttan hızlı düzenleme: öncelik rozeti ve avatar ----
+   Menü body'ye eklenir: masaüstünde düğmeye bağlı position:fixed, ≤900px'te alt sayfa.
+   Esc ve dışarı tıklama kapatır (kartı açmaz); açıkken tryRerender ertelenir. */
+let QM = null;
+const qmMobile = () => matchMedia('(max-width:900px)').matches;
+const qmKey = v => String(v ?? '').toLocaleLowerCase('tr').replace(/ı/g, 'i');
+const qmTrig = q => document.querySelector(`[${q.kind === 'pri' ? 'data-qpri' : 'data-qas'}="${CSS.escape(q.id)}"]`);
+function qmPriList(i) {
+  const cur = lvl(i.priority);
+  return LVLS.map(p => { const [c, n] = PRI[p];
+    return `<button type="button" class="qm-opt" role="menuitemradio" aria-checked="${cur === p}" data-qv="${p}">
+      <span class="qm-ic prio ${c}">${ic(c)}</span><span class="qm-l">${n}</span>
+      ${cur === p ? `<span class="qm-chk">${ic('check')}</span>` : ''}<span class="kbd">${p}</span></button>`; }).join('');
+}
+function qmAsList(i, q = '') {
+  const me = CU(), ppl = projUsers(), k = qmKey(q).trim();
+  const hit = txt => !k || qmKey(txt).includes(k);
+  const openN = id => DB.issues.filter(x => x.assignee === id && x.type !== 'epic' && stat(x.statusId).cat !== 'done').length;
+  const av = u => `<span class="c-av" style="background:${safeColor(u.color)}">${esc(u.ini || '?')}</span>`;
+  const row = (v, icon, label, sub) => `<button type="button" class="qm-opt" role="menuitemradio" aria-checked="${(i.assignee || '') === v}" data-qv="${esc(v)}">
+      ${icon}<span class="qm-l">${label}${sub ? `<span class="qm-sub">${sub}</span>` : ''}</span>
+      ${(i.assignee || '') === v ? `<span class="qm-chk">${ic('check')}</span>` : ''}</button>`;
+  const out = [];
+  const meIn = me && ppl.some(u => u.id === me.id);
+  if (meIn && (hit(me.name) || hit('Bana ata'))) out.push(row(me.id, av(me), 'Bana ata', `${esc(me.name)} · ${openN(me.id)} açık iş`));
+  ppl.filter(u => !(meIn && u.id === me.id) && hit(u.name))
+    .forEach(u => out.push(row(u.id, av(u), esc(u.name), `${openN(u.id)} açık iş`)));
+  if (hit('Atanmamış')) out.push((out.length ? '<hr>' : '') + row('', `<span class="c-av none">${ic('userx')}</span>`, 'Atanmamış', ''));
+  return out.join('') || '<div class="qm-empty">Eşleşen kişi yok</div>';
+}
+function openQuick(kind, btn) {
+  closeQuick(false);
+  const id = kind === 'pri' ? btn.dataset.qpri : btn.dataset.qas;
+  const i = issue(id); if (!i || !canEdit()) return;
+  const mob = qmMobile();
+  const title = kind === 'pri' ? 'Öncelik' : 'Atanan kişi';
+  const search = kind === 'as' && projUsers().length > 8;
+  const wrap = document.createElement('div');
+  wrap.className = 'qm-wrap' + (mob ? ' sheet' : '');
+  wrap.innerHTML = `${mob ? '<div class="qm-dim"></div>' : ''}
+    <div class="qm ${kind}" role="menu" aria-label="${title}: ${esc(i.key)}">
+      ${mob ? `<div class="qm-grab"></div><div class="qm-ttl">${title}<small>${esc(i.summary)}</small></div>` : `<div class="qm-h">${title}</div>`}
+      ${search ? `<label class="qm-q">${ic('search')}<input class="qm-in" type="search" placeholder="Kişi ara…" aria-label="Kişi ara" autocomplete="off"></label>` : ''}
+      <div class="qm-list">${kind === 'pri' ? qmPriList(i) : qmAsList(i)}</div>
+    </div>`;
+  document.body.appendChild(wrap);
+  QM = { kind, id, wrap, el: wrap.querySelector('.qm'), mob };
+  btn.classList.add('open'); btn.setAttribute('aria-expanded', 'true');
+  wrap.addEventListener('click', e => {
+    const o = e.target.closest('[data-qv]');
+    if (o) { e.stopPropagation(); pickQuick(o.dataset.qv); }
+  });
+  const inp = wrap.querySelector('.qm-in');
+  if (inp) inp.oninput = () => { wrap.querySelector('.qm-list').innerHTML = qmAsList(i, inp.value); };
+  if (!mob) {
+    const m = QM.el, r = btn.getBoundingClientRect(), w = m.offsetWidth, h = m.offsetHeight;
+    let left = kind === 'as' ? r.right - w : r.left;
+    left = Math.max(8, Math.min(left, innerWidth - w - 8));
+    let top = r.bottom + 6;
+    if (top + h > innerHeight - 8) top = Math.max(8, r.top - h - 6);
+    m.style.left = left + 'px'; m.style.top = top + 'px';
+  }
+  (inp || QM.el.querySelector('.qm-opt[aria-checked="true"]') || QM.el.querySelector('.qm-opt'))?.focus({ preventScroll: true });
+}
+function closeQuick(refocus = true) {
+  if (!QM) return;
+  const q = QM; QM = null;
+  q.wrap.remove();
+  const b = qmTrig(q);
+  if (b) { b.classList.remove('open'); b.removeAttribute('aria-expanded'); if (refocus) b.focus({ preventScroll: true }); }
+  if (RERENDER) setTimeout(tryRerender, 0);
+}
+function pickQuick(v) {
+  const q = QM; if (!q) return;
+  closeQuick(false);
+  const i = issue(q.id); if (!i || !canEdit()) return;
+  const changed = q.kind === 'pri' ? setPriority(i, +v) : setAssignee(i, v || null);
+  if (changed) save();
+  render();
+  qmTrig(q)?.focus({ preventScroll: true });
+}
+/* Menü açıkken: dışarı tıklama yalnızca menüyü kapatır; klavye menüye aittir. */
+document.addEventListener('click', e => {
+  if (!QM || e.target.closest?.('.qm')) return;
+  const tr = e.target.closest?.('[data-qpri],[data-qas]');
+  const same = tr && qmTrig(QM) === tr;
+  closeQuick(false);
+  if (tr && !same) return;                   // başka bir rozet/avatar: onun menüsü açılsın
+  e.stopPropagation(); e.preventDefault();
+}, true);
+addEventListener('keydown', e => {
+  if (!QM) return;
+  const inMenu = !!e.target.closest?.('.qm');
+  const opts = [...QM.el.querySelectorAll('.qm-opt')];
+  const idx = opts.indexOf(document.activeElement);
+  const stop = () => { e.preventDefault(); e.stopPropagation(); };
+  if (e.key === 'Escape') { stop(); return closeQuick(true); }
+  if (e.key === 'Tab') { e.stopPropagation(); return closeQuick(true); }
+  const nav = ['ArrowDown', 'ArrowUp'].concat(e.target.classList?.contains('qm-in') ? [] : ['Home', 'End']);
+  if (nav.includes(e.key) && opts.length) {
+    stop();
+    const n = opts.length;
+    const k = e.key === 'Home' ? 0 : e.key === 'End' ? n - 1
+      : idx < 0 ? (e.key === 'ArrowDown' ? 0 : n - 1) : (idx + (e.key === 'ArrowDown' ? 1 : -1) + n) % n;
+    return opts[k].focus();
+  }
+  if (QM.kind === 'pri' && /^[1-4]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) { stop(); return pickQuick(+e.key); }
+  if (e.key === 'Enter' && e.target.classList?.contains('qm-in')) { stop(); const o = opts[0]; if (o) pickQuick(o.dataset.qv); return; }
+  if (!inMenu) e.stopPropagation();          // menü açıkken genel kısayollar çalışmasın
+}, true);
+addEventListener('resize', () => { if (QM && !QM.mob) closeQuick(false); });
+addEventListener('scroll', e => { if (QM && !QM.mob && !e.target.closest?.('.qm')) closeQuick(false); }, true);
 
 function columns(list) {
   return `<div class="board">${stats().map(s => {
@@ -1884,10 +2197,10 @@ function renderBoard() {
     .concat([[null, 'Atanmamış', list.filter(i => !i.assignee)]]);
   else if (sw === 'epic') groups = epicsOf().map(e => [e.id, e.summary, list.filter(i => i.epicId === e.id)])
     .concat([[null, 'Epik yok', list.filter(i => !i.epicId)]]);
-  else groups = [1, 2, 3, 4, 5].map(p => [p, PRI[p][1], list.filter(i => i.priority === p)]);
+  else groups = LVLS.map(p => [p, PRI[p][1], list.filter(i => lvl(i.priority) === p)]);
   return groups.filter(g => g[2].length).map(([id, name, items]) =>
     `<div class="swim"><div class="swim-h">
-       ${sw === 'assignee' ? avat(id) : ''}<b>${esc(name)}</b><span class="ct">${items.length} iş</span>
+       ${sw === 'assignee' ? avat(id) : sw === 'priority' ? pIcon(id) : ''}<b>${esc(name)}</b><span class="ct">${items.length} iş</span>
      </div>${columns(items)}</div>`).join('') || '<div class="empty">Filtreye uyan iş yok.</div>';
 }
 
@@ -2436,7 +2749,7 @@ function openIssue(id) {
           <span class="lb">Durum</span><select class="inp" data-f="statusId">${opt(stats(), i.statusId)}</select>
           <span class="lb">Atanan</span><select class="inp" data-f="assignee"><option value="">Atanmamış</option>${opt(projUsers(), i.assignee)}</select>
           ${MOD('reporter') ? `<span class="lb">Raporlayan</span><select class="inp" data-f="reporter">${opt(DB.users, i.reporter)}</select>` : ''}
-          <span class="lb">Öncelik</span><select class="inp" data-f="priority">${opt([1, 2, 3, 4, 5], i.priority, p => [p, PRI[p][1]])}</select>
+          <span class="lb">Öncelik</span><select class="inp" data-f="priority">${opt(LVLS, lvl(i.priority), p => [p, PRI[p][1]])}</select>
           <span class="lb">Tip</span><select class="inp" data-f="type">${opt(ISSUE_TYPES(), i.type, t => [t, TYPE[t][2]])}</select>
           ${MOD('points') ? `<span class="lb">Puan</span><input class="inp" data-f="points" value="${i.points ?? ''}" placeholder="—">` : ''}
           ${MOD('sprint') ? `<span class="lb">Sprint</span><select class="inp" data-f="sprintId"><option value="">Backlog</option>${opt(sprintsOf(), i.sprintId)}</select>` : ''}
@@ -2485,12 +2798,13 @@ function openIssue(id) {
       estimate: 'Tahmin', remainingEst: 'Kalan tahmin', billable: 'Faturalama', billType: 'Fatura türü' }[f];
     const isDur = f === 'estimate' || f === 'remainingEst';
     if (f === 'statusId') { setStatus(i, v); }
+    else if (f === 'priority') setPriority(i, +v);
+    else if (f === 'assignee') setAssignee(i, v);
     else {
       const before = isDur ? fmtDur(f === 'estimate' ? i.estimate : remaining(i)) : (i[f] ?? '—');
       if (f === 'points') v = v === '' ? null : parseFloat(v.replace(',', '.'));
-      else if (f === 'priority') v = +v;
       else if (isDur) v = parseDur(v);
-      else if (f === 'sprintId' || f === 'epicId' || f === 'assignee') v = v || null;
+      else if (f === 'sprintId' || f === 'epicId') v = v || null;
       i[f] = v;
       /* Henüz süre kaydı yoksa tahmin değişince kalan da onunla eşitlenir. */
       if (f === 'estimate' && !i.spent) i.remainingEst = v;
@@ -2534,7 +2848,7 @@ function newIssueForm(preset = {}) {
         <div class="form-row"><label class="field">Tip</label><select class="inp" id="f_type">
           ${ISSUE_TYPES().map(t => `<option value="${t}" ${preset.type === t ? 'selected' : ''}>${TYPE[t][2]}</option>`).join('')}</select></div>
         <div class="form-row"><label class="field">Öncelik</label><select class="inp" id="f_pri">
-          ${[1, 2, 3, 4, 5].map(p => `<option value="${p}" ${p === 3 ? 'selected' : ''}>${PRI[p][1]}</option>`).join('')}</select></div>
+          ${priOpts(3)}</select></div>
       </div>
       <div class="form-row"><label class="field">Özet</label><input class="inp" id="f_sum" placeholder="Ne yapılacak?"></div>
       <div class="form-row"><label class="field">Açıklama</label><textarea class="inp" id="f_desc" rows="3"></textarea></div>
@@ -2764,6 +3078,11 @@ function wire() {
       return;
     }
 
+    /* --- karttaki hızlı menü düğmeleri: kartı açmadan önce yakalanır --- */
+    const qp = t.closest('[data-qpri]'); if (qp) { e.preventDefault(); return openQuick('pri', qp); }
+    const qs = t.closest('[data-qas]');  if (qs) { e.preventDefault(); return openQuick('as', qs); }
+    if (t.closest('.qm-wrap')) return;
+
     if (t.closest('[data-close]') || t === $('#scrim')) return closeModal();
     const pj = t.closest('[data-proj]');
     if (pj) { DB.ui.project = pj.dataset.proj; DB.board.q = ''; $('#projSel').value = pj.dataset.proj;
@@ -2989,8 +3308,8 @@ const QF = {
   kategori:   { g: i => ({ todo: 'Yapılacak', inprogress: 'Devam', done: 'Bitti' })[stat(i.statusId).cat], alt: i => stat(i.statusId).cat },
   atanan:     { g: i => user(i.assignee)?.name || '', empty: i => !i.assignee },
   raporlayan: { g: i => user(i.reporter)?.name || '' },
-  oncelik:    { g: i => i.priority, t: 'num', map: v => { const n = +v; if (!isNaN(n)) return n;
-                  const k = Object.keys(PRI).find(k => PRI[k][1].toLowerCase() === String(v).toLowerCase()); return k ? +k : v; } },
+  oncelik:    { g: i => lvl(i.priority), t: 'num', map: v => { const n = +v; if (!isNaN(n)) return n;
+                  const w = priKey(v), k = LVLS.find(k => priKey(PRI[k][1]) === w); return k || PRI_ALIAS[w] || v; } },
   puan:       { g: i => i.points, t: 'num', empty: i => i.points == null },
   tahmin:     { g: i => i.estimate, t: 'dur' },
   harcanan:   { g: i => i.spent, t: 'dur' },
@@ -3005,6 +3324,9 @@ const QF = {
   fatura:     { g: i => billOf(i) },
   faturaturu: { g: i => btypeOf(i) },
 };
+/* Öncelik adları büyük/küçük harf ve ı/i farkı gözetmeden; eski adlar takma ad. */
+const priKey = v => String(v).toLocaleLowerCase('tr').replace(/ı/g, 'i').trim();
+const PRI_ALIAS = { kritik: 1, onemsiz: 4, 'önemsiz': 4, dusuk: 4, yuksek: 2 };
 const qfield = name => {
   const k = name.toLowerCase().replace(/[ıİ]/g, 'i').replace(/[şŞ]/g, 's').replace(/[çÇ]/g, 'c').replace(/[ğĞ]/g, 'g').replace(/[üÜ]/g, 'u').replace(/[öÖ]/g, 'o');
   if (QF[k]) return QF[k];
@@ -3298,7 +3620,7 @@ function runRules(i, trigger, ctx = {}) {
       i.__d = (i.__d || 0) + 1;
       switch (a.act) {
         case 'assign':   if (i.assignee !== a.v) { logHist(i, 'Atanan', user(i.assignee)?.name || '—', user(a.v)?.name || '—'); i.assignee = a.v || null; } break;
-        case 'priority': i.priority = +a.v; break;
+        case 'priority': if (lvl(i.priority) !== lvl(a.v)) i.priority = lvl(a.v); break;
         case 'label':    i.labels = [...new Set([...(i.labels || []), a.v])]; break;
         case 'sprint':   i.sprintId = a.v || null; break;
         case 'status':   if (a.v && a.v !== i.statusId) setStatus(i, a.v); break;
@@ -3424,7 +3746,7 @@ function renderAdmin() {
 function ruleValLabel(a) {
   switch (a.act) {
     case 'assign':   return user(a.v)?.name || '—';
-    case 'priority': return PRI[a.v]?.[1] || a.v;
+    case 'priority': return priName(a.v);
     case 'sprint':   return a.v ? (sprint(a.v)?.name || '—') : 'Backlog';
     case 'status':   return stat(a.v)?.name || '—';
     case 'cf':       return `${DB.fields.find(f => f.id === a.field)?.name || '?'} = ${a.v}`;
@@ -3614,7 +3936,7 @@ function ruleForm(id) {
   const valInput = (a, k) => {
     switch (ACTS[a.act].pick) {
       case 'user':   return `<select class="inp" data-av="${k}">${DB.users.map(u => `<option value="${u.id}" ${a.v === u.id ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select>`;
-      case 'pri':    return `<select class="inp" data-av="${k}">${[1, 2, 3, 4, 5].map(p => `<option value="${p}" ${+a.v === p ? 'selected' : ''}>${PRI[p][1]}</option>`).join('')}</select>`;
+      case 'pri':    return `<select class="inp" data-av="${k}">${priOpts(a.v)}</select>`;
       case 'sprint': return `<select class="inp" data-av="${k}"><option value="">Backlog</option>${sprintsOf().map(s => `<option value="${s.id}" ${a.v === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select>`;
       case 'status': return `<select class="inp" data-av="${k}">${stats().map(s => `<option value="${s.id}" ${a.v === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select>`;
       case 'cf':     return `<select class="inp" data-af="${k}" style="margin-bottom:4px">${fieldsFor().map(f => `<option value="${f.id}" ${a.field === f.id ? 'selected' : ''}>${esc(f.name)}</option>`).join('')}</select>
@@ -3890,7 +4212,7 @@ function bulkBar() {
     ${MOD('sprint') ? `<select class="inp" id="bk_sp" style="width:auto"><option value="">Sprint…</option><option value="__none">Backlog</option>
       ${sprintsOf().map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>` : ''}
     <select class="inp" id="bk_pr" style="width:auto"><option value="">Öncelik…</option>
-      ${[1, 2, 3, 4, 5].map(p => `<option value="${p}">${PRI[p][1]}</option>`).join('')}</select>
+      ${LVLS.map(p => `<option value="${p}">${PRI[p][1]}</option>`).join('')}</select>
     <select class="inp" id="bk_bill" style="width:auto"><option value="">Faturalama…</option>
       ${BILLABLE.map(x => `<option>${x}</option>`).join('')}</select>
     <select class="inp" id="bk_bt" style="width:auto"><option value="">Fatura türü…</option>
@@ -3925,12 +4247,11 @@ function wireBulk() {
     let n = 0;
     [...SEL].map(issue).filter(Boolean).forEach(i => {
       if (st) setStatus(i, st);
-      if (as) { logHist(i, 'Atanan', user(i.assignee)?.name || '—', as === '__none' ? '—' : user(as).name);
-        i.assignee = as === '__none' ? null : as; }
+      if (as) setAssignee(i, as === '__none' ? null : as);
       if (sp) { const to = sp === '__none' ? null : sp;
         logHist(i, 'Sprint', i.sprintId ? sprint(i.sprintId).name : 'Backlog', to ? sprint(to).name : 'Backlog');
         i.sprintId = to; }
-      if (pr) i.priority = +pr;
+      if (pr) setPriority(i, +pr);
       if ($('#bk_st2').value) i.start = $('#bk_st2').value;
       if ($('#bk_du').value) i.due = $('#bk_du').value;
       if (i.start && i.due && i.start > i.due) i.due = i.start;
@@ -4922,7 +5243,7 @@ function renderHome() {
   const cap = capOf(me);
   const mine = DB.issues.filter(i => i.assignee === me.id && i.type !== 'epic' && stat(i.statusId).cat !== 'done')
     .filter(i => { const p = DB.projects.find(x => x.id === i.projectId); return p && canSeeProject(p); })
-    .sort((a, b) => a.priority - b.priority || (a.due || '9999').localeCompare(b.due || '9999') || a.rank - b.rank);
+    .sort((a, b) => lvl(a.priority) - lvl(b.priority) || (a.due || '9999').localeCompare(b.due || '9999') || a.rank - b.rank);
   const rest = mine.filter(i => !todayScope(i));
   const month = TODAY.slice(0, 7);
 
@@ -5361,7 +5682,7 @@ function quickAddForm(sid) {
     <div class="qa-row">
       ${sel('qa_t', q.type || DB.cfg.types[0].id, DB.cfg.types, t => [t.id, t.name])}
       ${sel('qa_a', q.assignee || SESSION, [{ id: '', name: 'Atanmamış' }, ...projUsers()], u => [u.id, u.name])}
-      ${sel('qa_p', q.priority, [1, 2, 3, 4, 5], p => [p, PRI[p][1]])}
+      ${sel('qa_p', lvl(q.priority), LVLS, p => [p, PRI[p][1]])}
     </div>
     <div class="qa-row">
       ${sel('qa_b', q.billable, BILLABLE)}
@@ -5845,7 +6166,7 @@ function subTaskForm(parentId, preset = {}) {
           ${stats().map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select></div>
         <div class="form-row"><label class="field">Tahmin</label><input class="inp" id="sb_e" placeholder="4h"></div>
         <div class="form-row"><label class="field">Öncelik</label><select class="inp" id="sb_p">
-          ${[1, 2, 3, 4, 5].map(x => `<option value="${x}" ${x === p.priority ? 'selected' : ''}>${PRI[x][1]}</option>`).join('')}</select></div>
+          ${priOpts(p.priority)}</select></div>
         <div class="form-row"><label class="field">Başlangıç</label><input class="inp" type="date" id="sb_ds" value="${preset.start || ''}"></div>
         <div class="form-row"><label class="field">Bitiş</label><input class="inp" type="date" id="sb_de" value="${preset.due || ''}"></div>
       </div>
