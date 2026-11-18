@@ -1860,7 +1860,7 @@ const activeSprint = () => sprintsOf().find(s => s.state === 'active');
 
 function matches(i) {
   const b = DB.board;
-  if (b.q) { const q = b.q.toLowerCase(); if (!(i.summary.toLowerCase().includes(q) || i.key.toLowerCase().includes(q))) return false; }
+  if (b.q) { const q = b.q.toLowerCase(); if (!(String(i.summary || '').toLowerCase().includes(q) || String(i.key || '').toLowerCase().includes(q))) return false; }
   if (b.filterUser && i.assignee !== b.filterUser) return false;
   if (b.filterType && i.type !== b.filterType) return false;
   return true;
@@ -2050,7 +2050,8 @@ function card(i) {
    Esc ve dışarı tıklama kapatır (kartı açmaz); açıkken tryRerender ertelenir. */
 let QM = null;
 const qmMobile = () => matchMedia('(max-width:900px)').matches;
-const qmKey = v => String(v ?? '').toLocaleLowerCase('tr').replace(/ı/g, 'i');
+const QM_FOLD = { 'ı': 'i', 'ş': 's', 'ç': 'c', 'ğ': 'g', 'ü': 'u', 'ö': 'o', 'â': 'a', 'î': 'i', 'û': 'u' };
+const qmKey = v => String(v ?? '').toLocaleLowerCase('tr').replace(/[ışçğüöâîû]/g, c => QM_FOLD[c]);
 const qmTrig = q => document.querySelector(`[${q.kind === 'pri' ? 'data-qpri' : 'data-qas'}="${CSS.escape(q.id)}"]`);
 function qmPriList(i) {
   const cur = lvl(i.priority);
@@ -2137,7 +2138,6 @@ document.addEventListener('click', e => {
 }, true);
 addEventListener('keydown', e => {
   if (!QM) return;
-  const inMenu = !!e.target.closest?.('.qm');
   const opts = [...QM.el.querySelectorAll('.qm-opt')];
   const idx = opts.indexOf(document.activeElement);
   const stop = () => { e.preventDefault(); e.stopPropagation(); };
@@ -2153,7 +2153,7 @@ addEventListener('keydown', e => {
   }
   if (QM.kind === 'pri' && /^[1-4]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) { stop(); return pickQuick(+e.key); }
   if (e.key === 'Enter' && e.target.classList?.contains('qm-in')) { stop(); const o = opts[0]; if (o) pickQuick(o.dataset.qv); return; }
-  if (!inMenu) e.stopPropagation();          // menü açıkken genel kısayollar çalışmasın
+  e.stopPropagation();                       // menü açıkken genel kısayollar (c, w, / …) çalışmasın
 }, true);
 addEventListener('resize', () => { if (QM && !QM.mob) closeQuick(false); });
 addEventListener('scroll', e => { if (QM && !QM.mob && !e.target.closest?.('.qm')) closeQuick(false); }, true);
