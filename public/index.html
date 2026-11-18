@@ -4,11 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ÇevikPano</title>
-<meta name="theme-color" content="#4F46E5">
+<meta name="theme-color" content="#2563EB">
+<meta name="description" content="ÇevikPano — ekibinin işleri, zamanı ve teslimleri tek panoda">
+<link rel="icon" type="image/svg+xml" href="/img/icon.svg" id="favicon">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ÇevikPano">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%234F46E5'/%3E%3Cpath d='M9 10h4v12H9zM15 10h4v8h-4zM21 10h3v5h-3z' fill='white'/%3E%3C/svg%3E">
 <style>
 :root{
   --ink:#14161A; --ink2:#4A4F58; --ink3:#858B95;
@@ -746,12 +754,178 @@ body.env-test .pop{top:90px}
   .act-w{width:auto}
 }
 @media (prefers-reduced-motion:reduce){.card:hover,.projcard:hover{transform:none}}
+
+/* ==========================================================================
+   ÇevikPano tasarım dili v3 — mavi tonlar, lacivert kenar menü
+   ========================================================================== */
+:root{
+  --paper:#F3F6FB; --surface:#FFFFFF; --surface2:#F6F9FD; --surface3:#EBF1F9;
+  --line:#E1E8F2; --line2:#CCD7E6;
+  --ink:#0B1B33; --ink2:#43546E; --ink3:#7E8CA3;
+  --accent:#2563EB; --accent-d:#1D4ED8; --accent-soft:#EAF1FE; --accent-ink:#FFFFFF;
+  --brand-grad:linear-gradient(135deg,#38BDF8 0%,#2563EB 52%,#1E3A8A 100%);
+  --btn-grad:linear-gradient(180deg,#3B82F6,#2563EB);
+  --ring:0 0 0 3px rgba(37,99,235,.20);
+  --shadow-sm:0 1px 2px rgba(11,27,51,.05);
+  --shadow:0 1px 2px rgba(11,27,51,.04),0 8px 20px -6px rgba(11,27,51,.10);
+  --shadow-lg:0 30px 60px -15px rgba(11,27,51,.30),0 2px 6px rgba(11,27,51,.06);
+  /* kenar menü */
+  --rail-bg:linear-gradient(180deg,#0A1A38 0%,#0E2552 60%,#10306A 100%);
+  --rail-ink:#C7D5EE; --rail-ink2:#7F96BF; --rail-line:rgba(255,255,255,.08);
+  --rail-hover:rgba(255,255,255,.06); --rail-on:rgba(96,165,250,.18); --rail-on-ink:#FFFFFF;
+}
+:root[data-theme="dark"]{
+  --paper:#060B16; --surface:#0C1424; --surface2:#101A2E; --surface3:#16223A;
+  --line:#1B2842; --line2:#273857;
+  --ink:#E6EDF8; --ink2:#A3B2CB; --ink3:#6B7C99;
+  --accent:#60A5FA; --accent-d:#93C5FD; --accent-soft:rgba(96,165,250,.14); --accent-ink:#06101F;
+  --btn-grad:linear-gradient(180deg,#60A5FA,#3B82F6);
+  --ring:0 0 0 3px rgba(96,165,250,.28);
+  --rail-bg:linear-gradient(180deg,#050A15 0%,#081530 100%);
+  --rail-line:rgba(255,255,255,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#060B16; --surface:#0C1424; --surface2:#101A2E; --surface3:#16223A;
+    --line:#1B2842; --line2:#273857;
+    --ink:#E6EDF8; --ink2:#A3B2CB; --ink3:#6B7C99;
+    --accent:#60A5FA; --accent-d:#93C5FD; --accent-soft:rgba(96,165,250,.14); --accent-ink:#06101F;
+    --btn-grad:linear-gradient(180deg,#60A5FA,#3B82F6);
+    --ring:0 0 0 3px rgba(96,165,250,.28);
+    --rail-bg:linear-gradient(180deg,#050A15 0%,#081530 100%);
+    --rail-line:rgba(255,255,255,.06);
+  }
+}
+
+body{background:var(--paper)}
+.main{background:
+  radial-gradient(900px 420px at 100% -10%,color-mix(in srgb,var(--accent) 7%,transparent),transparent 70%),
+  var(--paper)}
+
+/* ---------- kenar menü (lacivert) ---------- */
+.rail{background:var(--rail-bg);border-right:none;color:var(--rail-ink)}
+.brand{padding:18px 18px 16px}
+.brand::before{display:none}
+.brand-ic{width:30px;height:30px;border-radius:9px;flex-shrink:0;box-shadow:0 4px 14px rgba(37,99,235,.45)}
+.brand-ic.lg{width:44px;height:44px;border-radius:13px}
+.brand b{color:#fff;font-size:16px;letter-spacing:-.02em}
+.projsel select{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#fff}
+.projsel select option{color:#0B1B33}
+.navgroup{color:var(--rail-ink2)}
+.nav a{color:var(--rail-ink)}
+.nav a .g{opacity:.75}
+.nav a:hover{background:var(--rail-hover);color:#fff}
+.nav a.on{background:var(--rail-on);color:var(--rail-on-ink);box-shadow:inset 3px 0 0 #60A5FA}
+.nav a.on .g{color:#93C5FD}
+.whoami{background:rgba(255,255,255,.06);border:1px solid var(--rail-line);color:#fff}
+.whoami .nm span{color:var(--rail-ink2)}
+.whoami .btn{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.14);color:#fff;box-shadow:none}
+.whoami .btn:hover{background:rgba(255,255,255,.14)}
+.whoami .iconbtn{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.14);color:#fff}
+.fnote{color:var(--rail-ink2)}
+.filebar .fnote:first-child{color:var(--rail-ink)}
+.online .navgroup{color:var(--rail-ink2)}
+.onl::after{box-shadow:0 0 0 2px #0E2552}
+.rail .av{box-shadow:0 0 0 2px rgba(255,255,255,.12)}
+
+/* ---------- üst çubuk ---------- */
+.topbar{background:color-mix(in srgb,var(--surface) 78%,transparent)}
+.topbar h1{font-size:22px;font-weight:750}
+.cmdk{display:flex;align-items:center;gap:8px;height:36px;padding:0 10px 0 12px;border-radius:10px;
+  border:1px solid var(--line);background:var(--surface2);color:var(--ink3);font-size:12.5px;min-width:220px}
+.cmdk:hover{border-color:var(--line2);color:var(--ink2)}
+.cmdk span{flex:1;text-align:left}
+.cmdk kbd{font-family:var(--sans);font-size:10.5px;font-weight:600;padding:2px 6px;border-radius:6px;
+  border:1px solid var(--line);background:var(--surface);color:var(--ink3)}
+
+/* ---------- düğmeler ---------- */
+.btn.pri{background:var(--btn-grad);box-shadow:0 1px 2px rgba(11,27,51,.12),0 4px 12px -2px color-mix(in srgb,var(--accent) 45%,transparent),inset 0 1px 0 rgba(255,255,255,.18)}
+.btn.pri:hover{filter:brightness(1.06);background:var(--btn-grad)}
+.seg button.on{color:var(--accent)}
+
+/* ---------- pano ---------- */
+.col{background:color-mix(in srgb,var(--surface2) 85%,var(--paper));border-color:var(--line)}
+.col-h .nm{display:flex;align-items:center;gap:7px}
+.col-h .nm::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--todo)}
+.col.c-inprogress .col-h .nm::before{background:var(--prog)}
+.col.c-done .col-h .nm::before{background:var(--done)}
+.col{border-top:3px solid var(--todo-line)}
+.col.c-inprogress{border-top-color:color-mix(in srgb,var(--prog) 55%,transparent)}
+.col.c-done{border-top-color:color-mix(in srgb,var(--done) 55%,transparent)}
+.card{border-radius:12px}
+.card:hover{border-color:color-mix(in srgb,var(--accent) 35%,var(--line))}
+
+/* ---------- ana menü karşılama ---------- */
+.hero{background:var(--brand-grad);border:none;color:#fff;position:relative;overflow:hidden;
+  box-shadow:0 14px 34px -14px rgba(37,99,235,.55)}
+.hero::after{content:"";position:absolute;right:-60px;top:-80px;width:280px;height:280px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,.22),transparent 65%)}
+.hero h2{color:#fff}
+.hero p{color:rgba(255,255,255,.86)}
+.hero p b{color:#fff}
+.hero .hw i{background:rgba(255,255,255,.45)}
+.hero .hw em{color:rgba(255,255,255,.75)}
+.hero .btn{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.28);color:#fff}
+
+/* ---------- veri araçları ---------- */
+.dtools{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:14px}
+.dtool{border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px;background:var(--surface2)}
+.dtool span{font-size:12.5px;color:var(--ink2);flex:1}
+.dtool .btn{align-self:flex-start}
+.dtool.warn{border-color:var(--risk-line)}
+.dt-ic{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-size:18px;
+  background:var(--accent-soft);color:var(--accent)}
+.dtool.warn .dt-ic{background:var(--risk-bg);color:var(--risk)}
+
+/* ---------- giriş ---------- */
+#login{background:var(--paper);padding:0}
+.lg-wrap{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);width:100%;min-height:100%}
+.lg-hero{background:var(--brand-grad);color:#fff;padding:48px 56px;display:flex;flex-direction:column;gap:26px;
+  justify-content:center;position:relative;overflow:hidden}
+.lg-hero::before{content:"";position:absolute;inset:auto -120px -160px auto;width:520px;height:520px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,.18),transparent 60%)}
+.lg-hero::after{content:"";position:absolute;inset:0;background:
+  linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px) 0 0/32px 32px,
+  linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px) 0 0/32px 32px;
+  mask:linear-gradient(180deg,#000,transparent 85%);-webkit-mask:linear-gradient(180deg,#000,transparent 85%)}
+.lg-hero>*{position:relative;z-index:1;max-width:520px}
+.lgh-brand{display:flex;align-items:center;gap:12px}
+.lgh-brand b{font-size:20px;font-weight:750;letter-spacing:-.02em}
+.lgh-brand .brand-ic{box-shadow:0 0 0 2px rgba(255,255,255,.35),0 10px 24px rgba(0,0,0,.25)}
+.lg-hero h1{margin:0;font-size:38px;line-height:1.12;letter-spacing:-.035em;font-weight:800}
+.lg-hero h1 span{color:#BFDBFE}
+.lg-hero ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
+.lg-hero li{display:flex;gap:12px;align-items:flex-start;font-size:14px;color:rgba(255,255,255,.86);line-height:1.45}
+.lg-hero li i{font-style:normal;width:32px;height:32px;border-radius:9px;flex-shrink:0;display:grid;place-items:center;
+  background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2)}
+.lg-hero li b{color:#fff}
+.lgh-foot{font-size:12px;color:rgba(255,255,255,.65)}
+.lg-wrap .loginbox{align-self:center;justify-self:center;margin:32px;box-shadow:var(--shadow-lg)}
+.lg-brand::before{display:none}
+.lg-brand .brand-ic{display:none}
+.lg-brand b{font-size:22px}
+.lg-help{margin-top:12px;font-size:12px;color:var(--ink3);text-align:center}
+#login > .loginbox .lg-brand .brand-ic{display:block}
+.rail-foot[hidden]{display:none!important}
+.whoami .nm span[style]{color:#FCA5A5!important}
+.tb-logo{display:none;width:30px;height:30px;border-radius:9px;margin-right:10px;flex-shrink:0;box-shadow:0 3px 10px rgba(37,99,235,.35)}
+@media (max-width:900px){
+  .tb-logo{display:block}
+  .tb-head{align-items:center}
+  .lg-wrap{grid-template-columns:1fr}
+  .lg-hero{padding:28px 22px 26px;gap:14px}
+  .lg-hero h1{font-size:24px}
+  .lg-hero ul,.lgh-foot{display:none}
+  .lg-wrap .loginbox{margin:-18px 16px 24px;width:auto;max-width:none;justify-self:stretch}
+  .cmdk span,.cmdk kbd{display:none}
+  .cmdk{min-width:0;width:34px;height:34px;padding:0;justify-content:center}
+}
 </style>
 </head>
 <body>
 <div class="app">
   <aside class="rail">
-    <div class="brand"><b>ÇevikPano</b></div>
+    <div class="brand"><img src="/img/icon.svg" alt="" class="brand-ic"><b>ÇevikPano</b></div>
     <div class="projsel"><select id="projSel" class="inp"></select></div>
     <nav class="nav" style="margin-top:6px">
       <a href="#home" data-v="home"><span class="g">⌂</span>Ana menü</a>
@@ -780,19 +954,22 @@ body.env-test .pop{top:90px}
     <div class="online" id="online"></div>
     <div class="whoami" id="whoami"></div>
     <div class="filebar" id="fileBar"></div>
-    <div class="rail-foot">
-      <button id="btnExport">↧ Dışa aktar</button>
-      <button id="btnImport">↥ İçe aktar</button>
-      <button id="btnMerge">⇄ Birleştir</button>
-      <button id="btnKeys">⌘K komutlar</button>
+    <!-- Veri araçları yalnızca yöneticiler için: Sistem → Veri. Düğmeler gizli, işleyiciler bunlara bağlı. -->
+    <div class="rail-foot" hidden>
+      <button id="btnExport">Dışa aktar</button>
+      <button id="btnImport">İçe aktar</button>
+      <button id="btnMerge">Birleştir</button>
+      <button id="btnKeys">Komutlar</button>
     </div>
   </aside>
 
   <main class="main">
     <header class="topbar">
       <div class="tb-head">
+        <img src="/img/icon.svg" alt="ÇevikPano" class="tb-logo" id="tbLogo">
         <div class="tb-title"><div class="crumb" id="crumb">—</div><h1 id="title">—</h1></div>
         <div class="tb-actions">
+          <button class="cmdk" id="btnCmd" title="Ara veya komut çalıştır (Ctrl+K)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Ara veya komut…</span><kbd>Ctrl K</kbd></button>
           <div class="tb-online" id="tbOnline"></div>
           <button class="iconbtn" id="btnTheme" title="Tema (açık / koyu)" aria-label="Tema değiştir"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button>
           <button class="iconbtn" id="btnBell" title="Bildirimler" aria-label="Bildirimler">
@@ -1633,7 +1810,7 @@ function columns(list) {
     const fin = all.filter(i => stat(i.statusId).cat === 'done');
     const dopen = DB.ui.doneOpen && DB.ui.doneOpen[s.id];
     const over = s.wip && cards.length > s.wip;
-    return `<section class="col ${over ? 'wip-over' : ''}" data-status="${s.id}">
+    return `<section class="col c-${esc(s.cat || 'todo')} ${over ? 'wip-over' : ''}" data-status="${s.id}">
       <div class="col-h">
         <span class="nm">${esc(s.name)}</span>
         <span class="ct ${over ? 'bad' : ''}">${cards.length}${s.wip ? ' / ' + s.wip : ''}</span>
@@ -2419,8 +2596,7 @@ function dataMenu() {
       <button class="btn" data-act="savefile">✓ Şimdi kaydet</button>
       <button class="btn" data-act="pw">🔑 Parolamı değiştir</button>
       <button class="btn" data-act="theme">◐ Açık / koyu tema</button>
-      <button class="btn" data-act="export">↧ Veriyi dışa aktar (JSON)</button>
-      ${isAdmin() ? '<button class="btn" data-act="merge">⇄ Dosyadan birleştir</button><button class="btn" data-act="import">↥ İçe aktar (tüm veriyi değiştirir)</button>' : ''}
+      ${isAdmin() ? '<button class="btn" data-v="system">⛁ Sistem: yedekler ve veri</button>' : ''}
       <button class="btn danger" data-act="logout">Çıkış yap</button>
     </div>`, 'narrow');
 }
@@ -2460,8 +2636,7 @@ function render() {
     <button class="btn sm" id="btnLogout" title="Oturumu kapat">Çıkış</button>`;
   $('#btnLogout').onclick = () => logout();
   $('#btnMyPw').onclick = () => changePwForm(false);
-  $('#btnMerge').style.display = isAdmin() ? '' : 'none';
-  $('#btnImport').style.display = isAdmin() ? '' : 'none';
+
   renderFileBar();
   $$('.nav a, #vtabs button').forEach(a => a.classList.toggle('on', a.dataset.v === DB.ui.view));
   wireToolbar();
@@ -2651,6 +2826,7 @@ function wire() {
 
   /* ---- veri taşıma ---- */
   $('#btnExport').onclick = () => {
+    if (!isAdmin()) return toast('Veri dışa aktarma yalnızca yöneticiler içindir');
     if (isAdmin()) { location.href = '/api/export'; return toast('Yedek indiriliyor'); }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(DB, null, 2)], { type: 'application/json' }));
@@ -2658,7 +2834,7 @@ function wire() {
     toast('Veri dışa aktarıldı');
   };
   $('#btnKeys').onclick = () => palette();
-  $('#btnMerge').onclick = () => $('#mergeIn').click();
+  $('#btnMerge').onclick = () => { if (!isAdmin()) return toast('Birleştirme yalnızca yöneticiler içindir'); $('#mergeIn').click(); };
   $('#mergeIn').onchange = e => {
     const f = e.target.files[0]; e.target.value = ''; if (!f) return;
     const r = new FileReader();
@@ -3744,8 +3920,11 @@ function palette() {
     { t: 'Eylem', n: 'Özel alan ekle', run: () => fieldForm() },
     { t: 'Eylem', n: 'Otomasyon kuralı ekle', run: () => ruleForm() },
     { t: 'Eylem', n: 'Şimdi kaydet', run: () => flushSync().then(() => toast('Kaydedildi')) },
-    { t: 'Eylem', n: 'Veriyi dışa aktar', run: () => $('#btnExport').click() },
-    { t: 'Eylem', n: 'Başka kopyayla birleştir', run: () => $('#mergeIn').click() },
+    ...(isAdmin() ? [
+      { t: 'Yönetim', n: 'Kullanıcılar', run: () => { location.hash = 'users'; } },
+      { t: 'Yönetim', n: 'Sistem: yedekler ve veri', run: () => { location.hash = 'system'; } },
+      { t: 'Yönetim', n: 'Veriyi dışa aktar (yedek indir)', run: () => $('#btnExport').click() },
+    ] : []),
     ...DB.projects.map(p => ({ t: 'Proje', n: `${p.key} — ${p.name}`, run: () => { DB.ui.project = p.id; save(); boot(); } })),
     ...DB.issues.filter(i => MOD('epic') || i.type !== 'epic').map(i => ({ t: i.key, n: i.summary, run: () => openIssue(i.id) })),
   ];
@@ -4131,16 +4310,27 @@ async function setSession(id) { SESSION = id; }
 function showLogin(msg) {
   document.body.classList.add('locked');
   $('#login').style.display = 'flex';
-  $('#login').innerHTML = `
+  $('#login').innerHTML = `<div class="lg-wrap">
+    <aside class="lg-hero">
+      <div class="lgh-brand"><img src="${VERSION?.env === 'test' ? '/img/icon-test.svg' : '/img/icon.svg'}" alt="" class="brand-ic lg"><b>ÇevikPano</b></div>
+      <h1>Ekibinin işi, zamanı ve teslimleri <span>tek panoda.</span></h1>
+      <ul>
+        <li><i>▤</i><span><b>Pano ve backlog</b> — işler sürükle-bırakla ilerler, gecikmeler kendini gösterir</span></li>
+        <li><i>◷</i><span><b>Zaman takibi</b> — kim, hangi iş için ne kadar çalıştı; efor ve fatura raporları</span></li>
+        <li><i>⚡</i><span><b>Canlı ve birlikte</b> — herkes aynı anda çalışır, değişiklikler saniyeler içinde görünür</span></li>
+      </ul>
+      <div class="lgh-foot">${VERSION?.env === 'test' ? 'Test ortamı' : 'Güvenli bağlantı · otomatik yedek'}</div>
+    </aside>
     <form class="loginbox" id="lgForm">
-      <div class="lg-brand"><div><b>ÇevikPano</b><span>Çevik proje yönetimi</span></div></div>
+      <div class="lg-brand"><img src="${VERSION?.env === 'test' ? '/img/icon-test.svg' : '/img/icon.svg'}" alt="" class="brand-ic lg"><div><b>Tekrar hoş geldin</b><span>Devam etmek için giriş yap</span></div></div>
       <label class="field">Kullanıcı adı</label>
       <input class="inp" id="lg_u" autocomplete="username" autocapitalize="off" spellcheck="false">
       <label class="field" style="margin-top:10px">Parola</label>
       <input class="inp" id="lg_p" type="password" autocomplete="current-password">
       <div id="lg_err" class="lg-err">${msg ? esc(msg) : ''}</div>
       <button class="btn pri" type="submit" style="width:100%;margin-top:12px;padding:9px">Giriş yap</button>
-    </form>`;
+      <div class="lg-help">Parolanı unuttuysan yöneticinden yeni parola iste.</div>
+    </form></div>`;
   $('#lg_u').focus();
   $('#lgForm').onsubmit = async e => {
     e.preventDefault();
@@ -6267,13 +6457,14 @@ try { applyTheme(localStorage.getItem('pano-theme')); } catch (e) { }
 function wireTopbar() {
   const b = document.getElementById('btnBell'); if (b) b.onclick = openNotifications;
   const t = document.getElementById('btnTheme'); if (t) t.onclick = cycleTheme;
+  const k = document.getElementById('btnCmd'); if (k) k.onclick = () => palette();
   document.addEventListener('focusout', () => { if (RERENDER) setTimeout(tryRerender, 50); });
 }
 
 /* ---- Sistem: yedekler, çöp kutusu, etkinlik (yönetici) ---- */
 let SYS_TAB = 'versions';
 function toolbarSystem() {
-  return `<div class="seg">${[['versions', 'Sürümler'], ['backups', 'Yedekler'], ['trash', 'Çöp kutusu'], ['activity', 'Etkinlik']].map(([k, l]) =>
+  return `<div class="seg">${[['versions', 'Sürümler'], ['backups', 'Yedekler'], ['data', 'Veri aktarımı'], ['trash', 'Çöp kutusu'], ['activity', 'Etkinlik']].map(([k, l]) =>
     `<button data-systab="${k}" class="${SYS_TAB === k ? 'on' : ''}">${l}</button>`).join('')}</div>
     <div class="spacer"></div>
     ${SYS_TAB === 'backups' ? '<button class="btn pri" id="sysBackup">+ Şimdi yedek al</button>' : ''}`;
@@ -6300,6 +6491,22 @@ async function loadSystem() {
   try {
     if (SYS_TAB === 'versions') {
       el.innerHTML = await renderVersions();
+    } else if (SYS_TAB === 'data') {
+      el.innerHTML = `<h3>Veri aktarımı</h3>
+        <div class="sub">Bu araçlar yalnızca yöneticilere görünür. İçe aktarma ve birleştirmeden önce otomatik yedek alınır.</div>
+        <div class="dtools">
+          <div class="dtool"><div class="dt-ic">↧</div><b>Dışa aktar</b>
+            <span>Tüm projeler, işler, süre kayıtları ve kullanıcılar tek bir JSON dosyası olarak iner (parolalar hariç).</span>
+            <button class="btn" data-dt="export">Yedek dosyasını indir</button></div>
+          <div class="dtool"><div class="dt-ic">⇄</div><b>Dosyadan birleştir</b>
+            <span>Başka bir Pano dosyasındaki yeni kayıtları ekler; mevcut veriyi silmez. Önce neyin değişeceğini gösterir.</span>
+            <button class="btn" data-dt="merge">Dosya seç ve önizle</button></div>
+          <div class="dtool warn"><div class="dt-ic">↥</div><b>İçe aktar</b>
+            <span>Seçilen dosya <b>tüm verinin yerini alır</b>. Eski SharePoint panosundan geçiş için kullanılır.</span>
+            <button class="btn danger" data-dt="import">Dosya seç ve içe aktar</button></div>
+        </div>`;
+      el.querySelectorAll('[data-dt]').forEach(b => b.onclick = () =>
+        $({ export: '#btnExport', merge: '#btnMerge', import: '#btnImport' }[b.dataset.dt]).click());
     } else if (SYS_TAB === 'backups') {
       const list = await API.get('/api/backups');
       el.innerHTML = `<h3>Yedekler</h3>
@@ -6412,6 +6619,9 @@ async function loadVersion() {
   try { VERSION = await API.get('/api/version'); } catch (e) { VERSION = null; }
   if (VERSION?.env === 'test') {
     document.body.classList.add('env-test');
+    const fav = document.getElementById('favicon'); if (fav) fav.href = '/img/icon-test.svg';
+    document.querySelectorAll('.brand-ic,.tb-logo').forEach(i => { i.src = '/img/icon-test.svg'; });
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#F59E0B');
     document.title = '[TEST] ÇevikPano';
     if (!document.getElementById('envBar')) {
       const b = document.createElement('div');
