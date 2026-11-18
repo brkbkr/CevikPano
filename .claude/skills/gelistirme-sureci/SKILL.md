@@ -25,16 +25,43 @@ değişmiyor) tasarım adımı atlanabilir; diğerleri atlanmaz.
 
 ## Sınırlar
 - PR birleştirme ve canlıya yayın kullanıcının kararıdır; Claude bunları kendisi yapmaz.
-- Yeni renk, yerleşim, menü yapısı ya da yeni ekran **önce kullanıcıya** taslak olarak gösterilir; onay gelmeden yazılımcıya geçilmez.
-- Veri silen ya da dönüştüren migration içeren işler kullanıcıya ayrıca açıkça belirtilir.
+- Ekran değişikliklerinde tasarım taslağı (`docs/tasarim/<konu>/`) hazırlanır ve kullanıcıya gösterilir. Kullanıcı oturumdaysa
+  onayı beklenir; **otomatik çalışmada** taslak PR'a eklenir, iş test sitesine çıkar ve onay birleştirme sırasında verilir
+  (test sitesi kullanıcıya açık değildir, canlıya hiçbir şey onaysız gitmez).
+- Markayı değiştiren kararlar (yeni renk paleti, logo, ana menü yapısının baştan değişmesi) otomatik çalışmada uygulanmaz;
+  `oneri` etiketli issue olarak sunulur.
+- Veri silen ya da dönüştüren migration içeren işler kullanıcıya ayrıca açıkça belirtilir ve geri dönüş planı yazılır.
 
 ## Backlog (GitHub Issues)
 - Etiketler: `tip:ozellik`, `tip:hata`, `tip:iyilestirme`; `oncelik:kritik|yuksek|orta|dusuk`;
-  `durum:tasarim-onayi`, `durum:devam`, `durum:onay-bekliyor`, `durum:test-sitesinde`.
+  `durum:hazir` (otomatik çalışma alabilir), `durum:devam`, `durum:test-sitesinde`; `oneri` (Claude'un ürün önerisi).
 - Kullanıcıya her adımın sonunda **sade Türkçe** kısa bilgi verilir: ne yapıldı, nerede görülür, ondan ne bekleniyor.
+
+## Otomatik çalışma (zamanlanmış görev)
+Kullanıcı yazmadan, zamanlanmış oturumlarda çalışılır. Her çalışmada:
+
+1. **Durum:** `git fetch`; açık PR'lar, `durum:devam` ve `durum:test-sitesinde` issue'lar, test sitesinin `/api/version`'ı.
+   Önceki çalışmada yarım kalan iş varsa ona devam et.
+2. **Tek sürekli dal:** Otomatik işler `claude/gelistirme` dalında birikir (yoksa `main`'den aç; `main` ilerlediyse
+   `main`'i bu dala birleştir). Tek bir açık PR vardır: **"Geliştirmeler (devam ediyor)"**. Her paket ayrı commit(ler) ve
+   PR açıklamasında ayrı bir madde (sade anlatım + kabul kriterleri ✔ + test sonuçları). Böylece test sitesi birikmiş
+   bütün işleri gösterir ve kullanıcı tek PR'ı onaylayarak hepsini alır. Kullanıcı birleştirince bir sonraki çalışmada dal `main`'den yeniden açılır.
+3. **İş seçimi (PO):** En yüksek öncelikli `durum:hazir` issue'yu al, `durum:devam` yap. Bir çalışmada en fazla 1 paket
+   (büyükse bir alt parçası) bitir; yarım bırakma, bitmeyecekse küçült.
+4. **Süreç:** PO → analist → tasarımcı → yazılımcı → testçi adımları (yukarıdaki tablo); her rol ayrı alt ajan.
+5. **Yayın:** Push → CI yeşil → "Teste gönder" → 2-5 dk sonra testçi test sitesinde duman testi.
+   CI kırmızıysa kök nedeni bul ve düzelt; test atlamak, kapatmak yok.
+6. **Kapanış:** Issue'ya yorum (ne yapıldı, test sitesinde nerede görülür) ve `durum:test-sitesinde` etiketi.
+   PR açıklamasını güncelle. Kullanıcıya bildirim (PushNotification, 2-3 cümle, sade).
+7. **Fikir üretme (PO, haftada bir — pazartesi çalışmasında):** Ürünü kullanıcı gözüyle gez (test sitesi), backlog'u gözden
+   geçir; en fazla 2 yeni `oneri` issue'su aç (sorun, öneri, beklenen fayda, boyut). `oneri` issue'ları, kullanıcı
+   `durum:hazir` etiketi koymadan geliştirilmez.
+8. **Durma koşulları:** Belirsizlik kullanıcı kararı gerektiriyorsa issue'ya soruyu yaz, `durum:hazir`'ı kaldır ve bir
+   sonraki işe geç. Hiç `durum:hazir` iş yoksa yalnızca 1. ve 7. adımları yap.
 
 ## Bitti tanımı
 CI yeşil · testçi GEÇTİ · test sitesinde duman testi geçti · PO kabul etti · sürüm notu yazıldı · belgeler güncel · kullanıcı onaya çağrıldı.
 
-Not: Test sitesi aynı anda tek bir geliştirmeyi gösterir (testleri geçen son push). İşler sırayla yürütülür; bir işin test
-sitesindeki denemesi bitmeden diğerine push yapma.
+Not: Test sitesi aynı anda tek bir dalı gösterir (testleri geçen son push). Bu yüzden otomatik işler tek sürekli dalda
+(`claude/gelistirme`) birikir; kullanıcının istediği acil bir iş ayrı dalda yapılırsa, iş bitince test sitesi
+"Teste gönder" ile yeniden `claude/gelistirme`'ye döndürülür.
