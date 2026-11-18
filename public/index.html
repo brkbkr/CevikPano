@@ -1772,6 +1772,173 @@ button.cu-prj:hover{background:var(--surface2)}
   .pt-dlg .m-f .btn{flex:1;min-height:44px;justify-content:center}
   .pt-dlg .m-f .note{display:none}
 }
+/* ---- Yeni proje · şablon galerisi (ps-, görev 10; docs/tasarim/proje-sablonu) ---- */
+:root{--ps-pv-bg:linear-gradient(180deg,#F6F9FD,#EEF3FA);--ps-pv-on:linear-gradient(180deg,#EEF4FF,#E2ECFD);--ps-rec-bg:#FFFFFF}
+:root[data-theme="dark"]{--ps-pv-bg:linear-gradient(180deg,#101A2E,#0E1729);--ps-pv-on:linear-gradient(180deg,rgba(96,165,250,.16),rgba(96,165,250,.08));--ps-rec-bg:#0C1424}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ps-pv-bg:linear-gradient(180deg,#101A2E,#0E1729);--ps-pv-on:linear-gradient(180deg,rgba(96,165,250,.16),rgba(96,165,250,.08));--ps-rec-bg:#0C1424}}
+.modal.pt-dlg.ps-m{max-width:1120px}
+.modal.pt-dlg.ps-m.w-pv{max-width:980px}
+.modal.pt-dlg.ps-m.w-form{max-width:780px}
+.ps-h{display:flex;align-items:center;gap:12px;padding:14px 14px 14px 24px;border-bottom:1px solid var(--line);background:var(--surface)}
+.ps-h.back{padding-left:12px}
+.ps-h .t{flex:1;min-width:0}
+.ps-h h2{margin:0;font-size:16.5px;font-weight:750;letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ps-h .s{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:3px;font-size:12px;color:var(--ink2)}
+.ps-h .iconbtn.bare{border-color:transparent;background:none}
+.ps-b{padding:20px 24px 24px;min-width:0}
+.ps-f{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:12px 24px;background:var(--surface2);border-top:1px solid var(--line)}
+.ps-f .note{flex:1;min-width:0;display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink2)}
+.ps-f .note svg.i{width:16px;height:16px;color:var(--accent)}
+.ps-f .note b{color:var(--ink);font-weight:650}
+.ps-steps{display:flex;align-items:center;gap:8px;margin:0;padding:0;list-style:none;font-size:12px;color:var(--ink2);flex-shrink:0}
+.ps-steps li{display:flex;align-items:center;gap:7px}
+.ps-steps .n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-family:var(--mono);font-size:11px;font-weight:700;border:1.5px solid var(--line2);color:var(--ink2);background:var(--surface)}
+.ps-steps .n svg.i{width:12px;height:12px;stroke-width:2.4}
+.ps-steps li[aria-current="step"]{color:var(--ink);font-weight:650}
+.ps-steps li[aria-current="step"] .n{background:var(--accent);border-color:var(--accent);color:var(--accent-ink,#fff)}
+.ps-steps li.done .n{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 45%,transparent);color:var(--accent-d)}
+.ps-steps .sep{width:28px;height:1.5px;background:var(--line2)}
+.ps-intro{display:flex;align-items:flex-end;gap:16px;margin-bottom:16px}
+.ps-intro p{flex:1;margin:0;font-size:13px;color:var(--ink2);line-height:1.5;max-width:640px}
+.ps-ctx{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 10px 0 5px;border:1px solid var(--line);border-radius:999px;background:var(--surface2);font-size:12px;color:var(--ink2);white-space:nowrap;max-width:100%;overflow:hidden}
+.ps-ctx b{color:var(--ink);font-weight:650;overflow:hidden;text-overflow:ellipsis}
+.ps-grid{border:0;margin:0;padding:0;min-width:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.ps-card{position:relative;display:flex;flex-direction:column;min-width:0;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:var(--shadow-sm);overflow:hidden;transition:border-color .12s,box-shadow .12s}
+.ps-card:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line2));box-shadow:var(--shadow)}
+.ps-card.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),var(--shadow)}
+.ps-card:has(input:focus-visible){box-shadow:0 0 0 1px var(--accent),var(--ring)}
+.ps-pick{display:flex;flex-direction:column;flex:1;cursor:pointer;min-width:0}
+.ps-pv{position:relative;display:block;height:124px;background:var(--ps-pv-bg);border-bottom:1px solid var(--line)}
+.ps-card.on .ps-pv{background:var(--ps-pv-on)}
+.ps-pv > svg{display:block;width:100%;height:100%}
+.ps-rec{position:absolute;left:10px;top:10px;display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px 0 7px;border-radius:999px;
+  background:var(--ps-rec-bg);border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);color:var(--accent-d);font-size:11px;font-weight:700;box-shadow:var(--shadow-sm)}
+.ps-rec svg.i{width:13px;height:13px}
+.ps-rad{position:absolute;right:14px;top:13px;width:20px;height:20px;border-radius:50%;border:1.6px solid var(--line2);background:var(--surface)}
+.ps-card.on .ps-rad{border-color:var(--accent);background:var(--accent);box-shadow:inset 0 0 0 4px var(--surface)}
+.ps-body{position:relative;display:flex;flex-direction:column;gap:7px;padding:13px 14px 12px;flex:1}
+.ps-nm{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;padding-right:28px;min-height:22px}
+.ps-nm b{min-width:0;font-size:14.5px;font-weight:720;letter-spacing:-.01em}
+.ps-desc{margin:0;font-size:12.5px;color:var(--ink2);line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.9em}
+.ps-mod{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--ink2)}
+.ps-mod svg.i{width:14px;height:14px;color:var(--accent)}
+.ps-foot{display:flex;align-items:center;gap:8px;padding:6px 6px 6px 14px;border-top:1px dashed var(--line);margin-top:auto}
+.ps-meta{flex:1;min-width:0;display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--ink2);white-space:nowrap}
+.ps-strip{display:flex;gap:3px}
+.ps-strip i{width:10px;height:6px;border-radius:3px;background:var(--todo)}
+.ps-strip i.inprogress{background:var(--prog)} .ps-strip i.done{background:var(--done)}
+.ps-look{height:36px;padding:0 10px;font-size:12.5px}
+.ps-look svg.i{width:15px;height:15px}
+.pv-col{fill:var(--surface);stroke:var(--line2)}
+.pv-card{fill:var(--surface2);stroke:var(--line)}
+.pv-bar{fill:var(--line2)} .pv-bar2{fill:var(--line)}
+.pv-todo{fill:var(--todo)} .pv-prog{fill:var(--prog)} .pv-done{fill:var(--done)}
+.pv-acc{fill:var(--accent)} .pv-acc2{fill:color-mix(in srgb,var(--accent) 50%,var(--surface))}
+.pv-accs{fill:var(--accent-soft);stroke:var(--accent)}
+.pv-hl{fill:var(--surface);stroke:var(--accent);stroke-width:1.4}
+.pv-ln{stroke:var(--line2);fill:none}
+.pv-dash{fill:none;stroke:var(--line2);stroke-width:1.4;stroke-dasharray:4 3}
+.pv-st{fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.ps-pvwrap{display:flex;flex-direction:column;gap:16px}
+.ps-board{background:var(--surface2);border:1px solid var(--line);border-radius:14px;padding:14px}
+.ps-board-h{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:12px;font-weight:650;color:var(--ink2)}
+.ps-board-h > svg.i{width:16px;height:16px}
+.ps-board-h .k{margin-left:auto;display:flex;gap:12px;font-weight:550}
+.ps-board-h .k span{display:inline-flex;align-items:center;gap:5px}
+.ps-mcols{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:10px;list-style:none;margin:0;padding:0}
+.ps-mcol{min-width:0;background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--todo);border-radius:12px;padding:10px 9px 9px}
+.ps-mcol.inprogress{border-top-color:var(--prog)} .ps-mcol.done{border-top-color:var(--done)}
+.ps-mcol .nm{display:block;font-size:12.5px;font-weight:700;line-height:1.3;min-height:2.6em;overflow-wrap:anywhere}
+.ps-mcol .ct{display:inline-flex;align-items:center;gap:5px;margin:4px 0 10px;font-size:11px;font-weight:600;color:var(--ink2)}
+.ps-gh{height:42px;border:1px solid var(--line);border-radius:9px;background:var(--surface2);margin-top:6px;padding:9px 9px 0}
+.ps-gh i{display:block;height:4px;border-radius:2px;background:var(--line2);width:78%}
+.ps-gh i + i{margin-top:6px;width:46%;background:var(--line)}
+.ps-facts{margin:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.ps-facts > div{padding:12px 14px;border-left:1px solid var(--line);min-width:0}
+.ps-facts > div:first-child{border-left:0}
+.ps-facts dt{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta);margin-bottom:6px}
+.ps-facts dd{margin:0;font-size:13px;color:var(--ink);display:flex;align-items:center;gap:7px;flex-wrap:wrap;line-height:1.45}
+.ps-facts dd b{font-weight:650} .ps-facts dd b.mono{font-family:var(--mono)}
+.ps-facts dd small{flex-basis:100%;font-size:12px;color:var(--ink2)}
+.ps-facts dd svg.i{width:16px;height:16px;color:var(--accent)}
+.ps-cnt{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink2);flex-basis:100%}
+.ps-cnt span{display:inline-flex;align-items:center;gap:6px}
+.ps-cnt b{font-family:var(--mono);color:var(--ink)}
+.ps-chosen{display:flex;align-items:center;gap:14px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--surface2);margin-bottom:18px;flex-wrap:wrap}
+.ps-thumb{width:104px;height:56px;border-radius:8px;border:1px solid var(--line);background:var(--ps-pv-bg);overflow:hidden;flex-shrink:0}
+.ps-thumb svg{display:block;width:100%;height:100%}
+.ps-chosen .tx{flex:1;min-width:0}
+.ps-chosen .lb{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta)}
+.ps-chosen .nm{display:flex;align-items:center;gap:8px;margin-top:2px;font-size:14px;font-weight:700;flex-wrap:wrap}
+.ps-chosen .mt{font-family:var(--mono);font-size:11px;color:var(--ink2);margin-top:3px}
+.ps-r2{display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:14px}
+.ps-r2.eq{grid-template-columns:repeat(2,minmax(0,1fr))}
+.ps-fld{margin-bottom:16px;min-width:0}
+.ps-fld > label,.ps-fld > .lb{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:7px}
+.ps-fld .opt{font-weight:500;color:var(--meta)}
+.ps-fld .inp{width:100%}
+.ps-fld .inp.key{font-family:var(--mono);font-weight:650;letter-spacing:.06em;text-transform:uppercase}
+.ps-fld.err .inp{border-color:var(--risk);box-shadow:0 0 0 3px color-mix(in srgb,var(--risk) 14%,transparent)}
+.ps-err{display:flex;align-items:flex-start;gap:6px;margin-top:7px;font-size:12px;font-weight:600;color:var(--risk);line-height:1.4}
+.ps-err svg.i{width:14px;height:14px;margin-top:1px;flex-shrink:0}
+.ps-hint{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11.5px;color:var(--ink2)}
+.ps-hint svg.i{width:13px;height:13px;color:var(--meta)}
+.ps-sug{display:inline-flex;align-items:center;gap:6px;height:28px;margin-top:6px;padding:0 9px;border:1px solid var(--line2);border-radius:7px;background:var(--surface);font-size:12px;color:var(--ink2);cursor:pointer}
+.ps-sug b{font-family:var(--mono);color:var(--accent-d)}
+.ps-secth{display:flex;align-items:baseline;gap:8px;margin:4px 0 8px;flex-wrap:wrap}
+.ps-secth b{font-size:13px;font-weight:700}
+.ps-secth span{font-size:12px;color:var(--ink2)}
+.ps-chk{display:flex;align-items:flex-start;gap:10px;font-size:13px;line-height:1.45;cursor:pointer}
+.ps-chk input{width:18px;height:18px;margin:1px 0 0;accent-color:var(--accent);flex-shrink:0}
+.ps-chk small{display:block;font-size:12px;color:var(--ink2)}
+.ps-epic{margin-top:16px;padding:12px 14px;border:1px solid var(--ws-info-ln);background:var(--ws-info-bg);border-radius:12px}
+.ps-epic .hd{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12.5px;font-weight:650;color:var(--ws-info-ink)}
+.ps-epic .hd svg.i{width:16px;height:16px}
+.ps-epic .ps-chk b{font-weight:650}
+.ps-einfo{margin:16px 0 0}
+.ps-dflt{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+.ps-own{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--meta);background:var(--surface3);border-radius:5px;padding:1px 6px;margin-left:6px;vertical-align:1px}
+.ps-sc{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:14px;margin-bottom:16px}
+.ps-conf{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.ps-conf b{display:block;font-size:14px;font-weight:700;margin-bottom:4px}
+.ps-conf p{margin:0 0 12px;font-size:12.5px;color:var(--ink2);line-height:1.5}
+.ps-conf .bt{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+@media (max-width:1180px){ .ps-grid{grid-template-columns:repeat(3,minmax(0,1fr))} }
+@media (max-width:900px){ .ps-grid{grid-template-columns:repeat(2,minmax(0,1fr))} .ps-facts{grid-template-columns:repeat(2,minmax(0,1fr))} .ps-facts > div:nth-child(3){border-left:0} .ps-facts > div:nth-child(n+3){border-top:1px solid var(--line)} }
+@media (max-width:640px){
+  .modal.pt-dlg.ps-m{overflow:visible}
+  .ps-h{position:sticky;top:0;z-index:3;padding:8px 6px 8px 16px;min-height:60px}
+  .ps-h.back{padding-left:4px}
+  .ps-h h2{font-size:15.5px}
+  .ps-h:not(.back) .s{display:none}
+  .ps-h .iconbtn{width:44px;height:44px}
+  .ps-steps .lbl,.ps-steps .sep{display:none}
+  .ps-steps li:not([aria-current]){display:none}
+  .ps-steps .n{width:auto;padding:0 8px;border-radius:999px}
+  .ps-b{padding:14px 14px 18px;flex:1}
+  .ps-intro{flex-direction:column;align-items:flex-start;gap:10px}
+  .ps-pv{height:104px}
+  .ps-look{height:44px;padding:0 12px}
+  .ps-foot{padding:4px 4px 4px 14px}
+  .ps-f{position:sticky;bottom:0;z-index:3;padding:10px 14px calc(10px + env(safe-area-inset-bottom));box-shadow:0 -6px 16px -8px rgba(11,27,51,.18);flex-wrap:wrap}
+  .ps-f .note{display:none}
+  .ps-f .btn{flex:1;min-height:44px;justify-content:center}
+  .ps-mcols{grid-auto-flow:row;grid-auto-columns:auto;gap:6px}
+  .ps-mcol{display:flex;align-items:center;gap:10px;border-top-width:1px;border-left:4px solid var(--todo);padding:10px 12px;min-height:48px}
+  .ps-mcol.inprogress{border-left-color:var(--prog)} .ps-mcol.done{border-left-color:var(--done)}
+  .ps-mcol.inprogress,.ps-mcol.done{border-top-color:var(--line)}
+  .ps-mcol .nm{flex:1;min-height:0}
+  .ps-mcol .ct{margin:0}
+  .ps-gh{display:none}
+  .ps-facts{grid-template-columns:minmax(0,1fr)} .ps-facts > div{border-left:0;border-top:1px solid var(--line)} .ps-facts > div:first-child{border-top:0}
+  .ps-board-h .k{display:none}
+  .ps-r2,.ps-r2.eq{grid-template-columns:minmax(0,1fr)}
+  .ps-m .inp{min-height:44px;font-size:15px}
+  .ps-m .memchip{min-height:44px}
+  .ps-sug{height:44px}
+  .ps-chosen .btn{min-height:44px}
+}
+@media (max-width:600px){ .ps-grid{grid-template-columns:minmax(0,1fr);gap:12px} }
 /* ==========================================================================
    Gezinme — proje sekmeleri, yol + proje adı, sağ üstte hesap menüsü, dar ekranda ☰ çekmece
    (docs/tasarim/gezinme, dilim A1)
@@ -3210,6 +3377,7 @@ const SVG = {
   sync: '<path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/>',
   key: '<circle cx="7.5" cy="15.5" r="4"/><path d="m10.5 12.5 9-9M16 7l3 3"/>',
   keyboard: '<rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M7 14h10"/>',
+  star: '<path d="m12 3 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8l-5.4 2.9 1.1-6.1L3.2 9.4l6.1-.8z"/>',
   logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
   /* gezinme A2: sol menü ağacı ve kenar çubuğunu özelleştir */
   home: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
@@ -8955,21 +9123,23 @@ const noColsView = () => `<div class="ws-empty"><div class="ghost-cols" aria-hid
     : '<p>Bir yönetici ya da projenin üyesi kolonları eklediğinde pano burada görünür.</p>'}</div>`;
 
 /* Yeni proje formundaki kolon listesi (kayıt "Oluştur"a basınca yapılır; satırlar kilitlenmez). */
-function newColsEditor(host, flow) {
-  const st = { tpl: 'default', err: '' };
-  const TPLS = () => [
+/* o.only: gösterilecek kaynak listesi (boş/tek → seçici yok); o.onTpl(v, satırlar): kaynak değişti (görev 10). */
+function newColsEditor(host, flow, o = {}) {
+  const st = { tpl: o.tpl || 'default', err: '' };
+  const ALL = () => [
     ['default', 'Varsayılan akış', DB.cfg.defaultStatuses || STATUS_TEMPLATES.uyarlama[1]],
     ['basic', 'Basit', STATUS_TEMPLATES.basic[1]],
     ['dev', 'Geliştirme', STATUS_TEMPLATES.dev[1]],
     ['uyarlama', 'Uyarlama', STATUS_TEMPLATES.uyarlama[1]],
     ...(P() && stats().length ? [['copy', `${P().key} projesinden kopyala`, stats().map(s => [s.name, catOk(s.cat)])]] : [])];
+  const TPLS = () => o.only ? ALL().filter(t => o.only.includes(t[0])) : ALL();
   const rowErr = k => colNameErr(flow[k][0], flow.filter((_, j) => j !== k).map(r => r[0]));
   let sig = '';
   const draw = (focusSel, fb) => {
     const full = flow.length >= COL_MAX;
     sig = flow.map((_, k) => rowErr(k)).join('|');
-    host.innerHTML = `<div class="pt-tpls" role="radiogroup" aria-label="Kolon şablonu">${TPLS().map(([v, l, r]) =>
-        `<button type="button" class="pt-tpl" role="radio" aria-checked="${st.tpl === v}" tabindex="${st.tpl === v ? 0 : -1}" data-tpl="${v}">${v === 'copy' ? ic('copy') : ''}${esc(l)}<span class="n">${r.length}</span></button>`).join('')}</div>
+    host.innerHTML = `${TPLS().length < 2 ? '' : `<div class="pt-tpls" role="radiogroup" aria-label="${esc(o.label || 'Kolon şablonu')}">${TPLS().map(([v, l, r]) =>
+        `<button type="button" class="pt-tpl" role="radio" aria-checked="${st.tpl === v}" tabindex="${st.tpl === v ? 0 : -1}" data-tpl="${v}">${v === 'copy' ? ic('copy') : ''}${esc(l)}<span class="n">${r.length}</span></button>`).join('')}</div>`}
       ${colHd(true)}
       <div class="pt-cols" role="list" aria-label="Kolon önizlemesi">${flow.map((r, k) => colRowHtml({ name: r[0], cat: r[1] }, k, {
         pre: 'n', compact: true, first: k === 0, last: k === flow.length - 1, only: flow.length < 2, err: rowErr(k) })).join('')}</div>
@@ -8978,7 +9148,7 @@ function newColsEditor(host, flow) {
       <div class="pt-ferr" id="np_cerr" role="alert">${st.err ? ic('alert') + esc(st.err) : ''}</div>`;
     const tpls = $$('[data-tpl]', host);
     const pickTpl = v => { st.tpl = v; st.err = ''; flow.length = 0;
-      (TPLS().find(t => t[0] === v)?.[2] || []).slice(0, COL_MAX).forEach(r => flow.push([r[0], catOk(r[1])])); draw(`[data-tpl="${v}"]`); };
+      (TPLS().find(t => t[0] === v)?.[2] || []).slice(0, COL_MAX).forEach(r => flow.push([r[0], catOk(r[1])])); o.onTpl?.(v, flow); draw(`[data-tpl="${v}"]`); };
     tpls.forEach((b, j) => {
       b.onclick = () => pickTpl(b.dataset.tpl);
       b.onkeydown = e => { const d = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key]; if (!d) return;
@@ -9018,70 +9188,268 @@ function newColsEditor(host, flow) {
   };
 }
 
+/* ---------- Yeni proje: şablon galerisi (görev 10, docs/tasarim/proje-sablonu) ----------
+   Şablon yalnız başlangıçtır: türü, kolonları ve açılış ekranını hazırlar. İş tipleri, modüller ve otomasyon
+   ortaktır; şablon bunları değiştirmez (yöneticinin "Epikleri aç" kutusu hariç). k = projects.data.template
+   (sunucu: validate.js → PROJECT_TEMPLATES). */
+const PROJ_TPLS = [
+  { k: 'kanban', n: 'Kanban', t: 'board', rec: 1, open: 'board', d: "İşleri panoda Yapılacak'tan Bitti'ye akıtın; sprint yok, sürekli akış.",
+    cols: () => [['Yapılacak', 'todo'], ['Devam ediyor', 'inprogress'], ['İncelemede', 'inprogress'], ['Bitti', 'done']] },
+  { k: 'scrum', n: 'Scrum', t: 'agile', open: 'backlog', d: "Backlog'u kısa sprintlere bölün; sprint hızını ve burndown'u izleyin.",
+    cols: () => STATUS_TEMPLATES.dev[1] },
+  { k: 'gorev', n: 'Görev takibi', t: 'board', open: 'board', d: 'Ekip ya da kişisel görevleri üç adımlı sade bir akışla izleyin.',
+    cols: () => STATUS_TEMPLATES.basic[1] },
+  { k: 'uyarlama', n: 'Uyarlama projesi', t: 'board', open: 'board', d: 'Analizden canlı takibe uyarlama adımlarını tek panoda yönetin.',
+    cols: () => STATUS_TEMPLATES.uyarlama[1] },
+  { k: 'talep', n: 'Talep / servis masası', t: 'board', open: 'board', d: 'Gelen talepleri karşılayın, yanıt bekleyenleri ayrı izleyin.',
+    cols: () => [['Yeni', 'todo'], ['İnceleniyor', 'inprogress'], ['Talep edenden yanıt bekleniyor', 'inprogress'], ['Çözüldü', 'done'], ['Kapandı', 'done']] },
+  { k: 'yolharitasi', n: 'Ürün yol haritası', t: 'board', open: 'roadmap', epic: 1, d: 'Fikirleri değerlendirin, planlayın, yol haritasında gösterin.',
+    cols: () => [['Fikir', 'todo'], ['Değerlendiriliyor', 'inprogress'], ['Planlandı', 'inprogress'], ['Geliştiriliyor', 'inprogress'], ['Yayında', 'done']] },
+  { k: 'bos', n: 'Boş proje', t: 'board', open: 'board', d: 'Varsayılan akışla başlayın ya da aktif projeden kopyalayın.',
+    cols: () => DB.cfg.defaultStatuses || STATUS_TEMPLATES.uyarlama[1] },
+];
+const tplBy = k => PROJ_TPLS.find(x => x.k === k) || PROJ_TPLS[0];
+const tplCols = t => t.cols().slice(0, COL_MAX).map(r => [r[0], catOk(r[1])]);
+const OPEN_LBL = { board: ['Pano', 'board'], backlog: ['Backlog', 'backlog'], roadmap: ['Yol haritası', 'roadmap'] };
+
+/* Soyut önizleme çizimleri (viewBox 240x124; yalnız süs, aria-hidden). */
+const pvR = (x, y, w, h, r, c) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" class="${c}"/>`;
+const pvMini = (x, y, w) => pvR(x, y, w, 18, 4, 'pv-card') + pvR(x + 5, y + 5, w - 16, 3, 1.5, 'pv-bar') + pvR(x + 5, y + 11, w - 24, 2.5, 1.25, 'pv-bar2');
+const PV_CC = { todo: 'pv-todo', inprogress: 'pv-prog', done: 'pv-done' };
+const PV = {
+  kanban: () => [['todo', 2], ['inprogress', 1], ['inprogress', 1], ['done', 2]].map(([c, n], i) => { const x = 18 + i * 54;
+      return pvR(x, 40, 42, 76, 7, 'pv-col') + pvR(x, 40, 42, 4, 2, PV_CC[c]) + pvR(x + 7, 51, 18, 3, 1.5, 'pv-bar')
+        + Array.from({ length: n }, (_, j) => pvMini(x + 5, 60 + j * 24, 32)).join(''); }).join('')
+    + `<g transform="rotate(-7 118 92)">${pvR(100, 84, 36, 19, 4, 'pv-hl')}${pvR(105, 89, 20, 3, 1.5, 'pv-acc')}${pvR(105, 95, 13, 2.5, 1.25, 'pv-acc2')}</g>`,
+  scrum: () => pvR(24, 14, 192, 56, 8, 'pv-accs') + pvR(34, 22, 44, 4, 2, 'pv-acc') + pvR(176, 20, 30, 8, 4, 'pv-acc2')
+    + [32, 50].map(y => pvR(32, y, 176, 13, 3, 'pv-col') + `<circle cx="40" cy="${y + 6.5}" r="2.5" class="pv-acc"/>` + pvR(48, y + 5, 70, 3, 1.5, 'pv-bar') + pvR(186, y + 4.5, 14, 4, 2, 'pv-bar2')).join('')
+    + pvR(24, 80, 40, 3, 1.5, 'pv-bar')
+    + [88, 104].map(y => pvR(24, y, 192, 12, 3, 'pv-col') + `<circle cx="32" cy="${y + 6}" r="2.5" class="pv-bar"/>` + pvR(40, y + 4.5, 88, 3, 1.5, 'pv-bar2')).join(''),
+  gorev: () => [['done', 84], ['done', 64], ['inprogress', 96], ['todo', 72]].map(([c, w], i) => { const y = 14 + i * 24;
+      const box = c === 'done' ? `<circle cx="54" cy="${y + 9}" r="6" class="pv-done"/><path d="m51 ${y + 9} 2.2 2.2 4-4.4" class="pv-st" stroke="#fff"/>`
+        : c === 'inprogress' ? `<circle cx="54" cy="${y + 9}" r="5.5" class="pv-st" stroke="var(--prog)"/><path d="M54 ${y + 3.5} a5.5 5.5 0 0 1 0 11z" class="pv-prog"/>`
+        : `<circle cx="54" cy="${y + 9}" r="5.5" class="pv-st" stroke="var(--line2)"/>`;
+      return pvR(40, y, 160, 19, 5, 'pv-col') + box + pvR(66, y + 6, w, 3, 1.5, c === 'done' ? 'pv-bar2' : 'pv-bar') + pvR(66, y + 11.5, w * .5, 2.5, 1.25, 'pv-bar2')
+        + `<circle cx="188" cy="${y + 9.5}" r="4.5" class="pv-bar"/>`; }).join(''),
+  uyarlama: () => `<path d="M30 14H210" class="pv-ln" stroke-width="1.4"/>` + [['todo', 2], ['inprogress', 2], ['inprogress', 1], ['inprogress', 1], ['inprogress', 1], ['done', 2]]
+    .map(([c, n], i) => { const x = 14 + i * 36;
+      return `<circle cx="${x + 16}" cy="14" r="4" class="${PV_CC[c]}"/>` + pvR(x, 26, 32, 86, 6, 'pv-col') + pvR(x, 26, 32, 3.5, 1.75, PV_CC[c]) + pvR(x + 5, 35, 14, 3, 1.5, 'pv-bar')
+        + Array.from({ length: n }, (_, j) => pvR(x + 4, 44 + j * 20, 24, 16, 3.5, 'pv-card') + pvR(x + 8, 49 + j * 20, 14, 2.5, 1.25, 'pv-bar')).join(''); }).join(''),
+  talep: () => [['pv-hl', 'todo', 1], ['pv-col', 'inprogress'], ['pv-col', 'done']].map(([cl, c, nw], i) => { const y = 12 + i * 23;
+      return pvR(46, y, 148, 19, 5, cl) + (nw ? `<circle cx="40" cy="${y + 9.5}" r="3" class="pv-acc"/>` : '') + `<circle cx="58" cy="${y + 9.5}" r="5" class="pv-bar"/>`
+        + pvR(69, y + 6, 58, 3, 1.5, nw ? 'pv-acc' : 'pv-bar') + pvR(69, y + 11.5, 38, 2.5, 1.25, 'pv-bar2') + pvR(160, y + 6, 26, 7, 3.5, PV_CC[c]); }).join('')
+    + `<path d="M30 84v18a7 7 0 0 0 7 7h166a7 7 0 0 0 7-7V84h-46l-8 11H84l-8-11z" class="pv-col"/>` + pvR(96, 97, 48, 3, 1.5, 'pv-bar2'),
+  yolharitasi: () => pvR(20, 12, 200, 11, 3, 'pv-col') + [70, 120, 170].map(x => `<path d="M${x} 27V112" class="pv-dash" stroke-width="1"/>`).join('')
+    + [44, 94, 144, 194].map(x => pvR(x - 12, 16, 24, 3, 1.5, 'pv-bar')).join('')
+    + pvR(24, 32, 66, 13, 6.5, 'pv-done') + pvR(56, 52, 96, 13, 6.5, 'pv-acc') + pvR(108, 72, 86, 13, 6.5, 'pv-acc2') + pvR(150, 92, 58, 13, 6.5, 'pv-bar')
+    + `<path d="M132 25V114" class="pv-st" stroke="var(--accent-d)" stroke-width="1.6"/><circle cx="132" cy="27" r="3.2" class="pv-acc"/>`,
+  bos: () => [48, 98, 148].map(x => pvR(x, 16, 44, 92, 8, 'pv-dash')).join('')
+    + `<circle cx="120" cy="62" r="15" class="pv-hl"/><path d="M120 55v14M113 62h14" class="pv-st" stroke="var(--accent)" stroke-width="2"/>`,
+};
+const svgPv = k => `<svg viewBox="0 0 240 124" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">${PV[k]()}</svg>`;
+const psSteps = cur => `<ol class="ps-steps" aria-label="Adımlar">
+  <li class="${cur > 1 ? 'done' : ''}" ${cur === 1 ? 'aria-current="step"' : ''}><span class="n">${cur > 1 ? ic('check') : '1'}</span><span class="lbl">Şablon</span></li>
+  <li class="sep" aria-hidden="true"></li>
+  <li ${cur === 2 ? 'aria-current="step"' : ''}><span class="n">2</span><span class="lbl">Ayrıntılar</span></li></ol><span class="sr">Adım ${cur} / 2</span>`;
+const psX = `<button type="button" class="iconbtn bare ps-x" data-close aria-label="Kapat">${ic('x')}</button>`;
+const nameKey = s => String(s).trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr');
+const PKEY_RE = /^[\p{L}\p{N}_-]{1,20}$/u;
+
 function newProjectForm(preset = {}) {
   if (!canEdit()) return toast('İzleyiciler proje oluşturamaz');
   /* Alan seçimi (#22): grubun "+ Proje"si o alanı, diğer girişler seçili alanı önerir. */
+  const fromWs = !!(preset.workspaceId && wsById(preset.workspaceId) && !wsArchived(preset.workspaceId));
   const def = [preset.workspaceId, DB.ui.workspace, WS_DEFAULT].find(id => wsById(id) && !wsArchived(id)) || WS_DEFAULT;
-  const wsl = visibleWs();
-  if (!wsl.some(w => w.id === def) && wsById(def)) wsl.unshift(wsById(def));
-  openModal(`<div class="m-h"><b>Yeni proje</b><button class="x" data-close>×</button></div>
-    <div style="padding:16px 18px">
-      <div class="form-row"><label class="field" for="np_n">Proje adı</label><input class="inp" id="np_n" placeholder="Mobil Uygulama"></div>
-      <div class="form-row"><label class="field" for="np_ws">Çalışma alanı</label><select class="inp" id="np_ws">
-        ${wsl.map(w => `<option value="${esc(w.id)}" ${w.id === def ? 'selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
-      <div class="form-row"><label class="field" for="np_cu">Cari <span style="text-transform:none;letter-spacing:0;color:var(--meta)">(isteğe bağlı)</span></label>${cuList().some(cuActive)
-        ? `<select class="inp" id="np_cu">${cuOptions('')}</select>
-           <div class="cu-hint">${ic('info')}Yalnız etkin cariler listelenir. Bir projeye en çok bir cari bağlanır.</div>`
-        : `<div class="cu-hint" id="np_cu_none">${ic('info')}<span>Henüz cari yok.${isAdmin() ? ' <a href="#customers" data-cugo>Cariler</a>' : ''}</span></div>`}</div>
-      <div class="pt-fld"><div class="lb" id="np_tl">Proje türü <span class="req">zorunlu · sonra değiştirilebilir</span></div><div id="np_type">${typeCards('board')}</div></div>
-      <div class="pt-fld" style="margin-bottom:10px"><div class="lb">Kolonlar <span class="req">şablon seç, sonra düzenle</span></div><div id="np_cols"></div></div>
-      ${isAdmin() ? `<label style="display:flex;align-items:center;gap:6px;font-size:12.5px;margin-bottom:10px">
-        <input type="checkbox" id="np_def"> Bunu yeni projelerin varsayılan akışı yap</label>` : ''}
-      <label class="field">Üyeler</label>
-      <div id="np_m" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:4px">
-        ${DB.users.filter(u => u.active).map(u => `<button class="memchip ${u.id === SESSION ? 'on' : ''}" data-npm="${u.id}">
-          ${avat(u.id)}<span>${esc(u.name)}</span><em>${u.id === SESSION ? '✓' : '+'}</em></button>`).join('')}
-      </div>
-      <div id="np_err" class="lg-err"></div>
-    </div>
-    <div class="m-f"><button class="btn" data-close>Vazgeç</button><button class="btn pri" id="np_ok">Oluştur</button></div>`, 'pt-dlg');
-  /* Tür zorunlu, varsayılan Pano; kolonlar şablondan gelir ve düzenlenebilir (#12). */
-  let ptype = 'board';
-  const drawType = () => { $('#np_type').innerHTML = typeCards(ptype);
-    wireTypeCards($('#np_type'), v => { ptype = v; drawType(); $(`#np_type [data-ptype="${v}"]`)?.focus(); }); };
-  drawType();
-  const flow = (DB.cfg.defaultStatuses || STATUS_TEMPLATES.uyarlama[1]).slice(0, COL_MAX).map(r => [r[0], catOk(r[1])]);
-  const colsErr = newColsEditor($('#np_cols'), flow);
-  const picked = new Set([SESSION]);
+  /* Adımlar arası korunan girdiler: ad, anahtar, alan, cari, üyeler; kolonlar şablonla yeniden dolar. */
+  const st = { k: 'kanban', sel: 'kanban', name: '', key: '', keyTouched: false, ws: def, cu: '', picked: new Set([SESSION]),
+    flow: null, base: '', src: 'default', epic: false, def: false, err: {} };
+  openModal('', 'pt-dlg ps-m');
+  const box = $('#scrim .modal');
+  box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
+  const show = (html, cls, label) => { box.className = 'modal pt-dlg ps-m ' + cls; box.innerHTML = html; box.setAttribute('aria-labelledby', label); box.scrollTop = 0; $('#scrim').scrollTop = 0; };
+  const T = () => tplBy(st.k);
+  const opensAt = t => t.open === 'roadmap' && !MOD('epic') && !st.epic ? 'board' : t.open;
+  const card = t => `<div class="ps-card ${t.k === st.sel ? 'on' : ''}" data-pk="${t.k}">
+      <label class="ps-pick"><input class="sr" type="radio" name="ps_tpl" value="${t.k}" ${t.k === st.sel ? 'checked' : ''} aria-describedby="ps_d_${t.k}">
+        <span class="ps-pv">${svgPv(t.k)}${t.rec ? `<span class="ps-rec">${ic('star')}Önerilen</span>` : ''}</span>
+        <span class="ps-body"><span class="ps-nm"><b>${esc(t.n)}</b>${typeTag(t.t)}<span class="ps-rad" aria-hidden="true"></span></span>
+          <span class="ps-desc" id="ps_d_${t.k}">${esc(t.d)}</span>
+          ${t.epic ? `<span class="ps-mod">${ic('zap')}Önerilen modül: Epik</span>` : ''}</span></label>
+      <div class="ps-foot"><span class="ps-meta"><span class="ps-strip" aria-hidden="true">${tplCols(t).map(([, c]) => `<i class="${c}"></i>`).join('')}</span>${tplCols(t).length} kolon</span>
+        <button type="button" class="btn ghost ps-look" data-pvw="${t.k}" aria-label="${esc(t.n)} şablonunu önizle">${ic('eye')}Önizle</button></div></div>`;
+  const note = () => { const t = tplBy(st.sel); return `${ic('check')}Seçili: <b>${esc(t.n)}</b> · ${TYPE_LABEL[t.t]} · ${tplCols(t).length} kolon`; };
 
-  $$('[data-npm]').forEach(b => b.onclick = () => {
-    const id = b.dataset.npm;
-    picked.has(id) ? picked.delete(id) : picked.add(id);
-    b.classList.toggle('on', picked.has(id));
-    b.querySelector('em').textContent = picked.has(id) ? '✓' : '+';
-  });
-  $('#np_ok').onclick = () => {
-    const name = $('#np_n').value.trim();
-    if (!name) return $('#np_err').textContent = 'Proje adı gerekli.';
-    if (DB.projects.some(p => p.name.toLowerCase() === name.toLowerCase()))
-      return $('#np_err').textContent = 'Bu adda bir proje zaten var.';
-    const ws = $('#np_ws').value;
-    if (!wsById(ws)) return $('#np_err').textContent = 'Çalışma alanı bulunamadı';
-    if (wsArchived(ws)) return $('#np_err').textContent = 'Arşivlenmiş çalışma alanına proje taşınamaz';
-    const cu = $('#np_cu')?.value || '';
-    if (cu && !cuById(cu)) return $('#np_err').textContent = 'Cari bulunamadı';
-    if (cu && !cuActive(cuById(cu))) return $('#np_err').textContent = 'Pasif cari projeye bağlanamaz';
-    const key = projCode(name, new Set(DB.projects.map(p => p.code || p.key)));
-    if (colsErr()) return $('#np_err').textContent = '';
-    const clean = flow.map(r => [r[0].trim().replace(/\s+/g, ' '), r[1]]);
-    const pid = uid('p');
-    clean.forEach(([n, c], k) => DB.statuses.push({ id: uid('st'), projectId: pid, name: n, cat: c, wip: 0, ord: k }));
-    if (isAdmin() && $('#np_def')?.checked) DB.cfg.defaultStatuses = clean.map(r => [...r]);
-    picked.add(SESSION);
-    DB.projects.push({ id: pid, key, code: key, name, type: ptype, lead: SESSION, counter: 0, members: [...picked], archived: false, workspaceId: ws, ...(cu ? { customerId: cu } : {}) });
-    DB.ui.project = pid; DB.ui.view = 'board';
-    closeModal(); save(); startApp(); toast(`${name} oluşturuldu`);
+  /* ---- Adım 1: galeri ---- */
+  /* Galerideki seçim (st.sel) uygulanmış şablonu (st.k) "Devam et"e kadar değiştirmez. */
+  const gallery = focusK => {
+    if (!focusK) st.sel = st.k;
+    const ws = wsById(st.ws);
+    show(`<div class="ps-h"><div class="t"><h2 id="ps_t">Yeni proje · Şablon seçin</h2>
+        <div class="s">Ekibinizin çalışma biçimine en yakın başlangıcı seçin</div></div>${psSteps(1)}${psX}</div>
+      <div class="ps-b"><div class="ps-intro"><p>Şablon yalnız başlangıçtır: proje türünü, kolonları ve açılış ekranını hazırlar. Kolonları bir sonraki adımda düzenleyebilir, türü ve kolonları sonradan proje ayarlarından değiştirebilirsiniz.</p>
+          ${ws ? `<span class="ps-ctx">${wsBadge(ws)}Alan: <b>${esc(ws.name)}</b></span>` : ''}</div>
+        <fieldset class="ps-grid" id="ps_grid"><legend class="sr">Şablon</legend>${PROJ_TPLS.map(card).join('')}</fieldset></div>
+      <div class="ps-f"><span class="note" id="ps_note">${note()}</span>
+        <button type="button" class="btn" data-close>Vazgeç</button><button type="button" class="btn pri" id="ps_next">Devam et${ic('arrow')}</button></div>`, 'w-gal', 'ps_t');
+    const grid = $('#ps_grid', box);
+    grid.onchange = e => { st.sel = e.target.value;
+      $$('.ps-card', box).forEach(c => c.classList.toggle('on', c.dataset.pk === st.sel)); $('#ps_note', box).innerHTML = note(); };
+    grid.onkeydown = e => { if (e.key === 'Enter' && e.target.name === 'ps_tpl') { e.preventDefault(); pickTpl(st.sel); } };
+    $$('[data-pvw]', box).forEach(b => b.onclick = () => preview(b.dataset.pvw));
+    $('#ps_next', box).onclick = () => pickTpl(st.sel);
+    (focusK ? box.querySelector(`[data-pvw="${focusK}"]`) : box.querySelector('input[name="ps_tpl"]:checked'))?.focus();
   };
+
+  /* ---- Önizle: kolonlar kategori renkli + tür + açılış ekranı; kayıt oluşmaz ---- */
+  const preview = k => {
+    const t = tplBy(k), cols = tplCols(t), n = c => cols.filter(x => x[1] === c).length, gh = c => c === 'todo' ? 3 : c === 'done' ? 1 : 2;
+    const op = OPEN_LBL[t.open];
+    show(`<div class="ps-h back"><button type="button" class="iconbtn bare" id="ps_pvback" aria-label="Galeriye dön">${ic('back')}</button>
+        <div class="t"><h2 id="ps_pt">${esc(t.n)}</h2><div class="s">Şablon önizlemesi · kayıt oluşturulmaz</div></div>${psX}</div>
+      <div class="ps-b"><div class="ps-pvwrap">
+        <section class="ps-board" aria-label="Kolonlar, soldan sağa">
+          <div class="ps-board-h">${ic('layers')}Pano kolonları
+            <span class="k" aria-hidden="true">${CATS.map(([c, l]) => `<span><i class="cat-dot ${c}"></i>${l}</span>`).join('')}</span></div>
+          <ol class="ps-mcols" id="ps_pvcols">${cols.map(([nm, c]) => `<li class="ps-mcol ${c}" data-cat="${c}"><span class="nm">${esc(nm)}</span>
+            <span class="ct"><i class="cat-dot ${c}" aria-hidden="true"></i>${catName(c)}</span>
+            ${'<div class="ps-gh" aria-hidden="true"><i></i><i></i></div>'.repeat(gh(c))}</li>`).join('')}</ol>
+        </section>
+        <dl class="ps-facts">
+          <div><dt>Proje türü</dt><dd id="ps_pvtype">${typeTag(t.t)}<small>${t.t === 'agile' ? 'Backlog ve sprintler; sprint hızı, burndown' : 'Kolonlarda akan işler, sprint yok'}</small></dd></div>
+          <div><dt>Açılış ekranı</dt><dd id="ps_pvopen">${ic(op[1])}<b>${op[0]}</b><small>${t.open === 'roadmap' && !MOD('epic')
+            ? 'Epik modülü kapalıyken Pano açılır' : 'Proje oluşunca bu ekran açılır'}</small></dd></div>
+          <div><dt>Kolonlar</dt><dd><b class="mono">${cols.length} kolon</b>
+            <span class="ps-cnt">${CATS.map(([c, l]) => `<span><i class="cat-dot ${c}" aria-hidden="true"></i><b>${n(c)}</b> ${l}</span>`).join('')}</span></dd></div>
+          <div><dt>Değişmeyenler</dt><dd><small>İş tipleri, modüller ve otomasyon kuralları tüm projelerde ortaktır; şablon bunları değiştirmez.</small></dd></div>
+        </dl></div></div>
+      <div class="ps-f"><span class="note">${ic('info')}Kolonları bir sonraki adımda düzenleyebilirsiniz.</span>
+        <button type="button" class="btn" id="ps_pvgal">${ic('back')}Galeriye dön</button>
+        <button type="button" class="btn pri" id="ps_pvuse">Bu şablonu kullan${ic('arrow')}</button></div>`, 'w-pv', 'ps_pt');
+    $('#ps_pvback', box).onclick = $('#ps_pvgal', box).onclick = () => gallery(k);
+    $('#ps_pvuse', box).onclick = () => pickTpl(k);
+    $('#ps_pvuse', box).focus();
+  };
+
+  /* Şablon seçildi → adım 2. Kolonlar elle değiştiyse ve şablon değişiyorsa önce sorulur. */
+  const pickTpl = k => {
+    const dirty = st.flow && JSON.stringify(st.flow) !== st.base;
+    if (st.flow && st.flowK === k) return details();
+    if (dirty) return details({ ask: k });
+    fill(k); details();
+  };
+  const fill = k => { st.k = k; st.flowK = k; st.src = 'default'; st.flow = tplCols(tplBy(k)); st.base = JSON.stringify(st.flow); };
+
+  /* ---- Adım 2: ayrıntılar ---- */
+  const details = (o = {}) => {
+    const t = T(), admin = isAdmin(), cols = st.flow, op = OPEN_LBL[opensAt(t)];
+    const wsl = visibleWs();
+    if (!wsl.some(w => w.id === st.ws) && wsById(st.ws)) wsl.unshift(wsById(st.ws));
+    const E = st.err, fe = (id, m) => m ? `<div class="ps-err" id="${id}" role="alert">${ic('alert')}${esc(m)}</div>` : '';
+    const keySug = E.key === 'Bu anahtar kullanımda' ? freeKey(st.key) : '';
+    show(`<div class="ps-h"><div class="t"><h2 id="ps_ft">Yeni proje · Ayrıntılar</h2><div class="s">Adı ve ekibi belirleyin, kolonları gözden geçirin</div></div>${psSteps(2)}${psX}</div>
+      <div class="ps-b">
+        ${o.ask ? `<div class="ps-sc ps-conf" role="alertdialog" aria-labelledby="ps_ct" aria-describedby="ps_cd" id="ps_conf">
+          <b id="ps_ct">Kolon değişiklikleriniz kaybolacak</b>
+          <p id="ps_cd">Ad, anahtar, çalışma alanı, cari ve üyeler korunur; kolon listesi "${esc(tplBy(o.ask).n)}" şablonuyla yeniden dolar.</p>
+          <div class="bt"><button type="button" class="btn" id="ps_cno">Vazgeç</button><button type="button" class="btn pri" id="ps_cyes">Şablonu değiştir</button></div></div>` : ''}
+        <div class="ps-chosen"><span class="ps-thumb">${svgPv(t.k)}</span>
+          <div class="tx"><div class="lb">Şablon</div><div class="nm"><span id="ps_tn">${esc(t.n)}</span>${typeTag(t.t)}</div>
+            <div class="mt">${cols.length} kolon · Açılış: ${op[0]}</div></div>
+          <button type="button" class="btn ghost" id="ps_chg">${ic('back')}Şablonu değiştir</button></div>
+        <div class="ps-r2">
+          <div class="ps-fld ${E.name ? 'err' : ''}"><label for="np_n">Proje adı</label><input class="inp" id="np_n" maxlength="200" placeholder="Mobil Uygulama" value="${esc(st.name)}"
+              ${E.name ? 'aria-invalid="true" aria-describedby="np_n_e"' : ''}>${fe('np_n_e', E.name)}</div>
+          <div class="ps-fld ${E.key ? 'err' : ''}"><label for="np_key">Anahtar <span class="opt">${st.keyTouched ? 'elle' : 'addan önerilir'}</span></label>
+            <input class="inp key" id="np_key" maxlength="20" autocomplete="off" spellcheck="false" value="${esc(st.key)}" ${E.key ? 'aria-invalid="true" aria-describedby="np_key_e"' : ''}>
+            ${fe('np_key_e', E.key)}${keySug ? `<button type="button" class="ps-sug" id="np_key_s" data-sug="${esc(keySug)}">Öneri: <b>${esc(keySug)}</b></button>` : ''}</div>
+        </div>
+        <div class="ps-r2 eq">
+          <div class="ps-fld ${E.ws ? 'err' : ''}"><label for="np_ws">Çalışma alanı</label><select class="inp" id="np_ws" ${E.ws ? 'aria-invalid="true" aria-describedby="np_ws_e"' : ''}>
+              ${wsl.map(w => `<option value="${esc(w.id)}" ${w.id === st.ws ? 'selected' : ''}>${esc(w.name)}${w.archived ? ' (arşivde)' : ''}</option>`).join('')}</select>
+            ${fe('np_ws_e', E.ws)}${fromWs && st.ws === preset.workspaceId && !E.ws ? `<div class="ps-hint">${ic('info')}Bu alandan açtınız</div>` : ''}</div>
+          <div class="ps-fld ${E.cu ? 'err' : ''}"><label for="np_cu">Cari <span class="opt">isteğe bağlı</span></label>${cuList().some(cuActive) || st.cu
+            ? `<select class="inp" id="np_cu" ${E.cu ? 'aria-invalid="true" aria-describedby="np_cu_e"' : ''}>${cuOptions(st.cu)}</select>${fe('np_cu_e', E.cu)}
+               ${E.cu ? '' : `<div class="ps-hint">${ic('info')}Yalnız etkin cariler listelenir.</div>`}`
+            : `<div class="cu-hint" id="np_cu_none">${ic('info')}<span>Henüz cari yok.${admin ? ' <a href="#customers" data-cugo>Cariler</a>' : ''}</span></div>`}</div>
+        </div>
+        <div class="ps-fld"><div class="lb">Üyeler <span class="opt" id="np_mc">${st.picked.size} kişi seçili</span></div>
+          <div id="np_m" style="display:flex;flex-wrap:wrap;gap:6px">${DB.users.filter(u => u.active).map(u => { const on = st.picked.has(u.id);
+            return `<button type="button" class="memchip ${on ? 'on' : ''}" data-npm="${esc(u.id)}" aria-pressed="${on}">${avat(u.id)}<span>${esc(u.name)}${u.id === SESSION ? ' (siz)' : ''}</span><em>${on ? '✓' : '+'}</em></button>`; }).join('')}</div></div>
+        <div class="ps-secth"><b>Kolonlar</b><span>"${esc(t.n)}" şablonundan geldi · düzenleyebilirsiniz</span></div>
+        <div id="np_cols"></div>
+        ${t.epic && !MOD('epic') ? admin
+          ? `<div class="ps-epic"><div class="hd">${ic('zap')}Yol haritası epiklerle çalışır; Epik modülü şu an kapalı.</div>
+              <label class="ps-chk"><input type="checkbox" id="np_epic" ${st.epic ? 'checked' : ''}><span><b>Epikleri aç (tüm projelerde)</b><span class="ps-own">YÖNETİCİ</span>
+                <small>Modül ortak ayardır; açarsanız bütün projelerde iş tiplerine Epik eklenir. Açmazsanız Pano açılır.</small></span></label></div>`
+          : `<div class="ws-info ps-einfo" id="np_einfo">${ic('info')}<span>Yol haritası epiklerle çalışır ve Epik modülü kapalı. <b>Yöneticinizden epikleri açmasını isteyin.</b></span></div>` : ''}
+        ${admin ? `<div class="ps-dflt"><label class="ps-chk"><input type="checkbox" id="np_def" ${st.def ? 'checked' : ''}><span>Bu kolonları yeni projelerin varsayılan akışı yap<span class="ps-own">YÖNETİCİ</span></span></label></div>` : ''}
+      </div>
+      <div class="ps-f"><span class="note" id="np_open">${ic(op[1])}Oluşturunca <b>${op[0]}</b> açılır</span>
+        <button type="button" class="btn" data-close>Vazgeç</button><button type="button" class="btn pri" id="np_ok">Oluştur</button></div>`, 'w-form', 'ps_ft');
+    const colsErr = newColsEditor($('#np_cols', box), st.flow, t.k === 'bos'
+      ? { only: ['default', 'copy'], tpl: st.src, label: 'Kolon kaynağı', onTpl: (v, rows) => { st.src = v; st.base = JSON.stringify(rows); } }
+      : { only: [] });
+    st.colsErr = colsErr;
+    const nm = $('#np_n', box), ky = $('#np_key', box);
+    const sugKey = () => { if (!st.keyTouched) { st.key = st.name.trim() ? freeKey(projCode(st.name, new Set())) : ''; ky.value = st.key; } };
+    nm.oninput = () => { st.name = nm.value; sugKey(); };
+    ky.oninput = () => { st.key = ky.value.toUpperCase(); ky.value = st.key; st.keyTouched = !!st.key; };
+    const sg = $('#np_key_s', box); if (sg) sg.onclick = () => { st.key = sg.dataset.sug; st.keyTouched = true; delete st.err.key; keep(); details(); $('#np_key', box)?.focus(); };
+    const keep = () => { st.ws = $('#np_ws', box).value; st.cu = $('#np_cu', box)?.value || '';
+      st.epic = !!$('#np_epic', box)?.checked; st.def = !!$('#np_def', box)?.checked; };
+    $('#np_ws', box).onchange = () => { keep(); if (st.err.ws) { delete st.err.ws; details(); $('#np_ws', box).focus(); } };
+    const cs = $('#np_cu', box); if (cs) cs.onchange = () => { keep(); if (st.err.cu) { delete st.err.cu; details(); $('#np_cu', box).focus(); } };
+    const ep = $('#np_epic', box); if (ep) ep.onchange = () => { keep(); const v = OPEN_LBL[opensAt(t)];
+      $('#np_open', box).innerHTML = `${ic(v[1])}Oluşturunca <b>${v[0]}</b> açılır`; $('.ps-chosen .mt', box).textContent = `${st.flow.length} kolon · Açılış: ${v[0]}`; };
+    $$('[data-npm]', box).forEach(b => b.onclick = () => {
+      const id = b.dataset.npm;
+      if (id === SESSION) return toast('Projeyi açan kişi üye olarak kalır');
+      st.picked.has(id) ? st.picked.delete(id) : st.picked.add(id);
+      const on = st.picked.has(id);
+      b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); b.querySelector('em').textContent = on ? '✓' : '+';
+      $('#np_mc', box).textContent = `${st.picked.size} kişi seçili`;
+    });
+    $('#ps_chg', box).onclick = () => { keep(); gallery(); };
+    if (o.ask) {
+      $('#ps_cno', box).onclick = () => { keep(); details(); $('#ps_chg', box)?.focus(); };
+      $('#ps_cyes', box).onclick = () => { keep(); fill(o.ask); details(); };
+      $('#ps_cno', box).focus();
+    } else if (!o.noFocus) (box.querySelector('.ps-fld.err .inp') || nm).focus();
+
+    $('#np_ok', box).onclick = () => {
+      keep();
+      st.name = nm.value; const name = st.name.trim().replace(/\s+/g, ' ');
+      const key = (ky.value.trim() || (name ? freeKey(projCode(name, new Set())) : '')).toUpperCase();
+      const err = {};
+      if (!name) err.name = 'Proje adı gerekli';
+      else if (DB.projects.some(p => nameKey(p.name) === nameKey(name))) err.name = 'Bu adda bir proje zaten var';
+      if (name && !PKEY_RE.test(key)) err.key = 'Anahtar yalnız harf, rakam, _ ve - içerebilir (en fazla 20)';
+      else if (name && keyTaken(key)) err.key = 'Bu anahtar kullanımda';
+      const ws = st.ws;
+      if (!wsById(ws)) err.ws = 'Çalışma alanı bulunamadı';
+      else if (wsArchived(ws)) err.ws = 'Bu çalışma alanı arşivde; başka bir alan seçin';
+      const cu = st.cu;
+      if (cu && !cuById(cu)) err.cu = 'Cari bulunamadı';
+      else if (cu && !cuActive(cuById(cu))) err.cu = 'Bu cari pasif; başka bir cari seçin';
+      if (Object.keys(err).length) { st.err = err; st.key = key; details(); st.colsErr(); return; }
+      if (colsErr()) return;
+      st.err = {};
+      const clean = st.flow.map(r => [r[0].trim().replace(/\s+/g, ' '), r[1]]);
+      const pid = uid('p');
+      clean.forEach(([n, c], k) => DB.statuses.push({ id: uid('st'), projectId: pid, name: n, cat: c, wip: 0, ord: k }));
+      if (admin && st.def) DB.cfg.defaultStatuses = clean.map(r => [...r]);
+      if (admin && t.epic && st.epic && !MOD('epic')) DB.cfg.modules.epic = true;
+      st.picked.add(SESSION);
+      DB.projects.push({ id: pid, key, code: key, name, type: t.t, template: t.k, lead: SESSION, counter: 0, members: [...st.picked], archived: false,
+        workspaceId: ws, ...(cu ? { customerId: cu } : {}) });
+      DB.ui.project = pid; DB.ui.view = opensAt(t); DB.board.q = '';
+      closeModal(); save(); startApp(); toast(`${name} oluşturuldu`);
+    };
+  };
+  const keyTaken = k => DB.projects.some(p => [p.code, p.key].some(x => x && String(x).toLocaleUpperCase('tr') === k.toLocaleUpperCase('tr')));
+  const freeKey = k => { const base = String(k || 'PRJ').slice(0, 17); let c = base, n = 2; while (keyTaken(c)) c = base + n++; return c; };
+
+  gallery();
 }
 
 function deleteProject(pid) {

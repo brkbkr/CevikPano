@@ -196,6 +196,7 @@ const ID = { B: 'cu_b' + RUN, C: 'cu_c' + RUN, D: 'cu_d' + RUN, X: 'cu_x' + RUN 
 
   // 8) proje formunda yalnız etkin cariler; projeye bağlama (yeni proje + üye Projeler kartından)
   await A.evaluate(() => newProjectForm()); await sleep(200);
+  await A.click('#ps_next'); await sleep(150);
   const opts = await A.evaluate(() => [...document.querySelectorAll('#np_cu option')].map(o => [o.value, o.textContent]));
   ok('project form: "— Cari yok —" first, only active customers', opts[0]?.[1] === '— Cari yok —' && opts.some(o => o[0] === idA) && opts.some(o => o[0] === ID.B)
     && !opts.some(o => o[0] === ID.D), opts.length + ' seçenek');

@@ -61,6 +61,8 @@ function contactRules(list) {
 /* Proje türü (#12): boş/yok = genel sprint ayarından hesaplanır (kayda yazılmaz). */
 export const PROJECT_TYPES = ['board', 'agile'];
 export const COL_NAME_MAX = 30;
+/* Yeni proje şablonu (görev 10): yalnız bilgi; boş/yok = şablonsuz (eski) proje. */
+export const PROJECT_TEMPLATES = ['kanban', 'scrum', 'gorev', 'uyarlama', 'talep', 'yolharitasi', 'bos'];
 
 const RULES = {
   projects: d => [
@@ -71,6 +73,7 @@ const RULES = {
     [optBool(d.archived), 'Arşiv bilgisi true ya da false olmalı'],
     [d.customerId == null || d.customerId === '' || validId(d.customerId), 'Geçersiz cari'],
     [d.type == null || d.type === '' || PROJECT_TYPES.includes(d.type), 'Geçersiz proje türü'],
+    [d.template == null || d.template === '' || PROJECT_TEMPLATES.includes(d.template), 'Geçersiz şablon'],
   ],
   /* Cariler (#11). İletilerde değer YOK: kişisel veri (T.C. kimlik no, e-posta) günlüğe/yanıta düşmesin. */
   customers: d => [

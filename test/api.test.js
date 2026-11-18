@@ -1684,6 +1684,30 @@ describe('proje türü ve kolonlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
     ok(await N.sync([P('pk_bos', { ...bos, members: [] })]));
     ok(await N.sync([P('pk_yeni_n', { members: ['u_admin'] })]));                  // yeni proje: serbest
   });
+
+  /* Şablon galerisi (görev 10): data.template yalnız bilgi; bilinen değerler ya da boş. */
+  test('şablon: bilinen 7 değer ve boş kabul; "x"/sayı "Geçersiz şablon"; kayıt oluşmaz', async () => {
+    for (const t of ['x', 'Kanban', 42, '<b>talep</b>'])
+      assert.deepEqual(reasons(await A.sync([P('pk_tplx', { template: t })])), ['Geçersiz şablon'], String(t));
+    assert.equal(await row('projects', 'pk_tplx'), undefined);
+    const all = ['kanban', 'scrum', 'gorev', 'uyarlama', 'talep', 'yolharitasi', 'bos'];
+    ok(await A.sync([...all.map(t => P('pk_tpl_' + t, { template: t })), P('pk_tpl_e', { template: '' })]));
+    for (const t of all) assert.equal((await row('projects', 'pk_tpl_' + t)).template, t);
+  });
+
+  test('şablon: Üye Talep projesini kolonlarıyla açar (data.template="talep"); Scrum → Agile; izleyici ret', async () => {
+    const tc = [['Yeni', 'todo'], ['İnceleniyor', 'inprogress'], ['Talep edenden yanıt bekleniyor', 'inprogress'], ['Çözüldü', 'done'], ['Kapandı', 'done']];
+    ok(await M.sync([P('pk_talep', { type: 'board', template: 'talep', members: ['u_k_m'], lead: 'u_k_m', workspaceId: 'ws1' }),
+      ...tc.map(([n, c], k) => S('pk_talep_' + k, 'pk_talep', n, c, k))]));
+    const p = await row('projects', 'pk_talep');
+    assert.deepEqual([p.template, p.type], ['talep', 'board']);
+    assert.deepEqual((await cols('pk_talep')).sort((a, b) => a.ord - b.ord).map(s => [s.name, s.cat]), tc);
+    ok(await M.sync([P('pk_scrum', { type: 'agile', template: 'scrum', members: ['u_k_m'] }), ...flow('pk_scrum')]));
+    assert.deepEqual([(await row('projects', 'pk_scrum')).type, (await row('projects', 'pk_scrum')).template], ['agile', 'scrum']);
+    const r = await V.sync([P('pk_tpl_v', { type: 'board', template: 'kanban', members: ['u_k_v'] })]);
+    assert.deepEqual(reasons(r), ['salt okunur kullanıcı']);
+    assert.equal(await row('projects', 'pk_tpl_v'), undefined);
+  });
 });
 
 describe('geçmiş ve yorum koruması', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {

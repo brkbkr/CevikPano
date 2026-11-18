@@ -114,6 +114,7 @@ const WSA = `Alan A ${RUN} ${XSS}`;                       // 60 karakterin altı
       first: document.querySelector('[data-wsgrp]').dataset.wsgrp }; }, wsA);
   ok('projects grouped by workspace (Genel first, XSS name as text)', grp && grp.t === WSA && grp.cnt === '0 proje' && grp.empty && grp.first === 'ws1', JSON.stringify(grp));
   await A.click(`[data-wsgrp="${wsA}"] .ws-gh [data-wsnewproj]`); await sleep(250);
+  await A.click('#ps_next'); await sleep(150);
   ok('+ Proje preselects the workspace', await A.evaluate(id => document.querySelector('#np_ws')?.value === id, wsA));
   await A.fill('#np_n', 'WS Proje ' + RUN); await A.click('#np_ok'); await sleep(400);
   const np = await A.evaluate(name => { const p = DB.projects.find(x => x.name === name); return p && { id: p.id, ws: p.workspaceId, sel: DB.ui.project === p.id, uiWs: DB.ui.workspace }; }, 'WS Proje ' + RUN);
