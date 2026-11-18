@@ -41,6 +41,24 @@ export function createApp(pool) {
     res.json({ ok: true });
   });
 
+  /* Sürüm ve ortam bilgisi (oturum gerekmez; gizli bilgi içermez). Test ortamı canlının
+     sürümünü buradan okuyup karşılaştırır, bu yüzden başka kökenden okunabilir. */
+  const VERSION = {
+    env: process.env.APP_ENV || 'development',
+    commit: String(process.env.APP_COMMIT || '').slice(0, 40),
+    commitDate: process.env.APP_COMMIT_DATE || '',
+    commitMessage: String(process.env.APP_COMMIT_MSG || '').slice(0, 200),
+    startedAt: new Date().toISOString(),
+    publicUrl: process.env.PUBLIC_URL || '',
+    peerUrl: process.env.PEER_URL || '',
+    repo: process.env.GITHUB_REPO || '',
+  };
+  app.get('/api/version', (_req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(VERSION);
+  });
+
   app.use('/api', express.json({ limit: '25mb' }));
 
   /* CSRF: değişiklik yapan her API isteği özel başlık taşımalı. Tarayıcılar

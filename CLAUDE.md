@@ -27,6 +27,12 @@ Jira benzeri çevik proje yönetimi. Arayüz ve tüm metinler **Türkçe**; kull
 - Tarayıcı regresyonu: temiz DB + `node scripts/seed-demo.mjs http://localhost:3100 test/fixtures/demo.json` + `node test/e2e/regresyon.cjs`
   (sunucu `ADMIN_PASSWORD=admin12345 DEFAULT_USER_PASSWORD=Baslangic123 PORT=3100` ile).
 
-## Canlı ortam
-Render.com Blueprint (`render.yaml`): `cevikpano` web servisi (Docker) + `cevikpano-db` PostgreSQL.
-`main`'e push → otomatik deploy. Gizli değerler (`ADMIN_PASSWORD`) depoya yazılmaz; depo herkese açık.
+## Ortamlar ve yayın
+- Sunucu (Oracle, Ubuntu ARM): canlı `/opt/cevikpano` ← GitHub `production`; test `/opt/cevikpano-test` ← `main`.
+  `deploy/pano-deploy.sh` (systemd zamanlayıcı, 2 dk) dalı izler, kurar, sağlık kontrolü yapar, başarısızsa geri döner.
+- `main`'e birleştirilen her şey testte açılır; canlıya yalnızca GitHub Actions → "Canlıya yayınla" ile çıkar.
+  `production` dalına elle push yapma.
+- Ortak kapı: `deploy/edge.yml` + `deploy/Caddyfile`. Uygulama `docker-compose.yml` (app + db), `pano-edge` ağına bağlanır.
+- Geçişler geri alınamaz: yeni migration'lar her zaman eski kodla da çalışacak şekilde (ek tablo/kolon) yazılmalı,
+  çünkü başarısız dağıtımda eski sürüm yeni şemayla açılır.
+- Gizli değerler sunucudaki `.env` dosyalarında; depo herkese açık.

@@ -92,15 +92,19 @@ Oracle'ın süresiz ücretsiz ARM sunucusu (4 çekirdek / 24 GB RAM'e kadar) bu 
    Betik yönetici parolasını sorar; sonunda site adresini (`https://<ip>.sslip.io`) yazar.
    Kendi alan adınız varsa DNS'te A kaydını sunucu IP'sine yönlendirip `sudo DOMAIN=pano.firmaniz.com bash` ile çalıştırın.
 
-Betik Docker'ı kurar, PostgreSQL + uygulama + HTTPS'i (Caddy, Let's Encrypt) `docker-compose.yml` ile başlatır,
-80/443 portlarını açar ve her gece veritabanı yedeği alır (`/opt/cevikpano/yedekler`, son 14 gün).
-Güncellemek için aynı komutu tekrar çalıştırın; veriler ve parolalar korunur.
+Betik iki ortam kurar: **canlı** (`https://<alan>`, GitHub `production` dalı) ve **test**
+(`https://test.<alan>`, GitHub `main` dalı, ayrı veritabanı, demo veri). Önlerinde ortak bir HTTPS kapısı (Caddy)
+durur; `pano-deploy` her 2 dakikada GitHub'a bakıp değişen ortamı günceller, açılmayan sürümde geri döner.
+Her gece canlı veritabanının yedeğini alır (`/opt/cevikpano/yedekler`, son 14 gün).
+Tekrar çalıştırmak güvenlidir; veriler ve parolalar korunur. Eski tek-ortamlı kurulumu da bu düzene taşır.
+
+Günlük çalışma (onay → test → yayınla): [docs/CALISMA-DUZENI.md](docs/CALISMA-DUZENI.md)
 
 > Oracle, Always Free hesaplarda uzun süre neredeyse hiç kullanılmayan sunucuları geri alabiliyor.
 > Hesabı "Pay As You Go"ya yükseltmek (Always Free kaynaklar yine ücretsiz kalır) bu riski kaldırır.
 
-Başka bir Ubuntu sunucuda (Hetzner, DigitalOcean ...) da aynı betik çalışır. Elle kurmak için:
-`cp .env.example .env` → düzenleyin → `docker compose up -d --build`.
+Başka bir Ubuntu sunucuda (Hetzner, DigitalOcean ...) da aynı betik çalışır. Elle tek ortam için
+`docker-compose.yml` dosyasının başındaki adımlara bakın.
 
 ## Geliştirme
 

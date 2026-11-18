@@ -1,0 +1,13 @@
+# Ortak kapı: gelen isteği alan adına göre doğru ortama yönlendirir.
+# Sertifikaları (HTTPS) Caddy kendisi alır ve yeniler.
+{$PROD_DOMAIN} {
+	encode gzip
+	reverse_proxy cevikpano-app:3000
+}
+
+{$TEST_DOMAIN} {
+	encode gzip
+	# Arama motorları test sitesini dizine eklemesin
+	header X-Robots-Tag "noindex, nofollow"
+	reverse_proxy cevikpano-test-app:3000
+}
