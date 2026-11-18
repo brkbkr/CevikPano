@@ -1760,6 +1760,27 @@ describe('proje türü ve kolonlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
     }
   });
 
+  test('yalnız projesi değişen iş: kolonu yeni projede yoksa yeni projenin ilk "yapılacak" (yoksa ilk) kolonuna taşınır', async () => {
+    ok(await A.sync([P('pm1', {}), S('pm1_a', 'pm1', 'Yapılacak', 'todo', 0), S('pm1_b', 'pm1', 'Bitti', 'done', 1),
+      P('pm2', {}), S('pm2_x', 'pm2', 'Analiz', 'inprogress', 0), S('pm2_y', 'pm2', 'Sıra', 'todo', 2), S('pm2_t', 'pm2', 'Bekleyen', 'todo', 1), S('pm2_d', 'pm2', 'Bitti', 'done', 3),
+      P('pm3', {}), S('pm3_d', 'pm3', 'Bitti', 'done', 1), S('pm3_i', 'pm3', 'Sürüyor', 'inprogress', 0)]));
+    ok(await A.sync([I('i_pm', 'pm1', 'pm1_b')]));
+    let cur = await row('issues', 'i_pm');
+    const r = ok(await A.sync([{ c: 'issues', id: 'i_pm', op: 'put', data: { ...cur, projectId: 'pm2' }, base: cur }]));
+    assert.ok(r.json.adjusted.some(x => x.c === 'issues' && x.id === 'i_pm'));
+    cur = await row('issues', 'i_pm');
+    assert.equal(cur.projectId, 'pm2'); assert.equal(cur.statusId, 'pm2_t');
+    /* yapılacak kolonu yoksa ilk kolon (sıraya göre) */
+    ok(await A.sync([{ c: 'issues', id: 'i_pm', op: 'put', data: { ...cur, projectId: 'pm3' }, base: cur }]));
+    cur = await row('issues', 'i_pm');
+    assert.equal(cur.statusId, 'pm3_i');
+    /* kolonu da açıkça verilirse: yeni projenin kolonu korunur, başka projenin kolonu ret */
+    ok(await A.sync([I('i_pm', 'pm2', 'pm2_d')]));
+    assert.equal((await row('issues', 'i_pm')).statusId, 'pm2_d');
+    assert.deepEqual(reasons(await A.sync([I('i_pm', 'pm1', 'pm2_x')])), ['Kolon bulunamadı']);
+    assert.equal((await row('issues', 'i_pm')).projectId, 'pm2');
+  });
+
   test('işin kolonu işin projesine ait olmalı: başka projenin kolonu "Kolon bulunamadı"', async () => {
     assert.deepEqual(reasons(await M.sync([I('i_k9', 'pk1', 'pk_bos_a')])), ['Kolon bulunamadı']);
     assert.deepEqual(reasons(await M.sync([I('i_k10', 'pk1', 'pk_bos_a')])), ['Kolon bulunamadı']);
