@@ -5909,8 +5909,8 @@ function emailTalep(pid) {
     const f = parseFrom($('#et_from').value), hit = reqByEmail(f.email), out = $('#et_match');
     if (hit) { setReq(hit, true); out.innerHTML = `${ic('check')}Eşleşti: <b>${esc(reqName(hit))}</b>`; return; }
     if (auto) setReq(null);
-    out.innerHTML = f.email && !REQ ? `${ic('alert')}Bu adresle kayıtlı kişi yok. Listeden seçin ya da
-      <button type="button" class="id-link" id="et_add">${ic('userplus')}kişi olarak ekleyin</button>` : '';
+    out.innerHTML = f.email && !REQ ? (isAdmin() ? `${ic('alert')}Bu adresle kayıtlı kişi yok. Listeden seçin ya da
+      <button type="button" class="id-link" id="et_add">${ic('userplus')}kişi olarak ekleyin</button>` : `${ic('alert')}Bu adresle kayıtlı kişi yok. Listeden seçin ya da yöneticinize kişi ekletin.`) : '';
     const a = $('#et_add'); if (a) a.onclick = () => quickContact({ customerId: pr.customerId, name: f.name, email: f.email }, r => { setReq(r); match(); });
   };
   setReq(null);
@@ -6058,7 +6058,7 @@ function viewAllowed(v) {
   if (v === 'sprint') return AGILE();                             // Pano türündeki projede sekme yok
   if (v === 'pool') return poolProjects().length > 0;            // talep projesi yoksa havuz yok (görev 12)
   if (v === 'users' || v === 'system' || v === 'customers') return isAdmin();
-  if (v === 'admin') return isAdmin() || canDesign(P());          // proje ayarları: alan yöneticisi (22b)
+  if (v === 'admin') return isAdmin() || (!!P() && wsRole(CU(), wsOf(P())) === 'admin');   // proje ayarları: alan yöneticisi (22b)
   if (v === 'workspace') return !!wsById(DB.ui.workspace) && !!wsRole(CU(), DB.ui.workspace);
   return true;
 }
@@ -7473,7 +7473,7 @@ const SHORTCUTS = [
 ];
 function palette() {
   const items = [
-    ...Object.entries(VIEWS).filter(([v]) => viewAllowed(v)).map(([v, o]) => ({ t: 'Git', n: viewTitle(v), run: () => { DB.ui.view = v; save(); render(); } })),
+    ...Object.entries(VIEWS).filter(([v]) => viewAllowed(v) && v !== 'workspace').map(([v, o]) => ({ t: 'Git', n: viewTitle(v), run: () => { DB.ui.view = v; save(); render(); } })),
     { t: 'Eylem', n: 'Yeni iş oluştur', run: () => newIssueForm() },
     { t: 'Eylem', n: 'Süre kaydet', run: () => logWorkForm() },
     { t: 'Eylem', n: 'Yeni proje oluştur', run: () => newProjectForm() },
@@ -9727,7 +9727,7 @@ function wsMembersFld(w) {
   WSF.owner = w ? wsOwner(w) : SESSION;
   WSF.mem = new Map((w ? (WSF.legacy ? wsSeed() : w.members) : []).filter(x => x && x.userId).map(x => [x.userId, x.role]));
   const own = isAdmin() ? `<div class="ws-fld"><label for="wsf_o">Sahip <span class="opt">alan Yöneticisi; yalnız sistem yöneticisi değiştirir</span></label>
-      <select class="inp" id="wsf_o">${wsPeople().map(u => `<option value="${esc(u.id)}" ${u.id === WSF.owner ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select></div>` : '';
+      <select class="inp" id="wsf_o">${DB.users.filter(u => u.active && (!u.system || u.id === WSF.owner)).map(u => `<option value="${esc(u.id)}" ${u.id === WSF.owner ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select></div>` : '';
   return `${own}<div class="ws-fld" id="wsf_mf"><label for="wsf_q">Üyeler <span class="opt" id="wsf_mc"></span></label>
       <input class="inp" id="wsf_q" placeholder="Kişi ara ve ekle…" autocomplete="off" aria-controls="wsf_res">
       <div class="wsm-res" id="wsf_res" role="listbox" aria-label="Eklenecek kişiler"></div>
@@ -10200,7 +10200,7 @@ function cuPickList(cur, pr, q = '') {
 function cuProjRow(p) {
   const cur = p.customerId || '', c = cuById(cur), pid = esc(p.id);
   if (!cur && !cuList().length) return '';
-  if (canEdit()) return `<div class="cu-plink"><label class="lbl" for="pcu-${pid}">${ic('building')}Cari</label>
+  if (canDesign(p)) return `<div class="cu-plink"><label class="lbl" for="pcu-${pid}">${ic('building')}Cari</label>
       <select class="inp" id="pcu-${pid}" data-pcust="${pid}">${cuOptions(cur)}</select>
       ${c && !cuActive(c) ? `<div class="cu-hint">${ic('pause')}Bağlı cari pasif; bağ korunur. Değiştirirseniz yalnız etkin cariler seçilebilir.</div>` : ''}</div>`;
   return `<div class="cu-plink"><span class="lbl">${ic('building')}Cari</span><span class="val">${c
@@ -10248,7 +10248,7 @@ function cuInput(e) {
 function cuChange(e) {
   const s = e.target; if (!(s instanceof Element) || !s.matches('[data-pcust]')) return;
   const p = DB.projects.find(x => x.id === s.dataset.pcust); if (!p) return;
-  if (!canEdit()) return toast('İzleyiciler projeyi değiştiremez');
+  if (!canDesign(p)) { render(); return toast(canEdit(p) ? 'Projeyi yalnızca alan yöneticisi değiştirebilir' : 'İzleyiciler projeyi değiştiremez'); }
   const v = s.value;
   if (!v) { if (p.customerId === undefined) return; delete p.customerId; save(); render(); return toast(`${p.name}: cari bağı kaldırıldı`); }
   if (v === p.customerId) return;
@@ -10751,7 +10751,7 @@ const nameKey = s => String(s).trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr
 const PKEY_RE = /^[\p{L}\p{N}_-]{1,20}$/u;
 
 function newProjectForm(preset = {}) {
-  if (!canNewProjAny()) return toast('Proje açmak için alan yöneticisi yetkisi gerekli');
+  if (!canNewProjAny()) return toast(role() === 'viewer' ? 'İzleyiciler proje oluşturamaz' : 'Proje açmak için alan yöneticisi yetkisi gerekli');
   if (preset.workspaceId && !canNewProj(preset.workspaceId)) preset = { ...preset, workspaceId: undefined };
   /* Alan seçimi (#22): grubun "+ Proje"si o alanı, diğer girişler seçili alanı önerir. */
   const fromWs = !!(preset.workspaceId && wsById(preset.workspaceId) && !wsArchived(preset.workspaceId));
