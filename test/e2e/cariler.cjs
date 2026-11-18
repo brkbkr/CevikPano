@@ -213,12 +213,13 @@ const ID = { B: 'cu_b' + RUN, C: 'cu_c' + RUN, D: 'cu_d' + RUN, X: 'cu_x' + RUN 
     return (await API.post('/api/sync', { changes: [{ c: 'projects', id: 'p2', op: 'put', data: p }] })).rejected; }, ID.D);
   ok('server: passive customer cannot be linked', mRej?.[0]?.reason === 'Pasif cari projeye bağlanamaz', JSON.stringify(mRej));
 
-  // 9) kart özeti: süreler efor raporuyla aynı hesap, açık iş tıklaması aynı sayıyı verir
+  // 9) kart özeti (iş düzeyi cari bağı sayılır): süreler efor raporuyla aynı hesap, açık iş tıklaması aynı sayıyı verir
   await A.evaluate(() => reloadState()); await sleep(300);
   await A.evaluate(id => openCustomer(id), idA); await sleep(250);
   const sum = await A.evaluate(id => {
     const ids = new Set(DB.projects.filter(p => p.customerId === id).map(p => p.id)), mon = TODAY.slice(0, 7);
-    const wl = DB.worklogs.filter(w => { const i = issue(w.issueId); return i && ids.has(i.projectId); });
+    /* görev 11b: işe bağlı cari önce gelir; carisi olmayan iş projesinin carisini alır */
+    const wl = DB.worklogs.filter(w => { const i = issue(w.issueId); return i && (i.customerId && cuById(i.customerId) ? i.customerId === id : ids.has(i.projectId)); });
     const tot = wl.reduce((a, w) => a + (+w.hours || 0), 0), m = wl.filter(w => String(w.date).slice(0, 7) === mon).reduce((a, w) => a + (+w.hours || 0), 0);
     const g = k => document.querySelector(`[data-cun="${k}"]`)?.textContent;
     return { exp: [efFmt(m), efFmt(tot), String(ids.size)], got: [g('month'), g('total'), g('proj')], open: +g('open'), tot };
@@ -226,7 +227,7 @@ const ID = { B: 'cu_b' + RUN, C: 'cu_c' + RUN, D: 'cu_d' + RUN, X: 'cu_x' + RUN 
   ok('summary: linked projects + hours (this month / total) match effort calc', JSON.stringify(sum.exp) === JSON.stringify(sum.got) && sum.tot > 0, JSON.stringify(sum));
   await A.click('[data-cuissues]'); await sleep(300);
   const sr = await A.evaluate(() => ({ v: DB.ui.view, q: DB.ui.pql, n: document.querySelectorAll('#view .ts tbody tr[data-open]').length }));
-  ok('open issues click → search with same count', sr.v === 'search' && /^proje IN \(/.test(sr.q) && sr.n === sum.open && sum.open > 0, JSON.stringify(sr) + ' beklenen ' + sum.open);
+  ok('open issues click → search with same count', sr.v === 'search' && /^cari = "/.test(sr.q) && sr.n === sum.open && sum.open > 0, JSON.stringify(sr) + ' beklenen ' + sum.open);
   await A.evaluate(() => { DB.ui.pql = ''; save(); });
 
   // 10) silme: bağlı cari silinemez → "Pasife al"; bağsız cari onayla kalıcı silinir
@@ -305,14 +306,16 @@ const ID = { B: 'cu_b' + RUN, C: 'cu_c' + RUN, D: 'cu_d' + RUN, X: 'cu_x' + RUN 
   await Mo.evaluate(() => closeModal());
   await Mo.screenshot({ path: SS + 'mobil.png' });
 
-  // 15) XSS: unvan/kısa ad/not/kişi metin olarak; mevcut Müşteri alanı ve fatura dökümü yerinde
+  // 15) XSS: unvan/kısa ad/not/kişi metin olarak; fatura dökümü cariye göre
   await view(A, 'customers'); await setQ(A, 'Mali Müşavir ' + RUN);
   ok('XSS name rendered as text', await A.evaluate(() => [...document.querySelectorAll('#cuList .cu-nm')].some(e => e.textContent.startsWith('<img'))));
   await Vb.evaluate(id => openCustomer(id), ID.X); await sleep(200);
   ok('no XSS executed (admin, member, viewer, mobile)', (await Promise.all([A, Mb, Vb, Mo].map(p => p.evaluate(() => window.__xss === undefined)))).every(Boolean));
   await Vb.evaluate(() => closeModal());
-  ok('existing Müşteri field / billing export / report grouping intact', await A.evaluate(() => typeof customerOf === 'function' && BILL_HEAD[0] === 'Müşteri'
-    && DIMS.customer?.l === 'Müşteri' && DB.issues.slice(0, 20).every(i => { try { customerOf(i); return true; } catch (_) { return false; } })));
+  /* görev 11b: müşteri atamaları cariden — fatura dökümü ve rapor gruplaması cariye göre, eski Müşteri alanı görünmez */
+  ok('billing export / report grouping by cari; old Müşteri field hidden', await A.evaluate(() => typeof customerOf === 'function' && BILL_HEAD[0] === 'Cari'
+    && DIMS.customer?.l === 'Cari' && !liveFields().some(f => f.key === 'musteri')
+    && DB.issues.slice(0, 20).every(i => { try { const n = customerOf(i); return n === (cuById(customerIdOf(i))?.name || 'Cari bağlı değil'); } catch (_) { return false; } })));
   await A.screenshot({ path: SS + 'liste.png' });
 
   console.log(errs.length ? errs.join('\n') : 'no page errors / alerts / console errors');
