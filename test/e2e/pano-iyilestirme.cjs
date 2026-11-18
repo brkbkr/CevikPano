@@ -45,7 +45,7 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
   ok('home: "w" shortcut opens work log', await A.evaluate(() => document.getElementById('scrim').classList.contains('on') && !document.querySelector('#f_sum')));
   await A.evaluate(() => closeModal()); await sleep(200);
 
-  /* ---- test verisi: agile proje (üyeler: admin + u2), 3 kolon, gelecek sprint, üst iş + alt iş, üye olmayan kullanıcı ---- */
+  /* ---- test verisi: sonradan Agile’a çevrilecek Pano projesi, 3 kolon, üst iş + alt iş, üye olmayan kullanıcı ---- */
   const MU = 'piuye' + RUN, MID = 'u_pi' + RUN, VU = 'piizl' + RUN, VID = 'u_piv' + RUN;
   const seed = await A.evaluate(async ([pid, key, mid, mu, vid, vu]) => {
     const st = ['Yapılacak', 'Devam ediyor', 'Bitti'].map((n, k) => ({ id: `${pid}_s${k}`, projectId: pid, name: n, cat: ['todo', 'inprogress', 'done'][k], wip: 0, ord: k }));
@@ -54,12 +54,11 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
     const r = await API.post('/api/sync', { changes: [
       { c: 'users', id: mid, op: 'put', data: { username: mu, name: 'PI Üye Dışı', role: 'member', active: true, ini: 'PÜ', color: '#0F766E' } },
       { c: 'users', id: vid, op: 'put', data: { username: vu, name: 'PI İzleyici', role: 'viewer', active: true, ini: 'Pİ', color: '#64748B' } },
-      { c: 'projects', id: pid, op: 'put', data: { name: 'Pano iyileştirme ' + key, key, counter: 2, type: 'agile', members: [ME.id, 'u2', vid], workspaceId: 'ws1' } },
+      { c: 'projects', id: pid, op: 'put', data: { name: 'Pano iyileştirme ' + key, key, counter: 2, type: 'board', members: [ME.id, 'u2', vid], workspaceId: 'ws1' } },
       ...st.map(s => ({ c: 'statuses', id: s.id, op: 'put', data: s })),
       { c: 'projects', id: pid + 'b', op: 'put', data: { name: 'PI Pano ' + key, key: key + 'B', counter: 0, type: 'board', members: [ME.id], workspaceId: 'ws1' } },
-      { c: 'sprints', id: pid + '_sp', op: 'put', data: { projectId: pid, name: key + ' Sprint 1', state: 'future', goal: 'Panoyu <b>hızlandır</b>', start: '2026-11-09', end: '2026-11-15' } },
-      { c: 'issues', id: pid + '_par', op: 'put', data: I(pid + '_par', 1, st[0].id, { sprintId: pid + '_sp' }) },
-      { c: 'issues', id: pid + '_sub', op: 'put', data: I(pid + '_sub', 2, st[1].id, { parentId: pid + '_par', sprintId: pid + '_sp' }) },
+      { c: 'issues', id: pid + '_par', op: 'put', data: I(pid + '_par', 1, st[0].id) },
+      { c: 'issues', id: pid + '_sub', op: 'put', data: I(pid + '_sub', 2, st[1].id, { parentId: pid + '_par' }) },
     ] });
     return { rej: r.data?.rejected || r.rejected, st: st.map(s => s.id) };
   }, [PID, KEY, MID, MU, VID, VU]);
@@ -158,7 +157,16 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
   ok('pref saved on server (user_prefs)', await A.evaluate(async () => (await API.get('/api/state')).data.board?.subs === false));
   await A.click('#fSubs'); await sleep(400);
   ok('switch shows subtasks again', await A.evaluate(pid => !!document.querySelector(`.card[data-id="${pid}_sub"]`) && DB.board.subs === true, PID));
-  await go(A, 'backlog');
+  // Pano açıkken tür değişince aynı proje Backlog ile açılır.
+  await A.evaluate(pid => typeDialog(pid), PID);
+  await A.click('[data-ptype="agile"]'); await A.click('#pt_tok');
+  ok('switching the open board to Agile selects Backlog', await A.evaluate(() =>
+    DB.ui.view === 'backlog' && document.querySelector('#tab-backlog')?.getAttribute('aria-selected') === 'true' && !document.querySelector('#tab-board')));
+  await A.evaluate(async ([pid, key]) => {
+    DB.sprints.push({ id: pid + '_sp', projectId: pid, name: key + ' Sprint 1', state: 'future', goal: 'Panoyu <b>hızlandır</b>', start: '2026-11-09', end: '2026-11-15' });
+    for (const id of [pid + '_par', pid + '_sub']) issue(id).sprintId = pid + '_sp';
+    save(); await flushAll(); render();
+  }, [PID, KEY]);
   ok('backlog row for subtask with parent chip', await A.evaluate(pid => document.querySelector(`.row[data-id="${pid}_sub"] .c-par`)?.textContent.trim(), PID) === `↳ ${KEY}-1`);
 
   /* ===== 3) sprint: yetki ve süre ===== */
@@ -196,11 +204,11 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
   await A.click('#doSprint'); await sleep(400);
   ok('new sprint saved with dates', await A.evaluate(([pid, s]) => DB.sprints.some(x => x.projectId === pid && x.id !== pid + '_sp' && x.name === s.name && x.start === s.s && x.end === s.e && x.state === 'future'), [PID, sd]));
 
-  // Aktif sprint sekmesi: agile projede Pano'dan sonra; aktif sprint yokken boş durum
+  // Aktif sprint sekmesi: agile projede Backlog'dan sonra; aktif sprint yokken boş durum
   await go(A, 'sprint');
   const t0 = await A.evaluate(() => ({ tabs: [...document.querySelectorAll('#vtabs [role=tab]')].map(t => t.dataset.v), v: DB.ui.view, h: location.hash,
     empty: !!document.querySelector('.as-empty'), plan: !!document.querySelector('#asPlan') }));
-  ok('agile: "Aktif sprint" tab right after Pano, #sprint opens it', t0.tabs[0] === 'board' && t0.tabs[1] === 'sprint' && t0.v === 'sprint' && t0.h === '#sprint', JSON.stringify(t0));
+  ok('agile: "Aktif sprint" tab right after Backlog, #sprint opens it', !t0.tabs.includes('board') && t0.tabs[0] === 'backlog' && t0.tabs[1] === 'sprint' && t0.v === 'sprint' && t0.h === '#sprint', JSON.stringify(t0));
   ok('no active sprint: empty state + "Sprint planla" (manager)', t0.empty && t0.plan, JSON.stringify(t0));
   await go(V, 'sprint');
   ok('no active sprint: viewer sees empty state without "Sprint planla"', await V.evaluate(() => !!document.querySelector('.as-empty') && !document.querySelector('#asPlan')));

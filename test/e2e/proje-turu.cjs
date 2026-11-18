@@ -91,11 +91,21 @@ const PC = 'p_ptc' + RUN, PA = 'p_pta' + RUN;          // kolon testi projesi (P
     !pano.scope && !pano.newSprint && pano.list && !pano.boxes && !pano.spField && !pano.burn, JSON.stringify(pano));
   ok('admin panoda "Kolonları düzenle" görür', pano.cols);
 
+  const legacySprint = await A.evaluate(() => {
+    const previous = DB.cfg.modules.sprint;
+    DB.cfg.modules.sprint = true;
+    DB.ui.view = 'board'; render();
+    const opensBacklog = DB.ui.view === 'backlog' && !('type' in P())
+      && !!document.querySelector('#tab-sprint') && !document.querySelector('#tab-board');
+    DB.cfg.modules.sprint = previous; DB.ui.view = 'board'; render();
+    return opensBacklog;
+  });
+  ok('türsüz eski projede genel sprint ayarı açıksa Pano yerine Backlog açılır', legacySprint);
+
   // 2) Agile projesi (test içinde type:'agile') → proje değişince menü/araç çubuğu tek çizimde değişir
   const agile = await A.evaluate(PA => {
     DB.ui.project = PA; DB.ui.view = 'board'; DB.board.scope = 'sprint'; render();
-    const r = { nav: document.querySelector('#vtabs [data-v="backlog"]').textContent.trim(), scope: !!document.getElementById('scope') };
-    DB.ui.view = 'backlog'; render();
+    const r = { tabs: [...document.querySelectorAll('#vtabs [data-v]')].map(el => el.dataset.v), hash: location.hash, view: DB.ui.view };
     Object.assign(r, { title: document.querySelector('#vtabs [aria-selected="true"]').textContent.trim(), name: document.getElementById('title').textContent === P().name,
       newSprint: !!document.getElementById('newSprint'),
       active: document.querySelectorAll('.sprintbox.active').length });
@@ -105,13 +115,30 @@ const PC = 'p_ptc' + RUN, PA = 'p_pta' + RUN;          // kolon testi projesi (P
     r.back = { nav: document.querySelector('#vtabs [data-v="backlog"]').textContent.trim(), scope: !!document.getElementById('scope') };
     return r;
   }, PA);
-  ok('Agile: menü "Backlog", kapsam geçişi, aktif sprint kutusu, "+ Sprint oluştur", Sprint alanı, burndown',
-    agile.nav === 'Backlog' && agile.title === 'Backlog' && agile.name && agile.scope && agile.newSprint && agile.active === 1 && agile.spField && agile.burn, JSON.stringify(agile));
+  ok('Agile: eski Pano tercihi Backlog açar, ardından Aktif sprint sekmesi, "+ Sprint oluştur", Sprint alanı, burndown',
+    agile.view === 'backlog' && agile.hash === '#backlog' && agile.tabs.slice(0, 2).join() === 'backlog,sprint' && !agile.tabs.includes('board')
+    && agile.title === 'Backlog' && agile.name && agile.newSprint && agile.active === 1 && agile.spField && agile.burn, JSON.stringify(agile));
   ok('Agile → Pano proje değişimi tek çizimde menüyü ve kapsamı değiştirir', agile.back.nav === 'İş listesi' && !agile.back.scope, JSON.stringify(agile.back));
   ok('Pano: pano aktif sprint kapsamı istense de tüm işleri gösterir', await A.evaluate(() => {
     DB.board.scope = 'sprint'; DB.board.q = ''; DB.board.filterUser = ''; DB.board.filterType = ''; render();
     return boardIssues().length === issuesOf().filter(i => i.type !== 'epic' && !i.parentId).length && !/Aktif sprint yok/.test(document.getElementById('view').textContent);
   }));
+
+  // Üye ve izleyici için de eski bağlantı, klavye kısayolu ve komut paleti proje türüne uyar.
+  for (const [rol, p] of [['üye', Mb], ['izleyici', Vb]]) {
+    await go(p, PA, 'reports');
+    await p.evaluate(() => { location.hash = 'board'; });
+    await p.waitForFunction(() => location.hash === '#backlog');
+    ok(rol + ': #board → Backlog', await p.locator('#tab-backlog').getAttribute('aria-selected') === 'true');
+    await p.keyboard.press('g'); await p.keyboard.press('b');
+    await p.waitForSelector('#tab-sprint[aria-selected="true"]');
+    ok(rol + ': G+B aktif sprinti açar', await p.locator('.as-head').isVisible());
+    await p.keyboard.press('Control+k'); await p.waitForSelector('#pl_r');
+    const screens = await p.locator('#pl_r .row').evaluateAll(rows => rows.filter(r => r.querySelector('.k').textContent === 'Git')
+      .map(r => r.querySelector('.sum').textContent));
+    ok(rol + ': palette Backlog ve Aktif sprint var, Pano yok', screens.includes('Backlog') && screens.includes('Aktif sprint') && !screens.includes('Pano'), JSON.stringify(screens));
+    await p.keyboard.press('Escape');
+  }
 
   // 3) kapalı ekran adresleri çökmez
   for (const h of ['backlog', 'roadmap']) {
