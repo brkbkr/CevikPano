@@ -71,12 +71,6 @@ button{cursor:pointer;background:none;border:none}
 .topbar h1{margin:0;font-size:19px;letter-spacing:-.025em;font-weight:650}
 .crumb{font-family:var(--mono);font-size:10.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
 .toolrow{display:flex;align-items:center;gap:10px;padding:11px 0 10px;flex-wrap:wrap}
-.vtabs{display:none;gap:2px;margin:10px -20px 0;padding:0 20px;overflow-x:auto;
-  border-bottom:1px solid var(--line);scrollbar-width:none}
-.vtabs::-webkit-scrollbar{display:none}
-.vtabs button{white-space:nowrap;padding:8px 12px;font-size:12.5px;color:var(--ink3);
-  border-bottom:2px solid transparent;margin-bottom:-1px}
-.vtabs button.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
 .content{flex:1;overflow:auto;padding:16px 20px 40px}
 
 /* ---------- controls ---------- */
@@ -382,10 +376,6 @@ body.locked .app{filter:blur(3px);pointer-events:none}
 .lg-hint code,.lg-note code{font-family:var(--mono);font-size:11px;background:var(--surface2);
   padding:1px 4px;border-radius:3px;border:1px solid var(--line)}
 .readonly .card,.readonly .row{cursor:default}
-.whoami{padding:9px 12px;border-top:1px solid var(--line);display:flex;align-items:center;gap:8px}
-.whoami .nm{flex:1;min-width:0;font-size:12px;line-height:1.25}
-.whoami .nm b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.whoami .nm span{font-size:10px;color:var(--ink3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em}
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;
   padding:9px 16px;border-radius:20px;font-size:12.5px;z-index:99;opacity:0;pointer-events:none;transition:opacity .2s}
 .toast.on{opacity:1}
@@ -393,12 +383,10 @@ body.locked .app{filter:blur(3px);pointer-events:none}
 @media (max-width:900px){
   .app{grid-template-columns:1fr}
   .rail{display:none}
-  .vtabs{display:flex}
   .m-b{grid-template-columns:1fr}
   .m-r{border-left:none;border-top:1px solid var(--line)}
   .content{padding:12px 12px 40px}
   .topbar{padding:10px 12px 0}
-  .vtabs{margin:10px -12px 0;padding:0 12px}
   .col{width:82vw;max-width:300px}
   .search{max-width:none}
   .modal{max-width:100%}
@@ -477,7 +465,7 @@ body{font-size:13.5px;letter-spacing:-.006em;font-feature-settings:"cv11","ss01"
 ::-webkit-scrollbar-thumb{background:var(--line2);border-radius:10px;border:3px solid transparent;background-clip:content-box}
 
 /* küçük başlıklar: mono yerine sade, aralıklı sans */
-.navgroup,.crumb,label.field,.sec,.col-h .nm,.kv .lb,.ts th,.rm th,.stat div span,.lg-brand span,.whoami .nm span{
+.navgroup,.crumb,label.field,.sec,.col-h .nm,.kv .lb,.ts th,.rm th,.stat div span,.lg-brand span{
   font-family:var(--sans);letter-spacing:.04em;font-weight:600}
 .k{font-family:var(--mono);font-size:11px;letter-spacing:0}
 
@@ -505,7 +493,6 @@ body{font-size:13.5px;letter-spacing:-.006em;font-feature-settings:"cv11","ss01"
 .onl::after{content:"";position:absolute;right:-1px;bottom:-1px;width:8px;height:8px;border-radius:50%;
   background:#22C55E;box-shadow:0 0 0 2px var(--surface)}
 .onl-more{font-size:11px;color:var(--ink3);align-self:center}
-.whoami{margin:auto 10px 0;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--surface2)}
 .filebar{border-top:none;padding:8px 14px 2px;margin-top:0}
 .rail-foot{border-top:1px solid var(--line);margin-top:8px;padding:8px 10px}
 .rail-foot button{font-size:11.5px;padding:5px 7px;border-radius:6px}
@@ -612,7 +599,7 @@ label.field{font-size:11px;text-transform:none;letter-spacing:0;color:var(--ink2
 .m-l h2{font-size:20px;font-weight:700;letter-spacing:-.025em}
 .m-f{background:var(--surface2);padding:12px 18px}
 .sec{font-size:10.5px;border-bottom-color:var(--line)}
-.tabs button.on,.vtabs button.on{border-bottom-color:var(--accent)}
+.tabs button.on{border-bottom-color:var(--accent)}
 .watch{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink2);
   background:var(--done-bg);border:1px solid var(--done-line);border-radius:999px;padding:2px 9px 2px 3px}
 .watch .av{width:18px;height:18px;font-size:8px}
@@ -737,7 +724,6 @@ body.env-test .pop{top:90px}
   .topbar{padding:12px 14px 0}
   .topbar h1{font-size:18px}
   .content{padding:14px 14px 48px}
-  .vtabs{margin:10px -14px 0;padding:0 14px}
   .tb-online{display:none}
   .iconbtn{width:34px;height:34px}
   .pop{top:56px;right:12px}
@@ -817,11 +803,6 @@ body{background:var(--paper)}
 .nav a:hover{background:var(--rail-hover);color:#fff}
 .nav a.on{background:var(--rail-on);color:var(--rail-on-ink);box-shadow:inset 3px 0 0 #60A5FA}
 .nav a.on .g{color:#93C5FD}
-.whoami{background:rgba(255,255,255,.06);border:1px solid var(--rail-line);color:#fff}
-.whoami .nm span{color:var(--rail-ink2)}
-.whoami .btn{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.14);color:#fff;box-shadow:none}
-.whoami .btn:hover{background:rgba(255,255,255,.14)}
-.whoami .iconbtn{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.14);color:#fff}
 .fnote{color:var(--rail-ink2)}
 .filebar .fnote:first-child{color:var(--rail-ink)}
 .online .navgroup{color:var(--rail-ink2)}
@@ -907,7 +888,6 @@ body{background:var(--paper)}
 .lg-help{margin-top:12px;font-size:12px;color:var(--ink3);text-align:center}
 #login > .loginbox .lg-brand .brand-ic{display:block}
 .rail-foot[hidden]{display:none!important}
-.whoami .nm span[style]{color:#FCA5A5!important}
 .tb-logo{display:none;width:30px;height:30px;border-radius:9px;margin-right:10px;flex-shrink:0;box-shadow:0 3px 10px rgba(37,99,235,.35)}
 @media (max-width:900px){
   .tb-logo{display:block}
@@ -951,12 +931,6 @@ body{background:var(--paper)}
 .nav a:hover{background:var(--rail-hover);color:var(--ink)}
 .nav a.on{background:var(--rail-on);color:var(--rail-on-ink);box-shadow:inset 3px 0 0 var(--rail-bar);font-weight:600}
 .nav a.on svg.g{stroke:var(--rail-bar)}
-.whoami{background:var(--surface2);border:1px solid var(--rail-line);color:var(--ink)}
-.whoami .nm span{color:var(--ink3)}
-.whoami .nm span[style]{color:var(--risk)!important}
-.whoami .btn{background:var(--surface);border-color:var(--line2);color:var(--ink);box-shadow:var(--shadow-sm)}
-.whoami .btn:hover{background:var(--surface2)}
-.whoami .iconbtn{background:var(--surface);border-color:var(--line2);color:var(--ink)}
 .fnote{color:var(--ink3)}
 .filebar .fnote:first-child{color:var(--ink2)}
 .online .navgroup{color:var(--rail-ink2)}
@@ -1457,8 +1431,6 @@ button.c-av::after{content:"";position:absolute;inset:-6px}
 .ws-prow svg.i{width:18px;height:18px;color:var(--accent)}
 .ws-sheet .ws-foot{border-top:1px solid var(--line);padding:8px 12px 12px}
 .ws-sheet .ws-foot .btn{width:100%;height:44px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
-#vtabs [data-v="__proj"]{display:inline-flex;align-items:center;gap:6px;color:var(--ink);font-weight:600}
-#vtabs [data-v="__proj"] .t{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 @media (max-width:640px){
   .ws-more{width:40px;height:40px}
@@ -1854,11 +1826,116 @@ button.cu-prj:hover{background:var(--surface2)}
   .pt-dlg .m-f .btn{flex:1;min-height:44px;justify-content:center}
   .pt-dlg .m-f .note{display:none}
 }
+/* ==========================================================================
+   Gezinme — proje sekmeleri, yol + proje adı, sağ üstte hesap menüsü, dar ekranda ☰ çekmece
+   (docs/tasarim/gezinme, dilim A1)
+   ========================================================================== */
+:root{
+  --nv-tab-ink:#43546E; --nv-tab-on:#1D4ED8; --nv-tab-bar:#2563EB; --nv-tab-hover:#F3F7FD;
+  --nv-av-ink:#FFFFFF; --nv-scrim:rgba(11,27,51,.45); --nv-busy:#B45309;
+}
+:root[data-theme="dark"]{
+  --nv-tab-ink:#A3B2CB; --nv-tab-on:#BFDBFE; --nv-tab-bar:#60A5FA; --nv-tab-hover:#121D33;
+  --nv-scrim:rgba(0,0,0,.6); --nv-busy:#FBBF24;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --nv-tab-ink:#A3B2CB; --nv-tab-on:#BFDBFE; --nv-tab-bar:#60A5FA; --nv-tab-hover:#121D33;
+    --nv-scrim:rgba(0,0,0,.6); --nv-busy:#FBBF24;
+  }
+}
+/* yol (çalışma alanı / anahtar) ve proje adı */
+.crumb .nv-crumb{display:flex;align-items:center;gap:6px;min-width:0;font-family:var(--sans);font-size:12px;text-transform:none;letter-spacing:0;color:var(--ink2)}
+.nv-crumb a{display:inline-flex;align-items:center;gap:6px;min-width:0;color:var(--ink2);text-decoration:none;border-radius:6px;padding:1px 2px}
+.nv-crumb a .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nv-crumb a:hover{color:var(--accent-d);text-decoration:underline}
+.nv-crumb .sep{color:var(--meta)}
+.nv-crumb .key{font-family:var(--mono);font-size:11px;font-weight:650;color:var(--ink2);white-space:nowrap}
+#title{min-width:0}
+#title .t{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* proje sekmeleri */
+.nv-tabbar{display:flex;align-items:flex-end;margin:12px -24px 0;padding:0 18px;border-bottom:1px solid var(--line)}
+.nv-tabbar[hidden]{display:none}
+.nv-projbtn{display:none}
+.nv-tabs{position:relative;display:flex;gap:2px;min-width:0;overflow-x:auto;scrollbar-width:none}
+.nv-tabs::-webkit-scrollbar{display:none}
+.nv-tab{display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 11px;border:0;background:none;border-radius:8px 8px 0 0;
+  font-size:13px;font-weight:550;color:var(--nv-tab-ink);white-space:nowrap;position:relative;flex-shrink:0;cursor:pointer}
+.nv-tab svg.i{width:16px;height:16px;color:var(--meta)}
+.nv-tab:hover{background:var(--nv-tab-hover);color:var(--ink)}
+.nv-tab[aria-selected="true"]{color:var(--nv-tab-on);font-weight:650}
+.nv-tab[aria-selected="true"] svg.i{color:var(--nv-tab-bar)}
+.nv-tab[aria-selected="true"]::after{content:"";position:absolute;left:8px;right:8px;bottom:0;height:3px;border-radius:3px 3px 0 0;background:var(--nv-tab-bar)}
+.nv-tab:focus-visible,.nv-projbtn:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.nv-tabbar + .toolrow{padding-top:12px}
+/* avatar düğmesi ve hesap menüsü */
+.tb-actions{position:relative}
+.nv-avbtn{width:36px;height:36px;border-radius:50%;border:0;padding:0;display:grid;place-items:center;background:var(--accent);color:var(--nv-av-ink);
+  font-size:12.5px;font-weight:700;letter-spacing:.02em;flex-shrink:0;cursor:pointer;box-shadow:0 0 0 2px var(--surface),0 0 0 3px var(--line2)}
+.nv-avbtn[aria-expanded="true"]{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent)}
+.nv-avbtn:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.nv-acct{position:absolute;z-index:30;right:0;top:calc(100% + 8px);width:292px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-lg);padding:6px}
+.nv-acct-h{display:flex;align-items:center;gap:11px;padding:10px 10px 12px}
+.nv-acct-h .nv-avbtn{width:42px;height:42px;font-size:14px;box-shadow:none;cursor:default}
+.nv-acct-h .tx{flex:1;min-width:0}
+.nv-acct-h b{display:block;font-size:14px;font-weight:700;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nv-acct-h .u{display:block;font-family:var(--mono);font-size:11.5px;color:var(--ink2);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nv-role{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:6px;font-size:11px;font-weight:650;background:var(--accent-soft);color:var(--accent-d);margin-top:6px}
+.nv-role svg.i{width:12px;height:12px}
+.nv-role.neu{background:var(--surface3);color:var(--ink2)}
+.nv-role.sup{background:var(--risk-bg);color:var(--risk)}
+.nv-save{display:flex;align-items:center;gap:8px;margin:0 4px 4px;padding:8px 10px;border-radius:9px;background:var(--surface2);border:1px solid var(--line);font-size:12.5px;font-weight:550;color:var(--ink2)}
+.nv-save svg.i{width:16px;height:16px;color:var(--ok)}
+.nv-save.busy,.nv-save.busy svg.i{color:var(--nv-busy)}
+.nv-save.err,.nv-save.err svg.i{color:var(--risk)}
+.nv-mi{display:flex;align-items:center;gap:10px;width:100%;min-height:38px;padding:6px 10px;border:0;background:none;border-radius:8px;text-align:left;font-size:13px;color:var(--ink);cursor:pointer}
+.nv-mi:hover,.nv-mi:focus-visible{background:var(--surface2)}
+.nv-mi:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.nv-mi > svg.i{width:17px;height:17px;color:var(--ink2);margin:0 2px}
+.nv-mi kbd{margin-left:auto;font-family:var(--mono);font-size:10.5px;font-weight:600;padding:2px 6px;border-radius:6px;background:var(--surface3);color:var(--ink2)}
+.nv-mhr{height:1px;background:var(--line);margin:6px 4px}
+.nv-sw{margin-left:auto;width:32px;height:18px;border-radius:999px;background:var(--line2);position:relative;flex-shrink:0}
+.nv-sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+[aria-checked="true"] > .nv-sw{background:var(--accent)}
+[aria-checked="true"] > .nv-sw::after{left:16px}
+/* sol alt: oturum kutusu kalktı, kayıt durumu en altta */
+.rail .online{margin-top:auto}
+/* ☰ çekmece düğmesi ve perdesi (yalnız dar ekranda) */
+.nv-navbtn{display:none}
+.nv-scrim{position:fixed;inset:0;z-index:69;background:var(--nv-scrim)}
+.nv-scrim[hidden]{display:none}
+
+@media (max-width:900px){
+  .tb-head{align-items:center;gap:8px}
+  .tb-logo{display:none}
+  .nv-navbtn{display:grid;width:44px;height:44px;border-color:transparent;background:none;margin-left:-8px}
+  .nv-navbtn svg.i{width:20px;height:20px}
+  .tb-actions .cmdk,.tb-actions .iconbtn{width:44px;height:44px;border-color:transparent;background:none}
+  #btnTheme{display:none}
+  .tb-actions .nv-avbtn{width:44px;height:44px;box-shadow:none}
+  .topbar h1{font-size:18px}
+  .crumb .nv-crumb{font-size:11.5px}
+  .nv-tabbar{margin:8px -14px 0;padding:0;align-items:stretch}
+  .nv-projbtn{display:inline-flex;align-items:center;gap:5px;flex-shrink:0;min-height:44px;padding:0 10px 0 14px;border:0;background:var(--surface);
+    color:var(--ink);font-size:13px;font-weight:650;border-right:1px solid var(--line);box-shadow:10px 0 10px -8px rgba(11,27,51,.22);cursor:pointer}
+  .nv-projbtn svg.i{width:15px;height:15px;color:var(--meta)}
+  .nv-tabs{flex:1;padding-right:10px}
+  .nv-tab{height:44px;padding:0 12px}
+  .nv-tab svg.i{display:none}
+  .nv-acct{right:-6px;width:calc(100vw - 16px);max-width:340px}
+  .nv-acct .nv-mi{min-height:44px}
+  /* sol menü ☰ ile açılan çekmece olur */
+  .rail{display:flex;position:fixed;z-index:70;top:0;bottom:0;left:0;width:min(300px,86vw);box-shadow:var(--shadow-lg);
+    transform:translateX(-102%);visibility:hidden;transition:transform .2s ease,visibility .2s}
+  body.nav-open .rail{transform:none;visibility:visible}
+  .rail .nav a{min-height:44px}
+  .rail .ws-cur,.rail .ws-proj{min-height:44px}
+}
 </style>
 </head>
 <body>
 <div class="app">
-  <aside class="rail">
+  <aside class="rail" id="rail" aria-label="Kenar çubuğu">
     <div class="brand"><img src="/img/icon.svg" alt="" class="brand-ic"><b>ÇevikPano</b></div>
     <div class="ws-switch" id="wsSwitch">
       <button type="button" class="ws-cur" id="wsCur" aria-haspopup="menu" aria-expanded="false"></button>
@@ -1866,20 +1943,6 @@ button.cu-prj:hover{background:var(--surface2)}
     </div>
     <nav class="nav" style="margin-top:6px">
       <a href="#home" data-v="home"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>Benim işlerim</a>
-    </nav>
-    <div class="navgroup">Planlama</div>
-    <nav class="nav" id="nav">
-      <a href="#board"     data-v="board"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 7v7M12 7v4M16 7v9"/></svg>Pano</a>
-      <a href="#backlog"   data-v="backlog"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h11M10 12h11M10 18h11"/><path d="m3 6 1.5 1.5L7 5"/><path d="m3 12 1.5 1.5L7 11"/><path d="M3 18h4"/></svg>Backlog</a>
-      <a href="#plan"      data-v="plan"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M16 2v4M8 2v4M3 10h18M7 14h5M11 18h6"/></svg>Zaman planı</a>
-      <a href="#roadmap"   data-v="roadmap"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h8M4 12h12M4 18h6"/><circle cx="15" cy="6" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="13" cy="18" r="2"/></svg>Yol haritası</a>
-    </nav>
-    <div class="navgroup">Takip</div>
-    <nav class="nav">
-      <a href="#timesheet" data-v="timesheet"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Zaman çizelgesi</a>
-      <a href="#effort"    data-v="effort"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.3 19a9 9 0 1 1 17.4 0"/><path d="m12 14 4-4"/></svg>Efor raporu</a>
-      <a href="#reports"   data-v="reports"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg>Raporlar</a>
-      <a href="#search"    data-v="search"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Arama</a>
     </nav>
     <div class="navgroup">Yapılandırma</div>
     <nav class="nav">
@@ -1890,7 +1953,6 @@ button.cu-prj:hover{background:var(--surface2)}
       <a href="#system"    data-v="system"><svg class="g" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>Sistem</a>
     </nav>
     <div class="online" id="online"></div>
-    <div class="whoami" id="whoami"></div>
     <div class="filebar" id="fileBar"></div>
     <!-- Veri araçları yalnızca yöneticiler için: Sistem → Veri. Düğmeler gizli, işleyiciler bunlara bağlı. -->
     <div class="rail-foot" hidden>
@@ -1904,6 +1966,7 @@ button.cu-prj:hover{background:var(--surface2)}
   <main class="main">
     <header class="topbar">
       <div class="tb-head">
+        <button type="button" class="iconbtn nv-navbtn" id="navBtn" aria-label="Menüyü aç" aria-controls="rail" aria-expanded="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
         <img src="/img/icon.svg" alt="ÇevikPano" class="tb-logo" id="tbLogo">
         <div class="tb-title"><div class="crumb" id="crumb">—</div><h1 id="title">—</h1></div>
         <div class="tb-actions">
@@ -1913,25 +1976,12 @@ button.cu-prj:hover{background:var(--surface2)}
           <button class="iconbtn" id="btnBell" title="Bildirimler" aria-label="Bildirimler">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
             <span class="badge" id="bellBadge" hidden>0</span></button>
+          <button type="button" class="nv-avbtn" id="acctBtn" aria-haspopup="menu" aria-expanded="false" aria-label="Hesap"></button>
         </div>
       </div>
-      <div class="vtabs" id="vtabs">
-        <button data-v="home">Benim işlerim</button>
-        <button data-v="board">Pano</button>
-        <button data-v="backlog">Backlog</button>
-        <button data-v="plan">Zaman planı</button>
-        <button data-v="roadmap">Yol haritası</button>
-        <button data-v="timesheet">Zaman çizelgesi</button>
-        <button data-v="effort">Efor raporu</button>
-        <button data-v="reports">Raporlar</button>
-        <button data-v="search">Arama</button>
-        <button data-v="projects">Projeler</button>
-        <button data-v="customers">Cariler</button>
-        <button data-v="admin">Ayarlar</button>
-        <button data-v="users">Kullanıcılar</button>
-        <button data-v="system">Sistem</button>
-        <button data-v="__proj">Proje ▾</button>
-        <button data-v="__data">Hesap ▾</button>
+      <div class="nv-tabbar" id="tabbar" hidden>
+        <button type="button" class="nv-projbtn" id="projPick" data-v="__proj" aria-haspopup="dialog">Proje<svg class="i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg></button>
+        <div class="nv-tabs" id="vtabs" role="tablist" aria-label="Proje ekranları"></div>
       </div>
       <div class="toolrow" id="toolrow"></div>
     </header>
@@ -1942,6 +1992,7 @@ button.cu-prj:hover{background:var(--surface2)}
 <div id="login"></div>
 <div class="scrim" id="scrim"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="nv-scrim" id="navScrim" hidden></div>
 <input type="file" id="fileIn" accept="application/json" hidden>
 <input type="file" id="mergeIn" accept=".json,.html,application/json,text/html" hidden>
 <script id="pano-data" type="application/json">null</script>
@@ -2154,7 +2205,7 @@ function tryRerender() {
   const busy = document.getElementById('scrim')?.classList.contains('on')
     || (typeof DRAG !== 'undefined' && DRAG)
     || (typeof QM !== 'undefined' && QM)
-    || document.querySelector('#wsMenu, .ws-pop:not([hidden])')
+    || document.querySelector('#wsMenu, .ws-pop:not([hidden]), #acctMenu')
     || (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)
         && document.activeElement.id !== 'projSel');
   if (busy) return;
@@ -2343,6 +2394,7 @@ function markClean() { }
 
 /* Sol menüdeki kayıt durumu (sunucu) */
 function renderFileBar() {
+  if (typeof renderAcctSync === 'function') renderAcctSync();
   const el = document.getElementById('fileBar');
   if (!el) return;
   const t = SYNC_AT ? new Date(SYNC_AT).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '';
@@ -2721,6 +2773,21 @@ const SVG = {
   phone: '<path d="M5 4h3.5l1.5 4.5-2 1.5a11 11 0 0 0 6 6l1.5-2 4.5 1.5V19a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
   chevr: '<path d="m9 6 6 6-6 6"/>',
   up: '<path d="m18 15-6-6-6 6"/>',
+  /* gezinme: proje sekmeleri ve hesap menüsü (docs/tasarim/gezinme) */
+  plan: '<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M16 2v4M8 2v4M3 10h18M7 14h5M11 18h6"/>',
+  roadmap: '<path d="M4 6h8M4 12h12M4 18h6"/><circle cx="15" cy="6" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="13" cy="18" r="2"/>',
+  effort: '<path d="M3.3 19a9 9 0 1 1 17.4 0"/><path d="m12 14 4-4"/>',
+  reports: '<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/>',
+  settings: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
+  system: '<ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+  moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  save: '<path d="M5 3h11l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8"/><path d="M7 21v-7h10v7"/>',
+  cloud: '<path d="M17.5 19a4.5 4.5 0 1 0-1.4-8.8A6 6 0 0 0 4.3 12.5 3.5 3.5 0 0 0 6.5 19z"/><path d="m9 14.5 2 2 4-4"/>',
+  sync: '<path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/>',
+  key: '<circle cx="7.5" cy="15.5" r="4"/><path d="m10.5 12.5 9-9M16 7l3 3"/>',
+  keyboard: '<rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M7 14h10"/>',
+  logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
 };
 const ic = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${SVG[n] || ''}</svg>`;
 const tIcon = t => { const x = TYPE[t] || ['?', t, t, '#7B8794'];
@@ -3843,79 +3910,204 @@ function projectMenu(listOpen = false) {
     ${canEdit() ? `<div class="ws-foot"><button type="button" class="btn" data-wsnew>${ic('plus')}Yeni çalışma alanı</button></div>` : ''}`, 'narrow ws-sheet ws-dlg');
   $('#pm_ws').onclick = () => projectMenu(!listOpen);
 }
-function dataMenu() {
-  openModal(`<div class="m-h"><b>Hesap ve veri</b><button class="x" data-close>×</button></div>
-    <div style="padding:16px 18px;display:flex;flex-direction:column;gap:8px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">${avat(CU().id, 1)}
-        <div><b>${esc(CU().name)}</b><div style="font-size:12px;color:var(--ink3)">${esc(ROLES[CU().role]?.[0] || '')} · ${esc(ME?.username || '')}</div></div></div>
-      <div class="fnote" style="font-size:12px">${{ ok: 'Tüm değişiklikler kaydedildi', pending: 'Kaydediliyor…', saving: 'Kaydediliyor…', error: 'Bağlantı sorunu — tekrar denenecek' }[SYNC_STATE]}</div>
-      <button class="btn" data-act="savefile">✓ Şimdi kaydet</button>
-      <button class="btn" data-act="pw">🔑 Parolamı değiştir</button>
-      <button class="btn" data-act="theme">◐ Açık / koyu tema</button>
-      ${isAdmin() ? '<button class="btn" data-v="system">⛁ Sistem: yedekler ve veri</button>' : ''}
-      <button class="btn danger" data-act="logout">Çıkış yap</button>
-    </div>`, 'narrow');
-}
-
 /* ============================ YÖNLENDİRME ============================ */
+/* s: 'proj' → proje sekmesi (yalnız seçili proje varken sekme satırında), 'global' → genel ekran (sekme satırı yok). */
 const VIEWS = {
-  home:      { t: 'Benim işlerim',     c: 'Genel bakış',       r: renderHome,      tb: toolbarHome },
-  projects:  { t: 'Projeler',          c: 'Yönetim',           r: renderProjects,  tb: toolbarProjects },
-  customers: { t: 'Cariler',           c: 'Yönetim',           r: renderCustomers, tb: () => '' },
-  board:     { t: 'Pano',              c: 'Çevik pano',        r: renderBoard,     tb: toolbarBoard },
-  backlog:   { t: 'Backlog',           c: 'Planlama',          r: renderBacklog,   tb: toolbarBacklog },
-  plan:      { t: 'Zaman planı',       c: 'Planlama',          r: renderPlan,      tb: toolbarPlan },
-  roadmap:   { t: 'Yol haritası',      c: 'Epik zaman çizelgesi', r: renderRoadmap, tb: () => '' },
-  timesheet: { t: 'Zaman çizelgesi',   c: 'Takip',             r: renderTimesheet, tb: toolbarTimesheet },
-  effort:    { t: 'Efor raporu',       c: 'Takip',             r: renderEffort,    tb: toolbarEffort },
-  search:    { t: 'Arama',             c: 'Sorgu',             r: renderSearch,    tb: toolbarSearch },
-  admin:     { t: 'Proje ayarları',    c: 'Yönetim',           r: renderAdmin,     tb: toolbarAdmin },
-  users:     { t: 'Kullanıcılar',      c: 'Yönetim',           r: renderUsers,     tb: toolbarUsers },
-  system:    { t: 'Sistem',            c: 'Yönetim',           r: renderSystem,    tb: toolbarSystem },
-  reports:   { t: 'Raporlar',          c: 'Takip',             r: renderReports,   tb: () => `<span style="color:var(--ink3);font-size:12px">Zaman çizelgesindeki hafta seçimi buradaki hesapları da belirler.</span>` },
+  home:      { s: 'global', t: 'Benim işlerim',     c: 'Genel bakış',       r: renderHome,      tb: toolbarHome },
+  projects:  { s: 'global', t: 'Projeler',          c: 'Yönetim',           r: renderProjects,  tb: toolbarProjects },
+  customers: { s: 'global', t: 'Cariler',           c: 'Yönetim',           r: renderCustomers, tb: () => '' },
+  board:     { s: 'proj',   t: 'Pano',              c: 'Çevik pano',        r: renderBoard,     tb: toolbarBoard },
+  backlog:   { s: 'proj',   t: 'Backlog',           c: 'Planlama',          r: renderBacklog,   tb: toolbarBacklog },
+  plan:      { s: 'proj',   t: 'Zaman planı',       c: 'Planlama',          r: renderPlan,      tb: toolbarPlan },
+  roadmap:   { s: 'proj',   t: 'Yol haritası',      c: 'Epik zaman çizelgesi', r: renderRoadmap, tb: () => '' },
+  timesheet: { s: 'proj',   t: 'Zaman çizelgesi',   c: 'Takip',             r: renderTimesheet, tb: toolbarTimesheet },
+  effort:    { s: 'proj',   t: 'Efor raporu',       c: 'Takip',             r: renderEffort,    tb: toolbarEffort },
+  search:    { s: 'proj',   t: 'Arama',             c: 'Sorgu',             r: renderSearch,    tb: toolbarSearch },
+  admin:     { s: 'proj',   t: 'Proje ayarları',    c: 'Yönetim',           r: renderAdmin,     tb: toolbarAdmin },
+  users:     { s: 'global', t: 'Kullanıcılar',      c: 'Yönetim',           r: renderUsers,     tb: toolbarUsers },
+  system:    { s: 'global', t: 'Sistem',            c: 'Yönetim',           r: renderSystem,    tb: toolbarSystem },
+  reports:   { s: 'proj',   t: 'Raporlar',          c: 'Takip',             r: renderReports,   tb: () => `<span style="color:var(--ink3);font-size:12px">Zaman çizelgesindeki hafta seçimi buradaki hesapları da belirler.</span>` },
 };
 
+/* Proje sekmeleri, soldan sağa (docs/tasarim/gezinme). Hangisinin görüneceğine viewAllowed karar verir. */
+const PROJ_TABS = ['board', 'backlog', 'plan', 'roadmap', 'timesheet', 'effort', 'reports', 'search', 'admin'];
+const TAB_IC = { board: 'board', backlog: 'backlog', plan: 'plan', roadmap: 'roadmap', timesheet: 'clock', effort: 'effort',
+  reports: 'reports', search: 'search', admin: 'settings' };
+/* Görünürlük için tek kural: render (adres elle yazılsa da), sekmeler, sol menü ve hesap menüsü bunu kullanır.
+   Yetki sunucuda; bu yalnız kullanıcı deneyimi içindir. */
+function viewAllowed(v) {
+  if (!VIEWS[v]) return false;
+  if (v === 'roadmap') return MOD('epic');
+  if (v === 'admin' || v === 'users' || v === 'system') return isAdmin();
+  return true;
+}
+
 function render() {
-  if (DB.ui.view === 'roadmap' && !MOD('epic')) DB.ui.view = 'board';
-  if (['admin', 'system', 'users'].includes(DB.ui.view) && !isAdmin()) DB.ui.view = 'board';
+  if (VIEWS[DB.ui.view] && !viewAllowed(DB.ui.view)) DB.ui.view = 'board';
   const v = VIEWS[DB.ui.view] || VIEWS.board;
   if (location.hash.slice(1) !== DB.ui.view) try { history.replaceState(null, '', '#' + DB.ui.view); } catch (_) { }
   ensureSel(); renderSelectors();
   const pr = P();
-  $('#crumb').textContent = `${pr ? pr.key : wsById(DB.ui.workspace)?.name || 'ÇevikPano'} · ${v.c}`;
-  $('#title').textContent = viewTitle(VIEWS[DB.ui.view] ? DB.ui.view : 'board');
+  renderHead(v, pr);
   /* Seçili proje yokken projeye bağlı ekranlar çökmez: boş durum paneli (#22). */
   const noProj = !pr && WS_PROJ_VIEWS.includes(DB.ui.view);
   $('#toolrow').innerHTML = noProj ? '' : v.tb();
   $('#view').innerHTML = noProj ? wsEmptyView() : v.r();
   syncNav();
+  renderTabs();
   document.body.classList.toggle('readonly', !canEdit());
-  const _u = CU(), _r = ROLES[_u.role || 'admin'];
-  $('#whoami').innerHTML = `${avat(_u.id, 1)}
-    <span class="nm"><b>${esc(_u.name)}</b><span style="${isSuper() ? 'color:var(--risk);font-weight:700' : ''}">${_r ? _r[0] : ''}</span></span>
-    <button class="iconbtn sm" id="btnMyPw" title="Parolamı değiştir" aria-label="Parolamı değiştir">🔑</button>
-    <button class="btn sm" id="btnLogout" title="Oturumu kapat">Çıkış</button>`;
-  $('#btnLogout').onclick = () => logout();
-  $('#btnMyPw').onclick = () => changePwForm(false);
-
+  renderAcctBtn();
   renderFileBar();
-  $$('.nav a, #vtabs button').forEach(a => a.classList.toggle('on', a.dataset.v === DB.ui.view));
+  $$('.nav a').forEach(a => a.classList.toggle('on', a.dataset.v === DB.ui.view));
   wireToolbar();
 }
 
-/* Kapalı modüllerin ekranlarını menüden kaldırır */
+/* Başlık: proje ekranında "Çalışma alanı / ANAHTAR" yolu + proje adı; genel ekranda eskisi gibi. */
+function renderHead(v, pr) {
+  if (v.s === 'proj' && pr) {
+    const w = wsById(wsOf(pr));
+    $('#crumb').innerHTML = `<nav class="nv-crumb" aria-label="Konum"><a href="#projects" data-v="projects">${w ? wsBadge(w, 'sm') : ''}<span class="t">${esc(w?.name || '')}</span></a><span class="sep" aria-hidden="true">/</span><span class="key">${esc(pr.key)}</span></nav>`;
+    $('#title').innerHTML = `<span class="t">${esc(pr.name)}</span>`;
+  } else {
+    $('#crumb').textContent = `${pr ? pr.key : wsById(DB.ui.workspace)?.name || 'ÇevikPano'} · ${v.c}`;
+    $('#title').textContent = viewTitle(VIEWS[DB.ui.view] ? DB.ui.view : 'board');
+  }
+}
+
+/* Sol menüde görünürlük viewAllowed'dan (Planlama/Takip grupları sekmelere taşındı). */
 function syncNav() {
-  const hidden = { roadmap: !MOD('epic'), admin: !isAdmin(), system: !isAdmin(), users: !isAdmin() };
-  $$('.nav a, #vtabs button').forEach(el => {
-    if (hidden[el.dataset.v]) el.style.display = 'none';
-    else if (VIEWS[el.dataset.v]) el.style.display = '';
+  $$('.nav a').forEach(el => { if (VIEWS[el.dataset.v]) el.style.display = viewAllowed(el.dataset.v) ? '' : 'none'; });
+}
+
+/* Proje sekmeleri: yalnız proje ekranında ve seçili proje varken. Değişmediyse DOM'a dokunulmaz (odak, kaydırma). */
+let TABS_KEY = '';
+function renderTabs() {
+  const bar = $('#tabbar'), tl = $('#vtabs'), pr = P();
+  const cur = VIEWS[DB.ui.view] ? DB.ui.view : 'board';
+  const show = VIEWS[cur].s === 'proj' && !!pr;
+  bar.hidden = !show;
+  const view = $('#view');
+  if (!show) {
+    if (TABS_KEY) { TABS_KEY = ''; tl.innerHTML = ''; }
+    view.removeAttribute('role'); view.removeAttribute('aria-labelledby');
+    return;
+  }
+  const tabs = PROJ_TABS.filter(viewAllowed);
+  const key = cur + '|' + tabs.map(t => t + ':' + viewTitle(t)).join('|');
+  if (key !== TABS_KEY) {
+    const hadFocus = tl.contains(document.activeElement);
+    TABS_KEY = key;
+    tl.innerHTML = tabs.map(t => `<button type="button" class="nv-tab" role="tab" id="tab-${t}" data-v="${t}" aria-controls="view"
+      aria-selected="${t === cur}" tabindex="${t === cur ? 0 : -1}">${ic(TAB_IC[t])}<span>${esc(viewTitle(t))}</span></button>`).join('');
+    if (hadFocus) tl.querySelector('[aria-selected="true"]')?.focus({ preventScroll: true });
+  }
+  view.setAttribute('role', 'tabpanel'); view.setAttribute('aria-labelledby', 'tab-' + cur);
+  tabReveal(tl.querySelector('[aria-selected="true"]'));
+}
+/* Dar ekranda sekme satırı yana kayar: verilen sekme görünür alana (yalnız scrollLeft; sayfa kaymaz). */
+function tabReveal(t) {
+  const tl = $('#vtabs'); if (!t || tl.scrollWidth <= tl.clientWidth) return;
+  const l = t.offsetLeft, r = l + t.offsetWidth;
+  if (l < tl.scrollLeft || r > tl.scrollLeft + tl.clientWidth) tl.scrollLeft = Math.max(0, l - (tl.clientWidth - t.offsetWidth) / 2);
+}
+/* Sekmelerde klavye: ←/→ (sarar), Home/End odağı taşır; Enter/Boşluk açar (elle etkinleştirme). */
+function tabKeys(e) {
+  const items = [...$('#vtabs').querySelectorAll('[role="tab"]')], k = items.indexOf(document.activeElement);
+  if (k < 0) return;
+  const to = { ArrowRight: k + 1, ArrowLeft: k - 1, Home: 0, End: items.length - 1 }[e.key];
+  if (to !== undefined) {
+    e.preventDefault();
+    const t = items[(to + items.length) % items.length];
+    items.forEach(x => x.tabIndex = x === t ? 0 : -1);
+    t.focus({ preventScroll: true }); tabReveal(t);
+    return;
+  }
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); items[k].click(); }
+}
+
+/* ---- sağ üstte hesap: avatar düğmesi + menü (docs/tasarim/gezinme) ---- */
+function renderAcctBtn() {
+  const b = $('#acctBtn'), u = CU(); if (!b || !u) return;
+  b.textContent = u.ini || wsInitial(u.name);
+  b.style.background = safeColor(u.color);
+  b.setAttribute('aria-label', 'Hesap: ' + (u.name || ''));
+  b.title = u.name || '';
+}
+const SYNC_TXT = { ok: 'Tüm değişiklikler kaydedildi', pending: 'Kaydediliyor…', saving: 'Kaydediliyor…', error: 'Bağlantı sorunu — tekrar denenecek' };
+/* Menüdeki kayıt durumu setSync → renderFileBar ile canlı güncellenir. */
+function renderAcctSync() {
+  const el = document.getElementById('acctSync'); if (!el) return;
+  const busy = SYNC_STATE === 'pending' || SYNC_STATE === 'saving', err = SYNC_STATE === 'error';
+  el.className = 'nv-save' + (busy ? ' busy' : err ? ' err' : '');
+  el.innerHTML = `${ic(busy ? 'sync' : err ? 'alert' : 'cloud')}<span>${SYNC_TXT[SYNC_STATE] || ''}</span>`;
+}
+const isDark = () => (document.documentElement.dataset.theme
+  || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
+function acctClose(focus) {
+  const m = $('#acctMenu'); if (!m) return;
+  m.remove(); $('#acctBtn').setAttribute('aria-expanded', 'false');
+  if (focus) $('#acctBtn').focus();
+  if (RERENDER) setTimeout(tryRerender, 0);
+}
+function acctOpen() {
+  if ($('#acctMenu')) return acctClose(true);
+  const u = CU(), sup = isSuper(), rl = sup ? 'Süper yönetici' : ROLES[u.role || 'admin']?.[0] || '';
+  $('#acctBtn').insertAdjacentHTML('afterend', `<div class="nv-acct" id="acctMenu" role="menu" aria-label="Hesap">
+    <div class="nv-acct-h"><span class="nv-avbtn" style="background:${safeColor(u.color)}" aria-hidden="true">${esc(u.ini || wsInitial(u.name))}</span>
+      <div class="tx"><b>${esc(u.name)}</b><span class="u">${esc(ME?.username || u.username || '')}</span>
+        <span class="nv-role ${isAdmin() ? '' : 'neu'} ${sup ? 'sup' : ''}">${ic(isAdmin() ? 'shield' : canEdit() ? 'users' : 'eye')}${esc(rl)}</span></div></div>
+    <div class="nv-save" id="acctSync" role="status"></div>
+    <button type="button" class="nv-mi" role="menuitem" data-act="savefile">${ic('save')}Şimdi kaydet</button>
+    <button type="button" class="nv-mi" role="menuitem" data-act="pw">${ic('key')}Parolamı değiştir</button>
+    <button type="button" class="nv-mi" role="menuitemcheckbox" aria-checked="${isDark()}" data-act="theme">${ic('moon')}Koyu tema<span class="nv-sw" aria-hidden="true"></span></button>
+    <button type="button" class="nv-mi" role="menuitem" data-acct="keys">${ic('keyboard')}Klavye kısayolları<kbd>?</kbd></button>
+    ${viewAllowed('system') ? `<button type="button" class="nv-mi" role="menuitem" data-v="system">${ic('system')}Sistem</button>` : ''}
+    <div class="nv-mhr" role="separator"></div>
+    <button type="button" class="nv-mi out" role="menuitem" data-act="logout">${ic('logout')}Çıkış yap</button>
+  </div>`);
+  renderAcctSync();
+  $('#acctBtn').setAttribute('aria-expanded', 'true');
+  const m = $('#acctMenu');
+  menuKeys(m, f => acctClose(f));
+  /* Seçilen öğe menüyü kapatır; eylemi belgedeki ortak işleyici ([data-act], [data-v]) yapar. */
+  m.addEventListener('click', e => {
+    const it = e.target.closest('.nv-mi'); if (!it) return;
+    acctClose(false);
+    if (it.dataset.acct === 'keys') { e.stopPropagation(); shortcutHelp(); }
   });
-  /* Proje türüne göre menü ve sekme etiketi: Pano'da "İş listesi", Agile'da "Backlog" (#12). */
-  const bl = viewTitle('backlog');
-  $$('.nav a[data-v="backlog"], #vtabs button[data-v="backlog"]').forEach(el => {
-    const t = [...el.childNodes].reverse().find(n => n.nodeType === 3);
-    if (t) t.textContent = bl; else el.append(bl);
+  m.querySelector('.nv-mi')?.focus();
+}
+
+/* ---- dar ekranda sol menü: ☰ çekmece (bugünkü sol menü içeriği) ---- */
+function navDrawer(open, focus) {
+  const on = document.body.classList.contains('nav-open');
+  if (open === on) return;
+  document.body.classList.toggle('nav-open', open);
+  $('#navScrim').hidden = !open;
+  $('#navBtn').setAttribute('aria-expanded', String(open));
+  $('#navBtn').setAttribute('aria-label', open ? 'Menüyü kapat' : 'Menüyü aç');
+  if (open) $('#rail').querySelector('button,a,select')?.focus();
+  else if (focus) $('#navBtn').focus();
+}
+
+function wireNav() {
+  $('#vtabs').addEventListener('keydown', tabKeys);
+  $('#acctBtn').onclick = () => acctOpen();
+  $('#acctBtn').addEventListener('keydown', e => { if (e.key === 'ArrowDown' && !$('#acctMenu')) { e.preventDefault(); acctOpen(); } });
+  $('#navBtn').onclick = () => navDrawer(!document.body.classList.contains('nav-open'), true);
+  $('#navScrim').onclick = () => navDrawer(false, true);
+  document.addEventListener('mousedown', e => {
+    if ($('#acctMenu') && !e.target.closest?.('#acctMenu, #acctBtn')) acctClose();
   });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.body.classList.contains('nav-open') && !$('#scrim').classList.contains('on') && !$('#wsMenu')) {
+      e.preventDefault(); navDrawer(false, true);
+    }
+  });
+  /* Çekmecede bir ekran ya da proje seçilince çekmece kapanır. */
+  $('#rail').addEventListener('click', e => { if (e.target.closest('a[data-v]')) navDrawer(false); });
+  $('#projSel').addEventListener('change', () => navDrawer(false));
+  addEventListener('resize', () => { if (innerWidth > 900) navDrawer(false); });
 }
 
 function wireToolbar() {
@@ -3976,6 +4168,7 @@ function wireToolbar() {
 function wire() {
   $('#projSel').onchange = e => { if (!e.target.value) return; DB.ui.project = e.target.value; DB.board.q = ''; save(); render(); };
   wireWsSwitch();
+  wireNav();
   addEventListener('hashchange', () => {
     const v = location.hash.slice(1); if (VIEWS[v]) { DB.ui.view = v; save(); render(); }
   });
@@ -3989,7 +4182,6 @@ function wire() {
       e.preventDefault();
       const v = nv.dataset.v;
       if (v === '__proj') return projectMenu();
-      if (v === '__data') return dataMenu();
       if (VIEWS[v]) { DB.ui.view = v; try { history.replaceState(null, '', '#' + v); } catch (_) {} save(); render(); }
       return;
     }
@@ -4403,13 +4595,14 @@ function renderSearch() {
   let rows = [], err = null;
   const q = (DB.ui.pql || '').trim();
   if (q) { try { rows = runQuery(q); } catch (e) { err = e.message; } }
-  else rows = isSuper() ? DB.issues.slice() : issuesOf();
+  else rows = issuesOf();
   if (!MOD('epic')) rows = rows.filter(i => i.type !== 'epic');
 
   const cols = DB.fields.filter(f => f.onList);
   return `
     ${err ? `<div class="panel" style="border-color:var(--risk-line);background:var(--risk-bg);color:var(--risk);margin-bottom:12px">
         <b>Sorgu hatası</b> — ${esc(err)}</div>` : ''}
+    ${!q && !P() ? '<div class="fnote" id="srNoProj" style="margin-bottom:10px">Seçili proje yok. Tüm projelerde aramak için bir sorgu yaz.</div>' : ''}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
       ${SAMPLES.map(([n, s]) => `<button class="btn sm" data-q="${esc(s)}">${esc(n)}</button>`).join('')}
       ${DB.filters.map(f => `<button class="btn sm" data-q="${esc(f.q)}" style="border-color:var(--accent);color:var(--accent-d)">★ ${esc(f.name)}
@@ -5340,11 +5533,14 @@ function workdays(from, to) {
   }
   return n;
 }
+/* Efor raporu proje sekmesidir: seçili projeye süzülü gelir. Kutudan başka seçim (ya da "Tüm projeler") yalnız
+   o proje seçiliyken geçerli; proje değişince rapor yeni projeyi izler (efProjFor). */
+const efProj = () => DB.ui.efProjFor === DB.ui.project ? (DB.ui.efProject || '') : (DB.ui.project || '');
 function periodLogs() {
-  const p = period();
+  const p = period(), ep = efProj();
   return DB.worklogs.filter(w => w.date >= p.from && w.date <= p.to)
     .filter(w => { const i = issue(w.issueId); if (!i) return false;
-      if (DB.ui.efProject && i.projectId !== DB.ui.efProject) return false;
+      if (ep && i.projectId !== ep) return false;
       if (DB.ui.efUser && w.userId !== DB.ui.efUser) return false;
       return true; });
 }
@@ -5376,7 +5572,7 @@ function toolbarEffort() {
       <option value="">Sütun: yok</option>
       ${activeDims().map(([v, o]) => `<option value="${v}" ${(DB.ui.efCol ?? 'project') === v ? 'selected' : ''}>Sütun: ${o.l}</option>`).join('')}</select>
     <select class="inp" id="efProject" style="width:auto"><option value="">Tüm projeler</option>
-      ${(isSuper() ? DB.projects : liveProjects()).map(p2 => `<option value="${p2.id}" ${DB.ui.efProject === p2.id ? 'selected' : ''}>${esc(p2.name)}</option>`).join('')}</select>
+      ${(isSuper() ? DB.projects : liveProjects()).map(p2 => `<option value="${p2.id}" ${efProj() === p2.id ? 'selected' : ''}>${esc(p2.name)}</option>`).join('')}</select>
     <select class="inp" id="efUser" style="width:auto"><option value="">Tüm kişiler</option>
       ${DB.users.map(u => `<option value="${u.id}" ${DB.ui.efUser === u.id ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select>
     <div class="spacer"></div>
@@ -5535,7 +5731,7 @@ function wireEffort() {
   if ($('#efTo')) $('#efTo').onchange = e => { DB.ui.efTo = e.target.value; save(); render(); };
   on('#efRow', e => { DB.ui.efRow = e.target.value; save(); render(); });
   on('#efCol', e => { DB.ui.efCol = e.target.value; save(); render(); });
-  on('#efProject', e => { DB.ui.efProject = e.target.value; save(); render(); });
+  on('#efProject', e => { DB.ui.efProject = e.target.value; DB.ui.efProjFor = DB.ui.project; save(); render(); });
   on('#efUser', e => { DB.ui.efUser = e.target.value; save(); render(); });
 
   const eu = $('#efUnit'); if (eu) eu.onclick = e => { const b = e.target.closest('[data-u]');
@@ -6485,8 +6681,7 @@ function renderSelectors() {
   WS_SEL_KEY = key;
   const b = $('#wsCur'); b.innerHTML = head; b.setAttribute('aria-label', `Çalışma alanı: ${w ? w.name : 'yok'} (değiştir)`);
   const sel = $('#projSel'); sel.innerHTML = opts; sel.disabled = !rows.length; sel.value = cur?.id || '';
-  const mb = $('#vtabs [data-v="__proj"]');
-  if (mb) mb.innerHTML = `${w ? wsBadge(w, 'sm') : ''}<span class="t">${esc(cur?.name || 'Proje')}</span> ▾`;
+  $('#projPick').setAttribute('aria-label', `Proje değiştir: ${cur?.name || 'proje yok'}`);
 }
 
 /* ---- açılır menüler: ↑↓ Home End ile gezinme, Esc kapatır ve odağı düğmeye verir, Tab kapatır ---- */
