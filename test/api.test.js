@@ -497,7 +497,7 @@ t('zorunlu parola değişimi sunucuda uygulanır', async () => {
 t('yetki: üye proje yapılandırmasını ve başkasının süre kaydını değiştiremez', async () => {
   const a = client(); await a.login('admin', 'test-admin-pw');
   await a.sync([
-    { c: 'projects', id: 'p_y', op: 'put', data: { key: 'YT', name: 'Yetki', counter: 0 } },
+    { c: 'projects', id: 'p_y', op: 'put', data: { key: 'YT', name: 'Yetki', counter: 0, members: ['u_admin'] } },
     { c: 'issues', id: 'i_y', op: 'put', data: { projectId: 'p_y', key: 'YT-1', summary: 'y' } },
     { c: 'worklogs', id: 'w_adm', op: 'put', data: { issueId: 'i_y', userId: 'u_admin', date: '2026-02-02', hours: 3 } },
   ]);
@@ -1382,5 +1382,221 @@ describe('cariler', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     r = await A.req('POST', '/api/import', { data: oldBackup });
     assert.equal(r.status, 200); assert.equal(r.json.customers, undefined);
     assert.deepEqual((await A.state()).json.data.customers, []);
+  });
+});
+
+/* ---------------- proje türü ve kolonlar (#12) ---------------- */
+describe('proje türü ve kolonlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  const P = (id, data) => ({ c: 'projects', id, op: 'put', data: { key: id.toUpperCase().replace(/[^A-Z0-9]/g, ''), counter: 0, ...data, name: data.name || id } });
+  const S = (id, pid, name, cat = 'inprogress', ord = 0, extra = {}) => ({ c: 'statuses', id, op: 'put', data: { projectId: pid, name, cat, wip: 0, ord, ...extra } });
+  const D = (c, id) => ({ c, id, op: 'del' });
+  const I = (id, pid, statusId, extra = {}) => ({ c: 'issues', id, op: 'put', data: { projectId: pid, summary: id, statusId, ...extra } });
+  const reasons = r => r.json.rejected.map(x => x.reason);
+  const row = async (table, id) => (await pool.query(`SELECT data FROM ${table} WHERE id=$1`, [id])).rows[0]?.data;
+  const cols = async pid => (await pool.query(`SELECT id, data FROM statuses WHERE project_id=$1 ORDER BY id`, [pid])).rows.map(r => r.data);
+  const ok = r => { assert.equal(r.status, 200, JSON.stringify(r.json)); assert.deepEqual(r.json.rejected, []); return r; };
+  const conflict = (r, msg) => { assert.equal(r.status, 409, JSON.stringify(r.json)); assert.equal(r.json.error, msg); };
+  let A, M, N, V;
+  const newUser = async (id, username, role) => {
+    await A.sync([{ c: 'users', id, op: 'put', data: { username, name: username, role, active: true } }]);
+    const k = client(); await k.login(username, 'Start12345');
+    assert.equal((await k.req('POST', '/api/auth/password', { newPassword: 'KolYeni123456' })).status, 200);
+    return k;
+  };
+  const flow = pid => [S(pid + '_a', pid, 'Yapılacak', 'todo', 0), S(pid + '_b', pid, 'Devam ediyor', 'inprogress', 1), S(pid + '_c', pid, 'Bitti', 'done', 2)];
+  const setSprintModule = async on => {
+    const cur = (await pool.query(`SELECT value FROM settings WHERE key='cfg'`)).rows[0]?.value || {};
+    ok(await A.sync([{ c: '_settings', id: 'cfg', op: 'put', data: { ...cur, modules: { ...(cur.modules || {}), sprint: on } } }]));
+  };
+
+  before(async () => {
+    A = client(); await A.login('admin', 'test-admin-pw');
+    M = await newUser('u_k_m', 'kolonuye', 'member');
+    N = await newUser('u_k_n', 'kolondisi', 'member');
+    V = await newUser('u_k_v', 'kolonizci', 'viewer');
+    ok(await A.sync([P('pk1', { members: ['u_admin', 'u_k_m'] }), ...flow('pk1'), P('pk_bos', { members: [] }), ...flow('pk_bos')]));
+  });
+
+  test('üye olan Üye kolon ekler, adını/kategorisini değiştirir, sıralar ve boş kolonu siler', async () => {
+    ok(await M.sync([S('pk1_x', 'pk1', 'İnceleme', 'inprogress', 3)]));
+    ok(await M.sync([S('pk1_x', 'pk1', 'Kod incelemesi', 'todo', 3)]));
+    ok(await M.sync([S('pk1_x', 'pk1', 'Kod incelemesi', 'todo', 1), S('pk1_b', 'pk1', 'Devam ediyor', 'inprogress', 3)]));
+    assert.equal((await row('statuses', 'pk1_x')).ord, 1);
+    assert.equal((await row('statuses', 'pk1_x')).cat, 'todo');
+    ok(await M.sync([D('statuses', 'pk1_x')]));
+    assert.equal(await row('statuses', 'pk1_x'), undefined);
+  });
+
+  test('üye listesi boş projede her Üye kolon değiştirebilir', async () => {
+    ok(await N.sync([S('pk_bos_x', 'pk_bos', 'Test', 'inprogress', 3)]));
+    ok(await N.sync([D('statuses', 'pk_bos_x')]));
+  });
+
+  test('izleyici ret: salt okunur kullanıcı', async () => {
+    const r = await V.sync([S('pk1_v', 'pk1', 'İzleyici', 'todo', 5)]);
+    assert.deepEqual(reasons(r), ['salt okunur kullanıcı']);
+    assert.equal(await row('statuses', 'pk1_v'), undefined);
+  });
+
+  test('üye olmayan Üye kolon ekleyemez, değiştiremez, silemez (403); başka projeye taşıyamaz', async () => {
+    const r = await N.sync([S('pk1_n', 'pk1', 'Yabancı', 'todo', 5), S('pk1_a', 'pk1', 'Değişti', 'todo', 0),
+      D('statuses', 'pk1_b'), S('pk1_c', 'pk_bos', 'Bitti 2', 'done', 9)]);
+    assert.deepEqual(reasons(r), Array(4).fill('Kolonları yalnızca yönetici ya da proje üyesi değiştirebilir'));
+    assert.equal(r.json.applied, 0);
+    assert.equal((await row('statuses', 'pk1_a')).name, 'Yapılacak');
+    /* projesi olmayan kolon */
+    assert.deepEqual(reasons(await N.sync([S('pk_yok_s', 'pk_yok', 'X')])), ['Durumun projesi yok']);
+  });
+
+  test('içinde iş kalan kolon silinmez (409); işler aynı gönderimde taşınınca (silme dizide önce gelse de) silinir', async () => {
+    ok(await M.sync([S('pk1_t', 'pk1', 'Geçici', 'inprogress', 4), I('i_k1', 'pk1', 'pk1_t'), I('i_k2', 'pk1', 'pk1_t')]));
+    let r = await M.sync([D('statuses', 'pk1_t'), I('i_k1', 'pk1', 'pk1_b')]);
+    assert.deepEqual(reasons(r), ['Önce içindeki işleri taşıyın']);
+    assert.ok(await row('statuses', 'pk1_t'));
+    r = await M.sync([D('statuses', 'pk1_t'), I('i_k2', 'pk1', 'pk1_a')]);
+    ok(r);
+    assert.equal(await row('statuses', 'pk1_t'), undefined);
+    assert.equal((await row('issues', 'i_k2')).statusId, 'pk1_a');
+  });
+
+  test('Üye yeni projeyi kolonlarıyla tek gönderimde açar (kolonlar dizide önce gelse de)', async () => {
+    const r = await M.sync([...flow('pk_m'), P('pk_m', { members: ['u_k_m'], type: 'board' })]);
+    ok(r);
+    assert.equal(r.json.applied, 4);
+    assert.deepEqual((await cols('pk_m')).map(s => s.name), ['Yapılacak', 'Devam ediyor', 'Bitti']);
+    const st = (await M.state()).json.data;
+    assert.equal(st.statuses.filter(s => s.projectId === 'pk_m').length, 3);
+    assert.equal(st.projects.find(p => p.id === 'pk_m').type, 'board');
+  });
+
+  test('son kolon ve son Bitti kolonu silinemez, son Bitti kategorisi değişemez; iki Bitti\'den biri silinir', async () => {
+    ok(await A.sync([P('pk_tek', {}), S('pk_tek_a', 'pk_tek', 'Tek', 'todo', 0)]));
+    conflict(await A.sync([D('statuses', 'pk_tek_a')]), 'Projenin son kolonu silinemez');
+    assert.ok(await row('statuses', 'pk_tek_a'));
+    conflict(await M.sync([D('statuses', 'pk1_c')]), 'Projede en az bir Bitti kolonu kalmalı');
+    conflict(await M.sync([S('pk1_c', 'pk1', 'Bitti', 'inprogress', 2)]), 'Projede en az bir Bitti kolonu kalmalı');
+    assert.equal((await row('statuses', 'pk1_c')).cat, 'done');
+    ok(await M.sync([S('pk1_c2', 'pk1', 'Yayında', 'done', 5)]));
+    ok(await M.sync([D('statuses', 'pk1_c2')]));
+    /* ihlal tüm gönderimi geri alır (ilgisiz değişiklik dahil) */
+    conflict(await M.sync([I('i_k1', 'pk1', 'pk1_a'), D('statuses', 'pk1_c')]), 'Projede en az bir Bitti kolonu kalmalı');
+    assert.equal((await row('issues', 'i_k1')).statusId, 'pk1_b');
+    /* eski projede Bitti hiç yoksa kural işlemez */
+    ok(await A.sync([S('pk_tek_b', 'pk_tek', 'İkinci', 'todo', 1)]));
+    ok(await A.sync([D('statuses', 'pk_tek_b')]));
+  });
+
+  test('şablon uygulama (yeniden adlandır + kategori + fazlaları taşıyıp sil) tek gönderimde kabul', async () => {
+    ok(await M.sync([S('pk1_e1', 'pk1', 'Ek 1', 'inprogress', 6), S('pk1_e2', 'pk1', 'Ek 2', 'inprogress', 7), I('i_k3', 'pk1', 'pk1_e2')]));
+    /* Basit: Yapılacak / Bitti (pk1_b "Bitti" olur, eski Bitti silinir) */
+    const r = await M.sync([
+      S('pk1_a', 'pk1', 'Yapılacak', 'todo', 0), S('pk1_b', 'pk1', 'Bitti', 'done', 1),
+      I('i_k1', 'pk1', 'pk1_b'), I('i_k3', 'pk1', 'pk1_b'),
+      D('statuses', 'pk1_c'), D('statuses', 'pk1_e1'), D('statuses', 'pk1_e2')]);
+    ok(r);
+    assert.deepEqual((await cols('pk1')).map(s => [s.id, s.name, s.cat]), [['pk1_a', 'Yapılacak', 'todo'], ['pk1_b', 'Bitti', 'done']]);
+    /* eski akışa dön */
+    ok(await M.sync([S('pk1_b', 'pk1', 'Devam ediyor', 'inprogress', 1), S('pk1_c', 'pk1', 'Bitti', 'done', 2)]));
+  });
+
+  test('yönetici projeyi kolonları ve işleriyle siler: kolon kuralları engellemez', async () => {
+    ok(await A.sync([P('pk_sil', {}), ...flow('pk_sil'), I('i_ks', 'pk_sil', 'pk_sil_c')]));
+    const r = await A.sync([D('projects', 'pk_sil'), D('issues', 'i_ks'), ...flow('pk_sil').map(s => D('statuses', s.id))]);
+    ok(r);
+    assert.equal((await cols('pk_sil')).length, 0);
+  });
+
+  test('kolon adı: 31 karakter ve boş ret, tr harf duyarsız tekil (IŞIK = ışık), eski uzun adlı kolon sıralanabilir', async () => {
+    assert.deepEqual(reasons(await M.sync([S('pk1_l', 'pk1', 'x'.repeat(31))])), ['Kolon adı 1 ile 30 karakter arasında olmalı']);
+    assert.deepEqual(reasons(await M.sync([S('pk1_l', 'pk1', '   ')])), ['Durum adı gerekli']);
+    ok(await M.sync([S('pk1_l', 'pk1', 'x'.repeat(30), 'inprogress', 8)]));
+    ok(await M.sync([S('pk1_i', 'pk1', 'ışık', 'inprogress', 9)]));
+    conflict(await M.sync([S('pk1_i2', 'pk1', 'IŞIK', 'inprogress', 10)]), 'Bu adla bir kolon zaten var');
+    conflict(await M.sync([S('pk1_l', 'pk1', '  Işık ', 'inprogress', 8)]), 'Bu adla bir kolon zaten var');
+    ok(await M.sync([S('pk1_i', 'pk1', 'IŞIK', 'inprogress', 9)]));          // kendi adının büyük harfi
+    ok(await M.sync([S('pk_bos_i', 'pk_bos', 'Işık', 'inprogress', 9)]));    // başka projede aynı ad serbest
+    /* eski (40 karakterlik) ad: yalnız sıra değişince kabul, ad değişince 1–30 */
+    await pool.query(`UPDATE statuses SET data = jsonb_set(data, '{name}', to_jsonb($2::text)) WHERE id=$1`, ['pk1_l', 'u'.repeat(40)]);
+    ok(await M.sync([S('pk1_l', 'pk1', 'u'.repeat(40), 'inprogress', 11)]));
+    assert.deepEqual(reasons(await M.sync([S('pk1_l', 'pk1', 'u'.repeat(41), 'inprogress', 11)])), ['Kolon adı 1 ile 30 karakter arasında olmalı']);
+    ok(await M.sync([D('statuses', 'pk1_l'), D('statuses', 'pk1_i'), D('statuses', 'pk_bos_i')]));
+  });
+
+  test('bir projede en fazla 12 kolon: 13. kolon ret', async () => {
+    ok(await A.sync([P('pk_12', {}), ...Array.from({ length: 12 }, (_, k) => S('pk_12_' + k, 'pk_12', 'K' + k, k === 11 ? 'done' : 'todo', k))]));
+    conflict(await A.sync([S('pk_12_x', 'pk_12', 'On üç', 'todo', 12)]), 'Bir projede en fazla 12 kolon olabilir');
+    /* birini silip birini eklemek serbest */
+    ok(await A.sync([D('statuses', 'pk_12_0'), S('pk_12_x', 'pk_12', 'Yeni', 'todo', 0)]));
+    assert.equal((await cols('pk_12')).length, 12);
+  });
+
+  test('proje türü: board/agile/boş kabul, "x" 400', async () => {
+    assert.deepEqual(reasons(await A.sync([P('pk_tx', { type: 'x' })])), ['Geçersiz proje türü']);
+    ok(await A.sync([P('pk_tb', { type: 'board' }), P('pk_ta', { type: 'agile' }), P('pk_tn', { type: '' })]));
+  });
+
+  test('tür değişimi: aktif sprintte Agile→Pano 409 (türsüz + modules.sprint:true dahil); sprint yoksa kabul; üye olmayan 403; türsüz kalır', async () => {
+    ok(await A.sync([P('pk_ag', { type: 'agile', members: ['u_admin', 'u_k_m'] }), ...flow('pk_ag'),
+      { c: 'sprints', id: 'sp_k1', op: 'put', data: { projectId: 'pk_ag', name: 'S1', state: 'active' } }]));
+    assert.deepEqual(reasons(await M.sync([P('pk_ag', { type: 'board', members: ['u_admin', 'u_k_m'] })])), ['Önce aktif sprinti tamamlayın']);
+    assert.deepEqual(reasons(await N.sync([P('pk_ag', { type: 'board', members: ['u_admin', 'u_k_m'] })])),
+      ['Proje türünü yalnızca yönetici ya da proje üyesi değiştirebilir']);
+    assert.equal((await row('projects', 'pk_ag')).type, 'agile');
+    /* türsüz proje + genel sprint açık → agile sayılır */
+    await setSprintModule(true);
+    try {
+      ok(await A.sync([P('pk_ts', { members: [] }), { c: 'sprints', id: 'sp_k2', op: 'put', data: { projectId: 'pk_ts', name: 'S', state: 'active' } }]));
+      assert.deepEqual(reasons(await A.sync([P('pk_ts', { members: [], type: 'board' })])), ['Önce aktif sprinti tamamlayın']);
+      ok(await A.sync([P('pk_ts', { members: [], name: 'Yeni ad' })]));     // türsüz kalır
+      assert.equal(Object.hasOwn(await row('projects', 'pk_ts'), 'type'), false);
+      ok(await N.sync([P('pk_ts', { members: [], name: 'Yeni ad', type: 'agile' })]));   // hesaplanan tür aynı: denetim yok
+    } finally { await setSprintModule(false); }
+    /* sprint tamamlanınca Agile→Pano kabul; Pano→Agile her zaman */
+    ok(await M.sync([{ c: 'sprints', id: 'sp_k1', op: 'put', data: { projectId: 'pk_ag', name: 'S1', state: 'closed' } }]));
+    ok(await M.sync([P('pk_ag', { type: 'board', members: ['u_admin', 'u_k_m'] })]));
+    ok(await M.sync([P('pk_ag', { type: 'agile', members: ['u_admin', 'u_k_m'] })]));
+    ok(await M.sync([P('pk_ag', { type: 'board', members: ['u_admin', 'u_k_m'] })]));
+  });
+
+  test('Pano türündeki projede sprint başlatılamaz (türsüz + genel sprint kapalı dahil); Agile\'da başlar', async () => {
+    const r = await M.sync([{ c: 'sprints', id: 'sp_k3', op: 'put', data: { projectId: 'pk_ag', name: 'S3', state: 'active' } },
+      { c: 'sprints', id: 'sp_k4', op: 'put', data: { projectId: 'pk_bos', name: 'S4', state: 'active' } },
+      { c: 'sprints', id: 'sp_k5', op: 'put', data: { projectId: 'pk_ag', name: 'S5', state: 'future' } }]);
+    assert.deepEqual(reasons(r), Array(2).fill('Pano türündeki projede sprint başlatılamaz'));
+    assert.equal((await row('sprints', 'sp_k5')).state, 'future');
+    ok(await A.sync([{ c: 'sprints', id: 'sp_k6', op: 'put', data: { projectId: 'pk_ta', name: 'S6', state: 'active' } }]));
+  });
+
+  test('işin kolonu var olan bir kolon olmalı (yeni iş dahil); kolon değişmediyse denetlenmez', async () => {
+    assert.deepEqual(reasons(await M.sync([I('i_k9', 'pk1', 'kolon_yok')])), ['Kolon bulunamadı']);
+    ok(await M.sync([I('i_k9', 'pk1', 'pk1_a')]));
+    assert.deepEqual(reasons(await M.sync([I('i_k9', 'pk1', 'kolon_yok')])), ['Kolon bulunamadı']);
+    await pool.query(`UPDATE issues SET data = jsonb_set(data, '{statusId}', '"eski_kolon"') WHERE id='i_k9'`);
+    ok(await M.sync([I('i_k9', 'pk1', 'eski_kolon', { summary: 'özet değişti' })]));
+    ok(await M.sync([I('i_k9', 'pk1', 'pk1_a')]));
+  });
+
+  test('silinmiş kolon eski hâliyle (base) yeniden doğmaz', async () => {
+    ok(await M.sync([S('pk1_r', 'pk1', 'Geri', 'todo', 6)]));
+    const base = await row('statuses', 'pk1_r');
+    ok(await A.sync([D('statuses', 'pk1_r')]));
+    const r = await M.sync([{ ...S('pk1_r', 'pk1', 'Geri 2', 'todo', 6), base }]);
+    assert.deepEqual(reasons(r), ['Kolon silinmiş']);
+    assert.equal(await row('statuses', 'pk1_r'), undefined);
+  });
+
+  test('XSS: <script> kolon adı metin olarak saklanır', async () => {
+    const name = '<script>alert(1)</script>';
+    ok(await M.sync([S('pk1_xss', 'pk1', name, 'todo', 7)]));
+    assert.equal((await M.state()).json.data.statuses.find(s => s.id === 'pk1_xss').name, name);
+    ok(await M.sync([D('statuses', 'pk1_xss')]));
+  });
+
+  test('eşzamanlı: iki Üye aynı anda iki Bitti kolonundan birer tanesini siler → biri 409, bir Bitti kalır', async () => {
+    ok(await M.sync([S('pk1_c3', 'pk1', 'Yayında', 'done', 5)]));
+    const M2 = client(); await M2.login('kolonuye', 'KolYeni123456');
+    const [r1, r2] = await Promise.all([M.sync([D('statuses', 'pk1_c')]), M2.sync([D('statuses', 'pk1_c3')])]);
+    assert.deepEqual([r1.status, r2.status].sort(), [200, 409]);
+    assert.equal((await cols('pk1')).filter(s => s.cat === 'done').length, 1);
   });
 });
