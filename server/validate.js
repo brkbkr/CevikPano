@@ -115,7 +115,7 @@ export function validateCfg(v) {
 
 export function validate(collection, data) {
   if (JSON.stringify(data).length > MAX_RECORD) throw new HttpError(400, 'Kayıt çok büyük');
-  const r = RULES[collection];
+  const r = Object.hasOwn(RULES, collection) ? RULES[collection] : undefined;   // `constructor` kural değildir
   if (!r) return;
   for (const [ok, msg] of r(data)) if (!ok) throw new HttpError(400, msg);
 }

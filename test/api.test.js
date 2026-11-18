@@ -553,6 +553,27 @@ t('kullanıcı görünüm alanları doğrulanır (XSS)', async () => {
   assert.equal(r2.json.rejected.length, 1);
 });
 
+t('prototip adları (constructor, __proto__, hasOwnProperty) koleksiyon/ayar adı olamaz: 500 yok, ret', async () => {
+  const a = client(); await a.login('admin', 'test-admin-pw');
+  const names = ['constructor', '__proto__', 'hasOwnProperty', 'toString'];
+  const r = await a.sync([...names.map(c => ({ c, id: 'x1', op: 'put', data: { a: 1 } })),
+    ...names.map(c => ({ c, id: 'x2', op: 'del' })),
+    ...names.map(id => ({ c: '_settings', id, op: 'put', data: { a: 1 } }))]);
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.equal(r.json.applied, 0);
+  assert.equal(r.json.rejected.length, names.length * 3);
+  assert.deepEqual([...new Set(r.json.rejected.slice(0, names.length * 2).map(x => x.reason))], ['geçersiz koleksiyon']);
+  assert.equal((await pool.query(`SELECT count(*) n FROM misc_records WHERE collection = ANY($1)`, [names])).rows[0].n, '0');
+  /* eski sürümün yazmış olabileceği misc kaydı durumu bozmaz */
+  await pool.query(`INSERT INTO misc_records (collection, id, data) VALUES ('constructor','x9','{"id":"x9"}'), ('__proto__','x9','{"id":"x9"}')`);
+  try {
+    const st = await a.state();
+    assert.equal(st.status, 200);
+    assert.ok(!Object.hasOwn(st.json.data, 'constructor') && !Object.hasOwn(st.json.data, '__proto__'));
+    assert.equal((await a.req('GET', '/api/changes?since=0')).status, 200);
+  } finally { await pool.query(`DELETE FROM misc_records WHERE collection IN ('constructor','__proto__')`); }
+});
+
 /* ---------------- kullanıcı yönetimi ---------------- */
 t('yönetici: rastgele parola üretir (bir kez döner), oturumları kapatır, ek bilgileri görür', async () => {
   const a = client(); await a.login('admin', 'test-admin-pw');
@@ -705,6 +726,32 @@ describe('çalışma alanları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () =
     const [r1, r2] = await Promise.all([U1.sync([ws('ws_es1', { name: 'Eşzamanlı' })]), U2.sync([ws('ws_es2', { name: 'eşzamanlı' })])]);
     assert.equal(r1.json.applied + r2.json.applied, 1, JSON.stringify([r1.json, r2.json]));
     assert.equal((await pool.query(`SELECT count(*) n FROM workspaces WHERE id IN ('ws_es1','ws_es2')`)).rows[0].n, '1');
+  });
+
+  test('aynı kimlikle eşzamanlı oluşturma: ikincisi üzerine yazmaz (409), açan kişi değişmez', async () => {
+    const [r1, r2] = await Promise.all([U1.sync([ws('ws_ayni', { name: 'Aynı kimlik' })]), U2.sync([ws('ws_ayni', { name: 'Aynı kimlik' })])]);
+    assert.equal(r1.status, 200); assert.equal(r2.status, 200);
+    assert.equal(r1.json.applied + r2.json.applied, 1, JSON.stringify([r1.json, r2.json]));
+    const winner = r1.json.applied ? 'u_ws1' : 'u_ws2';
+    assert.equal((await row('workspaces', 'ws_ayni')).created_by, winner);
+    /* Kesin yarış: ilk kayıt henüz onaylanmamışken ikinci oluşturma gelir → bekler, üzerine yazmaz. */
+    const c = await pool.connect();
+    try {
+      await c.query('BEGIN');
+      await c.query(`INSERT INTO workspaces (id, data) VALUES ('ws_yaris', '{"id":"ws_yaris","name":"Yarış alanı","createdBy":"u_ws1"}')`);
+      const pending = U2.sync([ws('ws_yaris', { name: 'Yarış alanı', description: 'ikinci' })]);
+      await new Promise(r => setTimeout(r, 300));
+      await c.query('COMMIT');
+      const r = await pending;
+      assert.equal(r.status, 200); assert.equal(r.json.applied, 0);
+      assert.deepEqual(reasons(r), ['Kayıt aynı anda oluşturuldu, yeniden deneyin']);
+    } finally { c.release(); }
+    const w = await row('workspaces', 'ws_yaris');
+    assert.equal(w.created_by, 'u_ws1'); assert.equal(w.data.description, undefined);
+    /* yeniden denemede kayıt var: güncelleme kuralları işler (başkasının alanı) */
+    assert.deepEqual(reasons(await U2.sync([ws('ws_yaris', { name: 'Yarış alanı', description: 'ikinci' })])),
+      ['Bu çalışma alanını yalnızca açan kişi ya da yönetici değiştirebilir']);
+    await pool.query(`DELETE FROM workspaces WHERE id IN ('ws_ayni','ws_yaris')`);
   });
 
   test('doğrulama: renk HEX, açıklama ≤500, archived boolean (metin 500 değil ret)', async () => {
@@ -932,5 +979,27 @@ describe('çalışma alanları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () =
     assert.equal(st2.workspaces.length, pre.counts.workspaces);
     assert.equal(st2.workspaces.find(x => x.id === 'ws_a').createdBy, 'u_ws1');
     assert.equal(st2.projects.find(x => x.id === 'p_ts').workspaceId, 'ws_60');
+  });
+
+  test('içe aktarma: arşivli Genel arşivden çıkar; olmayan alana bağlı projenin bağı kalkar; prototip adlı dizi 500 vermez', async () => {
+    const r = await A.req('POST', '/api/import', { data: {
+      workspaces: [{ id: 'ws1', name: 'Genel', archived: true }, { id: 'ws_i', name: 'İthal alan' }],
+      projects: [{ id: 'pw1', key: 'PW1', name: 'Olmayan alanda', workspaceId: 'ws_yok' },
+        { id: 'pw2', key: 'PW2', name: 'Var olan alanda', workspaceId: 'ws_i' },
+        { id: 'pw3', key: 'PW3', name: 'Alansız' }, { id: 'pw4', key: 'PW4', name: 'Boş alan', workspaceId: '' }],
+      issues: [], constructor: [{ id: 'k1' }], hasOwnProperty: [{ id: 'k2' }] } });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.equal(r.json.skipped, 2);
+    const st = (await A.state()).json.data;
+    assert.equal(st.workspaces.find(x => x.id === 'ws1').archived, false);
+    assert.equal((await row('workspaces', 'ws1')).archived, false);
+    assert.deepEqual(st.projects.map(p => [p.id, p.workspaceId]),
+      [['pw1', undefined], ['pw2', 'ws_i'], ['pw3', undefined], ['pw4', '']]);
+    assert.equal((await row('projects', 'pw1')).workspace_id, null);
+    assert.ok(!Object.hasOwn(st, 'constructor') && !Object.hasOwn(st, 'hasOwnProperty'));
+    /* önceki duruma dön (sonraki testler) */
+    const pre = (await A.req('GET', '/api/backups')).json.find(b => b.kind === 'pre-import');
+    assert.equal((await A.req('POST', `/api/backups/${pre.id}/restore`, {})).status, 200);
+    assert.ok((await A.state()).json.data.workspaces.some(x => x.id === 'ws_a'));
   });
 });

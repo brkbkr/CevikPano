@@ -14,6 +14,13 @@ export const TABLES = {
   workspaces: 'workspaces',                         // 003_workspaces.sql
 };
 
+/* Koleksiyonun tablosu (yalnız kendi anahtarı; `constructor` gibi kalıtılan adlar tablo sayılmaz). */
+export const tableOf = c => (typeof c === 'string' && Object.hasOwn(TABLES, c) ? TABLES[c] : undefined);
+
+/* Nesne prototipindeki adlar (`__proto__`, `constructor`, `hasOwnProperty` ...) koleksiyon/ayar adı olamaz:
+   düz nesnelere anahtar olarak yazıldıklarında prototipe dokunur ya da kalıtılan değeri okur. */
+export const reservedName = c => typeof c === 'string' && c in Object.prototype;
+
 /* Kişiye özel tutulan üst düzey anahtarlar (herkesin ekranı ayrı). */
 export const PREF_KEYS = ['ui', 'board', 'open'];
 

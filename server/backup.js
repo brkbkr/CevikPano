@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
-import { TABLES, IGNORED_KEYS, PREF_KEYS, tx } from './db.js';
+import { TABLES, IGNORED_KEYS, PREF_KEYS, tx, tableOf, reservedName } from './db.js';
 import { HttpError } from './util.js';
-import { readAll, publicUser, logChange, DEFAULT_USER_PASSWORD, ensureDefaultWorkspace } from './store.js';
+import { readAll, publicUser, logChange, DEFAULT_USER_PASSWORD, ensureDefaultWorkspace, DEFAULT_WS } from './store.js';
 import { validate, normalizePriority, normalizeArchived, validId, stripBadKeys } from './validate.js';
 
 const KEEP_AUTO = 14, KEEP_OTHER = 30;
@@ -97,8 +97,9 @@ export async function replaceAll(pool, me, data, kind) {
     await c.query('DELETE FROM settings');
     for (const [k, v] of Object.entries(data)) {
       if (k === 'users' || IGNORED_KEYS.includes(k) || PREF_KEYS.includes(k) || v === undefined) continue;
+      if (reservedName(k)) { stats.skipped = (stats.skipped || 0) + 1; continue; }   // __proto__ / constructor
       if (Array.isArray(v)) {
-        const table = TABLES[k];
+        const table = tableOf(k);
         const seen = new Set();
         /* İş anahtarları: projede çift olanlara projedeki en büyük numaradan sonrakini ver. */
         const keyNum = s => { const m = /-(\d+)$/.exec(s || ''); return m ? Number(m[1]) : 0; };
@@ -136,8 +137,13 @@ export async function replaceAll(pool, me, data, kind) {
       FROM (SELECT project_id, max((substring(issue_key from '-(\\d+)$'))::int) n FROM issues GROUP BY project_id) m
       WHERE m.project_id = p.id AND coalesce((p.data->>'counter')::int, 0) < m.n`);
     stats.fixedKeys ||= 0;
-    /* Dosyada çalışma alanı yoksa (eski yedek) varsayılan "Genel" yeniden oluşur. */
+    /* Dosyada çalışma alanı yoksa (eski yedek) varsayılan "Genel" yeniden oluşur. Genel arşivlenemez:
+       dosyada arşivliyse arşivden çıkar. Olmayan alana bağlı projenin bağı kalkar (Genel'de sayılır). */
     await ensureDefaultWorkspace(c);
+    await c.query(`UPDATE workspaces SET data = data || '{"archived":false}'::jsonb WHERE id=$1 AND archived`, [DEFAULT_WS]);
+    await c.query(`UPDATE projects p SET data = p.data - 'workspaceId'
+      WHERE p.data ? 'workspaceId' AND coalesce(p.workspace_id, '') <> ''
+        AND NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = p.workspace_id)`);
     await c.query('DELETE FROM user_prefs');            // eski ekran seçimleri artık geçersiz olabilir
     await logChange(c, '_reload', kind, 'put', me.id);
   });
@@ -178,7 +184,7 @@ export async function restoreTrash(pool, me, id) {
           [x.record_id, u.username, u.name || u.username, u.role === 'super' && me.role !== 'super' ? 'admin' : (u.role || 'member'),
             await bcrypt.hash(DEFAULT_USER_PASSWORD(), 10), JSON.stringify(extra)]);
       } else {
-        const table = TABLES[x.collection];
+        const table = tableOf(x.collection);
         const q = table
           ? await c.query(`INSERT INTO ${table} (id, data, updated_by) VALUES ($1,$2::jsonb,$3) ON CONFLICT (id) DO NOTHING`,
             [x.record_id, JSON.stringify(x.data), me.id])

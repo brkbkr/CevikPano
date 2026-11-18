@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
-import { TABLES, PREF_KEYS, IGNORED_KEYS, tx } from './db.js';
+import { TABLES, PREF_KEYS, IGNORED_KEYS, tx, tableOf, reservedName } from './db.js';
 import { HttpError, cj, same, merge3, isAdminRole } from './util.js';
 import { validate, normalizePriority, normalizeArchived, validId, validateCfg, stripBadKeys } from './validate.js';
 import { notifyForIssue, notifyForComment } from './notify.js';
@@ -14,6 +14,8 @@ const ROLES = ['super', 'admin', 'member', 'viewer'];
 /* Proje yapılandırması: yalnızca yönetici değiştirir. Üye projeyi oluşturup düzenleyebilir ama silemez. */
 export const ADMIN_ONLY = ['statuses', 'fields', 'rules', '_settings'];
 const ISSUE_CHILDREN = ['comments', 'worklogs', 'history', 'transitions'];
+/* Yeni kaydı yalnız ekleyerek oluşturan koleksiyonlar (eşzamanlı oluşturmada üzerine yazılmaz). */
+const CREATE_ONCE = ['workspaces'];
 
 /* ---- kullanıcıyı istemciye gönderilecek biçime çevir (parola özeti yok) ---- */
 export function publicUser(row) {
@@ -37,6 +39,7 @@ export async function readAll(db) {
     /* Eski sürümün geri yüklediği yedekte tablosu olan bir dizi (ör. workspaces) misc_records'a düşmüş
        olabilir: tablodaki kayıtlarla çift görünmesin. */
     if (Object.hasOwn(TABLES, r.collection)) continue;
+    if (reservedName(r.collection)) continue;          // __proto__ / constructor: data'nın prototipine dokunmasın
     (data[r.collection] ||= []).push(r.data);
   }
   for (const r of (await db.query('SELECT key, value FROM settings')).rows) data[r.key] = r.value;
@@ -83,7 +86,8 @@ async function readOne(db, c, id) {
     return r ? publicUser(r) : undefined;
   }
   if (c === '_settings') return (await db.query('SELECT value FROM settings WHERE key=$1', [id])).rows[0]?.value;
-  if (TABLES[c]) return (await db.query(`SELECT data FROM ${TABLES[c]} WHERE id=$1`, [id])).rows[0]?.data;
+  const table = tableOf(c);
+  if (table) return (await db.query(`SELECT data FROM ${table} WHERE id=$1`, [id])).rows[0]?.data;
   return (await db.query('SELECT data FROM misc_records WHERE collection=$1 AND id=$2', [c, id])).rows[0]?.data;
 }
 
@@ -119,6 +123,7 @@ export async function applyChanges(pool, me, changes) {
       if (ch.op === 'put' && !['_prefs', '_settings'].includes(ch.c)
           && (ch.data === null || typeof ch.data !== 'object' || Array.isArray(ch.data))) { reject('veri nesne olmalı'); continue; }
       if (IGNORED_KEYS.includes(ch.c) || ch.c === '_reload') continue;
+      if (reservedName(ch.c)) { reject('geçersiz koleksiyon'); continue; }
 
       if (ch.c === '_prefs') {                       // herkes kendi tercihini yazar
         if (!PREF_KEYS.includes(ch.id)) { reject('geçersiz tercih'); continue; }
@@ -162,7 +167,7 @@ export async function applyChanges(pool, me, changes) {
 
 async function applyRecord(c, ctx, ch) {
   const { me, batch } = ctx;
-  const table = TABLES[ch.c];
+  const table = tableOf(ch.c);
   const sel = table
     ? await c.query(`SELECT data FROM ${table} WHERE id=$1 FOR UPDATE`, [ch.id])
     : await c.query('SELECT data FROM misc_records WHERE collection=$1 AND id=$2 FOR UPDATE', [ch.c, ch.id]);
@@ -215,7 +220,13 @@ async function applyRecord(c, ctx, ch) {
   if (ch.c === 'projects') await checkProjectWorkspace(c, data, cur);
 
   const json = JSON.stringify(data);
-  if (table) await c.query(
+  if (table && !cur && CREATE_ONCE.includes(ch.c)) {
+    /* Aynı kimlikle eşzamanlı iki oluşturma: ilk yazan kazanır; ikincisi kaydın üzerine yazmaz (açan kişi
+       vb. değişmesin), yeniden denemesi istenir (yeniden denemede kayıt var: güncelleme kuralları işler). */
+    const ins = await c.query(`INSERT INTO ${table} (id, data, updated_by) VALUES ($1, $2::jsonb, $3)
+      ON CONFLICT (id) DO NOTHING`, [ch.id, json, me.id]);
+    if (!ins.rowCount) throw new HttpError(409, 'Kayıt aynı anda oluşturuldu, yeniden deneyin');
+  } else if (table) await c.query(
     `INSERT INTO ${table} AS t (id, data, updated_by) VALUES ($1, $2::jsonb, $3)
      ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, version = t.version + 1,
        updated_at = now(), updated_by = EXCLUDED.updated_by`, [ch.id, json, me.id]);
@@ -233,7 +244,7 @@ async function applyRecord(c, ctx, ch) {
 /* ---- çalışma alanları (#22) ----
    Genel (ws1) varsayılan alandır: silinmez, arşivlenmez, adını yalnız yönetici değiştirir.
    Alanı olmayan proje Genel'de sayılır. */
-const DEFAULT_WS = 'ws1';
+export const DEFAULT_WS = 'ws1';
 const WS_LOCK = 727275;
 const wsName = s => String(s ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr');
 
@@ -350,8 +361,8 @@ async function ensureIssueKey(c, ctx, data, cur) {
 
 async function applySetting(c, ctx, ch) {
   const { me } = ctx;
-  if (PREF_KEYS.includes(ch.id) || IGNORED_KEYS.includes(ch.id) || ch.id === 'users' || TABLES[ch.id]
-      || !/^[A-Za-z][\w]{0,39}$/.test(ch.id))
+  if (PREF_KEYS.includes(ch.id) || IGNORED_KEYS.includes(ch.id) || ch.id === 'users' || tableOf(ch.id)
+      || reservedName(ch.id) || !/^[A-Za-z][\w]{0,39}$/.test(ch.id))
     throw new HttpError(400, 'geçersiz ayar anahtarı');
   if (ch.op === 'put' && JSON.stringify(ch.data).length > 512 * 1024) throw new HttpError(400, 'Ayar çok büyük');
   const cur = (await c.query('SELECT value FROM settings WHERE key=$1 FOR UPDATE', [ch.id])).rows[0]?.value;
