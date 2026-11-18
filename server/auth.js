@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'node:crypto';
-import { DEFAULT_USER_PASSWORD } from './store.js';
+import { DEFAULT_USER_PASSWORD, randomPassword } from './store.js';
 import { HttpError } from './util.js';
 
 export const COOKIE = 'pano_sid';
@@ -101,13 +101,41 @@ export function authRoutes(app, pool) {
     const t = (await pool.query('SELECT * FROM users WHERE id=$1', [req.params.id])).rows[0];
     if (!t) throw new HttpError(404, 'Kullanıcı bulunamadı.');
     if (t.role === 'super' && me.role !== 'super') throw new HttpError(403, 'Süper yöneticinin parolasını yalnızca süper yönetici sıfırlayabilir.');
-    const pw = req.body?.password ? String(req.body.password) : DEFAULT_USER_PASSWORD();
+    /* password: belirli parola · generate: true → sunucu rastgele üretir ve BİR KEZ geri döner ·
+       ikisi de yoksa başlangıç parolası. requireChange (varsayılan true): ilk girişte değiştirmeye zorla. */
+    const generated = req.body?.generate === true;
+    const pw = generated ? randomPassword(12) : req.body?.password ? String(req.body.password) : DEFAULT_USER_PASSWORD();
     if (pw.length < 8) throw new HttpError(400, 'Parola en az 8 karakter olmalı.');
-    await pool.query('UPDATE users SET password_hash=$2, must_change=true, updated_at=now() WHERE id=$1',
-      [t.id, await bcrypt.hash(pw, 10)]);
+    if (pw.length > 200) throw new HttpError(400, 'Parola çok uzun.');
+    const requireChange = req.body?.requireChange !== false;
+    await pool.query('UPDATE users SET password_hash=$2, must_change=$3, updated_at=now() WHERE id=$1',
+      [t.id, await bcrypt.hash(pw, 10), requireChange]);
     if (t.id !== me.id) await pool.query('DELETE FROM sessions WHERE user_id=$1', [t.id]);
     await pool.query(`INSERT INTO changes (collection, record_id, op, user_id) VALUES ('users',$1,'put',$2)`, [t.id, me.id]);
-    res.json({ ok: true });
+    res.json({ ok: true, mustChange: requireChange, ...(generated ? { password: pw } : {}) });
+  });
+
+  /* Yönetici: kullanıcının tüm oturumlarını kapat (kendi açık oturumu hariç). */
+  app.post('/api/users/:id/sessions/revoke', requireUser, async (req, res) => {
+    const me = req.user;
+    if (me.role !== 'admin' && me.role !== 'super') throw new HttpError(403, 'Yalnızca yöneticiler');
+    const t = (await pool.query('SELECT id, role FROM users WHERE id=$1', [req.params.id])).rows[0];
+    if (!t) throw new HttpError(404, 'Kullanıcı bulunamadı.');
+    if (t.role === 'super' && me.role !== 'super') throw new HttpError(403, 'Süper yöneticinin oturumlarını yalnızca süper yönetici kapatabilir.');
+    const r = await pool.query('DELETE FROM sessions WHERE user_id=$1 AND token_hash<>$2', [t.id, req.sessionHash || '']);
+    res.json({ revoked: r.rowCount });
+  });
+
+  /* Yönetici: kullanıcı yönetim ekranı için ek bilgiler (parola özeti yok). */
+  app.get('/api/admin/users', requireUser, async (req, res) => {
+    if (req.user.role !== 'admin' && req.user.role !== 'super') throw new HttpError(403, 'Yalnızca yöneticiler');
+    const { rows } = await pool.query(
+      `SELECT u.id, u.must_change, u.created_at, u.last_login_at, u.updated_at,
+              (SELECT count(*) FROM sessions s WHERE s.user_id = u.id AND s.expires_at > now())::int AS sessions
+         FROM users u ORDER BY u.ord`);
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(rows.map(r => ({ id: r.id, mustChange: r.must_change, createdAt: r.created_at,
+      lastLoginAt: r.last_login_at, updatedAt: r.updated_at, sessions: r.sessions })));
   });
 }
 
