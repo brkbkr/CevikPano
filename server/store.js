@@ -34,6 +34,9 @@ export async function readAll(db) {
     data[col] = (await db.query(`SELECT data FROM ${table} ORDER BY ord`)).rows.map(r => r.data);
   }
   for (const r of (await db.query('SELECT collection, data FROM misc_records ORDER BY ord')).rows) {
+    /* Eski sürümün geri yüklediği yedekte tablosu olan bir dizi (ör. workspaces) misc_records'a düşmüş
+       olabilir: tablodaki kayıtlarla çift görünmesin. */
+    if (Object.hasOwn(TABLES, r.collection)) continue;
     (data[r.collection] ||= []).push(r.data);
   }
   for (const r of (await db.query('SELECT key, value FROM settings')).rows) data[r.key] = r.value;
@@ -126,7 +129,7 @@ export async function applyChanges(pool, me, changes) {
         applied++; continue;
       }
       if (!canEdit) { reject('salt okunur kullanıcı'); continue; }
-      if (!meAdmin && (ADMIN_ONLY.includes(ch.c) || (ch.c === 'projects' && ch.op === 'del'))) {
+      if (!meAdmin && (ADMIN_ONLY.includes(ch.c) || (['projects', 'workspaces'].includes(ch.c) && ch.op === 'del'))) {
         reject('Bu değişiklik için yönetici yetkisi gerekli'); continue;
       }
 
@@ -177,6 +180,7 @@ async function applyRecord(c, ctx, ch) {
   if (ch.op === 'del') {
     if (!cur) return false;
     if (ch.c === 'issues') await cascadeIssueDelete(c, ctx, ch.id);
+    if (ch.c === 'workspaces') await checkWorkspaceDelete(c, ch.id);
     await c.query(`INSERT INTO deleted_records (collection, record_id, data, batch_id, deleted_by)
       VALUES ($1,$2,$3::jsonb,$4,$5)`, [ch.c, ch.id, JSON.stringify(cur), batch, me.id]);
     if (table) await c.query(`DELETE FROM ${table} WHERE id=$1`, [ch.id]);
@@ -196,6 +200,7 @@ async function applyRecord(c, ctx, ch) {
     if (n !== data.counter) { data.counter = n; adjusted = true; }
   }
   if (ch.c === 'issues' && normalizePriority(data)) adjusted = true;
+  if (ch.c === 'workspaces' && enforceCreatedBy(data, cur, me)) adjusted = true;
   validate(ch.c, data);
   /* Atanan değiştiyse var olan, aktif bir kullanıcı olmalı. */
   if (ch.c === 'issues' && data.assignee != null && data.assignee !== '' && data.assignee !== cur?.assignee) {
@@ -205,6 +210,8 @@ async function applyRecord(c, ctx, ch) {
   }
   if (ch.c === 'issues' && await ensureIssueKey(c, ctx, data, cur)) adjusted = true;
   if (cur && same(cur, data)) { if (adjusted) ctx.adjusted.push({ c: ch.c, id: ch.id }); return false; }
+  if (ch.c === 'workspaces') await checkWorkspace(c, me, ch.id, data, cur);
+  if (ch.c === 'projects') await checkProjectWorkspace(c, data, cur);
 
   const json = JSON.stringify(data);
   if (table) await c.query(
@@ -220,6 +227,56 @@ async function applyRecord(c, ctx, ch) {
   if (ch.c === 'issues') { ctx.touchedIssues.add(ch.id); await notifyForIssue(c, me, data, cur); }
   if (ch.c === 'comments' && !cur) await notifyForComment(c, me, data);
   return true;
+}
+
+/* ---- çalışma alanları (#22) ----
+   Genel (ws1) varsayılan alandır: silinmez, arşivlenmez, adını yalnız yönetici değiştirir.
+   Alanı olmayan proje Genel'de sayılır. */
+const DEFAULT_WS = 'ws1';
+const WS_LOCK = 727275;
+const wsName = s => String(s ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr');
+
+/* Açan kişi istemciden alınmaz: yeni alanda oturumdaki kullanıcı, var olanda kayıttaki değer. */
+function enforceCreatedBy(data, cur, me) {
+  const before = data.createdBy;
+  if (!cur) data.createdBy = me.id;
+  else if (Object.hasOwn(cur, 'createdBy')) data.createdBy = cur.createdBy;
+  else delete data.createdBy;
+  return !same(before, data.createdBy);
+}
+
+async function checkWorkspace(c, me, id, data, cur) {
+  if (cur && !isAdminRole(me.role) && (cur.createdBy == null || cur.createdBy !== me.id))
+    throw new HttpError(403, 'Bu çalışma alanını yalnızca açan kişi ya da yönetici değiştirebilir');
+  const archiving = data.archived === true && cur?.archived !== true;
+  if (archiving && id === DEFAULT_WS) throw new HttpError(400, 'Genel çalışma alanı arşivlenemez');
+  const active = data.archived !== true;
+  const needsName = active && (!cur || cur.archived === true || wsName(cur.name) !== wsName(data.name));
+  if (!archiving && !needsName) return;
+  /* Ad tekilliği ve "son etkin alan" kontrolü eşzamanlı yazmalarda da doğru kalsın. */
+  await c.query('SELECT pg_advisory_xact_lock($1)', [WS_LOCK]);
+  const others = (await c.query('SELECT name FROM workspaces WHERE NOT archived AND id <> $1', [id])).rows;
+  if (archiving && others.length === 0) throw new HttpError(400, 'Son etkin çalışma alanı arşivlenemez');
+  if (needsName && others.some(r => wsName(r.name) === wsName(data.name)))
+    throw new HttpError(409, 'Bu adla etkin bir çalışma alanı zaten var');
+}
+
+async function checkWorkspaceDelete(c, id) {
+  if (id === DEFAULT_WS) throw new HttpError(400, 'Genel çalışma alanı silinemez');
+  const used = await c.query(
+    `SELECT 1 FROM projects WHERE coalesce(nullif(workspace_id, ''), $2) = $1 LIMIT 1`, [id, DEFAULT_WS]);
+  if (used.rowCount) throw new HttpError(409, 'Önce projeleri taşıyın');
+}
+
+/* Proje yeni açılıyorsa ya da alanı değiştiyse (güncel kayda göre) hedef alan var ve etkin olmalı.
+   FOR SHARE: aynı anda alan silinir/arşivlenirse biri bekler. */
+async function checkProjectWorkspace(c, data, cur) {
+  const ws = data.workspaceId;
+  if (ws == null || ws === '') return;
+  if (cur && (cur.workspaceId ?? '') === ws) return;
+  const row = (await c.query('SELECT archived FROM workspaces WHERE id=$1 FOR SHARE', [ws])).rows[0];
+  if (!row) throw new HttpError(400, 'Çalışma alanı bulunamadı');
+  if (row.archived) throw new HttpError(400, 'Arşivlenmiş çalışma alanına proje taşınamaz');
 }
 
 /* İş silinince yorumları, süre kayıtları, geçmişi ve bağlantıları da çöp kutusuna gider
@@ -402,13 +459,14 @@ export async function bootstrap(pool, log = console.log) {
     if (r.rowCount) log(`[kurulum] "${username}" parolası ADMIN_PASSWORD ile sıfırlandı. ADMIN_RESET_PASSWORD değişkenini kaldırın.`);
   }
 
+  await ensureDefaultWorkspace(pool);
   const p = Number((await pool.query('SELECT count(*) AS n FROM projects')).rows[0].n);
   if (p === 0) {
     const admin = (await pool.query(`SELECT id FROM users WHERE role IN ('super','admin') ORDER BY ord LIMIT 1`)).rows[0];
     await tx(pool, async c => {
       await c.query(`INSERT INTO projects (id, data) VALUES ('p1', $1::jsonb)`, [JSON.stringify({
         id: 'p1', key: 'GEN', code: 'GEN', name: 'Genel', lead: admin?.id || null, counter: 0,
-        members: admin ? [admin.id] : [], archived: false })]);
+        members: admin ? [admin.id] : [], archived: false, workspaceId: DEFAULT_WS })]);
       const st = [['Yapılacak', 'todo'], ['Devam ediyor', 'inprogress'], ['Beklemede', 'inprogress'], ['Bitti', 'done']];
       for (const [i, [name, cat]] of st.entries()) {
         await c.query(`INSERT INTO statuses (id, data) VALUES ($1, $2::jsonb)`,
@@ -418,6 +476,15 @@ export async function bootstrap(pool, log = console.log) {
     });
     log('[kurulum] Başlangıç projesi "Genel" oluşturuldu.');
   }
+}
+
+/* Varsayılan "Genel" alanı yoksa oluştur (ilk kurulum, içe aktarma / geri yükleme sonrası). */
+export async function ensureDefaultWorkspace(db) {
+  const r = await db.query(
+    `INSERT INTO workspaces (id, data) VALUES ($1, $2::jsonb) ON CONFLICT (id) DO NOTHING RETURNING id`,
+    [DEFAULT_WS, JSON.stringify({ id: DEFAULT_WS, name: 'Genel', color: '#64748B', description: '', archived: false, createdBy: null })]);
+  if (r.rowCount) await db.query(`INSERT INTO changes (collection, record_id, op) VALUES ('workspaces', $1, 'put')`, [DEFAULT_WS]);
+  return r.rowCount > 0;
 }
 
 export function randomPassword(len = 14) {

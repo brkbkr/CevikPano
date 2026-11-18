@@ -11,6 +11,7 @@ export const TABLES = {
   projects: 'projects', statuses: 'statuses', sprints: 'sprints', issues: 'issues',
   worklogs: 'worklogs', comments: 'comments', history: 'history', transitions: 'transitions',
   links: 'links', fields: 'fields', rules: 'rules', filters: 'filters',
+  workspaces: 'workspaces',                         // 003_workspaces.sql
 };
 
 /* Kişiye özel tutulan üst düzey anahtarlar (herkesin ekranı ayrı). */

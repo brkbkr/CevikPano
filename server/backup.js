@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { TABLES, IGNORED_KEYS, PREF_KEYS, tx } from './db.js';
 import { HttpError } from './util.js';
-import { readAll, publicUser, logChange, DEFAULT_USER_PASSWORD } from './store.js';
+import { readAll, publicUser, logChange, DEFAULT_USER_PASSWORD, ensureDefaultWorkspace } from './store.js';
 import { validate, normalizePriority, validId, stripBadKeys } from './validate.js';
 
 const KEEP_AUTO = 14, KEEP_OTHER = 30;
@@ -135,6 +135,8 @@ export async function replaceAll(pool, me, data, kind) {
       FROM (SELECT project_id, max((substring(issue_key from '-(\\d+)$'))::int) n FROM issues GROUP BY project_id) m
       WHERE m.project_id = p.id AND coalesce((p.data->>'counter')::int, 0) < m.n`);
     stats.fixedKeys ||= 0;
+    /* Dosyada çalışma alanı yoksa (eski yedek) varsayılan "Genel" yeniden oluşur. */
+    await ensureDefaultWorkspace(c);
     await c.query('DELETE FROM user_prefs');            // eski ekran seçimleri artık geçersiz olabilir
     await logChange(c, '_reload', kind, 'put', me.id);
   });
