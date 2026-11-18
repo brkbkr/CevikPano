@@ -58,7 +58,7 @@
   --nv-guide:#1B2842; --nv-sec-ink:#8494AE;
   --nv-tab-ink:#A3B2CB; --nv-tab-on:#BFDBFE; --nv-tab-bar:#60A5FA; --nv-tab-hover:#121D33;
   --nv-fixed-bg:#101A2E; --nv-fixed-ink:#8494AE; --nv-check-off:#5F6F8C;
-  --nv-av:#3B82F6; --nv-av-ink:#FFFFFF;
+  --nv-av:#2563EB; --nv-av-ink:#FFFFFF;
   --nv-scrim:rgba(0,0,0,.6);
   --nv-busy:#FBBF24;
 }
@@ -127,8 +127,7 @@ ul{list-style:none;margin:0;padding:0}
 .nv-proj.all{color:var(--nv-sec-ink);font-weight:550}
 .nv-proj.all > svg.i{color:var(--nv-sec-ink)}
 .nv-empty{padding:7px 8px;font-size:12.5px;color:var(--meta);font-style:normal}
-.nv-other{color:var(--nv-sec-ink);font-weight:550}
-.nv-other > svg.i{color:var(--nv-sec-ink)!important}
+.nv-other{color:var(--nv-sec-ink);font-weight:550;padding-left:12px}
 .nv-more{margin-top:auto}
 .nv-add{color:var(--accent-d);font-weight:600}
 .nv-add > svg.i{color:var(--accent-d)!important}
@@ -308,7 +307,7 @@ select.inp{width:auto;appearance:none;-webkit-appearance:none;padding-right:30px
 .nv-cz-r .ix{position:absolute;left:-26px;font-family:var(--mono);font-size:10.5px;color:var(--meta)}
 .nv-cz-r .nv-ib{width:36px;height:36px}
 .nv-cz-r .nv-ib::before{display:none}
-.nv-cz-r .nv-pop{right:4px;top:calc(100% - 2px);min-width:200px}
+.nv-cz-r .nv-pop{right:48px;top:-44px;min-width:200px}
 .nv-dlg .m-f{display:flex;align-items:center;gap:8px;padding:12px 22px;border-top:1px solid var(--line);background:var(--surface2);border-radius:0 0 16px 16px}
 .nv-dlg .m-f .spacer{flex:1}
 .stage{position:relative;border-radius:16px;overflow:hidden}
@@ -377,7 +376,7 @@ select.inp{width:auto;appearance:none;-webkit-appearance:none;padding-right:30px
   .board .col{flex:0 0 84%;scroll-snap-align:start}
   .col-h .add{width:44px;height:44px}
   .tbl th:nth-child(2),.tbl td:nth-child(2),.tbl th:nth-child(4),.tbl td:nth-child(4){display:none}
-  .nv-drawer{display:flex;position:absolute;z-index:40;top:0;bottom:0;left:0;width:min(326px,88%);border-right:1px solid var(--rail-line);box-shadow:var(--shadow-lg);overflow-y:auto;padding:8px 10px 12px}
+  .app > .nv-drawer{display:flex;position:absolute;z-index:40;top:0;bottom:0;left:0;width:min(326px,88%);border-right:1px solid var(--rail-line);box-shadow:var(--shadow-lg);overflow-y:auto;padding:8px 10px 12px}
   .app > .nv-scrim{position:absolute;inset:0;z-index:39}
   .nv-drawer .brand{padding:0 0 6px 8px;min-height:52px}
   .nv-drawer .brand b{flex:1}
@@ -422,11 +421,12 @@ select.inp{width:auto;appearance:none;-webkit-appearance:none;padding-right:30px
   .nv-dlg .m-b > p{padding:0 4px}
   .nv-cz-r{grid-template-columns:44px 44px 20px minmax(0,1fr) 44px;min-height:52px;gap:0 4px}
   .nv-cz-r .hint{grid-column:4;grid-row:2;margin:-8px 0 6px}
-  .nv-cz-r .hint.lock{display:none}
+  .nv-cz-r .hint.lock{grid-column:5;grid-row:1;justify-self:center;margin:0;font-size:0;gap:0}
+  .nv-cz-r .hint.lock svg.i{width:16px;height:16px}
   .nv-grip{width:44px;height:44px}
   .nv-chk{width:44px;height:44px}
   .nv-cz-r .nv-ib{width:44px;height:44px;grid-column:5;grid-row:1}
-  .nv-cz-r .nv-pop{left:auto;right:0;min-width:220px}
+  .nv-cz-r .nv-pop{left:auto;right:0;top:calc(100% - 2px);min-width:220px}
   .nv-cz-r .nv-pop .nv-mi{min-height:44px}
   .nv-dlg .m-f{flex-wrap:wrap;padding:10px 12px}
   .nv-dlg .m-f .btn{flex:1 1 0;height:44px}
@@ -548,7 +548,7 @@ const I = {
   acil:'<path d="m7 11 5-5 5 5"/><path d="m7 18 5-5 5 5"/>', yuksek:'<path d="m6 15 6-6 6 6"/>', orta:'<path d="M6 9h12M6 15h12"/>',
   hidden:'<path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3 3.9M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
 };
-const ic = (n, s = '') => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true" ${s}>${I[n]}</svg>`;
+const ic = (n, s = '') => `<svg ${/class=/.test(s) ? '' : 'class="i"'} viewBox="0 0 24 24" aria-hidden="true" ${s}>${I[n]}</svg>`;
 const $ = s => document.querySelector(s);
 const set = (s, h) => { $(s).innerHTML = h; };
 
@@ -585,7 +585,7 @@ const rail = (o = {}) => {
       ${wsNode('bnx', { open:true, cur: v === 'board' ? 'PANO' : null, last: v !== 'board' ? 'PANO' : null })}
       ${wsNode('gen', { open: !!o.genOpen })}
       ${wsNode('oyk')}
-      <li><button type="button" class="nv-item nv-other" aria-expanded="${!!o.other}">${ic('layers')}<span class="tx">Diğer çalışma alanları (3)</span>${ic(o.other ? 'down' : 'right', 'class="i end"')}</button>
+      <li><button type="button" class="nv-item nv-other" aria-expanded="${!!o.other}"><span class="tx">Diğer çalışma alanları (3)</span>${ic(o.other ? 'down' : 'right', 'class="i end"')}</button>
         ${o.other ? `<ul class="nv-tree" style="margin-left:8px">${wsNode('ic')}${wsNode('snp', { open:true })}${wsNode('dnt')}</ul>` : ''}</li>
     </ul>`;
   return `${o.drawer ? '' : '<div class="brand"><span class="brand-ic"></span><b>ÇevikPano</b></div>'}
