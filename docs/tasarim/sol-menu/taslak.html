@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><title>Sol menü taslağı</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,sans-serif;background:#E9EEF6;color:#0B1B33;padding:28px}
+h1{font-size:20px;margin:0 0 4px;letter-spacing:-.02em} .lead{color:#43546E;font-size:13px;margin:0 0 20px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.opt h2{font-size:15px;margin:0 0 3px} .opt p{font-size:12px;color:#5B6B84;margin:0 0 10px;min-height:32px}
+.frame{display:grid;grid-template-columns:230px 1fr;height:600px;border-radius:16px;overflow:hidden;box-shadow:0 20px 40px -18px rgba(11,27,51,.35);background:#F3F6FB}
+.side{display:flex;flex-direction:column;padding:16px 10px;gap:2px}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 14px}
+.brand img{width:30px;height:30px;border-radius:9px;box-shadow:0 4px 12px rgba(37,99,235,.35)}
+.brand b{font-size:15.5px;letter-spacing:-.02em}
+.sel{margin:0 6px 10px;padding:8px 10px;border-radius:10px;font-size:13px;font-weight:600;display:flex;justify-content:space-between}
+.grp{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:12px 10px 5px}
+.it{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;font-size:13.2px;font-weight:500}
+.it svg{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.it .n{margin-left:auto;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px}
+.it em{margin-left:auto;font-style:normal;font-size:9.5px;font-weight:700;letter-spacing:.04em;padding:2px 6px;border-radius:6px}
+.who{margin-top:auto;display:flex;align-items:center;gap:9px;padding:9px;border-radius:12px;font-size:12px}
+.av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:11px;background:#2563EB}
+.main{padding:18px}
+.main .t{font-size:19px;font-weight:750;margin-bottom:12px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.col{background:#fff;border-radius:12px;padding:10px;border:1px solid #E1E8F2}
+.card{height:58px;border-radius:9px;background:#F6F9FD;border:1px solid #E1E8F2;margin-top:8px}
+/* A: buz mavisi */
+.a .side{background:linear-gradient(180deg,#EEF5FF,#DCEBFF);color:#1E3A5F;border-right:1px solid #CFE0FA}
+.a .sel{background:#fff;border:1px solid #CFE0FA}
+.a .grp{color:#6A86B0}
+.a .it:hover{background:rgba(255,255,255,.6)}
+.a .it.on{background:#fff;color:#1D4ED8;box-shadow:0 1px 2px rgba(29,78,216,.08),0 6px 14px -6px rgba(29,78,216,.35)}
+.a .it .n{background:#DBEAFE;color:#1D4ED8}
+.a .it em{background:#1D4ED8;color:#fff}
+.a .who{background:rgba(255,255,255,.7);border:1px solid #CFE0FA}
+/* B: gök mavisi */
+.b .side{background:linear-gradient(180deg,#3B82F6 0%,#2F6FE4 55%,#2563EB 100%);color:#EAF2FF}
+.b .brand img{box-shadow:0 0 0 2px rgba(255,255,255,.4)}
+.b .sel{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25);color:#fff}
+.b .grp{color:#BFD7FF}
+.b .it.on{background:#fff;color:#1D4ED8;box-shadow:0 6px 16px -6px rgba(10,30,80,.45)}
+.b .it .n{background:rgba(255,255,255,.22);color:#fff}
+.b .it.on .n{background:#DBEAFE;color:#1D4ED8}
+.b .it em{background:#FDE68A;color:#78350F}
+.b .who{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);color:#fff}
+.b .av{background:#1E3A8A}
+/* C: beyaz + mavi vurgu */
+.c .side{background:#fff;color:#334155;border-right:1px solid #E5EAF2}
+.c .sel{background:#F3F7FD;border:1px solid #E1E8F2}
+.c .grp{color:#94A3B8}
+.c .it svg{color:#3B82F6}
+.c .it.on{background:#EAF2FF;color:#1D4ED8;box-shadow:inset 3px 0 0 #2563EB}
+.c .it .n{background:#EEF2F7;color:#475569}
+.c .it em{background:#2563EB;color:#fff}
+.c .who{background:#F6F9FD;border:1px solid #E5EAF2}
+.legend{margin-top:18px;font-size:12px;color:#43546E;background:#fff;border-radius:12px;padding:12px 14px;border:1px solid #D9E2EF}
+.legend b{color:#0B1B33}
+</style></head><body>
+<h1>Sol menü — açık mavi seçenekleri</h1>
+<p class="lead">Üç seçenek, aynı yeni çizgi ikonlarla. “Benim işlerim”, “Alanlar” ve “Cariler” sonraki adımlar için önizlemedir.</p>
+<div class="grid" id="grid"></div>
+<div class="legend"><b>Yeni ikonlar:</b> tek tip, ince çizgili (Lucide tarzı) 18px SVG — eski karışık sembollerin (▤ ≡ ◷ ⛁) yerine.
+  Sayı rozetleri (ör. Benim işlerim · 7) ve “YENİ” etiketi menü düzenleme özelliğiyle kullanıcıya göre açılıp kapatılabilecek.</div>
+<script>
+const I = {
+  mine:'<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
+  spaces:'<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>',
+  board:'<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 7v7M12 7v4M16 7v9"/>',
+  backlog:'<path d="M10 6h11M10 12h11M10 18h11"/><path d="m3 6 1.5 1.5L7 5"/><path d="m3 12 1.5 1.5L7 11"/><path d="M3 18h4"/>',
+  plan:'<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M16 2v4M8 2v4M3 10h18M7 14h5M11 18h6"/>',
+  time:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  effort:'<path d="M3.3 19a9 9 0 1 1 17.4 0"/><path d="m12 14 4-4"/>',
+  reports:'<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  cari:'<rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M9 8h1M14 8h1M9 12h1M14 12h1M9 17h6"/>',
+  projects:'<path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/>',
+  settings:'<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
+  users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M21.5 20a6.5 6.5 0 0 0-4-6"/>',
+  system:'<ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+};
+const ic = k => `<svg viewBox="0 0 24 24">${I[k]}</svg>`;
+const menu = () => `
+  <div class="brand"><img src="../../../public/img/icon.svg"><b>ÇevikPano</b></div>
+  <div class="sel"><span>Ürün Platformu</span><span>▾</span></div>
+  <div class="it on">${ic('mine')}Benim işlerim<span class="n">7</span></div>
+  <div class="it">${ic('spaces')}Alanlar<em>YENİ</em></div>
+  <div class="grp">Planlama</div>
+  <div class="it">${ic('board')}Pano</div>
+  <div class="it">${ic('backlog')}Backlog</div>
+  <div class="it">${ic('plan')}Zaman planı</div>
+  <div class="grp">Takip</div>
+  <div class="it">${ic('time')}Zaman çizelgesi</div>
+  <div class="it">${ic('effort')}Efor raporu</div>
+  <div class="it">${ic('reports')}Raporlar</div>
+  <div class="grp">Kayıtlar</div>
+  <div class="it">${ic('cari')}Cariler<em>YENİ</em></div>
+  <div class="it">${ic('projects')}Projeler</div>
+  <div class="grp">Yönetim</div>
+  <div class="it">${ic('users')}Kullanıcılar</div>
+  <div class="it">${ic('settings')}Ayarlar</div>
+  <div class="who"><span class="av">BB</span><span><b>Burak</b><br><span style="opacity:.7">Yönetici</span></span></div>`;
+const main = `<div class="main"><div class="t">Benim işlerim</div><div class="cols">
+  <div class="col"><b style="font-size:12px">Bugün</b><div class="card"></div><div class="card"></div></div>
+  <div class="col"><b style="font-size:12px">Bu hafta</b><div class="card"></div><div class="card"></div><div class="card"></div></div></div></div>`;
+const opts = [
+  ['a', 'A · Buz mavisi', 'Çok açık mavi zemin, seçili öğe beyaz “kart” gibi öne çıkar. Ferah, gün boyu yormaz. Önerim.'],
+  ['b', 'B · Gök mavisi', 'Canlı orta mavi, beyaz yazı. Marka hissi en güçlü olan; uzun kullanımda biraz daha baskın.'],
+  ['c', 'C · Beyaz + mavi vurgu', 'Beyaz menü, mavi ikonlar ve seçili öğede açık mavi. En sade ve kurumsal.'],
+];
+document.getElementById('grid').innerHTML = opts.map(([k, t, d]) =>
+  `<div class="opt ${k}"><h2>${t}</h2><p>${d}</p><div class="frame"><aside class="side">${menu()}</aside>${main}</div></div>`).join('');
+</script>
+</body></html>

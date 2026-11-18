@@ -1,0 +1,69 @@
+name: Teste gönder
+# Test sitesi GitHub'daki "test" dalını izler. Bu iş akışı o dalı günceller:
+#  • bir claude/* dalına yapılan push'un testleri geçince  → o sürüm test sitesine gider
+#  • main'e birleştirme olunca (testleri geçince)          → test sitesi onaylı hâle döner
+# Elle: Actions → "Teste gönder" → Run workflow → dal adı.
+on:
+  workflow_run:
+    workflows: [test]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      dal:
+        description: "Test sitesine gönderilecek dal (ör. main ya da claude/sol-menu)"
+        required: true
+        default: main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: teste-gonder
+  cancel-in-progress: false
+
+jobs:
+  gonder:
+    name: Test sitesine gönder
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       (github.event.workflow_run.head_branch == 'main' || startsWith(github.event.workflow_run.head_branch, 'claude/')))
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Sürümü belirle
+        id: s
+        env:
+          DAL: ${{ github.event.inputs.dal }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
+          if [ -n "${DAL:-}" ]; then
+            SHA="$(git rev-parse --verify --quiet "origin/${DAL}^{commit}")" || { echo "::error::Dal bulunamadı: $DAL"; exit 1; }
+            SRC="$DAL"
+          else
+            SHA="$RUN_SHA"; SRC="$RUN_BRANCH"
+            # Dal bu arada ilerlediyse eski sürümü gönderme (yenisinin testi ayrıca tetiklenir)
+            HEAD="$(git rev-parse --verify --quiet "origin/$RUN_BRANCH" || true)"
+            if [ -n "$HEAD" ] && [ "$HEAD" != "$SHA" ]; then echo "Dal ilerlemiş, atlanıyor."; echo "skip=1" >> "$GITHUB_OUTPUT"; exit 0; fi
+          fi
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "src=$SRC" >> "$GITHUB_OUTPUT"
+      - name: test dalını güncelle
+        if: steps.s.outputs.skip != '1'
+        env:
+          SHA: ${{ steps.s.outputs.sha }}
+          SRC: ${{ steps.s.outputs.src }}
+        run: |
+          set -euo pipefail
+          git push origin "$SHA:refs/heads/test" --force
+          {
+            echo "## 🧪 Test sitesine gönderildi: \`${SHA:0:7}\` ($SRC)"
+            echo
+            git log -1 --format=%s "$SHA"
+            echo
+            echo "Sunucu 2-5 dakika içinde bu sürüme geçer."
+          } >> "$GITHUB_STEP_SUMMARY"

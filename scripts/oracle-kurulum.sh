@@ -8,7 +8,8 @@
 #
 # Kurduğu düzen:
 #   CANLI  https://<alan>        /opt/cevikpano       GitHub "production" dalını izler
-#   TEST   https://test.<alan>   /opt/cevikpano-test  GitHub "main" dalını izler (ayrı veritabanı, demo veri)
+#   TEST   https://test.<alan>   /opt/cevikpano-test  GitHub "test" dalını izler (ayrı veritabanı, demo veri)
+#          "test" dalını GitHub Actions ("Teste gönder") günceller: testleri geçen son geliştirme ya da main.
 #   Ortak kapı (Caddy, HTTPS) ve her 2 dakikada çalışan otomatik dağıtıcı (pano-deploy).
 # Tekrar çalıştırmak güvenlidir: mevcut ayarlar, parolalar ve veriler korunur.
 set -euo pipefail
@@ -63,7 +64,7 @@ checkout() {   # klasör, tercih edilen dal, yedek dal
   echo "$ref"
 }
 PROD_REF="$(checkout "$PROD_DIR" production main)"
-TEST_REF="$(checkout "$TEST_DIR" main main)"
+TEST_REF="$(checkout "$TEST_DIR" test main)"
 echo "  canlı: $PROD_REF ($(git -C "$PROD_DIR" rev-parse --short HEAD))   test: $TEST_REF ($(git -C "$TEST_DIR" rev-parse --short HEAD))"
 
 say "4/9 Ayarlar"
@@ -124,7 +125,7 @@ mkdir -p "$ETC"
 cat > "$ETC/ortamlar" <<EOF
 # ad   klasör              izlenen dal   docker projesi
 prod   $PROD_DIR       production    cevikpano
-test   $TEST_DIR  main          cevikpano-test
+test   $TEST_DIR  test          cevikpano-test
 EOF
 printf 'PROD_DOMAIN=%s\nTEST_DOMAIN=%s\n' "$DOMAIN" "$TEST_DOMAIN" > "$ETC/edge.env"
 
@@ -228,7 +229,8 @@ fi
 cat <<EOF
 
   Nasıl çalışır:
-   • GitHub'da onaylanan (main'e birleştirilen) değişiklik ~2-5 dakikada TEST sitesine gelir.
+   • Testleri geçen her geliştirme ~2-5 dakikada TEST sitesine gelir (GitHub "test" dalı).
+   • Beğenilen değişiklik GitHub'da onaylanır (main'e birleştirilir).
    • GitHub → Actions → "Canlıya yayınla" → Run workflow ile CANLI siteye alınır.
    • Yeni sürüm açılmazsa sunucu kendiliğinden önceki sürüme döner.
 
