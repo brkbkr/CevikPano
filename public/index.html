@@ -3121,7 +3121,7 @@ async function poll() {
   try {
     const r = await API.get('/api/changes?since=' + SEQ + '&view=' + encodeURIComponent(DB?.ui?.view || '')
       + '&issue=' + encodeURIComponent(OPEN_ISSUE || ''));
-    if (r.reload) { SEQ = r.seq || SEQ; toast('Veri yönetici tarafından yenilendi'); return reloadState(); }
+    if (r.reload) { SEQ = r.seq || SEQ; toast(r.access ? 'Erişim yetkileriniz güncellendi' : 'Veri yönetici tarafından yenilendi'); return reloadState(); }
     if (r.items?.length) applyRemote(r.items);
     SEQ = Math.max(SEQ, r.seq || 0);
     setUnread(r.unread || 0);
