@@ -119,6 +119,10 @@ const RULES = {
     [d.color == null || d.color === '' || (typeof d.color === 'string' && HEX_RE.test(d.color)), 'Renk #RRGGBB biçiminde olmalı'],
     [d.labels == null || (Array.isArray(d.labels) && d.labels.length <= 50 && d.labels.every(l => typeof l === 'string' && l.length <= 100)),
       'Etiketler en fazla 50 metin olmalı (her biri en fazla 100 karakter)'],
+    /* Talep eden (görev 12): yok/null ya da cari kimliği + o carinin yetkili kişi kimliği. */
+    [d.requester == null || (typeof d.requester === 'object' && !Array.isArray(d.requester)
+      && validId(d.requester.customerId) && validId(d.requester.contactId)), 'Talep eden geçersiz'],
+    [optEmail(d.requesterEmail), 'Talep edenin e-posta adresi geçersiz'],
   ],
   worklogs: d => [
     [str(d.issueId, 200), 'Süre kaydının işi yok'],

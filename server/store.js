@@ -344,6 +344,7 @@ async function applyRecord(c, ctx, ch) {
       && (await c.query('SELECT 1 FROM statuses WHERE id=$1 AND project_id=$2 FOR SHARE', [data.statusId, data.projectId])).rowCount > 0;
     if (!ok) throw new HttpError(400, 'Kolon bulunamadı');
   }
+  if (ch.c === 'issues') await checkRequester(c, data, cur);
   if (ch.c === 'issues' && await ensureIssueKey(c, ctx, data, cur)) adjusted = true;
   if (cur && same(cur, data)) { if (adjusted) ctx.adjusted.push({ c: ch.c, id: ch.id }); return false; }
   if (ch.c === 'workspaces') await checkWorkspace(c, me, ch.id, data, cur);
@@ -569,6 +570,55 @@ async function checkProjectCustomer(c, data, cur) {
   const row = (await c.query('SELECT active FROM customers WHERE id=$1 FOR SHARE', [cid])).rows[0];
   if (!row) throw new HttpError(400, 'Cari bulunamadı');
   if (!row.active) throw new HttpError(400, 'Pasif cari projeye bağlanamaz');
+}
+
+/* Talep eden (görev 12): yalnız canlı yazmada, yeni işte ya da talep eden değişince (güncel kayda göre).
+   'talep' şablonlu projede boş bırakılamaz; dolu ise cari var ve etkin, kişi o carinin yetkili kişisi olmalı.
+   Değişmeyen eski bağ (pasife alınmış cari / silinmiş kişi) ve talep edeni olmayan eski iş korunur.
+   İçe aktarma / geri yükleme bu yoldan geçmez. */
+export const REQUESTER_REQUIRED = 'Talep eden gerekli';
+const reqKey = r => (r && typeof r === 'object' ? `${r.customerId ?? ''}|${r.contactId ?? ''}` : '');
+async function checkRequester(c, data, cur) {
+  const r = data.requester ?? null;
+  if (cur && reqKey(cur.requester) === reqKey(r)) return;
+  if (!r) {
+    const tpl = (await c.query(`SELECT data->>'template' AS t FROM projects WHERE id=$1`, [data.projectId])).rows[0]?.t;
+    if (tpl === 'talep') throw new HttpError(400, REQUESTER_REQUIRED);
+    return;
+  }
+  const row = (await c.query('SELECT active, data FROM customers WHERE id=$1 FOR SHARE', [r.customerId])).rows[0];
+  if (!row) throw new HttpError(400, 'Talep edenin carisi bulunamadı');
+  if (!row.active) throw new HttpError(400, 'Pasif carinin kişisi talep eden olamaz');
+  const list = Array.isArray(row.data?.contacts) ? row.data.contacts : [];
+  if (!list.some(p => p && p.id === r.contactId)) throw new HttpError(400, 'Talep eden kişi bu caride bulunamadı');
+}
+
+/* Hızlı kişi ekleme (görev 12): yönetici ve üye bir cariye yalnız ad / e-posta / telefon ile yetkili kişi ekler.
+   Cari kaydının geri kalanı (unvan, vergi no...) bu yoldan değişmez. changes'e 'put' yazılır (diğerleri yoklamayla alır). */
+export async function addContact(pool, me, customerId, body) {
+  if (me.role === 'viewer') throw new HttpError(403, 'İzleyiciler kişi ekleyemez');
+  if (!validId(customerId)) throw new HttpError(400, 'Geçersiz cari');
+  const b = body && typeof body === 'object' ? body : {};
+  const name = typeof b.name === 'string' ? b.name.trim() : '';
+  if (!name || name.length > 120) throw new HttpError(400, 'Kişinin adı gerekli (en fazla 120 karakter)');
+  const p = { id: 'ct_' + randomUUID().replace(/-/g, '').slice(0, 16), name };
+  for (const k of ['email', 'phone']) {
+    if (b[k] == null || b[k] === '') continue;
+    if (typeof b[k] !== 'string') throw new HttpError(400, k === 'email' ? 'E-posta adresi geçersiz' : 'Telefon geçersiz');
+    const v = b[k].trim();
+    if (v) p[k] = v;
+  }
+  return tx(pool, async c => {
+    const row = (await c.query('SELECT data, active FROM customers WHERE id=$1 FOR UPDATE', [customerId])).rows[0];
+    if (!row) throw new HttpError(404, 'Cari bulunamadı. Yöneticinize cari ekletin.');
+    if (!row.active) throw new HttpError(400, 'Pasif cariye kişi eklenemez');
+    const data = { ...row.data, contacts: [...(Array.isArray(row.data.contacts) ? row.data.contacts : []), p] };
+    validate('customers', data, { live: true, cur: row.data });
+    await c.query(`UPDATE customers SET data=$2::jsonb, version=version+1, updated_at=now(), updated_by=$3 WHERE id=$1`,
+      [customerId, JSON.stringify(data), me.id]);
+    await logChange(c, 'customers', customerId, 'put', me.id, randomUUID());
+    return { contact: p, customer: data };
+  });
 }
 
 /* Yetkili kişiler kimliğe göre üç yönlü birleşir: başkasının sildiği kişi silinmiş kalır (eski base ile geri

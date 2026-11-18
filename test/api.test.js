@@ -1964,3 +1964,107 @@ describe('geçmiş ve yorum koruması', { skip: !URL && 'TEST_DATABASE_URL yok' 
     assert.equal(after.comments.length, before.comments.length);
   });
 });
+
+/* ---------------- talep eden ve hızlı kişi ekleme (görev 12, E1) ----------------
+   Test verileri uydurmadır. */
+describe('talep eden', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  const reasons = r => r.json.rejected.map(x => x.reason);
+  const ok = r => { assert.equal(r.status, 200); assert.equal(r.json.rejected.length, 0, JSON.stringify(r.json.rejected)); };
+  const rejectedWith = (r, msg) => { assert.equal(r.status, 200); assert.equal(r.json.applied, 0); assert.deepEqual(reasons(r), [msg]); };
+  const row = async (table, id) => (await pool.query(`SELECT * FROM ${table} WHERE id=$1`, [id])).rows[0];
+  let A, U, V;
+  const newUser = async (id, username, role) => {
+    await A.sync([{ c: 'users', id, op: 'put', data: { username, name: username, role, active: true } }]);
+    const k = client(); await k.login(username, 'Start12345');
+    assert.equal((await k.req('POST', '/api/auth/password', { newPassword: 'TlpYeni123456' })).status, 200);
+    return k;
+  };
+  const iss = (id, data) => ({ c: 'issues', id, op: 'put', data: { projectId: 'p_tl', statusId: 'p_tl_s0', summary: 'Talep', ...data } });
+  const R = (customerId, contactId) => ({ customerId, contactId });
+
+  before(async () => {
+    A = client(); await A.login('admin', 'test-admin-pw');
+    U = await newUser('u_tl1', 'tluye', 'member');
+    V = await newUser('u_tlv', 'tlizci', 'viewer');
+    ok(await A.sync([
+      { c: 'customers', id: 'c_tl1', op: 'put', data: { name: 'Talep Bir A.Ş.', kind: 'customer', contacts: [{ id: 'ct_a', name: 'Ayşe Örnek', email: 'ayse@ornek.test' }] } },
+      { c: 'customers', id: 'c_tl2', op: 'put', data: { name: 'Talep İki Ltd.', kind: 'customer', contacts: [{ id: 'ct_b', name: 'Bora Örnek' }] } },
+      { c: 'customers', id: 'c_tlp', op: 'put', data: { name: 'Pasif Ltd.', kind: 'customer', active: false, contacts: [{ id: 'ct_p', name: 'Pasif Kişi' }] } },
+      { c: 'projects', id: 'p_tl', op: 'put', data: { name: 'Destek', key: 'DST', counter: 0, workspaceId: 'ws1', template: 'talep' } },
+      { c: 'projects', id: 'p_tg', op: 'put', data: { name: 'Genel iş', key: 'TGN', counter: 0, workspaceId: 'ws1', customerId: 'c_tl1' } },
+      { c: 'statuses', id: 'p_tl_s0', op: 'put', data: { projectId: 'p_tl', name: 'Yeni', cat: 'todo', ord: 0 } },
+      { c: 'statuses', id: 'p_tg_s0', op: 'put', data: { projectId: 'p_tg', name: 'Yapılacak', cat: 'todo', ord: 0 } },
+    ]));
+  });
+
+  test('talep projesinde talep edensiz yeni iş 400 "Talep eden gerekli"; geçerli kişiyle kabul', async () => {
+    rejectedWith(await U.sync([iss('i_tl1', { key: 'DST-1' })]), 'Talep eden gerekli');
+    rejectedWith(await U.sync([iss('i_tl1', { key: 'DST-1', requester: null })]), 'Talep eden gerekli');
+    ok(await U.sync([iss('i_tl1', { key: 'DST-1', requester: R('c_tl1', 'ct_a') })]));
+    assert.deepEqual((await row('issues', 'i_tl1')).data.requester, R('c_tl1', 'ct_a'));
+    /* var olan işte talep edeni boşaltmak da reddedilir */
+    rejectedWith(await U.sync([iss('i_tl1', { key: 'DST-1', requester: null })]), 'Talep eden gerekli');
+  });
+
+  test('başka carinin kişisi, pasif cari, olmayan cari ve biçimsiz değer reddedilir', async () => {
+    rejectedWith(await U.sync([iss('i_tl2', { key: 'DST-2', requester: R('c_tl1', 'ct_b') })]), 'Talep eden kişi bu caride bulunamadı');
+    rejectedWith(await U.sync([iss('i_tl2', { key: 'DST-2', requester: R('c_tlp', 'ct_p') })]), 'Pasif carinin kişisi talep eden olamaz');
+    rejectedWith(await U.sync([iss('i_tl2', { key: 'DST-2', requester: R('c_yok', 'ct_a') })]), 'Talep edenin carisi bulunamadı');
+    rejectedWith(await U.sync([iss('i_tl2', { key: 'DST-2', requester: { customerId: '<x>', contactId: 'ct_a' } })]), 'Talep eden geçersiz');
+    rejectedWith(await U.sync([iss('i_tl2', { key: 'DST-2', requester: 'ct_a' })]), 'Talep eden geçersiz');
+    assert.equal(await row('issues', 'i_tl2'), undefined);
+  });
+
+  test('eski talep edensiz iş düzenlenebilir; değişmeyen eski bağ (pasifleşen cari, silinen kişi) korunur', async () => {
+    await pool.query(`INSERT INTO issues (id, data) VALUES ('i_tlold', '{"id":"i_tlold","projectId":"p_tl","statusId":"p_tl_s0","key":"DST-50","summary":"Eski"}')`);
+    const cur = (await row('issues', 'i_tlold')).data;
+    ok(await U.sync([{ c: 'issues', id: 'i_tlold', op: 'put', data: { ...cur, summary: 'Eski (başlık)' }, base: cur }]));
+    assert.equal((await row('issues', 'i_tlold')).data.summary, 'Eski (başlık)');
+    /* i_tl1'in carisi pasife alınır ve kişisi silinir: başlık yine değişir */
+    const c1 = (await row('customers', 'c_tl1')).data;
+    ok(await A.sync([{ c: 'customers', id: 'c_tl1', op: 'put', data: { ...c1, active: false, contacts: [] }, base: c1 }]));
+    const i1 = (await row('issues', 'i_tl1')).data;
+    ok(await U.sync([{ c: 'issues', id: 'i_tl1', op: 'put', data: { ...i1, summary: 'Yeni başlık' }, base: i1 }]));
+    assert.deepEqual((await row('issues', 'i_tl1')).data.requester, R('c_tl1', 'ct_a'));
+    const c1b = (await row('customers', 'c_tl1')).data;
+    ok(await A.sync([{ c: 'customers', id: 'c_tl1', op: 'put', data: c1, base: c1b }]));
+  });
+
+  test('cari bağlı diğer projede talep eden isteğe bağlı; verilirse denetlenir', async () => {
+    const g = d => ({ c: 'issues', id: 'i_tg1', op: 'put', data: { projectId: 'p_tg', statusId: 'p_tg_s0', key: 'TGN-1', summary: 'Genel', ...d } });
+    ok(await U.sync([g({})]));
+    rejectedWith(await U.sync([g({ requester: R('c_tl2', 'ct_x') })]), 'Talep eden kişi bu caride bulunamadı');
+    ok(await U.sync([g({ requester: R('c_tl2', 'ct_b') })]));
+    ok(await U.sync([g({ requester: null })]));
+  });
+
+  test('hızlı kişi ekleme: üye ekler (yalnız ad/e-posta/telefon), izleyici 403, değişiklik akışına düşer', async () => {
+    const s0 = (await U.state()).json.seq;
+    const r = await U.req('POST', '/api/customers/c_tl2/contacts',
+      { name: '  Cem Yeni  ', email: 'cem@ornek.test', phone: '0212 000 00 00', title: 'Müdür', id: 'ct_zorla' });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    const ct = r.json.contact;
+    assert.equal(ct.name, 'Cem Yeni'); assert.equal(ct.email, 'cem@ornek.test'); assert.equal(ct.title, undefined);
+    assert.notEqual(ct.id, 'ct_zorla'); assert.match(ct.id, /^ct_[a-f0-9]{16}$/);
+    const d = (await row('customers', 'c_tl2')).data;
+    assert.equal(d.name, 'Talep İki Ltd.');
+    assert.deepEqual(d.contacts.map(x => x.id), ['ct_b', ct.id]);
+    const ch = (await U.req('GET', '/api/changes?since=' + s0)).json;
+    assert.ok(ch.items.some(i => i.c === 'customers' && i.id === 'c_tl2' && i.op === 'put' && i.data.contacts.length === 2));
+    /* yeni kişi hemen talep eden olabilir */
+    ok(await U.sync([iss('i_tl3', { key: 'DST-3', requester: R('c_tl2', ct.id) })]));
+    /* yalnız bu uç: üye cari kaydının kendisini (unvan) yine değiştiremez */
+    rejectedWith(await U.sync([{ c: 'customers', id: 'c_tl2', op: 'put', data: { ...d, name: 'Değişti' }, base: d }]), 'Bu değişiklik için yönetici yetkisi gerekli');
+
+    assert.equal((await V.req('POST', '/api/customers/c_tl2/contacts', { name: 'İzci' })).status, 403);
+    assert.equal((await U.req('POST', '/api/customers/c_tl2/contacts', { name: '   ' })).status, 400);
+    assert.equal((await U.req('POST', '/api/customers/c_tl2/contacts', { name: 'x'.repeat(121) })).status, 400);
+    assert.equal((await U.req('POST', '/api/customers/c_tl2/contacts', { name: 'Kötü', email: 'yok' })).status, 400);
+    const nf = await U.req('POST', '/api/customers/c_yok/contacts', { name: 'Kimse' });
+    assert.equal(nf.status, 404); assert.match(nf.json.error, /Yöneticinize cari ekletin/);
+    assert.equal((await U.req('POST', '/api/customers/c_tlp/contacts', { name: 'Pasife' })).status, 400);
+    assert.equal((await U.req('POST', '/api/customers/c_tl2/contacts', { name: 'CSRF' }, { 'x-pano': '' })).status, 403);
+    assert.equal((await client().req('POST', '/api/customers/c_tl2/contacts', { name: 'Anonim' })).status, 401);
+    assert.equal((await row('customers', 'c_tl2')).data.contacts.length, 2);
+  });
+});

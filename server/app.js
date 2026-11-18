@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { authRoutes, requireUser, meOf } from './auth.js';
-import { readState, readChanges, applyChanges, HttpError } from './store.js';
+import { readState, readChanges, applyChanges, addContact, HttpError } from './store.js';
 import { listNotifications, unreadCount, markRead } from './notify.js';
 import { createSnapshot, listSnapshots, getSnapshot, replaceAll, listTrash, restoreTrash, activity } from './backup.js';
 import { isAdminRole } from './util.js';
@@ -126,6 +126,11 @@ export function createApp(pool) {
 
   app.post('/api/sync', requireUser, async (req, res) => {
     res.json(await applyChanges(pool, req.user, req.body?.changes));
+  });
+
+  /* Hızlı kişi ekleme (görev 12): yönetici + üye; izleyici 403. Yalnız ad, e-posta, telefon. */
+  app.post('/api/customers/:id/contacts', requireUser, async (req, res) => {
+    res.json(await addContact(pool, req.user, req.params.id, req.body));
   });
 
   /* Tam yedek (yönetici). Parola özetleri dahil edilmez. */
