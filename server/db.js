@@ -12,6 +12,7 @@ export const TABLES = {
   worklogs: 'worklogs', comments: 'comments', history: 'history', transitions: 'transitions',
   links: 'links', fields: 'fields', rules: 'rules', filters: 'filters',
   workspaces: 'workspaces',                         // 003_workspaces.sql
+  customers: 'customers',                           // 004_cariler.sql
 };
 
 /* Koleksiyonun tablosu (yalnız kendi anahtarı; `constructor` gibi kalıtılan adlar tablo sayılmaz). */

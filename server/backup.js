@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { TABLES, IGNORED_KEYS, PREF_KEYS, tx, tableOf, reservedName } from './db.js';
 import { HttpError } from './util.js';
 import { readAll, publicUser, logChange, DEFAULT_USER_PASSWORD, ensureDefaultWorkspace, DEFAULT_WS } from './store.js';
-import { validate, normalizePriority, normalizeArchived, validId, stripBadKeys } from './validate.js';
+import { validate, normalizePriority, normalizeArchived, normalizeCustomer, validId, stripBadKeys } from './validate.js';
 
 const KEEP_AUTO = 14, KEEP_OTHER = 30;
 
@@ -100,7 +100,7 @@ export async function replaceAll(pool, me, data, kind) {
       if (reservedName(k)) { stats.skipped = (stats.skipped || 0) + 1; continue; }   // __proto__ / constructor
       if (Array.isArray(v)) {
         const table = tableOf(k);
-        const seen = new Set();
+        const seen = new Set(), taxNos = new Set();
         /* İş anahtarları: projede çift olanlara projedeki en büyük numaradan sonrakini ver. */
         const keyNum = s => { const m = /-(\d+)$/.exec(s || ''); return m ? Number(m[1]) : 0; };
         const maxKey = {}, usedKey = new Set();
@@ -122,7 +122,13 @@ export async function replaceAll(pool, me, data, kind) {
           }
           if (k === 'issues') normalizePriority(d);    // eski yedekte metin/geçersiz öncelik atlanmasın
           if (k === 'projects' || k === 'workspaces') normalizeArchived(d);   // "true"/"false" metni atlanmasın
+          if (k === 'customers') normalizeCustomer(d);   // "123 456-7890" → "1234567890"
           try { validate(k, d); } catch (e) { stats.skipped = (stats.skipped || 0) + 1; continue; }
+          /* Vergi numarası tekil: dosyada ikinci kez geçen cari atlanır (geri yükleme 500 vermesin). */
+          if (k === 'customers' && d.taxNo) {
+            if (taxNos.has(d.taxNo)) { stats.skipped = (stats.skipped || 0) + 1; continue; }
+            taxNos.add(d.taxNo);
+          }
           if (table) await c.query(`INSERT INTO ${table} (id, data, updated_by) VALUES ($1,$2::jsonb,$3)`, [id, JSON.stringify(d), me.id]);
           else await c.query(`INSERT INTO misc_records (collection, id, data, updated_by) VALUES ($1,$2,$3::jsonb,$4)`, [k, id, JSON.stringify(d), me.id]);
           n++;

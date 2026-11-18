@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
 import { TABLES, PREF_KEYS, IGNORED_KEYS, tx, tableOf, reservedName } from './db.js';
 import { HttpError, cj, same, merge3, isAdminRole } from './util.js';
-import { validate, normalizePriority, normalizeArchived, validId, validateCfg, stripBadKeys } from './validate.js';
+import { validate, normalizePriority, normalizeArchived, normalizeCustomer, validId, validateCfg, stripBadKeys } from './validate.js';
 import { notifyForIssue, notifyForComment } from './notify.js';
 
 export { HttpError };
@@ -11,8 +11,9 @@ export const DEFAULT_USER_PASSWORD = () => process.env.DEFAULT_USER_PASSWORD || 
 const SECRET_USER_KEYS = ['pw', 'salt', 'mustChange', 'password', 'password_hash', 'passwordHash'];
 const USER_COLS = ['id', 'username', 'name', 'role', 'active', 'system'];
 const ROLES = ['super', 'admin', 'member', 'viewer'];
-/* Proje yapılandırması: yalnızca yönetici değiştirir. Üye projeyi oluşturup düzenleyebilir ama silemez. */
-export const ADMIN_ONLY = ['statuses', 'fields', 'rules', '_settings'];
+/* Proje yapılandırması ve cariler: yalnızca yönetici değiştirir. Üye projeyi oluşturup düzenleyebilir
+   (projeye etkin cari bağlamak dahil) ama silemez. */
+export const ADMIN_ONLY = ['statuses', 'fields', 'rules', '_settings', 'customers'];
 const ISSUE_CHILDREN = ['comments', 'worklogs', 'history', 'transitions'];
 /* Yeni kaydı yalnız ekleyerek oluşturan koleksiyonlar (eşzamanlı oluşturmada üzerine yazılmaz). */
 const CREATE_ONCE = ['workspaces'];
@@ -54,12 +55,20 @@ export async function readState(pool, me) {
     const data = await readAll(c);
     const pr = (await c.query('SELECT data FROM user_prefs WHERE user_id=$1', [me.id])).rows[0];
     for (const k of PREF_KEYS) if (pr?.data?.[k] !== undefined && pr.data[k] !== null) data[k] = pr.data[k];
+    if (me.role === 'viewer' && Array.isArray(data.customers)) data.customers = data.customers.map(maskCustomer);
     return { seq, data };
   });
 }
 
+/* İzleyiciye 11 haneli vergi numarası (T.C. kimlik no) maskeli gider: 123******01.
+   10 haneli vergi numarası (tüzel kişi) maskelenmez. Yedek / dışa aktarma maskesizdir (yalnız yönetici). */
+export function maskCustomer(d) {
+  if (!d || typeof d.taxNo !== 'string' || !/^\d{11}$/.test(d.taxNo)) return d;
+  return { ...d, taxNo: d.taxNo.slice(0, 3) + '******' + d.taxNo.slice(-2) };
+}
+
 /* ---- son okunan sıra numarasından beri değişenler ---- */
-export async function readChanges(pool, since) {
+export async function readChanges(pool, since, me) {
   const { rows } = await pool.query(
     `SELECT DISTINCT ON (collection, record_id) seq, collection, record_id, op
        FROM changes WHERE seq > $1 ORDER BY collection, record_id, seq DESC`, [since]);
@@ -70,7 +79,8 @@ export async function readChanges(pool, since) {
     if (r.collection === '_reload') { items.push(it); continue; }
     if (r.op === 'put') {
       const d = await readOne(pool, r.collection, r.record_id);
-      if (d === undefined) it.op = 'del'; else it.data = d;
+      if (d === undefined) it.op = 'del';
+      else it.data = r.collection === 'customers' && me?.role === 'viewer' ? maskCustomer(d) : d;
     }
     items.push(it);
   }
@@ -152,6 +162,12 @@ export async function applyChanges(pool, me, changes) {
       } catch (e) {
         await c.query('ROLLBACK TO SAVEPOINT ch');
         if (e instanceof HttpError) reject(e.message);
+        else if (e.code === '23505' && e.constraint === 'customers_tax_no_uq') {
+          /* Eşzamanlı iki kayıt aynı vergi numarasını yazdı: diğeri işlendi, kimliğini bildir. */
+          const other = ctx.taxNo ? (await c.query('SELECT id FROM customers WHERE tax_no=$1 AND id<>$2 LIMIT 1',
+            [ctx.taxNo, ch.id])).rows[0]?.id : null;
+          reject(taxNoTaken(other));
+        }
         else if (e.code === '23505') reject(/username/.test(e.constraint || '') ? 'Bu kullanıcı adı kullanılıyor' : 'Bu kayıt zaten var (benzersizlik ihlali)');
         else throw e;
       }
@@ -186,6 +202,12 @@ async function applyRecord(c, ctx, ch) {
     if (!cur) return false;
     if (ch.c === 'issues') await cascadeIssueDelete(c, ctx, ch.id);
     if (ch.c === 'workspaces') await checkWorkspaceDelete(c, ch.id);
+    if (ch.c === 'customers') {
+      /* Kişisel veri: cari çöp kutusuna gitmez, kalıcı silinir (geri alınamaz). */
+      await checkCustomerDelete(c, ch.id);
+      await c.query('DELETE FROM customers WHERE id=$1', [ch.id]);
+      return true;
+    }
     await c.query(`INSERT INTO deleted_records (collection, record_id, data, batch_id, deleted_by)
       VALUES ($1,$2,$3::jsonb,$4,$5)`, [ch.c, ch.id, JSON.stringify(cur), batch, me.id]);
     if (table) await c.query(`DELETE FROM ${table} WHERE id=$1`, [ch.id]);
@@ -193,11 +215,17 @@ async function applyRecord(c, ctx, ch) {
     return true;
   }
 
+  /* Silinmiş cari eski hâliyle (base) geri gelmez; yeni cari base'siz gelir. */
+  if (ch.c === 'customers' && !cur && ch.base && typeof ch.base === 'object') throw new HttpError(409, 'Cari silinmiş');
   let data = { id: ch.id, ...ch.data };
   data.id = ch.id;
   let adjusted = false;
   if (cur && ch.base && typeof ch.base === 'object' && !same(cur, ch.base)) {
+    const mine = data;
     data = merge3(ch.base, data, cur);              // başkası bu arada değiştirmiş
+    if (ch.c === 'customers' && (mine.contacts === undefined || Array.isArray(mine.contacts))
+        && [ch.base, mine, cur].some(x => x.contacts !== undefined))
+      data.contacts = mergeContacts(ch.base.contacts, mine.contacts, cur.contacts);
     adjusted = true;
   }
   if (ch.c === 'projects' && cur) {                 // iş sayacı geri gitmesin
@@ -206,6 +234,7 @@ async function applyRecord(c, ctx, ch) {
   }
   if (ch.c === 'issues' && normalizePriority(data)) adjusted = true;
   if ((ch.c === 'projects' || ch.c === 'workspaces') && normalizeArchived(data)) adjusted = true;
+  if (ch.c === 'customers' && normalizeCustomer(data)) adjusted = true;
   if (ch.c === 'workspaces' && enforceCreatedBy(data, cur, me)) adjusted = true;
   validate(ch.c, data);
   /* Atanan değiştiyse var olan, aktif bir kullanıcı olmalı. */
@@ -218,6 +247,8 @@ async function applyRecord(c, ctx, ch) {
   if (cur && same(cur, data)) { if (adjusted) ctx.adjusted.push({ c: ch.c, id: ch.id }); return false; }
   if (ch.c === 'workspaces') await checkWorkspace(c, me, ch.id, data, cur);
   if (ch.c === 'projects') await checkProjectWorkspace(c, data, cur);
+  if (ch.c === 'projects') await checkProjectCustomer(c, data, cur);
+  if (ch.c === 'customers') await checkCustomerTaxNo(c, ctx, ch.id, data, cur);
 
   const json = JSON.stringify(data);
   if (table && !cur && CREATE_ONCE.includes(ch.c)) {
@@ -289,6 +320,56 @@ async function checkProjectWorkspace(c, data, cur) {
   const row = (await c.query('SELECT archived FROM workspaces WHERE id=$1 FOR SHARE', [ws])).rows[0];
   if (!row) throw new HttpError(400, 'Çalışma alanı bulunamadı');
   if (row.archived) throw new HttpError(400, 'Arşivlenmiş çalışma alanına proje taşınamaz');
+}
+
+/* ---- cariler (#11) ----
+   Ekle/düzenle/sil yalnız yönetici (ADMIN_ONLY). İletilerde yalnız kimlik: unvan/vergi no günlüğe ve
+   başka kullanıcıların yanıtına düşmez (istemci unvanı kimlikten kendisi bulur). */
+const taxNoTaken = id => id ? `Bu vergi numarasıyla kayıtlı cari var (#${id})` : 'Bu vergi numarasıyla kayıtlı cari var';
+
+/* Vergi numarası (pasifler dahil) tekil. Yeni kayıtta ya da değiştiyse önceden denetlenir; eşzamanlı yazmada
+   customers_tax_no_uq indeksi ikincisini reddeder (applyChanges aynı iletiyle eşler). */
+async function checkCustomerTaxNo(c, ctx, id, data, cur) {
+  const tn = data.taxNo || null;
+  ctx.taxNo = tn;
+  if (!tn || (cur && (cur.taxNo || null) === tn)) return;
+  const other = (await c.query('SELECT id FROM customers WHERE tax_no=$1 AND id<>$2 LIMIT 1', [tn, id])).rows[0];
+  if (other) throw new HttpError(409, taxNoTaken(other.id));
+}
+
+/* Bağlı projesi (arşivliler dahil) olan cari silinmez. Satır FOR UPDATE ile kilitli: aynı anda bağlayan
+   proje (FOR SHARE) ya önce biter ve sayılır ya da cariyi bulamaz. */
+async function checkCustomerDelete(c, id) {
+  const n = Number((await c.query('SELECT count(*) AS n FROM projects WHERE customer_id=$1', [id])).rows[0].n);
+  if (n > 0) throw new HttpError(409, `Bu cariye bağlı ${n} proje var; silmek yerine pasife alın`);
+}
+
+/* Projeye cari yeni bağlanıyorsa ya da değiştiyse (güncel kayda göre) cari var ve etkin olmalı.
+   Bağ kaldırma serbest; pasife alınmış carinin değişmeyen bağı korunur. */
+async function checkProjectCustomer(c, data, cur) {
+  const cid = data.customerId;
+  if (cid == null || cid === '') return;
+  if (cur && (cur.customerId ?? '') === cid) return;
+  const row = (await c.query('SELECT active FROM customers WHERE id=$1 FOR SHARE', [cid])).rows[0];
+  if (!row) throw new HttpError(400, 'Cari bulunamadı');
+  if (!row.active) throw new HttpError(400, 'Pasif cari projeye bağlanamaz');
+}
+
+/* Yetkili kişiler kimliğe göre üç yönlü birleşir: başkasının sildiği kişi silinmiş kalır (eski base ile geri
+   gelmez), benim sildiğim çıkar, benim eklediğim eklenir, benim değiştirdiğim kişide benimki kazanır. */
+export function mergeContacts(base, mine, theirs) {
+  const arr = v => (Array.isArray(v) ? v.filter(x => x && typeof x === 'object' && !Array.isArray(x)) : []);
+  const B = new Map(arr(base).map(x => [x.id, x])), M = new Map(arr(mine).map(x => [x.id, x]));
+  const out = [], seen = new Set();
+  for (const t of arr(theirs)) {
+    if (seen.has(t.id)) continue;
+    seen.add(t.id);
+    if (B.has(t.id) && !M.has(t.id)) continue;                 // ben sildim
+    const m = M.get(t.id);
+    out.push(m && !same(m, B.get(t.id)) ? m : t);
+  }
+  for (const m of arr(mine)) if (!B.has(m.id) && !seen.has(m.id)) { seen.add(m.id); out.push(m); }
+  return out;
 }
 
 /* İş silinince yorumları, süre kayıtları, geçmişi ve bağlantıları da çöp kutusuna gider
