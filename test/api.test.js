@@ -1003,3 +1003,320 @@ describe('çalışma alanları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () =
     assert.ok((await A.state()).json.data.workspaces.some(x => x.id === 'ws_a'));
   });
 });
+
+/* ---------------- cariler (#11) ----------------
+   Test verileri uydurmadır (gerçek kişi/firma/kimlik numarası değildir). */
+describe('cariler', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  const cu = (id, data, base) => ({ c: 'customers', id, op: 'put', data, ...(base ? { base } : {}) });
+  const del = (c, id) => ({ c, id, op: 'del' });
+  const row = async (table, id) => (await pool.query(`SELECT * FROM ${table} WHERE id=$1`, [id])).rows[0];
+  const reasons = r => r.json.rejected.map(x => x.reason);
+  const ok = r => { assert.equal(r.status, 200); assert.equal(r.json.rejected.length, 0, JSON.stringify(r.json.rejected)); };
+  const rejectedWith = (r, msg) => { assert.equal(r.status, 200); assert.equal(r.json.applied, 0); assert.deepEqual(reasons(r), [msg]); };
+  /* snapshots (yedek) hariç tüm tabloların metin dökümü */
+  const dump = async () => {
+    const ts = (await pool.query(`SELECT table_name FROM information_schema.tables
+      WHERE table_schema='public' AND table_type='BASE TABLE' AND table_name <> 'snapshots'`)).rows.map(r => r.table_name);
+    let out = '';
+    for (const t of ts) out += (await pool.query(`SELECT t::text AS x FROM "${t}" t`)).rows.map(r => r.x).join('\n') + '\n';
+    return out;
+  };
+  let A, U, V;
+  const newUser = async (id, username, role) => {
+    await A.sync([{ c: 'users', id, op: 'put', data: { username, name: username, role, active: true } }]);
+    const k = client(); await k.login(username, 'Start12345');
+    assert.equal((await k.req('POST', '/api/auth/password', { newPassword: 'CuYeni123456' })).status, 200);
+    return k;
+  };
+  const firm = (name, extra = {}) => ({ name, kind: 'customer', ...extra });
+  const firmWith = (id, name, taxNo) => ({ id, name, kind: 'supplier', taxNo });
+
+  before(async () => {
+    A = client(); await A.login('admin', 'test-admin-pw');
+    U = await newUser('u_cu1', 'cuuye', 'member');
+    V = await newUser('u_cuv', 'cuizci', 'viewer');
+    ok(await A.sync([{ c: 'projects', id: 'p_cu1', op: 'put', data: { name: 'Cari projesi', key: 'CUA', counter: 0, workspaceId: 'ws1' } },
+      { c: 'projects', id: 'p_cu2', op: 'put', data: { name: 'Cari arşiv', key: 'CUB', counter: 0, workspaceId: 'ws1', archived: true } }]));
+  });
+
+  test('göç: 004 tekrar çalışır; tablo, kısmi tekil indeks ve projects.customer_id var; veri korunur', async () => {
+    ok(await A.sync([cu('c_g1', firm('Göç Deneme A.Ş.', { taxNo: '1111111111' }))]));
+    await pool.query(`DELETE FROM schema_migrations WHERE id='004_cariler.sql'`);
+    await migrate(pool);
+    assert.equal((await pool.query(`SELECT count(*) n FROM schema_migrations WHERE id='004_cariler.sql'`)).rows[0].n, '1');
+    const r = await row('customers', 'c_g1');
+    assert.equal(r.name, 'Göç Deneme A.Ş.'); assert.equal(r.tax_no, '1111111111'); assert.equal(r.kind, 'customer'); assert.equal(r.active, true);
+    const idx = (await pool.query(`SELECT indexdef FROM pg_indexes WHERE indexname='customers_tax_no_uq'`)).rows[0].indexdef;
+    assert.match(idx, /UNIQUE/); assert.match(idx, /WHERE \(tax_no IS NOT NULL\)/);
+    assert.equal((await row('projects', 'p_cu1')).customer_id, null);
+    ok(await A.sync([del('customers', 'c_g1')]));
+  });
+
+  test('normalleştirme: vergi no boşluk/tire temizlenir, unvan ve e-postalar kırpılır (adjusted)', async () => {
+    const r = await A.sync([cu('c_n1', firm('  Boşluklu Ltd.  ', { kind: 'both', taxNo: '123 456-7890', email: ' info@ornek.test ',
+      contacts: [{ id: 'ct_n1', name: ' Deneme Kişi ', email: ' kisi@ornek.test ' }] }))]);
+    ok(r);
+    assert.deepEqual(r.json.adjusted, [{ c: 'customers', id: 'c_n1' }]);
+    const d = (await row('customers', 'c_n1')).data;
+    assert.equal(d.taxNo, '1234567890'); assert.equal(d.name, 'Boşluklu Ltd.'); assert.equal(d.email, 'info@ornek.test');
+    assert.deepEqual(d.contacts, [{ id: 'ct_n1', name: 'Deneme Kişi', email: 'kisi@ornek.test' }]);
+    assert.equal(d.active, undefined);
+    assert.equal((await row('customers', 'c_n1')).active, true);        // yeni = Etkin
+    /* zaten düzgün kayıtta adjusted yok */
+    const r2 = await A.sync([cu('c_n2', firm('Düzgün Ltd.', { taxNo: '1234567891' }))]);
+    ok(r2); assert.deepEqual(r2.json.adjusted, []);
+    for (const id of ['c_n1', 'c_n2']) ok(await A.sync([del('customers', id)]));
+  });
+
+  test('doğrulama: hatalı kayıt yazılmaz; iletilerde değer yok', async () => {
+    const cases = [
+      [{ kind: 'customer' }, 'Unvan gerekli (en fazla 200 karakter)'],
+      [{ name: '   ', kind: 'customer' }, 'Unvan gerekli (en fazla 200 karakter)'],
+      [{ name: 'x'.repeat(201), kind: 'customer' }, 'Unvan gerekli (en fazla 200 karakter)'],
+      [{ name: 'Türsüz' }, 'Tür müşteri, tedarikçi ya da ikisi olmalı'],
+      [firm('Tür', { kind: 'rakip' }), 'Tür müşteri, tedarikçi ya da ikisi olmalı'],
+      [firm('Dokuz', { taxNo: '987654321' }), 'Vergi numarası 10 ya da 11 haneli olmalı'],
+      [firm('Oniki', { taxNo: '987654321098' }), 'Vergi numarası 10 ya da 11 haneli olmalı'],
+      [firm('Harfli', { taxNo: '98765A3210' }), 'Vergi numarası 10 ya da 11 haneli olmalı'],
+      [firm('Sayı', { taxNo: 9876543210 }), 'Vergi numarası 10 ya da 11 haneli olmalı'],
+      [firm('Posta', { email: 'gizli-posta@' }), 'E-posta adresi geçersiz'],
+      [firm('Tel', { phone: '9'.repeat(31) }), 'Telefon en fazla 30 karakter'],
+      [firm('Kısa', { shortName: 'k'.repeat(61) }), 'Kısa ad en fazla 60 karakter'],
+      [firm('Daire', { taxOffice: 'd'.repeat(101) }), 'Vergi dairesi en fazla 100 karakter'],
+      [firm('Adres', { address: 'a'.repeat(501) }), 'Adres en fazla 500 karakter'],
+      [firm('Not', { notes: 'n'.repeat(2001) }), 'Notlar en fazla 2000 karakter'],
+      [firm('Etkin', { active: 'x' }), 'Durum (etkin) true ya da false olmalı'],
+      [firm('Kişiler', { contacts: 'gizli-kisi' }), 'Yetkili kişiler en fazla 200 kişilik bir liste olmalı'],
+      [firm('Çok kişi', { contacts: Array.from({ length: 201 }, (_, i) => ({ id: 'ct' + i, name: 'K' + i })) }),
+        'Yetkili kişiler en fazla 200 kişilik bir liste olmalı'],
+      [firm('Adsız', { contacts: [{ id: 'ct_1', email: 'adsiz@ornek.test' }] }), 'Yetkili kişinin adı gerekli (en fazla 120 karakter)'],
+      [firm('Kimliksiz', { contacts: [{ id: '<b>', name: 'K' }] }), 'Yetkili kişinin kimliği geçersiz'],
+      [firm('Çift', { contacts: [{ id: 'ct_1', name: 'K' }, { id: 'ct_1', name: 'L' }] }), 'Yetkili kişi kimlikleri tekil olmalı'],
+      [firm('Görev', { contacts: [{ id: 'ct_1', name: 'K', title: 'g'.repeat(121) }] }), 'Yetkili kişinin görevi en fazla 120 karakter'],
+      [firm('KP', { contacts: [{ id: 'ct_1', name: 'K', email: 'gizli@' }] }), 'Yetkili kişinin e-posta adresi geçersiz'],
+      [firm('KT', { contacts: [{ id: 'ct_1', name: 'K', phone: '5'.repeat(31) }] }), 'Yetkili kişinin telefonu en fazla 30 karakter'],
+    ];
+    for (const [data, msg] of cases) {
+      const r = await A.sync([cu('c_bad', data)]);
+      rejectedWith(r, msg);
+      for (const v of ['987654321', 'gizli', 'adsiz@', '9'.repeat(31)]) assert.ok(!reasons(r)[0].includes(v), msg);
+    }
+    assert.equal(await row('customers', 'c_bad'), undefined);
+    /* 200 kişi ve en uzun geçerli değerler kabul edilir */
+    ok(await A.sync([cu('c_max', firm('u'.repeat(200), { shortName: 'k'.repeat(60), taxNo: '', phone: '9'.repeat(30), active: false,
+      contacts: Array.from({ length: 200 }, (_, i) => ({ id: 'ct' + i, name: 'K' + i, title: '', email: '', phone: '' })) }))]));
+    ok(await A.sync([del('customers', 'c_max')]));
+  });
+
+  test('vergi no tekil (pasif dahil, yalnız kimlik iletilir); boş vergi no denetlenmez', async () => {
+    ok(await A.sync([cu('c_t1', firm('Tekil Bir A.Ş.', { taxNo: '2222222222', active: false }))]));
+    let r = await A.sync([cu('c_t2', firm('Tekil İki A.Ş.', { taxNo: '222-222 2222' }))]);
+    assert.equal(r.status, 200);
+    assert.deepEqual(reasons(r), ['Bu vergi numarasıyla kayıtlı cari var (#c_t1)']);
+    assert.equal(await row('customers', 'c_t2'), undefined);
+    ok(await A.sync([cu('c_t2', firm('Tekil İki A.Ş.', { taxNo: '' }))]));
+    ok(await A.sync([cu('c_t3', firm('Tekil Üç A.Ş.'))]));               // iki boş vergi no
+    /* var olan carinin vergi numarasını başkasınınkiyle değiştirmek de reddedilir */
+    r = await A.sync([cu('c_t2', firm('Tekil İki A.Ş.', { taxNo: '2222222222' }))]);
+    assert.deepEqual(reasons(r), ['Bu vergi numarasıyla kayıtlı cari var (#c_t1)']);
+    /* kendi vergi numarasıyla güncelleme serbest */
+    ok(await A.sync([cu('c_t1', firm('Tekil Bir A.Ş. (yeni)', { taxNo: '2222222222', active: false }))]));
+    assert.equal((await row('customers', 'c_t1')).name, 'Tekil Bir A.Ş. (yeni)');
+    for (const id of ['c_t1', 'c_t2', 'c_t3']) ok(await A.sync([del('customers', id)]));
+  });
+
+  test('vergi no tekilliği eşzamanlı yazmada da korunur (500 yok, aynı ileti)', async () => {
+    const [r1, r2] = await Promise.all([
+      A.sync([cu('c_y1', firm('Yarış Bir', { taxNo: '3333333333' }))]),
+      A.sync([cu('c_y2', firm('Yarış İki', { taxNo: '3333333333' }))]),
+    ]);
+    assert.equal(r1.status, 200); assert.equal(r2.status, 200);
+    assert.equal(r1.json.applied + r2.json.applied, 1);
+    const lost = r1.json.applied ? r2 : r1, won = r1.json.applied ? 'c_y1' : 'c_y2';
+    assert.deepEqual(reasons(lost), [`Bu vergi numarasıyla kayıtlı cari var (#${won})`]);
+    assert.equal((await pool.query(`SELECT count(*) n FROM customers WHERE tax_no='3333333333'`)).rows[0].n, '1');
+    ok(await A.sync([del('customers', won)]));
+    /* Kesin yarış: ön denetim diğer işlemin henüz onaylanmamış kaydını görmez, indeks (23505) yakalar. */
+    const c = await pool.connect();
+    try {
+      await c.query('BEGIN');
+      await c.query(`INSERT INTO customers (id, data) VALUES ('c_y3', '{"id":"c_y3","name":"Yarış Üç","kind":"customer","taxNo":"3333333334"}')`);
+      const pending = A.sync([cu('c_y4', firm('Yarış Dört', { taxNo: '3333333334' }))]);
+      await new Promise(r => setTimeout(r, 300));
+      await c.query('COMMIT');
+      const r = await pending;
+      assert.equal(r.status, 200);
+      rejectedWith(r, 'Bu vergi numarasıyla kayıtlı cari var (#c_y3)');
+    } finally { c.release(); }
+    ok(await A.sync([del('customers', 'c_y3')]));
+  });
+
+  test('yetki: üye ve izleyici cari ekleyemez, değiştiremez, silemez; yönetici yönetir', async () => {
+    ok(await A.sync([cu('c_y', firm('Yetki A.Ş.'))]));
+    for (const k of [U, V]) {
+      const msg = k === U ? 'Bu değişiklik için yönetici yetkisi gerekli' : 'salt okunur kullanıcı';
+      rejectedWith(await k.sync([cu('c_yeni', firm('Yeni'))]), msg);
+      rejectedWith(await k.sync([cu('c_y', firm('Yetki A.Ş. değişti'))]), msg);
+      rejectedWith(await k.sync([del('customers', 'c_y')]), msg);
+    }
+    assert.equal(await row('customers', 'c_yeni'), undefined);
+    assert.equal((await row('customers', 'c_y')).name, 'Yetki A.Ş.');
+    /* süper olmayan yönetici de ekler, pasife alır, siler */
+    await A.sync([{ c: 'users', id: 'u_cua', op: 'put', data: { username: 'cuyon', name: 'cuyon', role: 'admin', active: true } }]);
+    const Y = client(); await Y.login('cuyon', 'Start12345');
+    await Y.req('POST', '/api/auth/password', { newPassword: 'CuYeni123456' });
+    ok(await Y.sync([cu('c_y', firm('Yetki A.Ş.', { active: false }))]));
+    assert.equal((await row('customers', 'c_y')).active, false);
+    ok(await Y.sync([del('customers', 'c_y')]));
+  });
+
+  test('projeye bağlama: üye etkin cariyi bağlar; pasif/olmayan ret; pasifleşen bağ korunur; kaldırma serbest; izleyici bağlayamaz', async () => {
+    ok(await A.sync([cu('c_e', firm('Etkin Müşteri')), cu('c_p', firm('Pasif Müşteri', { active: false }))]));
+    const p = (await row('projects', 'p_cu1')).data;
+    const put = (k, data, base) => k.sync([{ c: 'projects', id: 'p_cu1', op: 'put', data, ...(base ? { base } : {}) }]);
+    rejectedWith(await put(V, { ...p, customerId: 'c_e' }), 'salt okunur kullanıcı');
+    rejectedWith(await put(U, { ...p, customerId: 'c_p' }), 'Pasif cari projeye bağlanamaz');
+    rejectedWith(await put(U, { ...p, customerId: 'c_yok' }), 'Cari bulunamadı');
+    rejectedWith(await put(U, { ...p, customerId: '<x>' }), 'Geçersiz cari');
+    rejectedWith(await U.sync([{ c: 'projects', id: 'p_cu_new', op: 'put', data: { name: 'Yeni', key: 'CUN', workspaceId: 'ws1', customerId: 'c_p' } }]),
+      'Pasif cari projeye bağlanamaz');
+    ok(await put(U, { ...p, customerId: 'c_e' }));
+    assert.equal((await row('projects', 'p_cu1')).customer_id, 'c_e');
+    /* cari pasife alınır: bağ korunur, proje düzenlenebilir (eski base ile de) */
+    ok(await A.sync([cu('c_e', firm('Etkin Müşteri', { active: false }))]));
+    const p2 = (await row('projects', 'p_cu1')).data;
+    ok(await put(U, { ...p2, name: 'Cari projesi 2' }, p2));
+    ok(await put(U, { ...p, name: 'Cari projesi 3' }, p));                // eski hâl (carisiz) base: bağ birleşmede korunur
+    const d = (await row('projects', 'p_cu1')).data;
+    assert.equal(d.customerId, 'c_e'); assert.equal(d.name, 'Cari projesi 3');
+    /* bağı kaldırma serbest; tekrar pasife bağlanamaz */
+    const { customerId: _drop, ...noCu } = d;
+    ok(await put(U, noCu, d));
+    assert.equal((await row('projects', 'p_cu1')).customer_id, null);
+    rejectedWith(await put(U, { ...noCu, customerId: 'c_e' }), 'Pasif cari projeye bağlanamaz');
+    for (const id of ['c_e', 'c_p']) ok(await A.sync([del('customers', id)]));
+  });
+
+  test('silme: bağlı projesi (arşivli dahil) olan cari silinmez (409 + N), bağsızsa kalıcı silinir ve iz kalmaz', async () => {
+    const NAME = 'Kvkk Deneme Ticaret A.Ş.', TCKN = '10000000146', MAIL = 'yetkili.kvkk@ornek.test', CMAIL = 'firma.kvkk@ornek.test';
+    ok(await A.sync([cu('c_s', firm(NAME, { taxNo: TCKN, email: CMAIL, notes: 'deneme notu', contacts: [{ id: 'ct_s1', name: 'Deneme Yetkili', email: MAIL }] }))]));
+    const pa = (await row('projects', 'p_cu1')).data, pb = (await row('projects', 'p_cu2')).data;
+    ok(await A.sync([{ c: 'projects', id: 'p_cu1', op: 'put', data: { ...pa, customerId: 'c_s' } },
+      { c: 'projects', id: 'p_cu2', op: 'put', data: { ...pb, customerId: 'c_s' } }]));
+    let r = await A.sync([del('customers', 'c_s')]);
+    rejectedWith(r, 'Bu cariye bağlı 2 proje var; silmek yerine pasife alın');
+    ok(await A.sync([{ c: 'projects', id: 'p_cu1', op: 'put', data: pa }]));
+    rejectedWith(await A.sync([del('customers', 'c_s')]), 'Bu cariye bağlı 1 proje var; silmek yerine pasife alın');   // yalnız arşivli
+    ok(await A.sync([{ c: 'projects', id: 'p_cu2', op: 'put', data: pb }]));
+    const s0 = (await A.state()).json.seq;
+    r = await A.sync([del('customers', 'c_s')]);
+    ok(r); assert.equal(r.json.applied, 1);
+    assert.equal(await row('customers', 'c_s'), undefined);
+    assert.equal((await pool.query(`SELECT count(*) n FROM deleted_records WHERE collection='customers'`)).rows[0].n, '0');
+    const ch = (await U.req('GET', `/api/changes?since=${s0}`)).json;
+    assert.deepEqual(ch.items.map(i => [i.c, i.id, i.op, i.data]), [['customers', 'c_s', 'del', undefined]]);
+    assert.ok(!(await A.state()).json.data.customers.some(x => x.id === 'c_s'));
+    const all = await dump();
+    for (const v of [NAME, TCKN, MAIL, CMAIL]) assert.ok(!all.includes(v), v);
+    assert.equal((await A.req('GET', '/api/trash')).json.some(x => x.collection === 'customers'), false);
+    /* olmayan cariyi silmek değişiklik değildir */
+    r = await A.sync([del('customers', 'c_s')]);
+    assert.equal(r.json.applied, 0); assert.equal(r.json.rejected.length, 0);
+  });
+
+  test('yetkili kişi: silinen kişi hiçbir tabloda kalmaz; eski base ile geri gelmez; silinmiş cariye base ile yazılamaz', async () => {
+    const MAIL = 'silinecek.kisi@ornek.test';
+    ok(await A.sync([cu('c_k', firm('Kişi A.Ş.', { contacts: [{ id: 'ct_k1', name: 'Silinecek Kişi', email: MAIL }, { id: 'ct_k2', name: 'Kalan Kişi' }] }))]));
+    const old = (await row('customers', 'c_k')).data;
+    ok(await A.sync([cu('c_k', { ...old, contacts: [old.contacts[1]] }, old)]));
+    assert.ok(!(await dump()).includes(MAIL));
+    /* başka bir yönetici eski hâlle (silinen kişi içinde) kişi ekler ve kalan kişiyi değiştirir */
+    const r = await A.sync([cu('c_k', { ...old, contacts: [old.contacts[0], { id: 'ct_k2', name: 'Kalan Kişi', title: 'Müdür' }, { id: 'ct_k3', name: 'Yeni Kişi' }] }, old)]);
+    ok(r); assert.deepEqual(r.json.adjusted, [{ c: 'customers', id: 'c_k' }]);
+    assert.deepEqual((await row('customers', 'c_k')).data.contacts,
+      [{ id: 'ct_k2', name: 'Kalan Kişi', title: 'Müdür' }, { id: 'ct_k3', name: 'Yeni Kişi' }]);
+    assert.ok(!(await dump()).includes(MAIL));
+    /* eşzamanlı iki ekleme ikisi de kalır; değiştirdiğim kişide benimki kazanır; sildiğim çıkar */
+    const b = (await row('customers', 'c_k')).data;
+    ok(await A.sync([cu('c_k', { ...b, contacts: [...b.contacts, { id: 'ct_k4', name: 'Dört' }] }, b)]));
+    ok(await A.sync([cu('c_k', { ...b, contacts: [{ ...b.contacts[0], phone: '0000' }, { id: 'ct_k5', name: 'Beş' }] }, b)]));
+    assert.deepEqual((await row('customers', 'c_k')).data.contacts.map(x => [x.id, x.phone]),
+      [['ct_k2', '0000'], ['ct_k4', undefined], ['ct_k5', undefined]]);
+    /* silinmiş cari eski hâliyle diriltilemez */
+    const last = (await row('customers', 'c_k')).data;
+    ok(await A.sync([del('customers', 'c_k')]));
+    rejectedWith(await A.sync([cu('c_k', { ...last, name: 'Diriltme' }, last)]), 'Cari silinmiş');
+    assert.equal(await row('customers', 'c_k'), undefined);
+  });
+
+  test('eşzamanlı düzenleme: biri telefonu, öteki notu değiştirir — ikisi de korunur', async () => {
+    ok(await A.sync([cu('c_m', firm('Birleşme A.Ş.', { phone: '1', notes: 'ilk' }))]));
+    const b = (await row('customers', 'c_m')).data;
+    ok(await A.sync([cu('c_m', { ...b, phone: '0212 000 00 00' }, b)]));
+    const r = await A.sync([cu('c_m', { ...b, notes: 'güncel not' }, b)]);
+    ok(r); assert.deepEqual(r.json.adjusted, [{ c: 'customers', id: 'c_m' }]);
+    const d = (await row('customers', 'c_m')).data;
+    assert.equal(d.phone, '0212 000 00 00'); assert.equal(d.notes, 'güncel not');
+    ok(await A.sync([del('customers', 'c_m')]));
+  });
+
+  test('izleyiciye 11 haneli vergi no (T.C. kimlik no) maskeli; üye/yönetici tam görür; 10 hane maskesiz', async () => {
+    const s0 = (await A.state()).json.seq;
+    ok(await A.sync([cu('c_tc', firm('Şahıs Deneme', { taxNo: '12345678901' })), cu('c_vk', firm('Tüzel Deneme', { taxNo: '4444444444' }))]));
+    const pick = (list, id) => list.find(x => x.id === id).taxNo;
+    const vs = (await V.state()).json.data.customers, us = (await U.state()).json.data.customers, as = (await A.state()).json.data.customers;
+    assert.equal(pick(vs, 'c_tc'), '123******01'); assert.equal(pick(vs, 'c_vk'), '4444444444');
+    assert.equal(pick(us, 'c_tc'), '12345678901'); assert.equal(pick(as, 'c_tc'), '12345678901');
+    const items = async k => (await k.req('GET', `/api/changes?since=${s0}`)).json.items.filter(i => i.c === 'customers').map(i => i.data);
+    const vc = await items(V), uc = await items(U);
+    assert.equal(pick(vc, 'c_tc'), '123******01'); assert.equal(pick(vc, 'c_vk'), '4444444444');
+    assert.equal(pick(uc, 'c_tc'), '12345678901');
+    assert.ok(!JSON.stringify((await V.state()).json).includes('12345678901'));
+    /* dışa aktarma (yönetici) maskesiz; izleyici dışa aktaramaz */
+    assert.equal(pick((await A.req('GET', '/api/export')).json.customers, 'c_tc'), '12345678901');
+    assert.equal((await V.req('GET', '/api/export')).status, 403);
+    assert.equal((await row('customers', 'c_tc')).tax_no, '12345678901');   // veritabanında tam değer
+  });
+
+  test('veritabanı hatasında günlüğe yalnız kod/ileti/kısıt yazılır (detail yok)', async () => {
+    await pool.query(`CREATE OR REPLACE FUNCTION pano_test_hata() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN IF NEW.collection = 'gunlukdeneme' THEN RAISE EXCEPTION 'deneme hatası' USING DETAIL = 'GIZLI-DETAY-12345678901'; END IF; RETURN NEW; END $$`);
+    await pool.query(`CREATE TRIGGER pano_test_hata BEFORE INSERT ON misc_records FOR EACH ROW EXECUTE FUNCTION pano_test_hata()`);
+    const orig = console.error, lines = [];
+    console.error = (...a) => lines.push(a.map(x => (typeof x === 'string' ? x : JSON.stringify(x) + String(x?.stack || ''))).join(' '));
+    try {
+      const r = await A.sync([{ c: 'gunlukdeneme', id: 'g1', op: 'put', data: { a: 1 } }]);
+      assert.equal(r.status, 500); assert.equal(r.json.error, 'Sunucu hatası');
+    } finally {
+      console.error = orig;
+      await pool.query('DROP TRIGGER pano_test_hata ON misc_records; DROP FUNCTION pano_test_hata()');
+    }
+    const log = lines.join('\n');
+    assert.match(log, /\[hata\]/); assert.match(log, /P0001/); assert.match(log, /deneme hatası/);
+    assert.ok(!log.includes('GIZLI-DETAY'), log);
+  });
+
+  test('yedek: dışa → içe aktarmada cariler ve proje bağı aynı kalır; çift vergi nolu cari atlanır; carisiz eski yedek çalışır', async () => {
+    const pa = (await row('projects', 'p_cu1')).data;
+    ok(await A.sync([{ c: 'projects', id: 'p_cu1', op: 'put', data: { ...pa, customerId: 'c_vk' } }]));
+    const exp = (await A.req('GET', '/api/export')).json;
+    assert.ok(exp.customers.length >= 2);
+    let r = await A.req('POST', '/api/import', { data: exp });
+    assert.equal(r.status, 200); assert.equal(r.json.customers, exp.customers.length); assert.equal(r.json.skipped, undefined);
+    const st = (await A.state()).json.data;
+    assert.deepEqual(st.customers, exp.customers);
+    assert.equal(st.projects.find(p => p.id === 'p_cu1').customerId, 'c_vk');
+    /* çift vergi no: ilki kalır, ikincisi atlanır; boşluklu/tireli numara düzeltilir; geçersiz kayıt atlanır */
+    r = await A.req('POST', '/api/import', { data: { ...exp, customers: [
+      firmWith('c_i1', 'İçe Bir', '555 555-5555'), firmWith('c_i2', 'İçe İki', '5555555555'),
+      firmWith('c_i3', 'İçe Üç', ''), firmWith('c_i4', 'İçe Dört', ''), { id: 'c_i5', name: 'Türsüz' }] } });
+    assert.equal(r.status, 200); assert.equal(r.json.customers, 3); assert.equal(r.json.skipped, 2);
+    const st2 = (await A.state()).json.data.customers;
+    assert.deepEqual(st2.map(x => [x.id, x.taxNo]), [['c_i1', '5555555555'], ['c_i3', ''], ['c_i4', '']]);
+    /* carisiz (eski) yedek: içe aktarma çalışır, cariler boşalır */
+    const { customers: _c, ...oldBackup } = exp;
+    r = await A.req('POST', '/api/import', { data: oldBackup });
+    assert.equal(r.status, 200); assert.equal(r.json.customers, undefined);
+    assert.deepEqual((await A.state()).json.data.customers, []);
+  });
+});
