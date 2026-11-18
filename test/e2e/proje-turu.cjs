@@ -116,6 +116,19 @@ const PC = 'p_ptc' + RUN, PA = 'p_pta' + RUN;          // kolon testi projesi (P
     ok(`#${h} Pano projesinde çökmez`, await A.evaluate(() => !!document.getElementById('view').innerHTML && !!document.getElementById('title').textContent));
   }
 
+  // 3b) Proje ayarları: sprint modül anahtarı kalktı, not var; epik/puan/raporlayan genel kalır; İş akışında tür ve kolon satırı
+  const adm = await A.evaluate(PC => {
+    closeModal(); DB.ui.project = PC; DB.ui.view = 'admin'; DB.ui.adminTab = 'people'; render();
+    const r = { sprintMod: !!document.querySelector('[data-mod="sprint"]'), others: ['epic', 'points', 'reporter'].every(k => !!document.querySelector(`[data-mod="${k}"]`)),
+      note: /Sprint artık proje türüyle belirlenir/.test(document.getElementById('view').textContent) };
+    DB.ui.adminTab = 'workflow'; render();
+    r.tag = document.querySelector('#view .pt-set .pt-type')?.textContent.trim(); r.typeBtn = !!document.getElementById('ptTypeSet');
+    document.getElementById('ptColsSet')?.click(); r.dlg = !!document.querySelector('#scrim.on .modal[data-cols]'); closeModal();
+    return r;
+  }, PC);
+  ok('Proje ayarları: sprint anahtarı yok, "Sprint artık proje türüyle belirlenir", diğer modüller duruyor', !adm.sprintMod && adm.others && adm.note, JSON.stringify(adm));
+  ok('Proje ayarları → İş akışı: tür etiketi, "Türü değiştir…", "Kolonları düzenle" penceresi açar', adm.tag === 'Pano' && adm.typeBtn && adm.dlg, JSON.stringify(adm));
+
   // 4) Projeler kartı: tür etiketi + ⋯ "Türü değiştir…" (izleyicide yok)
   await go(A, PC, 'projects');
   const tags = await A.evaluate(ids => ids.map(id => document.querySelector(`[data-wsproj="${id}"] .pt-type`)?.textContent.trim()), ['p1', PC, PA]);
