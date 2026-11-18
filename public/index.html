@@ -3032,7 +3032,7 @@ function setSync(st) {
   if (typeof renderFileBar === 'function') renderFileBar();
 }
 
-let syncT = null, syncing = null, syncAgain = false, retryT = null;
+let syncT = null, syncing = null, syncAgain = false, retryT = null, BUSY_N = 0;
 /* Silmede 8 sn "Geri al" (HOLD): bekletilen kayıtların SNAP'teki değeri korunur, böylece süre dolana
    kadar sunucuya hiçbir şey gitmez; süre dolunca normal fark gönderimiyle silinir. */
 const HOLDS = [];
@@ -3080,7 +3080,7 @@ async function flushSync() {
         rejected.push(...(r.rejected || []));
         adjusted.push(...(r.adjusted || []));
       }
-      SNAP = now; SYNC_AT = Date.now(); setSync('ok');
+      SNAP = now; SYNC_AT = Date.now(); BUSY_N = 0; setSync('ok');
       /* Sunucu bir kaydı birleştirdi ya da iş numarasını değiştirdi: güncel hâli hemen al. */
       if (adjusted.length) setTimeout(poll, 30);
       if (rejected.length) {
@@ -3093,6 +3093,13 @@ async function flushSync() {
       }
     } catch (e) {
       if (e.status === 401) return sessionLost();
+      /* Sunucu meşgul (kilitlenme, sunucudaki yeniden deneme de olmadı): yerel değişiklik atılmaz (SNAP aynı
+         kalır), kısa ve giderek uzayan beklemeyle aynı fark yeniden gönderilir. */
+      if (e.status === 409 && /^Sunucu meşgul/.test(e.message || '')) {
+        BUSY_N++; setSync('pending');
+        retryT = setTimeout(flushSync, Math.min(8000, 500 * 2 ** Math.min(BUSY_N - 1, 4)) + Math.floor(Math.random() * 300));
+        return;
+      }
       if (e.status === 409 || e.status === 400 || e.status === 403) {
         toast(e.message); SNAP = now; setSync('ok'); await reloadState();
         if (typeof colsRefresh === 'function') colsRefresh(e.message);
