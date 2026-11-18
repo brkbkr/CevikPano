@@ -1905,7 +1905,7 @@ const SVG = {
 };
 const ic = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${SVG[n] || ''}</svg>`;
 const tIcon = t => { const x = TYPE[t] || ['?', t, t, '#7B8794'];
-  return `<span class="ti" style="background:${x[3] || '#7B8794'}" title="${esc(x[2])}">${esc(x[0])}</span>`; };
+  return `<span class="ti" style="background:${safeColor(x[3] || '#7B8794')}" title="${esc(x[2])}">${esc(x[0])}</span>`; };
 /* Dar alanlar (backlog satırı, liste, ana sayfa): yalnız ikon + title/aria-label. Tanımsız değerde çökmez. */
 const pIcon = p => { const [c, n] = PRI[lvl(p)];
   return `<span class="pr ${c}" role="img" title="Öncelik: ${n}" aria-label="Öncelik: ${n}">${ic(c)}</span>`; };
@@ -2023,22 +2023,22 @@ function card(i) {
   const done = stat(i.statusId).cat === 'done';
   const edit = canEdit();
   const kids = kidsOf(i.id), kd = kids.filter(k => stat(k.statusId).cat === 'done').length;
-  const tags = i.labels || [];
+  const tags = Array.isArray(i.labels) ? i.labels : [];
   /* İlerleme sağa yaslanır: dar kolonda alt satıra geçse de sarkan ayraç kalmaz. */
   const meta = [priBadge(i, edit), cardDue(i, done)].filter(Boolean);
-  return `<article class="card ${done ? 'is-done' : ''}" draggable="${edit}" data-id="${i.id}">
+  return `<article class="card ${done ? 'is-done' : ''}" draggable="${edit}" data-id="${esc(i.id)}">
     ${edit ? (done
-      ? `<button type="button" class="c-tick on" data-reopen="${i.id}" title="Yeniden aç" aria-label="Yeniden aç">${ic('check')}</button>`
-      : `<button type="button" class="c-tick" data-complete="${i.id}" title="Tamamla" aria-label="Tamamla">${ic('check')}</button>`) : ''}
-    ${ep ? `<span class="epic-tag" style="background:${ep.color || '#6B4FBB'}">${esc(ep.summary)}</span>` : ''}
+      ? `<button type="button" class="c-tick on" data-reopen="${esc(i.id)}" title="Yeniden aç" aria-label="Yeniden aç">${ic('check')}</button>`
+      : `<button type="button" class="c-tick" data-complete="${esc(i.id)}" title="Tamamla" aria-label="Tamamla">${ic('check')}</button>`) : ''}
+    ${ep ? `<span class="epic-tag" style="background:${safeColor(ep.color || '#6B4FBB')}">${esc(ep.summary)}</span>` : ''}
     <p class="sum">${esc(i.summary)}</p>
     ${tags.length ? `<div class="c-tags">${tags.slice(0, 2).map(t => `<span class="c-tag"><i style="background:${tagColor(t)}"></i>${esc(t)}</span>`).join('')}${
       tags.length > 2 ? `<span class="c-tag" title="${esc(tags.slice(2).join(', '))}">+${tags.length - 2}</span>` : ''}</div>` : ''}
     <div class="c-meta">${meta.join('<span class="c-sep"></span>')}${cardEst(i)}</div>
     <div class="c-foot">
-      ${tIcon(i.type)}<span class="k c-key">${i.key}</span>
-      ${kids.length ? `<span class="c-sub" data-open="${i.id}" title="Alt işler: ${kd}/${kids.length} tamamlandı">${ic('subs')}${kd}/${kids.length}</span>` : ''}
-      ${MOD('points') && i.points != null ? `<span class="chip pt">${i.points}</span>` : ''}
+      ${tIcon(i.type)}<span class="k c-key">${esc(i.key)}</span>
+      ${kids.length ? `<span class="c-sub" data-open="${esc(i.id)}" title="Alt işler: ${kd}/${kids.length} tamamlandı">${ic('subs')}${kd}/${kids.length}</span>` : ''}
+      ${MOD('points') && i.points != null ? `<span class="chip pt">${esc(i.points)}</span>` : ''}
       <span class="spacer"></span>
       ${cardAv(i, edit)}
     </div>
@@ -2216,16 +2216,16 @@ function toolbarBacklog() {
 
 function blRow(i) {
   const s = stat(i.statusId), ep = MOD('epic') && i.epicId && issue(i.epicId);
-  return `<div class="row" draggable="${canEdit()}" data-id="${i.id}">
+  return `<div class="row" draggable="${canEdit()}" data-id="${esc(i.id)}">
     ${canEdit() ? (s.cat === 'done'
-      ? `<button class="cbox on" data-reopen="${i.id}" title="Yeniden aç">✓</button>`
-      : `<button class="cbox" data-complete="${i.id}" title="Tamamla"></button>`) : ''}
-    ${tIcon(i.type)}<span class="k" style="color:var(--ink3);width:64px">${i.key}</span>
+      ? `<button class="cbox on" data-reopen="${esc(i.id)}" title="Yeniden aç">✓</button>`
+      : `<button class="cbox" data-complete="${esc(i.id)}" title="Tamamla"></button>`) : ''}
+    ${tIcon(i.type)}<span class="k" style="color:var(--ink3);width:64px">${esc(i.key)}</span>
     <span class="sum">${esc(i.summary)}</span>
-    ${ep ? `<span class="epic-tag" style="background:${ep.color || '#6B4FBB'};margin:0">${esc(ep.summary)}</span>` : ''}
+    ${ep ? `<span class="epic-tag" style="background:${safeColor(ep.color || '#6B4FBB')};margin:0">${esc(ep.summary)}</span>` : ''}
     ${pIcon(i.priority)}
     ${i.estimate ? `<span class="k" style="color:var(--ink3)">${fmtDur(i.estimate)}</span>` : ''}
-    ${MOD('points') && i.points != null ? `<span class="chip pt">${i.points}</span>` : ''}
+    ${MOD('points') && i.points != null ? `<span class="chip pt">${esc(i.points)}</span>` : ''}
     <span class="chip cat-${s.cat}">${esc(s.name)}</span>
     ${avat(i.assignee)}
   </div>`;
@@ -2407,7 +2407,7 @@ function renderRoadmap() {
         </td>
         <td colspan="${N}"><div class="track">
           <div class="today" style="left:${dayPos(TODAY)}%"></div>
-          <div class="gantt" style="left:${L}%;width:${Math.max(R - L, 3)}%;background:${e.color || '#6B4FBB'};${late ? 'box-shadow:inset 0 0 0 2px var(--risk)' : ''}">
+          <div class="gantt" style="left:${L}%;width:${Math.max(R - L, 3)}%;background:${safeColor(e.color || '#6B4FBB')};${late ? 'box-shadow:inset 0 0 0 2px var(--risk)' : ''}">
             <i style="width:${r.pct}%"></i>
             <span style="position:relative">${r.kids.length} iş · ${fmtD(r.end)}</span>
           </div>
@@ -3284,7 +3284,7 @@ function ensureSchema() {
   DB.rules   ||= [];
   DB.filters ||= [];
   DB.transitions ||= [];
-  DB.issues.forEach(i => { i.cf ||= {}; i.labels ||= []; });
+  DB.issues.forEach(i => { i.cf ||= {}; if (!Array.isArray(i.labels)) i.labels = []; });
   ensureProjects();
   ensureTypes();
   ensureBilling();
@@ -5562,7 +5562,7 @@ function renderTypes() {
     <div class="sub">Kartlarda, formlarda ve sorgu dilinde bu tipler kullanılır.
       Harf ve renk pano kartındaki rozeti belirler.</div>
     ${DB.cfg.types.map((t, k) => `<div class="row" style="border:1px solid var(--line);border-radius:6px;margin-bottom:6px;cursor:default">
-      <span class="ti" style="background:${t.color}">${esc(t.letter)}</span>
+      <span class="ti" style="background:${safeColor(t.color)}">${esc(t.letter)}</span>
       <input class="inp" data-ty="${t.id}" data-p="name" value="${esc(t.name)}" style="flex:1;max-width:200px">
       <input class="inp" data-ty="${t.id}" data-p="letter" value="${esc(t.letter)}" maxlength="2" style="width:48px;text-align:center">
       <input type="color" data-ty="${t.id}" data-p="color" value="${t.color}" style="width:36px;height:28px;padding:2px;border:1px solid var(--line2);border-radius:5px;background:none">

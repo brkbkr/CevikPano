@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
 import { TABLES, PREF_KEYS, IGNORED_KEYS, tx } from './db.js';
 import { HttpError, cj, same, merge3, isAdminRole } from './util.js';
-import { validate, normalizePriority } from './validate.js';
+import { validate, normalizePriority, validId, validateCfg, stripBadKeys } from './validate.js';
 import { notifyForIssue, notifyForComment } from './notify.js';
 
 export { HttpError };
@@ -108,8 +108,10 @@ export async function applyChanges(pool, me, changes) {
   await tx(pool, async c => {
     for (const ch of changes) {
       const reject = reason => rejected.push({ c: ch?.c, id: ch?.id, reason });
-      if (!ch || typeof ch.c !== 'string' || typeof ch.id !== 'string' || !ch.id || ch.id.length > 200
+      if (!ch || typeof ch.c !== 'string' || typeof ch.id !== 'string'
           || ch.c.length > 60 || !/^[\w$-]+$/.test(ch.c) || !['put', 'del'].includes(ch.op)) { reject('geçersiz'); continue; }
+      /* Kimlikler HTML özniteliklerine basılır: yalnız güvenli karakterler (XSS'e karşı kalıcı çözüm). */
+      if (!validId(ch.id)) { reject('geçersiz kimlik'); continue; }
       if (ch.op === 'put' && ch.data === undefined) { reject('veri yok'); continue; }
       if (ch.op === 'put' && !['_prefs', '_settings'].includes(ch.c)
           && (ch.data === null || typeof ch.data !== 'object' || Array.isArray(ch.data))) { reject('veri nesne olmalı'); continue; }
@@ -128,12 +130,16 @@ export async function applyChanges(pool, me, changes) {
         reject('Bu değişiklik için yönetici yetkisi gerekli'); continue;
       }
 
+      /* __proto__ / constructor / prototype anahtarları hiçbir yoldan kayda girmez. */
+      const stripped = stripBadKeys(ch.data) + stripBadKeys(ch.base);
+
       await c.query('SAVEPOINT ch');
       try {
         const changed = ch.c === 'users' ? await applyUser(c, ctx, ch)
           : ch.c === '_settings' ? await applySetting(c, ctx, ch)
           : await applyRecord(c, ctx, ch);
         if (changed) { await logChange(c, ch.c, ch.id, ch.op, me.id, batch); applied++; }
+        if (stripped && !adjusted.some(x => x.c === ch.c && x.id === ch.id)) adjusted.push({ c: ch.c, id: ch.id });
         await c.query('RELEASE SAVEPOINT ch');
       } catch (e) {
         await c.query('ROLLBACK TO SAVEPOINT ch');
@@ -191,6 +197,12 @@ async function applyRecord(c, ctx, ch) {
   }
   if (ch.c === 'issues' && normalizePriority(data)) adjusted = true;
   validate(ch.c, data);
+  /* Atanan değiştiyse var olan, aktif bir kullanıcı olmalı. */
+  if (ch.c === 'issues' && data.assignee != null && data.assignee !== '' && data.assignee !== cur?.assignee) {
+    const ok = typeof data.assignee === 'string'
+      && (await c.query('SELECT 1 FROM users WHERE id=$1 AND active', [data.assignee])).rowCount > 0;
+    if (!ok) throw new HttpError(400, 'Atanan kullanıcı bulunamadı ya da pasif');
+  }
   if (ch.c === 'issues' && await ensureIssueKey(c, ctx, data, cur)) adjusted = true;
   if (cur && same(cur, data)) { if (adjusted) ctx.adjusted.push({ c: ch.c, id: ch.id }); return false; }
 
@@ -292,6 +304,7 @@ async function applySetting(c, ctx, ch) {
     val = merge3(ch.base, val, cur);
     ctx.adjusted.push({ c: '_settings', id: ch.id });
   }
+  if (ch.id === 'cfg') validateCfg(val);
   if (cur !== undefined && same(cur, val)) return false;
   await c.query(
     `INSERT INTO settings AS s (key, value, updated_by) VALUES ($1, $2::jsonb, $3)

@@ -9,12 +9,31 @@ const date = v => v == null || v === '' || (typeof v === 'string' && /^\d{4}-\d{
 
 const KEY_RE = /^[\p{L}\p{N}_-]{1,20}$/u;
 const ISSUE_KEY_RE = /^[\p{L}\p{N}_-]{1,20}-\d{1,9}$/u;
+const HEX_RE = /^#[0-9a-f]{3,8}$/i;
+const optKey = (v, re) => v == null || v === '' || (typeof v === 'string' && re.test(v));
+
+/* Kayıt kimlikleri ekranda HTML özniteliklerine basılır: yalnız güvenli karakterler.
+   uid() (i_x7k2…), demo/varsayılan kimlikler (p1, u1, p1_s0, cf_mus, sp1) bu kalıba uyar. */
+export const ID_RE = /^[A-Za-z0-9_.:-]{1,200}$/;
+export const validId = v => typeof v === 'string' && ID_RE.test(v);
+
+/* Prototip kirletmeye yol açabilecek anahtarları (iç içe dahil) siler; silinen sayısını döner. */
+const BAD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+export function stripBadKeys(v, depth = 0) {
+  if (v === null || typeof v !== 'object' || depth > 32) return 0;
+  let n = 0;
+  if (Array.isArray(v)) { for (const x of v) n += stripBadKeys(x, depth + 1); return n; }
+  for (const k of Object.keys(v)) {
+    if (BAD_KEYS.has(k)) { delete v[k]; n++; } else n += stripBadKeys(v[k], depth + 1);
+  }
+  return n;
+}
 
 const RULES = {
   projects: d => [
     [str(d.name, 200) && d.name.trim(), 'Proje adı gerekli'],
-    [d.key == null || d.key === '' || KEY_RE.test(d.key), 'Proje anahtarı yalnızca harf, rakam, _ ve - içerebilir (en fazla 20)'],
-    [d.code == null || d.code === '' || KEY_RE.test(d.code), 'Proje kodu geçersiz'],
+    [optKey(d.key, KEY_RE), 'Proje anahtarı yalnızca harf, rakam, _ ve - içerebilir (en fazla 20)'],
+    [optKey(d.code, KEY_RE), 'Proje kodu geçersiz'],
   ],
   statuses: d => [
     [str(d.projectId, 200), 'Durumun projesi yok'],
@@ -24,12 +43,16 @@ const RULES = {
   sprints: d => [[str(d.projectId, 200), 'Sprintin projesi yok'], [optStr(d.name, 200), 'Sprint adı çok uzun']],
   issues: d => [
     [str(d.projectId, 200), 'İşin projesi yok'],
-    [d.key == null || d.key === '' || ISSUE_KEY_RE.test(d.key), 'Geçersiz iş anahtarı'],
+    [optKey(d.key, ISSUE_KEY_RE), 'Geçersiz iş anahtarı'],
     [typeof d.summary === 'string' && d.summary.length <= 500, 'İş özeti gerekli (en fazla 500 karakter)'],
     [optStr(d.description, 100000), 'Açıklama çok uzun'],
     [date(d.due) && date(d.start), 'Geçersiz tarih'],
     [d.estimate == null || (typeof d.estimate === 'number' && d.estimate >= 0), 'Tahmin negatif olamaz'],
     [d.priority == null || (Number.isInteger(d.priority) && d.priority >= 1 && d.priority <= 5), 'Öncelik 1 ile 5 arasında bir tamsayı olmalı'],
+    [d.points == null || (typeof d.points === 'number' && Number.isFinite(d.points) && d.points >= 0 && d.points <= 1000), 'Puan 0 ile 1000 arasında bir sayı olmalı'],
+    [d.color == null || d.color === '' || (typeof d.color === 'string' && HEX_RE.test(d.color)), 'Renk #RRGGBB biçiminde olmalı'],
+    [d.labels == null || (Array.isArray(d.labels) && d.labels.length <= 50 && d.labels.every(l => typeof l === 'string' && l.length <= 100)),
+      'Etiketler en fazla 50 metin olmalı (her biri en fazla 100 karakter)'],
   ],
   worklogs: d => [
     [str(d.issueId, 200), 'Süre kaydının işi yok'],
@@ -53,6 +76,18 @@ export function normalizePriority(d) {
   if (n === v) return false;
   d.priority = n;
   return true;
+}
+
+/* Genel ayar `cfg`: iş tipleri kartta rozet olarak basılır (harf, ad, renk). */
+export function validateCfg(v) {
+  if (v == null || typeof v !== 'object' || Array.isArray(v)) throw new HttpError(400, 'Geçersiz ayar');
+  if (v.types === undefined) return;
+  const ok = Array.isArray(v.types) && v.types.length <= 100 && v.types.every(t => t && typeof t === 'object'
+    && typeof t.id === 'string' && t.id.length <= 40 && ID_RE.test(t.id)
+    && typeof t.name === 'string' && t.name.length >= 1 && t.name.length <= 100
+    && typeof t.letter === 'string' && t.letter.length <= 4
+    && typeof t.color === 'string' && HEX_RE.test(t.color));
+  if (!ok) throw new HttpError(400, 'Geçersiz iş tipi ayarı (kimlik, ad, harf ve #RRGGBB renk gerekli)');
 }
 
 export function validate(collection, data) {

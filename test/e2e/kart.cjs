@@ -266,7 +266,50 @@ const XSS = '<img src=x onerror="window.__xss=1">';
   await M.screenshot({ path: SS + 'm_as.png' });
   await M.keyboard.press('Escape');
 
-  // 14) koyu tema ekran görüntüsü + temizlik
+  // 14) güvenlik: XSS yükleri sunucuda reddedilir; istemciye yine de ulaşırsa çalışmaz, pano çökmez
+  const PAY = '"><img src=x onerror="window.__xss=1">';
+  const X = await mk('xss'); await login(X, 'admin', 'admin12345');
+  const rej = await X.evaluate(async ([pay, run]) => {
+    const base = { projectId: 'p1', summary: 'KART-T' + run + ' xss', statusId: 'p1_s0' };
+    const cfg = DB.cfg;
+    const r = await API.post('/api/sync', { changes: [
+      { c: 'issues', id: 'i' + pay, op: 'put', data: base },
+      { c: 'issues', id: 'i_xp' + run, op: 'put', data: { ...base, points: '<img src=x onerror="window.__xss=1">' } },
+      { c: 'issues', id: 'i_xc' + run, op: 'put', data: { ...base, type: 'epic', color: 'red' + pay } },
+      { c: 'issues', id: 'i_xl' + run, op: 'put', data: { ...base, labels: 'metin' } },
+      { c: 'issues', id: 'i_xa' + run, op: 'put', data: { ...base, assignee: 'u_yok_' + run } },
+      { c: '_settings', id: 'cfg', op: 'put', data: { ...cfg, types: cfg.types.map((t, k) => k ? t : { ...t, color: 'red' + pay }) } },
+    ] });
+    return [r.applied, r.rejected.length];
+  }, [PAY, RUN]);
+  ok('server rejects XSS payloads (id, points, color, labels, assignee, cfg.types)', rej[0] === 0 && rej[1] === 6, JSON.stringify(rej));
+  /* İkinci katman: yük bir şekilde istemciye ulaşmış gibi yerelde enjekte et (kaydetmeden). */
+  await board(X);
+  await X.evaluate(([pay, run]) => {
+    window.save = () => {}; window.scheduleSync = () => {};
+    DB.cfg.modules = { ...DB.cfg.modules, points: true, epic: true };
+    DB.cfg.types[0].color = 'red' + pay; buildTypes();
+    const st = DB.statuses.find(s => s.projectId === 'p1' && s.cat === 'todo').id;
+    const mkI = (id, extra) => ({ id, projectId: 'p1', key: 'PANO-9' + DB.issues.length, type: DB.cfg.types[0].id, summary: 'KART-T' + run + ' x',
+      statusId: st, labels: [], cf: {}, created: Date.now(), updatedAt: Date.now(), rank: -5000, start: TODAY, due: TODAY, ...extra });
+    DB.issues.push(mkI('i_xe' + run, { type: 'epic', color: 'red' + pay, summary: 'KART-T' + run + ' epik' }));
+    DB.issues.push(mkI('i' + pay, { epicId: 'i_xe' + run, points: '<img src=x onerror="window.__xss=1">' }));
+    DB.issues.push(mkI('i_xl' + run, { labels: 'metin' }));
+    DB.issues.push(mkI('i_xo' + run, { labels: { a: 1 }, priority: '<img src=x>' }));
+    render();
+  }, [PAY, RUN]);
+  await sleep(300);
+  const v1 = await X.evaluate(() => ({ cards: document.querySelectorAll('.card').length, img: document.querySelectorAll('#view img[src="x"]').length, xss: !!window.__xss }));
+  await X.evaluate(() => { location.hash = 'backlog'; }); await sleep(500);
+  const v2 = await X.evaluate(() => ({ rows: document.querySelectorAll('.row').length, img: document.querySelectorAll('#view img[src="x"]').length, xss: !!window.__xss }));
+  await X.evaluate(() => { location.hash = 'roadmap'; }); await sleep(500);
+  const v3 = await X.evaluate(() => ({ img: document.querySelectorAll('#view img[src="x"]').length, xss: !!window.__xss, title: document.getElementById('title')?.textContent }));
+  ok('injected XSS does not run on board/backlog/roadmap', !v1.xss && !v2.xss && !v3.xss && v1.img + v2.img + v3.img === 0, JSON.stringify([v1, v2, v3]));
+  ok('board survives non-array labels / bad priority', v1.cards >= 10 && v2.rows > 0 && !errs.some(e => e.startsWith('xss')), JSON.stringify(v1) + ' ' + errs.filter(e => e.startsWith('xss')).join('; '));
+  await X.screenshot({ path: SS + 'xss.png' });
+  await X.context().close();
+
+  // 15) koyu tema ekran görüntüsü + temizlik
   const D = await mk('dark', undefined, 'dark'); await login(D, 'admin', 'admin12345');
   await board(D); await D.screenshot({ path: SS + 'dark.png' });
   await A.evaluate(r => { DB.rules = DB.rules.filter(x => x.id !== r); DB.board.q = ''; save(); }, 'r_kt' + RUN); await sleep(1200);
