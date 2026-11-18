@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { TABLES, IGNORED_KEYS, PREF_KEYS, tx } from './db.js';
 import { HttpError } from './util.js';
 import { readAll, publicUser, logChange, DEFAULT_USER_PASSWORD } from './store.js';
-import { validate } from './validate.js';
+import { validate, normalizePriority, validId, stripBadKeys } from './validate.js';
 
 const KEEP_AUTO = 14, KEEP_OTHER = 30;
 
@@ -69,7 +69,7 @@ export async function replaceAll(pool, me, data, kind) {
     const defHash = await bcrypt.hash(DEFAULT_USER_PASSWORD(), 10);
     let nu = 0;
     for (const u of Array.isArray(data.users) ? data.users : []) {
-      if (!u || !u.id || !u.username) continue;
+      if (!u || !u.id || !u.username || !validId(String(u.id))) continue;
       const username = String(u.username).trim().toLowerCase();
       if (!/^[a-z0-9._-]{2,40}$/.test(username)) continue;
       let role = ['super', 'admin', 'member', 'viewer'].includes(u.role) ? u.role : 'member';
@@ -108,15 +108,18 @@ export async function replaceAll(pool, me, data, kind) {
         for (const rec of v) {
           if (!rec || typeof rec !== 'object' || rec.id == null) continue;
           const id = String(rec.id);
+          if (!validId(id)) { stats.skipped = (stats.skipped || 0) + 1; continue; }   // HTML'e basılır: güvenli kimlik
           if (seen.has(id)) continue; seen.add(id);
           const d = { ...rec, id };
-          if (k === 'issues' && d.key && d.projectId) {
+          stripBadKeys(d);
+          if (k === 'issues' && typeof d.key === 'string' && d.key && d.projectId) {
             if (usedKey.has(d.projectId + '|' + d.key)) {
               d.key = d.key.replace(/-\d+$/, '') + '-' + (maxKey[d.projectId] = (maxKey[d.projectId] || 0) + 1);
               stats.fixedKeys = (stats.fixedKeys || 0) + 1;
             }
             usedKey.add(d.projectId + '|' + d.key);
           }
+          if (k === 'issues') normalizePriority(d);    // eski yedekte metin/geçersiz öncelik atlanmasın
           try { validate(k, d); } catch (e) { stats.skipped = (stats.skipped || 0) + 1; continue; }
           if (table) await c.query(`INSERT INTO ${table} (id, data, updated_by) VALUES ($1,$2::jsonb,$3)`, [id, JSON.stringify(d), me.id]);
           else await c.query(`INSERT INTO misc_records (collection, id, data, updated_by) VALUES ($1,$2,$3::jsonb,$4)`, [k, id, JSON.stringify(d), me.id]);

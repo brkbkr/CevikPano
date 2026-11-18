@@ -55,6 +55,8 @@ jobs:
         run: node test/e2e/regresyon.cjs
       - name: Kullanıcı yönetimi testi
         run: node test/e2e/kullanicilar.cjs
+      - name: Pano kartı ve öncelik testi
+        run: node test/e2e/kart.cjs
       - name: Sunucu günlüğü
         if: failure()
         run: cat server.log

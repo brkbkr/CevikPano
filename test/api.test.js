@@ -220,6 +220,157 @@ t('doğrulama: bozuk kayıt reddedilir', async () => {
   assert.equal(r.json.rejected.length, 3);
 });
 
+t('öncelik: sayısal metin sayıya çevrilir, geçersiz değer Orta (3) olur, 1–5 korunur', async () => {
+  const a = client(); await a.login('admin', 'test-admin-pw');
+  const mk = (id, n, priority) => ({ c: 'issues', id, op: 'put',
+    data: { projectId: 'p1', key: 'GEN-' + (n + 120), summary: 'öncelik ' + id, statusId: 'p1_s0', ...(priority === undefined ? {} : { priority }) } });
+  const r = await a.sync([
+    mk('i_pr_txt', 80, '2'), mk('i_pr_txt2', 81, ' 4 '), mk('i_pr_big', 82, 9), mk('i_pr_zero', 83, 0),
+    mk('i_pr_frac', 84, 2.5), mk('i_pr_word', 85, 'Acil'), mk('i_pr_empty', 86, ''), mk('i_pr_obj', 87, { x: 1 }),
+    mk('i_pr_five', 88, 5), mk('i_pr_one', 89, 1), mk('i_pr_none', 90), mk('i_pr_null', 91, null), mk('i_pr_bool', 92, true),
+  ]);
+  assert.equal(r.json.rejected.length, 0, JSON.stringify(r.json.rejected));
+  assert.equal(r.json.applied, 13);
+  const rows = Object.fromEntries((await pool.query(`SELECT id, data FROM issues WHERE id LIKE 'i_pr_%'`)).rows.map(x => [x.id, x.data]));
+  const want = { i_pr_txt: 2, i_pr_txt2: 4, i_pr_big: 3, i_pr_zero: 3, i_pr_frac: 3, i_pr_word: 3, i_pr_empty: 3, i_pr_obj: 3,
+    i_pr_five: 5, i_pr_one: 1, i_pr_bool: 3 };
+  for (const [id, p] of Object.entries(want)) assert.strictEqual(rows[id].priority, p, id);
+  /* Alanı olmayan (eski) kayıtlara dokunulmaz. */
+  assert.ok(!('priority' in rows.i_pr_none));
+  assert.strictEqual(rows.i_pr_null.priority, null);
+  /* Sunucunun düzelttiği kayıtlar istemciye `adjusted` ile bildirilir; geçerli olanlar bildirilmez. */
+  const adj = new Set(r.json.adjusted.map(x => x.id));
+  for (const id of ['i_pr_txt', 'i_pr_txt2', 'i_pr_big', 'i_pr_zero', 'i_pr_frac', 'i_pr_word', 'i_pr_empty', 'i_pr_obj', 'i_pr_bool'])
+    assert.ok(adj.has(id), id + ' adjusted olmalı');
+  for (const id of ['i_pr_five', 'i_pr_one', 'i_pr_none', 'i_pr_null']) assert.ok(!adj.has(id), id + ' adjusted olmamalı');
+  /* Var olan kayıt geçersiz öncelikle güncellenirse de düzeltilir. */
+  const r2 = await a.sync([{ c: 'issues', id: 'i_pr_five', op: 'put', data: { ...rows.i_pr_five, priority: '7' } }]);
+  assert.deepEqual(r2.json.adjusted, [{ c: 'issues', id: 'i_pr_five' }]);
+  assert.strictEqual((await pool.query(`SELECT data FROM issues WHERE id='i_pr_five'`)).rows[0].data.priority, 3);
+});
+
+t('öncelik doğrulaması: validate 1–5 dışını reddeder, normalizePriority düzeltir', async () => {
+  const { validate, normalizePriority } = await import('../server/validate.js');
+  const base = { projectId: 'p1', summary: 'x' };
+  for (const p of [1, 2, 3, 4, 5, null, undefined]) assert.doesNotThrow(() => validate('issues', { ...base, priority: p }), String(p));
+  for (const p of [0, 6, 2.5, '2', 'Acil', true]) assert.throws(() => validate('issues', { ...base, priority: p }), /Öncelik/, String(p));
+  const d = { priority: '3' }; assert.equal(normalizePriority(d), true); assert.strictEqual(d.priority, 3);
+  const e = { priority: 4 }; assert.equal(normalizePriority(e), false); assert.strictEqual(e.priority, 4);
+  const f = {}; assert.equal(normalizePriority(f), false); assert.ok(!('priority' in f));
+  const g = { priority: -1 }; assert.equal(normalizePriority(g), true); assert.strictEqual(g.priority, 3);
+});
+
+/* ---------------- saldırı testleri (güvenlik incelemesi, #8) ---------------- */
+const XSS = '"><img src=x onerror=alert(1)>';
+const iss = (id, n, extra = {}) => ({ c: 'issues', id, op: 'put',
+  data: { projectId: 'p1', key: 'GEN-' + n, summary: 'saldırı ' + n, statusId: 'p1_s0', ...extra } });
+
+t('güvenlik: kayıt kimliği beyaz listede; XSS yüklü kimlik reddedilir, mevcut kimlik biçimleri kabul edilir', async () => {
+  const a = client(); await a.login('admin', 'test-admin-pw');
+  const bad = ['x' + XSS, 'i_a b', 'i_<b>', "i_'x", 'i_"x', 'ı_türkçe', 'x'.repeat(201)];
+  const r = await a.sync([...bad.map((id, k) => iss(id, 300 + k)),
+    { c: 'comments', id: 'c' + XSS, op: 'put', data: { issueId: 'i_k1', userId: 'u_admin', body: 'x' } }]);
+  assert.equal(r.json.applied, 0);
+  assert.equal(r.json.rejected.length, bad.length + 1);
+  assert.ok(r.json.rejected.every(x => x.reason === 'geçersiz kimlik'), JSON.stringify(r.json.rejected));
+  /* uid() ve demo/varsayılan kimlikler */
+  const good = ['p1', 'u1', 'p1_s0', 'i_x7k2m9q', 'cf_mus', 'l1', 'r1', 'sp1', 'u_chnm5ai', 'a.b:c-D_9', 'x'.repeat(200)];
+  const r2 = await a.sync(good.map(id => ({ c: 'kimlikTesti', id, op: 'put', data: { a: 1 } })));
+  assert.equal(r2.json.applied, good.length, JSON.stringify(r2.json.rejected));
+  assert.equal((await pool.query(`SELECT count(*) n FROM issues WHERE data::text LIKE '%onerror%'`)).rows[0].n, '0');
+});
+
+t('güvenlik: puan sonlu sayı 0–1000, epik rengi hex, etiketler metin dizisi', async () => {
+  const a = client(); await a.login('admin', 'test-admin-pw');
+  const r = await a.sync([
+    iss('i_sx_p1', 310, { points: '<img src=x onerror=alert(1)>' }), iss('i_sx_p2', 311, { points: -1 }),
+    iss('i_sx_p3', 312, { points: 1001 }), iss('i_sx_p4', 313, { points: [1] }),
+    iss('i_sx_c1', 314, { color: 'red' + XSS }), iss('i_sx_c2', 315, { color: 'red' }), iss('i_sx_c3', 316, { color: 12 }),
+    iss('i_sx_l1', 317, { labels: 'metin' }), iss('i_sx_l2', 318, { labels: [123] }),
+    iss('i_sx_l3', 319, { labels: Array.from({ length: 51 }, (_, k) => 'e' + k) }), iss('i_sx_l4', 320, { labels: ['x'.repeat(101)] }),
+    iss('i_sx_l5', 321, { labels: { 0: 'a' } }),
+  ]);
+  assert.equal(r.json.applied, 0, JSON.stringify(r.json));
+  assert.equal(r.json.rejected.length, 12);
+  const ok = await a.sync([
+    iss('i_sx_ok1', 322, { points: 5, color: '#6B4FBB', labels: ['Bordro', '<b>metin</b>'] }),
+    iss('i_sx_ok2', 323, { points: null, color: null, labels: [] }), iss('i_sx_ok3', 324, { points: 0.5, color: '#abc' }),
+    iss('i_sx_ok4', 325, {}),
+  ]);
+  assert.equal(ok.json.applied, 4, JSON.stringify(ok.json.rejected));
+});
+
+t('güvenlik: cfg.types doğrulanır (renk hex, kısa harf/ad, güvenli kimlik)', async () => {
+  const a = client(); await a.login('admin', 'test-admin-pw');
+  const cur = (await a.state()).json.data.cfg || {};
+  const T = { id: 'task', name: 'Görev', letter: 'G', color: '#3E7BC4' };
+  for (const types of [[{ ...T, color: 'red' + XSS }], [{ ...T, color: 'red' }], [{ ...T, letter: '<img src=x>' }],
+    [{ ...T, id: 'a' + XSS }], [{ ...T, name: '' }], [{ ...T, name: 'x'.repeat(101) }], 'metin', [null]]) {
+    const r = await a.sync([{ c: '_settings', id: 'cfg', op: 'put', data: { ...cur, types } }]);
+    assert.equal(r.json.applied, 0, JSON.stringify(types));
+    assert.match(r.json.rejected[0].reason, /iş tipi/);
+  }
+  const r = await a.sync([{ c: '_settings', id: 'cfg', op: 'put', data: { ...cur, types: [T, { id: 'talep2', name: 'Talep', letter: 'T', color: '#1F6F5C' }] } }]);
+  assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+  assert.equal((await a.state()).json.data.cfg.types[1].id, 'talep2');
+});
+
+t('güvenlik: atanan var olan aktif kullanıcı olmalı (yalnız değiştiğinde denetlenir)', async () => {
+  const a = client(); await a.login('admin', 'test-admin-pw');
+  await a.sync([
+    { c: 'users', id: 'u_pasif', op: 'put', data: { username: 'pasif', name: 'Pasif', role: 'member', active: false } },
+    { c: 'users', id: 'u_sonra', op: 'put', data: { username: 'sonra', name: 'Sonra', role: 'member', active: true } },
+  ]);
+  const r = await a.sync([iss('i_as1', 330, { assignee: 'u_pasif' }), iss('i_as2', 331, { assignee: 'u_yok' }),
+    iss('i_as3', 332, { assignee: XSS }), iss('i_as4', 333, { assignee: ['u_admin'] })]);
+  assert.equal(r.json.applied, 0);
+  assert.ok(r.json.rejected.every(x => /Atanan/.test(x.reason)), JSON.stringify(r.json.rejected));
+  const r2 = await a.sync([iss('i_as5', 334, { assignee: 'u_sonra' }), iss('i_as6', 335, { assignee: null }), iss('i_as7', 336, { assignee: '' })]);
+  assert.equal(r2.json.applied, 3, JSON.stringify(r2.json.rejected));
+  /* Kişi sonradan pasifleşirse işin başka alanı yine düzenlenebilir; ama pasif kişiye yeniden atanamaz. */
+  const u = (await pool.query(`SELECT username, name, role FROM users WHERE id='u_sonra'`)).rows[0];
+  await a.sync([{ c: 'users', id: 'u_sonra', op: 'put', data: { ...u, active: false } }]);
+  const row = (await pool.query(`SELECT data FROM issues WHERE id='i_as5'`)).rows[0].data;
+  const r3 = await a.sync([{ c: 'issues', id: 'i_as5', op: 'put', data: { ...row, summary: 'özet değişti' } }]);
+  assert.equal(r3.json.applied, 1, JSON.stringify(r3.json.rejected));
+  const r4 = await a.sync([{ c: 'issues', id: 'i_as6', op: 'put', data: { ...iss('i_as6', 335).data, assignee: 'u_sonra' } }]);
+  assert.equal(r4.json.applied, 0);
+});
+
+t('güvenlik: __proto__ / constructor / prototype anahtarları atılır (girdi ve birleştirme)', async () => {
+  const a = client(); await a.login('admin', 'test-admin-pw');
+  const evil = { ['__proto__']: { polluted: 1 }, constructor: { prototype: { polluted: 1 } }, prototype: 1 };
+  const d = { ...iss('i_proto', 340).data, ...evil, cf: { ['__proto__']: { polluted: 1 }, f1: 'x' } };
+  assert.ok(JSON.stringify(d).includes('__proto__'));         // yük gerçekten gidiyor
+  const r = await a.sync([{ c: 'issues', id: 'i_proto', op: 'put', data: d }]);
+  assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+  assert.ok(r.json.adjusted.some(x => x.id === 'i_proto'));
+  const txt = (await pool.query(`SELECT data::text t FROM issues WHERE id='i_proto'`)).rows[0].t;
+  assert.ok(!/__proto__|constructor|prototype/.test(txt), txt);
+  assert.ok(txt.includes('"f1": "x"'));
+  /* Birleştirme yolu: base ve mine'da __proto__ */
+  const row = (await pool.query(`SELECT data FROM issues WHERE id='i_proto'`)).rows[0].data;
+  await a.sync([{ c: 'issues', id: 'i_proto', op: 'put', data: { ...row, summary: 'başkası' } }]);
+  const r2 = await a.sync([{ c: 'issues', id: 'i_proto', op: 'put', base: { ...row, ...evil }, data: { ...row, ...evil, priority: 1 } }]);
+  assert.equal(r2.json.applied, 1);
+  const txt2 = (await pool.query(`SELECT data::text t FROM issues WHERE id='i_proto'`)).rows[0].t;
+  assert.ok(!/__proto__|constructor|prototype/.test(txt2) && txt2.includes('başkası'), txt2);
+  assert.equal(({}).polluted, undefined);
+  const { merge3 } = await import('../server/util.js');
+  const m = merge3({}, JSON.parse('{"__proto__":{"x":1},"constructor":2,"a":1}'), JSON.parse('{"b":2,"__proto__":{"y":1}}'));
+  assert.deepEqual(Object.keys(m).sort(), ['a', 'b']);
+  assert.equal(Object.getPrototypeOf(m), Object.prototype);
+  assert.equal(m.x, undefined); assert.equal(m.y, undefined);
+});
+
+t('güvenlik: iş ve proje anahtarı metin olmalı (dizi reddedilir)', async () => {
+  const a = client(); await a.login('admin', 'test-admin-pw');
+  const r = await a.sync([iss('i_keyarr', 350, { key: ['GEN-350'] }),
+    { c: 'projects', id: 'p_keyarr', op: 'put', data: { name: 'Dizi', key: ['DZ'] } }]);
+  assert.equal(r.json.applied, 0);
+  assert.equal(r.json.rejected.length, 2);
+});
+
 t('çöp kutusu: silinen iş bağlı kayıtlarıyla geri gelir', async () => {
   const a = client(); await a.login('admin', 'test-admin-pw');
   await a.sync([
@@ -240,20 +391,31 @@ t('içe aktarma: önce otomatik yedek alır, veriyi değiştirir, hesapları kor
   const a = client(); await a.login('admin', 'test-admin-pw');
   const before = (await a.state()).json.data.issues.length;
   const data = {
-    users: [{ id: 'u_imp', username: 'veli', name: 'Veli', role: 'member', pw: 'x', salt: 'y' }],
+    users: [{ id: 'u_imp', username: 'veli', name: 'Veli', role: 'member', pw: 'x', salt: 'y' },
+      { id: 'u"><img src=x>', username: 'kotu', name: 'Kötü', role: 'member' }],
     projects: [{ id: 'px', key: 'IMP', name: 'İthal', counter: 2 }],
     statuses: [{ id: 'px_s0', projectId: 'px', name: 'Yapılacak', cat: 'todo', ord: 0 }],
-    issues: [{ id: 'ix1', projectId: 'px', key: 'IMP-1', summary: 'a' }, { id: 'ix2', projectId: 'px', key: 'IMP-1', summary: 'çift' }],
+    issues: [{ id: 'ix1', projectId: 'px', key: 'IMP-1', summary: 'a', priority: '4' }, { id: 'ix2', projectId: 'px', key: 'IMP-1', summary: 'çift', priority: 'yok' },
+      /* saldırı: XSS'li kimlik, dizi anahtar (atlanır), prototip anahtarı (atılır) */
+      { id: 'ix"><img src=x onerror=alert(1)>', projectId: 'px', key: 'IMP-5', summary: 'kötü kimlik' },
+      { id: 'ix4', projectId: 'px', key: ['IMP-1'], summary: 'dizi anahtar' },
+      JSON.parse('{"id":"ix5","projectId":"px","key":"IMP-6","summary":"proto","__proto__":{"polluted":1}}')],
     cfg: { h: 7 }, ui: { view: 'board' },
   };
   const r = await a.req('POST', '/api/import', { data });
   assert.equal(r.status, 200);
   assert.equal(r.json.fixedKeys, 1);
   const st = (await a.state()).json.data;
-  assert.equal(st.issues.length, 2);
+  assert.equal(st.issues.length, 3);
+  assert.equal(r.json.skipped, 2);
+  assert.ok(!JSON.stringify(st.issues).includes('__proto__') && !st.issues.some(i => /onerror/.test(i.id)));
   assert.notEqual(st.issues[0].key, st.issues[1].key);
+  /* Eski yedekteki metin/geçersiz öncelik atlanmaz, düzeltilerek alınır. */
+  assert.strictEqual(st.issues.find(i => i.id === 'ix1').priority, 4);
+  assert.strictEqual(st.issues.find(i => i.id === 'ix2').priority, 3);
   assert.equal(st.cfg.h, 7);
   assert.ok(st.users.find(u => u.username === 'admin'));          // mevcut hesap silinmedi
+  assert.ok(!st.users.find(u => u.username === 'kotu'));          // XSS'li kimlikli kullanıcı alınmadı
   assert.equal((await client().login('veli', 'Start12345')).status, 200);
   const ch = (await a.req('GET', '/api/changes?since=0')).json;
   assert.equal(ch.reload, true);

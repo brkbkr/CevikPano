@@ -29,8 +29,11 @@ Jira benzeri çevik proje yönetimi. Arayüz ve tüm metinler **Türkçe**; kull
 
 ## Çalışma süreci ve roller
 - Her istek `.claude/skills/gelistirme-sureci/SKILL.md` sürecinden geçer: Product Owner → İş analisti → Web tasarımcısı →
-  Yazılımcı → Testçi → kullanıcı onayı → test sitesi → PO kabulü. Roller `.claude/agents/` altında; her adımda ilgili rolü ayrı alt ajan olarak çalıştır.
-- Yeni görsel dil/yerleşim/ekran önce kullanıcıya taslak olarak gösterilir (`docs/tasarim/`).
+  Yazılımcı → Testçi + Güvenlik uzmanı → test sitesi → PO kabulü → kullanıcı onayı. Roller `.claude/agents/` altında;
+  her adımda ilgili rolü ayrı alt ajan olarak çalıştır. Testçi ve güvenlik uzmanı hiçbir işte atlanmaz.
+- **"başla"**: kullanıcı bunu yazınca `.claude/skills/basla/SKILL.md` (en az 8 saat sürekli geliştirme döngüsü).
+  **"dur"**: döngüyü hemen kapat, özet yaz. Notlar GitHub'daki "🤖 Geliştirme günlüğü" issue'sunda.
+- Yeni görsel dil/yerleşim/ekran için taslak hazırlanır (`docs/tasarim/`).
 - PR'ları birleştirmek ve canlıya yayınlamak kullanıcının kararıdır.
 
 ## Ortamlar ve yayın

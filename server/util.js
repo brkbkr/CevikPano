@@ -15,11 +15,15 @@ export const same = (a, b) => cj(a) === cj(b);
    base: istemcinin değiştirmeye başladığı hâl, mine: istemcinin yeni hâli,
    theirs: veritabanındaki güncel hâl. İstemcinin değiştirmediği alanlarda
    başkasının değişikliği korunur; ikisi de aynı alanı değiştirdiyse son yazan kazanır. */
+const BAD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+const own = (o, k) => (o && Object.hasOwn(o, k) ? o[k] : undefined);
 export function merge3(base, mine, theirs) {
-  const out = { ...theirs };
-  for (const k of new Set([...Object.keys(base || {}), ...Object.keys(mine)])) {
-    if (same(base?.[k], mine[k])) continue;          // istemci bu alana dokunmadı
-    if (mine[k] === undefined) delete out[k]; else out[k] = mine[k];
+  const out = {};
+  for (const k of Object.keys(theirs || {})) if (!BAD_KEYS.has(k)) out[k] = theirs[k];
+  for (const k of new Set([...Object.keys(base || {}), ...Object.keys(mine || {})])) {
+    if (BAD_KEYS.has(k)) continue;                   // prototip anahtarları hiç taşınmaz
+    if (same(own(base, k), own(mine, k))) continue;  // istemci bu alana dokunmadı
+    if (own(mine, k) === undefined) delete out[k]; else out[k] = mine[k];
   }
   return out;
 }
