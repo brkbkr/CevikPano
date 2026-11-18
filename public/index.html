@@ -2060,8 +2060,10 @@ function qmPriList(i) {
       <span class="qm-ic prio ${c}">${ic(c)}</span><span class="qm-l">${n}</span>
       ${cur === p ? `<span class="qm-chk">${ic('check')}</span>` : ''}<span class="kbd">${p}</span></button>`; }).join('');
 }
+/* Hızlı atama listesi işin kendi projesinin üyeleridir (ana ekranda başka projenin işi olabilir). */
+const issueUsers = i => memsOf(DB.projects.find(p => p.id === i?.projectId));
 function qmAsList(i, q = '') {
-  const me = CU(), ppl = projUsers(), k = qmKey(q).trim();
+  const me = CU(), ppl = issueUsers(i), k = qmKey(q).trim();
   const hit = txt => !k || qmKey(txt).includes(k);
   const openN = id => DB.issues.filter(x => x.assignee === id && x.type !== 'epic' && stat(x.statusId).cat !== 'done').length;
   const av = u => `<span class="c-av" style="background:${safeColor(u.color)}">${esc(u.ini || '?')}</span>`;
@@ -2082,7 +2084,7 @@ function openQuick(kind, btn) {
   const i = issue(id); if (!i || !canEdit()) return;
   const mob = qmMobile();
   const title = kind === 'pri' ? 'Öncelik' : 'Atanan kişi';
-  const search = kind === 'as' && projUsers().length > 8;
+  const search = kind === 'as' && issueUsers(i).length > 8;
   const wrap = document.createElement('div');
   wrap.className = 'qm-wrap' + (mob ? ' sheet' : '');
   wrap.innerHTML = `${mob ? '<div class="qm-dim"></div>' : ''}
@@ -6128,9 +6130,12 @@ const rollEstimate = i => (i.estimate || 0) + kidsOf(i.id).reduce((a, k) => a + 
 const rollRemaining = i => remaining(i) + kidsOf(i.id).reduce((a, k) => a + remaining(k), 0);
 
 /* ---------- tamamlama ---------- */
-const doneStatus = () => stats().find(s => s.cat === 'done');
+/* İşin kendi projesinin durumları (seçili proje değil): ana ekran tüm projelerin işlerini gösterir. */
+const statsOf = pid => DB.statuses.filter(s => s.projectId === pid).sort((a, b) => a.ord - b.ord);
+const doneStatus = (pid = DB.ui.project) => statsOf(pid).find(s => s.cat === 'done');
 function completeIssue(id) {
-  const i = issue(id), ds = doneStatus();
+  const i = issue(id); if (!i) return;
+  const ds = doneStatus(i.projectId);
   if (!ds) return toast('Bu projede "Bitti" kategorisinde durum yok');
   if (stat(i.statusId).cat === 'done') return;
   i.doneFrom = i.statusId;
@@ -6139,8 +6144,10 @@ function completeIssue(id) {
   save(); render(); toast(i.key + ' tamamlandı');
 }
 function reopenIssue(id) {
-  const i = issue(id);
-  const back = i.doneFrom && stat(i.doneFrom) ? i.doneFrom : stats()[0].id;
+  const i = issue(id); if (!i) return;
+  const first = statsOf(i.projectId)[0];
+  const back = i.doneFrom && stat(i.doneFrom) ? i.doneFrom : first?.id;
+  if (!back) return;
   delete i.doneFrom;
   setStatus(i, back);
   save(); render(); toast(i.key + ' yeniden açıldı');
