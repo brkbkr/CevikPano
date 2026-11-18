@@ -7103,7 +7103,9 @@ function wireAdmin() {
   const au = $('#addUser'); if (au) au.onclick = () => newUserForm();
   wireUsers();
   $$('[data-projname]').forEach(el => el.onchange = () => {
-    DB.projects.find(p => p.id === el.dataset.projname).name = el.value; save(); boot(); });
+    const p = DB.projects.find(x => x.id === el.dataset.projname); if (!p) return;
+    if (!canDesign(p)) { el.value = p.name; return toast('Projeyi yalnızca alan yöneticisi değiştirebilir'); }
+    p.name = el.value; save(); boot(); });
 
   const ch = $('#cfgH'); if (ch) { const apply = () => {
     H_PER_DAY = Math.max(1, parseFloat($('#cfgH').value) || 8);
