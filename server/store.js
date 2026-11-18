@@ -639,6 +639,8 @@ function enforceOwner(data, cur, me) {
 /* Üye listesi: biçim, tekil kişi, var olan kullanıcı; sahip listede ve 'admin' (kaldırılamaz, düşürülemez).
    Dolu listeyi boşaltmak (alanı herkese açmak) yalnız sistem yöneticisi. Değiştiyse true. */
 async function enforceWsMembers(c, me, data, cur) {
+  /* Yetkisiz yazma burada doğrulanmaz (kişi var/yok bilgisi sızmasın); checkWorkspace 403 verir. */
+  if (cur ? wsRole(me, cur) !== 'admin' : !isAdminRole(me.role)) return false;
   const before = data.members;
   let changed = false;
   if (data.ownerId != null && data.ownerId !== (cur ? cur.ownerId : undefined)) {

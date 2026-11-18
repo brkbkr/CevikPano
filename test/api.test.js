@@ -2668,6 +2668,8 @@ describe('alan rolleri', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     const add = { ...w, members: [...w.members, { userId: 'u_rx', role: 'viewer' }] };
     for (const k of [C.M, C.V, C.X, C.G]) assert.equal((await k.sync([put('workspaces', 'ws_r', add, w)])).json.applied, 0);
     rej(await C.M.sync([put('workspaces', 'ws_r', add, w)]), WSE);
+    /* Yetkisiz kişi üye doğrulamasına ulaşmaz (kişi var/yok bilgisi sızmaz): 403 */
+    rej(await C.X.sync([put('workspaces', 'ws_r', { ...w, members: [{ userId: 'u_yok', role: 'member' }] }, w)]), WSE);
     ok(await C.Y.sync([put('workspaces', 'ws_r', add, w)]));
     const w2 = await row('workspaces', 'ws_r');
     assert.ok(w2.members.some(m => m.userId === 'u_rx' && m.role === 'viewer'));
