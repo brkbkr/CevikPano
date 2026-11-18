@@ -149,6 +149,37 @@ t('yetki: izleyici veri değiştiremez ama kendi ekran tercihini kaydedebilir', 
   assert.equal((await a.state()).json.data.ui, undefined);       // tercihler kişiye özel
 });
 
+t('yetki (#9 Benim işlerim): izleyici durum/öncelik/atanan değiştiremez, süre giremez; ana ekran süzgeci kalıcı', async () => {
+  const a = client();
+  await a.login('admin', 'test-admin-pw');
+  let r = await a.sync([{ c: 'issues', id: 'i_hm9', op: 'put',
+    data: { projectId: 'p1', summary: 'Benim işlerim', statusId: 'p1_s0', priority: 3, assignee: 'u_viewer' } }]);
+  assert.equal(r.json.applied, 1);
+  const v = client();
+  await v.login('izci', 'IzciYeni12345');
+  const base = (await v.state()).json.data.issues.find(i => i.id === 'i_hm9');
+  for (const patch of [{ statusId: 'p1_s1' }, { priority: 1 }, { assignee: null }, { assignee: 'u_admin' }]) {
+    r = await v.sync([{ c: 'issues', id: 'i_hm9', op: 'put', data: { ...base, ...patch }, base }]);
+    assert.equal(r.json.applied, 0, JSON.stringify(patch));
+    assert.equal(r.json.rejected[0].reason, 'salt okunur kullanıcı');
+  }
+  r = await v.sync([{ c: 'worklogs', id: 'w_hm9', op: 'put',
+    data: { issueId: 'i_hm9', userId: 'u_viewer', date: '2026-11-18', hours: 1, comment: 'izleyici' } }]);
+  assert.equal(r.json.applied, 0);
+  const row = (await pool.query(`SELECT data FROM issues WHERE id='i_hm9'`)).rows[0].data;
+  assert.deepEqual([row.statusId, row.priority, row.assignee], ['p1_s0', 3, 'u_viewer']);
+  assert.equal((await pool.query(`SELECT count(*)::int AS n FROM worklogs WHERE id='w_hm9'`)).rows[0].n, 0);
+  /* Süzgeç kişisel tercihtir: izleyici de yazar, yeni oturumda geri gelir, başkasına gitmez. */
+  r = await v.sync([{ c: '_prefs', id: 'ui', op: 'put', data: { view: 'home', homeProj: 'p1' } }]);
+  assert.equal(r.json.applied, 1);
+  const v2 = client();
+  await v2.login('izci', 'IzciYeni12345');
+  const ui = (await v2.state()).json.data.ui;
+  assert.equal(ui.homeProj, 'p1');
+  assert.equal(ui.view, 'home');
+  assert.equal((await a.state()).json.data.ui?.homeProj, undefined);
+});
+
 t('son aktif yönetici pasifleştirilemez; kendi hesabını silemez', async () => {
   const a = client();
   await a.login('admin', 'test-admin-pw');
