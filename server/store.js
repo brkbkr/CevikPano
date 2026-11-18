@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
 import { TABLES, PREF_KEYS, IGNORED_KEYS, tx, tableOf, reservedName } from './db.js';
 import { HttpError, cj, same, merge3, isAdminRole } from './util.js';
-import { validate, PROJECT_TYPES, normalizePriority, normalizeArchived, normalizeCustomer, validId, validateCfg, stripBadKeys } from './validate.js';
+import { validate, PROJECT_TYPES, normalizePriority, normalizeArchived, normalizeCustomer, normalizeHistory, validId, validateCfg, stripBadKeys } from './validate.js';
 import { notifyForIssue, notifyForComment } from './notify.js';
 
 export { HttpError };
@@ -18,6 +18,11 @@ export const ADMIN_ONLY = ['fields', 'rules', '_settings', 'customers'];
 const ISSUE_CHILDREN = ['comments', 'worklogs', 'history', 'transitions'];
 /* Yeni kaydı yalnız ekleyerek oluşturan koleksiyonlar (eşzamanlı oluşturmada üzerine yazılmaz). */
 const CREATE_ONCE = ['workspaces', 'customers'];
+/* Geçmiş yalnız eklenir (B2): var olan kayıt değiştirilemez, tek tek silinemez (yöneticiler dahil); silme yalnız
+   iş silmenin cascade'iyle. Yeni kayıtta yönetici olmayanın yazarı oturuma, zamanı sunucu saatine ±5 dk zorlanır. */
+export const HIST_LOCKED = 'Geçmiş kaydı değiştirilemez';
+export const HIST_SKEW_MS = 5 * 60 * 1000;
+export const COMMENT_FORBIDDEN = 'Başkasının yorumunu yalnızca yönetici değiştirebilir';
 
 /* ---- kullanıcıyı istemciye gönderilecek biçime çevir (parola özeti yok) ---- */
 export function publicUser(row) {
@@ -119,11 +124,13 @@ export async function applyChanges(pool, me, changes) {
   /* Kararlı gruplama: kullanıcılar → çalışma alanı/cari kayıtları → proje kayıtları → diğerleri (silmeler
      dahil, gönderim sırasıyla) → en sonda kolon silmeleri. Yeni alan/cari ve ona bağlı yeni proje, yeni
      projenin kolonları dizide önce gelse de doğru sırayla yazılır; silinen kolonun işleri aynı gönderimde
-     taşındıysa silme onlardan sonra denetlenir. */
+     taşındıysa silme onlardan sonra denetlenir. Geçmiş ve yorumlar işlerden sonra (B2): yeni işin geçmişi
+     işi bulur; iş silmeyle birlikte gönderilen geçmiş/yorum silmeleri cascade'den sonra "kayıt yok" olur. */
   const rank = ch => (ch?.c === 'users' ? 0
     : ['workspaces', 'customers'].includes(ch?.c) && ch?.op === 'put' ? 1
     : ch?.c === 'projects' && ch?.op === 'put' ? 2
-    : ch?.c === 'statuses' && ch?.op === 'del' ? 4 : 3);
+    : ch?.c === 'statuses' && ch?.op === 'del' ? 5
+    : ['history', 'comments'].includes(ch?.c) ? 4 : 3);
   const ordered = changes.map((ch, i) => [rank(ch), i, ch]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
   /* Kilitlenme (40P01) ya da serileştirme hatası (40001): işlem bir kez yeniden denenir. */
   for (let attempt = 0; ; attempt++) {
@@ -235,6 +242,20 @@ async function applyRecord(c, ctx, ch) {
       throw new HttpError(403, 'Başkası adına süre kaydı yalnızca yönetici girebilir');
   }
   if (ch.c === 'worklogs') { if (cur?.issueId) ctx.touchedIssues.add(cur.issueId); if (ch.data?.issueId) ctx.touchedIssues.add(ch.data.issueId); }
+  /* Başkasının yorumu (yazarı olan): değiştirme/silme yalnız yönetici. Kayıt yoksa silme zaten etkisiz. */
+  if (ch.c === 'comments' && !meAdmin && cur?.userId && cur.userId !== me.id) throw new HttpError(403, COMMENT_FORBIDDEN);
+  if (ch.c === 'history') {
+    if (ch.op === 'del') { if (!cur) return false; throw new HttpError(403, HIST_LOCKED); }
+    if (cur) {
+      const inc = { ...ch.data, id: ch.id };
+      normalizeHistory(inc);
+      if (same(cur, inc)) return false;               // aynı veri (yeniden gönderim) sessizce geçer
+      /* Yeniden gönderim: sunucu bu kişinin kaydında yalnız yazarı/zamanı düzeltmişti. */
+      const bare = x => ({ ...x, userId: null, at: null });
+      if (!meAdmin && cur.userId === me.id && same(bare(cur), bare(inc))) { ctx.adjusted.push({ c: ch.c, id: ch.id }); return false; }
+      throw new HttpError(403, HIST_LOCKED);
+    }
+  }
 
   if (ch.op === 'del') {
     if (!cur) return false;
@@ -284,7 +305,19 @@ async function applyRecord(c, ctx, ch) {
   if ((ch.c === 'projects' || ch.c === 'workspaces') && normalizeArchived(data)) adjusted = true;
   if (ch.c === 'customers' && normalizeCustomer(data)) adjusted = true;
   if (ch.c === 'workspaces' && enforceCreatedBy(data, cur, me)) adjusted = true;
+  if (ch.c === 'history' && normalizeHistory(data)) adjusted = true;
+  if (ch.c === 'history' && !meAdmin && enforceHistoryAuthor(data, me)) adjusted = true;
+  /* Yeni yorumda yazar oturumdur; var olan yorumun yazarı değişmez (yönetici hariç). */
+  if (ch.c === 'comments' && !meAdmin) {
+    const owner = cur ? cur.userId : me.id;
+    if (data.userId !== owner) { if (owner === undefined) delete data.userId; else data.userId = owner; adjusted = true; }
+  }
   validate(ch.c, data, { live: true, cur });
+  /* Geçmiş kaydının işi var olmalı (aynı gönderimde oluşturulan iş dahil: gruplamada işlerden sonra gelir).
+     FOR SHARE: iş aynı anda silinirse yetim kayıt kalmasın. */
+  if (ch.c === 'history'
+      && !(await c.query('SELECT 1 FROM issues WHERE id=$1 FOR SHARE', [data.issueId])).rowCount)
+    throw new HttpError(400, 'Geçmiş kaydının işi bulunamadı');
   /* Atanan değiştiyse var olan, aktif bir kullanıcı olmalı. */
   if (ch.c === 'issues' && data.assignee != null && data.assignee !== '' && data.assignee !== cur?.assignee) {
     const ok = typeof data.assignee === 'string'
@@ -418,6 +451,17 @@ async function checkColumns(c, ctx) {
 export const DEFAULT_WS = 'ws1';
 const WS_LOCK = 727275;
 const wsName = s => String(s ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr');
+
+/* Yönetici olmayanın yeni geçmiş kaydı: yazar = oturum, zaman sunucu saatine ±5 dk (yoksa/geçersizse şimdi). */
+function enforceHistoryAuthor(data, me) {
+  let changed = false;
+  if (data.userId !== me.id) { data.userId = me.id; changed = true; }
+  const now = Date.now();
+  const t = typeof data.at === 'number' ? data.at : typeof data.at === 'string' ? Date.parse(data.at) : NaN;
+  const at = Number.isFinite(t) ? Math.min(now + HIST_SKEW_MS, Math.max(now - HIST_SKEW_MS, t)) : now;
+  if (at !== data.at) { data.at = at; changed = true; }
+  return changed;
+}
 
 /* Açan kişi istemciden alınmaz: yeni alanda oturumdaki kullanıcı, var olanda kayıttaki değer. */
 function enforceCreatedBy(data, cur, me) {
