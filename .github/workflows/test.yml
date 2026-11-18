@@ -83,6 +83,8 @@ jobs:
         run: node test/e2e/musteri-cari.cjs
       - name: Posta kutuları testi (yapılandırılmamış ve bağlı kutu listesi)
         run: node test/e2e/posta.cjs
+      - name: Pano iyileştirmeleri testi (hızlı kart ekleme, alt işler panoda, sprint yetkisi ve süresi)
+        run: node test/e2e/pano-iyilestirme.cjs
       - name: Sunucu günlüğü
         if: failure()
         run: cat server.log

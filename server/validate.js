@@ -74,6 +74,8 @@ const RULES = {
     [d.customerId == null || d.customerId === '' || validId(d.customerId), 'Geçersiz cari'],
     [d.type == null || d.type === '' || PROJECT_TYPES.includes(d.type), 'Geçersiz proje türü'],
     [d.template == null || d.template === '' || PROJECT_TEMPLATES.includes(d.template), 'Geçersiz şablon'],
+    [d.sprintWeeks == null || (Number.isInteger(d.sprintWeeks) && d.sprintWeeks >= 1 && d.sprintWeeks <= 8),
+      'Sprint süresi 1 ile 8 hafta arasında bir tamsayı olmalı'],
   ],
   /* Cariler (#11). İletilerde değer YOK: kişisel veri (T.C. kimlik no, e-posta) günlüğe/yanıta düşmesin. */
   customers: d => [
