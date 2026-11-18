@@ -29,6 +29,7 @@ const RULES = {
     [optStr(d.description, 100000), 'Açıklama çok uzun'],
     [date(d.due) && date(d.start), 'Geçersiz tarih'],
     [d.estimate == null || (typeof d.estimate === 'number' && d.estimate >= 0), 'Tahmin negatif olamaz'],
+    [d.priority == null || (Number.isInteger(d.priority) && d.priority >= 1 && d.priority <= 5), 'Öncelik 1 ile 5 arasında bir tamsayı olmalı'],
   ],
   worklogs: d => [
     [str(d.issueId, 200), 'Süre kaydının işi yok'],
@@ -41,6 +42,18 @@ const RULES = {
     [typeof d.body === 'string' && d.body.length <= 20000, 'Yorum en fazla 20.000 karakter'],
   ],
 };
+
+/* İş önceliği: sayısal metin sayıya çevrilir, geçersiz değer 3 (Orta) olur.
+   Alan yoksa (eski kayıt) dokunulmaz. Değer değiştiyse true döner. */
+export function normalizePriority(d) {
+  if (!d || d.priority == null) return false;
+  const v = d.priority;
+  let n = typeof v === 'number' ? v : (typeof v === 'string' && /^\s*\d+\s*$/.test(v) ? Number(v) : NaN);
+  if (!(Number.isInteger(n) && n >= 1 && n <= 5)) n = 3;
+  if (n === v) return false;
+  d.priority = n;
+  return true;
+}
 
 export function validate(collection, data) {
   if (JSON.stringify(data).length > MAX_RECORD) throw new HttpError(400, 'Kayıt çok büyük');

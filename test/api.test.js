@@ -220,6 +220,46 @@ t('doğrulama: bozuk kayıt reddedilir', async () => {
   assert.equal(r.json.rejected.length, 3);
 });
 
+t('öncelik: sayısal metin sayıya çevrilir, geçersiz değer Orta (3) olur, 1–5 korunur', async () => {
+  const a = client(); await a.login('admin', 'test-admin-pw');
+  const mk = (id, n, priority) => ({ c: 'issues', id, op: 'put',
+    data: { projectId: 'p1', key: 'GEN-' + (n + 120), summary: 'öncelik ' + id, statusId: 'p1_s0', ...(priority === undefined ? {} : { priority }) } });
+  const r = await a.sync([
+    mk('i_pr_txt', 80, '2'), mk('i_pr_txt2', 81, ' 4 '), mk('i_pr_big', 82, 9), mk('i_pr_zero', 83, 0),
+    mk('i_pr_frac', 84, 2.5), mk('i_pr_word', 85, 'Acil'), mk('i_pr_empty', 86, ''), mk('i_pr_obj', 87, { x: 1 }),
+    mk('i_pr_five', 88, 5), mk('i_pr_one', 89, 1), mk('i_pr_none', 90), mk('i_pr_null', 91, null), mk('i_pr_bool', 92, true),
+  ]);
+  assert.equal(r.json.rejected.length, 0, JSON.stringify(r.json.rejected));
+  assert.equal(r.json.applied, 13);
+  const rows = Object.fromEntries((await pool.query(`SELECT id, data FROM issues WHERE id LIKE 'i_pr_%'`)).rows.map(x => [x.id, x.data]));
+  const want = { i_pr_txt: 2, i_pr_txt2: 4, i_pr_big: 3, i_pr_zero: 3, i_pr_frac: 3, i_pr_word: 3, i_pr_empty: 3, i_pr_obj: 3,
+    i_pr_five: 5, i_pr_one: 1, i_pr_bool: 3 };
+  for (const [id, p] of Object.entries(want)) assert.strictEqual(rows[id].priority, p, id);
+  /* Alanı olmayan (eski) kayıtlara dokunulmaz. */
+  assert.ok(!('priority' in rows.i_pr_none));
+  assert.strictEqual(rows.i_pr_null.priority, null);
+  /* Sunucunun düzelttiği kayıtlar istemciye `adjusted` ile bildirilir; geçerli olanlar bildirilmez. */
+  const adj = new Set(r.json.adjusted.map(x => x.id));
+  for (const id of ['i_pr_txt', 'i_pr_txt2', 'i_pr_big', 'i_pr_zero', 'i_pr_frac', 'i_pr_word', 'i_pr_empty', 'i_pr_obj', 'i_pr_bool'])
+    assert.ok(adj.has(id), id + ' adjusted olmalı');
+  for (const id of ['i_pr_five', 'i_pr_one', 'i_pr_none', 'i_pr_null']) assert.ok(!adj.has(id), id + ' adjusted olmamalı');
+  /* Var olan kayıt geçersiz öncelikle güncellenirse de düzeltilir. */
+  const r2 = await a.sync([{ c: 'issues', id: 'i_pr_five', op: 'put', data: { ...rows.i_pr_five, priority: '7' } }]);
+  assert.deepEqual(r2.json.adjusted, [{ c: 'issues', id: 'i_pr_five' }]);
+  assert.strictEqual((await pool.query(`SELECT data FROM issues WHERE id='i_pr_five'`)).rows[0].data.priority, 3);
+});
+
+t('öncelik doğrulaması: validate 1–5 dışını reddeder, normalizePriority düzeltir', async () => {
+  const { validate, normalizePriority } = await import('../server/validate.js');
+  const base = { projectId: 'p1', summary: 'x' };
+  for (const p of [1, 2, 3, 4, 5, null, undefined]) assert.doesNotThrow(() => validate('issues', { ...base, priority: p }), String(p));
+  for (const p of [0, 6, 2.5, '2', 'Acil', true]) assert.throws(() => validate('issues', { ...base, priority: p }), /Öncelik/, String(p));
+  const d = { priority: '3' }; assert.equal(normalizePriority(d), true); assert.strictEqual(d.priority, 3);
+  const e = { priority: 4 }; assert.equal(normalizePriority(e), false); assert.strictEqual(e.priority, 4);
+  const f = {}; assert.equal(normalizePriority(f), false); assert.ok(!('priority' in f));
+  const g = { priority: -1 }; assert.equal(normalizePriority(g), true); assert.strictEqual(g.priority, 3);
+});
+
 t('çöp kutusu: silinen iş bağlı kayıtlarıyla geri gelir', async () => {
   const a = client(); await a.login('admin', 'test-admin-pw');
   await a.sync([
@@ -243,7 +283,7 @@ t('içe aktarma: önce otomatik yedek alır, veriyi değiştirir, hesapları kor
     users: [{ id: 'u_imp', username: 'veli', name: 'Veli', role: 'member', pw: 'x', salt: 'y' }],
     projects: [{ id: 'px', key: 'IMP', name: 'İthal', counter: 2 }],
     statuses: [{ id: 'px_s0', projectId: 'px', name: 'Yapılacak', cat: 'todo', ord: 0 }],
-    issues: [{ id: 'ix1', projectId: 'px', key: 'IMP-1', summary: 'a' }, { id: 'ix2', projectId: 'px', key: 'IMP-1', summary: 'çift' }],
+    issues: [{ id: 'ix1', projectId: 'px', key: 'IMP-1', summary: 'a', priority: '4' }, { id: 'ix2', projectId: 'px', key: 'IMP-1', summary: 'çift', priority: 'yok' }],
     cfg: { h: 7 }, ui: { view: 'board' },
   };
   const r = await a.req('POST', '/api/import', { data });
@@ -252,6 +292,9 @@ t('içe aktarma: önce otomatik yedek alır, veriyi değiştirir, hesapları kor
   const st = (await a.state()).json.data;
   assert.equal(st.issues.length, 2);
   assert.notEqual(st.issues[0].key, st.issues[1].key);
+  /* Eski yedekteki metin/geçersiz öncelik atlanmaz, düzeltilerek alınır. */
+  assert.strictEqual(st.issues.find(i => i.id === 'ix1').priority, 4);
+  assert.strictEqual(st.issues.find(i => i.id === 'ix2').priority, 3);
   assert.equal(st.cfg.h, 7);
   assert.ok(st.users.find(u => u.username === 'admin'));          // mevcut hesap silinmedi
   assert.equal((await client().login('veli', 'Start12345')).status, 200);

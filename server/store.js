@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
 import { TABLES, PREF_KEYS, IGNORED_KEYS, tx } from './db.js';
 import { HttpError, cj, same, merge3, isAdminRole } from './util.js';
-import { validate } from './validate.js';
+import { validate, normalizePriority } from './validate.js';
 import { notifyForIssue, notifyForComment } from './notify.js';
 
 export { HttpError };
@@ -189,6 +189,7 @@ async function applyRecord(c, ctx, ch) {
     const n = Math.max(Number(cur.counter) || 0, Number(data.counter) || 0);
     if (n !== data.counter) { data.counter = n; adjusted = true; }
   }
+  if (ch.c === 'issues' && normalizePriority(data)) adjusted = true;
   validate(ch.c, data);
   if (ch.c === 'issues' && await ensureIssueKey(c, ctx, data, cur)) adjusted = true;
   if (cur && same(cur, data)) { if (adjusted) ctx.adjusted.push({ c: ch.c, id: ch.id }); return false; }
