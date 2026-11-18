@@ -1595,8 +1595,8 @@ describe('proje türü ve kolonlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
       assert.equal(Object.hasOwn(await row('projects', 'pk_ts'), 'type'), false);
       ok(await N.sync([P('pk_ts', { members: [], name: 'Yeni ad', type: 'agile' })]));   // hesaplanan tür aynı: denetim yok
     } finally { await setSprintModule(false); }
-    /* sprint tamamlanınca Agile→Pano kabul; Pano→Agile her zaman */
-    ok(await M.sync([{ c: 'sprints', id: 'sp_k1', op: 'put', data: { projectId: 'pk_ag', name: 'S1', state: 'closed' } }]));
+    /* sprint tamamlanınca (eski alanda sprinti sistem yöneticisi bitirir) Agile→Pano kabul; Pano→Agile her zaman */
+    ok(await A.sync([{ c: 'sprints', id: 'sp_k1', op: 'put', data: { projectId: 'pk_ag', name: 'S1', state: 'closed' } }]));
     ok(await M.sync([P('pk_ag', { type: 'board', members: ['u_admin', 'u_k_m'] })]));
     ok(await M.sync([P('pk_ag', { type: 'agile', members: ['u_admin', 'u_k_m'] })]));
     ok(await M.sync([P('pk_ag', { type: 'board', members: ['u_admin', 'u_k_m'] })]));
@@ -1604,7 +1604,7 @@ describe('proje türü ve kolonlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
 
   test('türü açıkça Pano olan projede sprint başlatılamaz; türsüz (genel sprint kapalı) projede ve Agile\'da başlar', async () => {
     assert.equal((await pool.query(`SELECT value FROM settings WHERE key='cfg'`)).rows[0]?.value?.modules?.sprint, false);
-    const r = await M.sync([{ c: 'sprints', id: 'sp_k3', op: 'put', data: { projectId: 'pk_ag', name: 'S3', state: 'active' } },
+    const r = await A.sync([{ c: 'sprints', id: 'sp_k3', op: 'put', data: { projectId: 'pk_ag', name: 'S3', state: 'active' } },
       { c: 'sprints', id: 'sp_k4', op: 'put', data: { projectId: 'pk_bos', name: 'S4', state: 'active' } },
       { c: 'sprints', id: 'sp_k5', op: 'put', data: { projectId: 'pk_ag', name: 'S5', state: 'future' } }]);
     assert.deepEqual(reasons(r), ['Pano türündeki projede sprint başlatılamaz']);
@@ -1617,7 +1617,7 @@ describe('proje türü ve kolonlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
       ['Pano türündeki projede sprint başlatılamaz']);
     assert.deepEqual(reasons(await A.sync([{ c: 'sprints', id: 'sp_k7', op: 'put', data: { projectId: 'pk_tb', name: 'S7', state: 'active' } }])),
       ['Pano türündeki projede sprint başlatılamaz']);
-    ok(await M.sync([{ c: 'sprints', id: 'sp_k4', op: 'put', data: { projectId: 'pk_bos', name: 'S4', state: 'closed' } }]));
+    ok(await A.sync([{ c: 'sprints', id: 'sp_k4', op: 'put', data: { projectId: 'pk_bos', name: 'S4', state: 'closed' } }]));
     ok(await A.sync([{ c: 'sprints', id: 'sp_k6', op: 'put', data: { projectId: 'pk_ta', name: 'S6', state: 'active' } }]));
   });
 
@@ -1724,45 +1724,66 @@ describe('proje türü ve kolonlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
     assert.equal(await row('projects', 'pk_tpl_v'), undefined);
   });
 
-  /* Pano iyileştirmeleri: sprint başlatma/tamamlama proje yöneticisinde (canConfigure); sprint süresi 1–8 hafta. */
+  /* Pano iyileştirmeleri + alan rolleri: sprint başlatma/tamamlama ve sprint süresi projenin alanında Yönetici
+     (sistem yöneticisi sınırsız; üyesiz eski alanda yalnız sistem yöneticisi); sprint süresi 1–8 hafta. */
   const SP = (id, pid, state, extra = {}) => ({ c: 'sprints', id, op: 'put', data: { projectId: pid, name: id, state, ...extra } });
-  const SPRINT_403 = 'Sprinti yalnızca proje yöneticisi başlatıp bitirebilir';
-  test('sprint: üye olmayan Üye başlatamaz/tamamlayamaz (403), oluşturabilir; üye ve yönetici başlatır ve tamamlar', async () => {
-    ok(await A.sync([P('pk_spy', { type: 'agile', members: ['u_admin', 'u_k_m'] }), ...flow('pk_spy')]));
+  const SPRINT_403 = 'Sprinti yalnızca alan yöneticisi başlatıp bitirebilir';
+  const WEEKS_403 = 'Sprint süresini yalnızca alan yöneticisi değiştirebilir';
+  const SPWS = { name: 'Sprint alanı', members: [{ userId: 'u_k_m', role: 'admin' }, { userId: 'u_k_n', role: 'member' }, { userId: 'u_k_v', role: 'viewer' }] };
+  test('sprint: alan Üyesi başlatamaz/tamamlayamaz (403), oluşturabilir; alan Yöneticisi ve sistem yöneticisi başlatır ve tamamlar', async () => {
+    ok(await A.sync([{ c: 'workspaces', id: 'ws_ksp', op: 'put', data: SPWS },
+      P('pk_spy', { type: 'agile', workspaceId: 'ws_ksp', members: ['u_admin', 'u_k_m', 'u_k_n'] }), ...flow('pk_spy'),
+      P('pk_spz', { type: 'agile', workspaceId: 'ws_ksp' }), ...flow('pk_spz')]));
     ok(await N.sync([SP('sp_y1', 'pk_spy', 'future', { start: '2026-11-16', end: '2026-11-22' })]));       // planlama serbest
     const r = await N.sync([SP('sp_y1', 'pk_spy', 'active')]);
-    assert.deepEqual(reasons(r), [SPRINT_403]);
+    assert.deepEqual(reasons(r), [SPRINT_403]);                                                            // proje üyesi olsa da alan Üyesi
     assert.equal((await row('sprints', 'sp_y1')).state, 'future');
     assert.deepEqual(reasons(await N.sync([SP('sp_y9', 'pk_spy', 'active')])), [SPRINT_403]);             // doğrudan aktif oluşturma da başlatmadır
     assert.equal(await row('sprints', 'sp_y9'), undefined);
-    ok(await M.sync([SP('sp_y1', 'pk_spy', 'active')]));                                                     // proje üyesi başlatır
+    ok(await M.sync([SP('sp_y1', 'pk_spy', 'active')]));                                                     // alan Yöneticisi başlatır
     ok(await N.sync([SP('sp_y1', 'pk_spy', 'active', { goal: 'hedef' })]));                                 // aktif sprintte düzenleme serbest
     assert.deepEqual(reasons(await N.sync([SP('sp_y1', 'pk_spy', 'closed')])), [SPRINT_403]);
     assert.equal((await row('sprints', 'sp_y1')).state, 'active');
     ok(await M.sync([SP('sp_y1', 'pk_spy', 'closed')]));
-    ok(await A.sync([SP('sp_y2', 'pk_spy', 'active')]));                                                     // yönetici her projede
+    ok(await A.sync([SP('sp_y2', 'pk_spy', 'active')]));                                                     // sistem yöneticisi her projede
     ok(await A.sync([SP('sp_y2', 'pk_spy', 'closed')]));
-    /* aktif sprinti üye olmadığı projeye taşımak da başlatmadır */
-    ok(await N.sync([P('pk_spn', { type: 'agile', members: ['u_k_n'] }), ...flow('pk_spn'), SP('sp_y3', 'pk_spn', 'active')]));
+    /* alan Yöneticisi, proje üye listesinde olmadığı projede de başlatır; alan İzleyicisi başlatamaz */
+    ok(await M.sync([SP('sp_y6', 'pk_spz', 'active')]));
+    ok(await M.sync([SP('sp_y6', 'pk_spz', 'closed')]));
+    assert.equal(reasons(await V.sync([SP('sp_y5', 'pk_spz', 'active')])).length, 1);
+    assert.equal(await row('sprints', 'sp_y5'), undefined);
+    /* aktif sprinti alan Yöneticisi olmadığı alandaki projeye taşımak da başlatmadır */
+    ok(await A.sync([{ c: 'workspaces', id: 'ws_ksp2', op: 'put', data: { name: 'Sprint alanı 2', members: [{ userId: 'u_k_m', role: 'member' }, { userId: 'u_k_n', role: 'admin' }] } },
+      P('pk_spn', { type: 'agile', workspaceId: 'ws_ksp2' }), ...flow('pk_spn')]));
+    ok(await N.sync([SP('sp_y3', 'pk_spn', 'active')]));                                                     // N burada alan Yöneticisi
     assert.deepEqual(reasons(await N.sync([SP('sp_y3', 'pk_spy', 'active')])), [SPRINT_403]);
-    /* üye listesi boş projede herkes üyedir */
-    ok(await N.sync([SP('sp_y4', 'pk_bos', 'active')]));
-    ok(await N.sync([SP('sp_y4', 'pk_bos', 'closed')]));
+    assert.deepEqual(reasons(await M.sync([SP('sp_y7', 'pk_spn', 'active')])), [SPRINT_403]);              // M burada alan Üyesi
+    /* üyesiz (eski) alanda yalnız sistem yöneticisi: üye listesi boş projede de Üye başlatamaz */
+    assert.deepEqual(reasons(await N.sync([SP('sp_y4', 'pk_bos', 'active')])), [SPRINT_403]);
+    assert.equal(await row('sprints', 'sp_y4'), undefined);
+    ok(await A.sync([SP('sp_y4', 'pk_bos', 'active')]));
+    assert.deepEqual(reasons(await N.sync([SP('sp_y4', 'pk_bos', 'closed')])), [SPRINT_403]);
+    ok(await A.sync([SP('sp_y4', 'pk_bos', 'closed')]));
     assert.deepEqual(reasons(await V.sync([SP('sp_y5', 'pk_bos', 'active')])), ['salt okunur kullanıcı']);
   });
 
-  test('sprint süresi: 1–8 tamsayı (boş = 1); geçersiz değer reddedilir; yalnız proje yöneticisi değiştirir', async () => {
-    ok(await A.sync([P('pk_spw', { type: 'agile', members: ['u_admin', 'u_k_m'] })]));
-    ok(await M.sync([P('pk_spw', { type: 'agile', members: ['u_admin', 'u_k_m'], sprintWeeks: 2 })]));
+  test('sprint süresi: 1–8 tamsayı (boş = 1); geçersiz değer reddedilir; yalnız alan Yöneticisi değiştirir', async () => {
+    const W = { type: 'agile', workspaceId: 'ws_ksp', members: ['u_admin', 'u_k_m', 'u_k_n'] };
+    ok(await A.sync([P('pk_spw', W)]));
+    ok(await M.sync([P('pk_spw', { ...W, sprintWeeks: 2 })]));                                               // alan Yöneticisi
     assert.equal((await row('projects', 'pk_spw')).sprintWeeks, 2);
     for (const bad of [0, 9, 1.5, '2', -1, true, 'iki'])
-      assert.deepEqual(reasons(await A.sync([P('pk_spw', { type: 'agile', members: ['u_admin', 'u_k_m'], sprintWeeks: bad })])),
+      assert.deepEqual(reasons(await A.sync([P('pk_spw', { ...W, sprintWeeks: bad })])),
         ['Sprint süresi 1 ile 8 hafta arasında bir tamsayı olmalı'], String(bad));
-    ok(await A.sync([P('pk_spw', { type: 'agile', members: ['u_admin', 'u_k_m'], sprintWeeks: 8 })]));
-    ok(await A.sync([P('pk_spw', { type: 'agile', members: ['u_admin', 'u_k_m'], sprintWeeks: 1 })]));
-    assert.deepEqual(reasons(await N.sync([P('pk_spw', { type: 'agile', members: ['u_admin', 'u_k_m'], sprintWeeks: 3 })])),
-      ['Sprint süresini yalnızca proje yöneticisi değiştirebilir']);
+    ok(await A.sync([P('pk_spw', { ...W, sprintWeeks: 8 })]));
+    ok(await A.sync([P('pk_spw', { ...W, sprintWeeks: 1 })]));
+    assert.equal(reasons(await N.sync([P('pk_spw', { ...W, sprintWeeks: 3 })])).length, 1);                  // alan Üyesi
+    assert.equal(reasons(await V.sync([P('pk_spw', { ...W, sprintWeeks: 3 })])).length, 1);                  // alan İzleyicisi
     assert.equal((await row('projects', 'pk_spw')).sprintWeeks, 1);
+    /* üyesiz (eski) alanda: proje üyesi Üye kolonları değiştirebilir ama sprint süresini değiştiremez */
+    ok(await A.sync([P('pk_spl', { type: 'agile', members: ['u_admin', 'u_k_m'] })]));
+    assert.deepEqual(reasons(await M.sync([P('pk_spl', { type: 'agile', members: ['u_admin', 'u_k_m'], sprintWeeks: 3 })])), [WEEKS_403]);
+    ok(await A.sync([P('pk_spl', { type: 'agile', members: ['u_admin', 'u_k_m'], sprintWeeks: 3 })]));
     ok(await N.sync([P('pk_spw2', { type: 'agile', members: ['u_k_n'], sprintWeeks: 4 })]));            // yeni projede serbest
   });
 });

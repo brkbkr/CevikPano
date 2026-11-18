@@ -4318,9 +4318,9 @@ function wireBacklogAdd() {
 }
 
 /* ---- sprint yaşam döngüsü (Jira ile aynı kurallar) ----
-   Başlatma/tamamlama yalnız proje yöneticisinde (canManageProject); asıl kural sunucuda (store.js checkSprintState).
+   Başlatma/tamamlama yalnız alan yöneticisinde (canManageProject); asıl kural sunucuda (store.js checkSprintState).
    Sprint süresi projede (projects.data.sprintWeeks, 1–8 hafta, varsayılan 1). */
-const SPRINT_FORBIDDEN = 'Sprinti yalnızca proje yöneticisi başlatıp bitirebilir';
+const SPRINT_FORBIDDEN = 'Sprinti yalnızca alan yöneticisi başlatıp bitirebilir';
 const sprintWeeks = p => { const w = p?.sprintWeeks; return Number.isInteger(w) && w >= 1 && w <= 8 ? w : 1; };
 const sprintEnd = (start, p) => iso(addD(start + 'T12:00', sprintWeeks(p) * 7 - 1));
 /* Yeni sprintin önerilen tarihleri: önceki sprintin bitişinin ertesi günü (yoksa bu pazartesi) + süre. */
@@ -4428,7 +4428,7 @@ function renderSprint() {
       <span class="as-eic">${ic('sprint')}</span>
       <h3>Aktif sprint yok</h3>
       <p>Bir sprint başladığında işleri burada kolonlarıyla, ilerlemesi ve kalan günüyle görürsünüz.</p>
-      ${man ? `<a class="btn pri" id="asPlan" href="#backlog">${ic('backlog')}Sprint planla</a>` : '<p class="sub">Sprinti proje yöneticisi başlatır.</p>'}</div>`;
+      ${man ? `<a class="btn pri" id="asPlan" href="#backlog">${ic('backlog')}Sprint planla</a>` : '<p class="sub">Sprinti alan yöneticisi başlatır.</p>'}</div>`;
   const st = sprintStats(s.id);
   const left = s.end ? Math.round((hmDay(s.end) - hmDay(TODAY)) / 864e5) : null;
   const pct = st.n ? st.done / st.n * 100 : 0, hp = st.est ? st.estDone / st.est * 100 : 0;
@@ -5696,7 +5696,7 @@ function sprintForm(id) {
   const pr = P();
   if (!pr) return toast('Önce bir proje seçin');
   const s = id ? sprint(id) : null;
-  if (!s && !canManageProject(pr)) return toast('Sprinti yalnızca proje yöneticisi oluşturabilir');
+  if (!s && !canManageProject(pr)) return toast('Sprinti yalnızca alan yöneticisi oluşturabilir');
   const def = s ? { start: s.start || '', end: s.end || '' } : sprintRange(pr);
   const bl = issuesOf().filter(i => !i.sprintId && i.type !== 'epic' && !isDone(i));
   const scope = s ? sprintStats(s.id) : { n: 0, est: 0 };
@@ -6853,13 +6853,17 @@ function runRules(i, trigger, ctx = {}) {
    5) YÖNETİM GÖRÜNÜMÜ
    ============================================================ */
 function toolbarAdmin() {
-  const tabs = [['workflow', 'İş akışı'], ['types', 'İş tipleri'], ['fields', 'Özel alanlar'], ['rules', 'Otomasyon'], ['people', 'Modüller & genel']];
+  const tabs = [['workflow', 'İş akışı'], ['types', 'İş tipleri'], ['fields', 'Özel alanlar'], ['rules', 'Otomasyon'], ['people', 'Modüller & genel']]
+    .filter(([v]) => isAdmin() || v === 'workflow');
   return `<div class="seg" id="adminTabs">${tabs.map(([v, l]) =>
-    `<button data-a="${v}" class="${(DB.ui.adminTab || 'workflow') === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+    `<button data-a="${v}" class="${adminTab() === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
 }
+/* Genel ayarlar (iş tipleri, özel alanlar, otomasyon, modüller, varsayılan akış) sunucuda yalnız sistem yöneticisinde
+   (ADMIN_ONLY, _settings); alan yöneticisi yalnız projeye özel İş akışı sekmesini görür. */
+const adminTab = () => isAdmin() ? (DB.ui.adminTab || 'workflow') : 'workflow';
 
 function renderAdmin() {
-  const tab = DB.ui.adminTab || 'workflow';
+  const tab = adminTab();
   if (tab === 'workflow') {
     const ss = stats(), pr = P(), nDone = ss.filter(s => s.cat === 'done').length;
     /* Proje türü ve kolonlar (#12): tür burada da görünür, değişiklik aynı pencereyle. */
@@ -6900,9 +6904,9 @@ function renderAdmin() {
       <div style="font-size:11.5px;color:var(--ink3);margin-top:8px">
         Şablon uygulamak mevcut durumları yeniden adlandırır; fazla durumlar silinir, eksikler eklenir.
         İşler en yakın sıradaki duruma taşınır.</div>
-      <div class="sec">Yeni projelerin varsayılan akışı</div>
+      ${isAdmin() ? `<div class="sec">Yeni projelerin varsayılan akışı</div>
       <div id="defFlow"></div>
-      <button class="btn sm" id="saveDefFlow" style="margin-top:6px">Varsayılanı kaydet</button>
+      <button class="btn sm" id="saveDefFlow" style="margin-top:6px">Varsayılanı kaydet</button>` : ''}
     </div>`;
   }
 
@@ -10357,8 +10361,9 @@ const colKey = s => String(s ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCas
 const colsOf = pid => DB.statuses.filter(s => s.projectId === pid).sort((a, b) => (a.ord ?? 0) - (b.ord ?? 0));
 /* Kolonları ve türü değiştirebilen: yönetici ya da projenin üyesi olan Üye (izleyici hiçbir zaman). */
 const canEditCols = p => canDesign(p);
-/* Proje yöneticiliği için tek kapı (sprint başlat/bitir, sprint süresi). Sunucudaki karşılığı store.js → canConfigure. */
-const canManageProject = p => !!p && (isAdmin() || canEditCols(p));
+/* Proje yöneticiliği için tek kapı (sprint oluştur/başlat/bitir, sprint süresi): projenin alanında Yönetici
+   (sistem yöneticisi ve alan sahibi dahil; üyesiz eski alanda yalnız sistem yöneticisi). Sunucuda store.js → canManageSprint. */
+const canManageProject = p => !!p && wsRole(CU(), wsOf(p)) === 'admin';
 const typeTag = t => t === 'agile' ? `<span class="pt-type agile">${ic('sprint')}Agile</span>` : `<span class="pt-type">${ic('board')}Pano</span>`;
 const catOk = c => ['todo', 'inprogress', 'done'].includes(c) ? c : 'todo';
 function colNameErr(name, others) {
