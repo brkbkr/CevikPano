@@ -86,7 +86,8 @@ const XSS = '<img src=x onerror="window.__xss=1">';
   ok('nothing sent to server', (await srvIssues(Mb)).length === n0);
   await Mb.click('#f_reqBtn'); await sleep(200);
   const all = await Mb.evaluate(() => [...document.querySelectorAll('.qm.req .qm-opt[data-qv]')].map(e => e.dataset.qv));
-  ok('picker: contacts of active customers + "Yeni kişi ekle"; no "Yok" when required', all.includes(`${C1}|${CA}`) && all.includes('__add') && !all.includes(''), JSON.stringify(all.slice(0, 6)));
+  /* 22b: hızlı kişi ekleme yalnız sistem yöneticisi: üyede "Yeni kişi ekle" yok */
+  ok('picker: contacts of active customers, no "Yeni kişi ekle" for member; no "Yok" when required', all.includes(`${C1}|${CA}`) && !all.includes('__add') && !all.includes(''), JSON.stringify(all.slice(0, 6)));
   const search = async q => { await Mb.fill('.qm.req .qm-in', q); await sleep(80);
     return Mb.evaluate(() => [...document.querySelectorAll('.qm.req .qm-opt[data-qv]')].map(e => e.dataset.qv).filter(v => v !== '__add')); };
   ok('search by name (Türkçe katlama: "ayse")', JSON.stringify(await search('ayse')) === JSON.stringify([`${C1}|${CA}`]));
@@ -100,33 +101,34 @@ const XSS = '<img src=x onerror="window.__xss=1">';
   let mine = (await srvIssues(Mb)).filter(i => i.summary === 'Fatura sorusu ' + RUN)[0];
   ok('server: issue has requester {customerId, contactId}', mine?.requester?.customerId === C1 && mine.requester.contactId === CA, JSON.stringify(mine?.requester));
 
-  /* ---- 3) hızlı kişi ekle (üye) ---- */
-  await Mb.evaluate(() => newIssueForm()); await sleep(200);
-  await Mb.fill('#f_sum', 'Yeni kişiden talep ' + RUN);
-  await Mb.click('#f_reqBtn'); await sleep(150);
-  await Mb.click('.qm.req [data-qv="__add"]'); await sleep(250);
-  ok('quick add dialog opens above the form', await Mb.evaluate(() => !!document.querySelector('#scrim2.on #qc_n') && !!document.querySelector('#scrim.on #f_sum')));
-  await Mb.selectOption('#qc_cu', C2);
-  await Mb.click('#qc_ok'); await sleep(150);
-  ok('quick add: name required', (await txt(Mb, '#qc_err')).includes('Ad gerekli'));
-  await Mb.fill('#qc_n', 'Deniz Yeni ' + RUN); await Mb.fill('#qc_e', 'deniz.' + RUN + '@baska.test'); await Mb.fill('#qc_p', '0212 000 00 01');
-  await Mb.click('#qc_ok'); await sleep(700);
-  ok('quick add: dialog closes, new person selected in form', await Mb.evaluate(() => !document.querySelector('#scrim2.on'))
-    && (await txt(Mb, '#f_reqBtn')).includes('Deniz Yeni'));
-  await Mb.click('#doCreate'); await sleep(300); await flush(Mb);
-  const c2 = await srv(Mb, 'customers', C2);
+  /* ---- 3) hızlı kişi ekle (22b: yalnız sistem yöneticisi; üye 403) ---- */
+  ok('member: quick add endpoint 403', await Mb.evaluate(async c => (await fetch('/api/customers/' + c + '/contacts', { method: 'POST', headers: { 'x-pano': '1', 'content-type': 'application/json' }, body: '{"name":"x"}' })).status === 403, C2));
+  await A.evaluate(pt => { DB.ui.project = pt; DB.ui.view = 'board'; render(); newIssueForm(); }, PT); await sleep(200);
+  await A.fill('#f_sum', 'Yeni kişiden talep ' + RUN);
+  await A.click('#f_reqBtn'); await sleep(150);
+  await A.click('.qm.req [data-qv="__add"]'); await sleep(250);
+  ok('quick add dialog opens above the form', await A.evaluate(() => !!document.querySelector('#scrim2.on #qc_n') && !!document.querySelector('#scrim.on #f_sum')));
+  await A.selectOption('#qc_cu', C2);
+  await A.click('#qc_ok'); await sleep(150);
+  ok('quick add: name required', (await txt(A, '#qc_err')).includes('Ad gerekli'));
+  await A.fill('#qc_n', 'Deniz Yeni ' + RUN); await A.fill('#qc_e', 'deniz.' + RUN + '@baska.test'); await A.fill('#qc_p', '0212 000 00 01');
+  await A.click('#qc_ok'); await sleep(700);
+  ok('quick add: dialog closes, new person selected in form', await A.evaluate(() => !document.querySelector('#scrim2.on'))
+    && (await txt(A, '#f_reqBtn')).includes('Deniz Yeni'));
+  await A.click('#doCreate'); await sleep(300); await flush(A);
+  const c2 = await srv(A, 'customers', C2);
   const dz = c2?.contacts?.find(x => x.name === 'Deniz Yeni ' + RUN);
-  mine = (await srvIssues(Mb)).find(i => i.summary === 'Yeni kişiden talep ' + RUN);
+  mine = (await srvIssues(A)).find(i => i.summary === 'Yeni kişiden talep ' + RUN);
   ok('server: contact added to customer (name/email/phone), issue points to it', !!dz && dz.email === 'deniz.' + RUN + '@baska.test' && dz.phone === '0212 000 00 01'
     && mine?.requester?.contactId === dz.id && c2.name === 'Başka Ticaret ' + RUN, JSON.stringify(dz));
-  ok('member sync not rejected (customers not pushed by client)', await Mb.evaluate(() => SYNC_STATE === 'ok' && !diffSnap(SNAP, snapOf(DB)).some(x => x.c === 'customers')));
+  ok('admin sync ok after quick add (customers not re-pushed by client)', await A.evaluate(() => SYNC_STATE === 'ok' && !diffSnap(SNAP, snapOf(DB)).some(x => x.c === 'customers')));
 
   /* ---- 4) e-postadan talep: yapıştırmada otomatik eşleşme, eşleşmeyen adres, XSS konu ---- */
   await view(Mb, 'pool');
   await Mb.click('#tp_mail'); await sleep(250);
   if (await Mb.$('#et_proj')) await Mb.selectOption('#et_proj', PT);
   await Mb.fill('#et_from', 'Kimse <yok.' + RUN + '@hic.test>'); await sleep(100);
-  ok('unknown From: "kayıtlı kişi yok" + "kişi olarak ekleyin"', (await txt(Mb, '#et_match')).includes('kayıtlı kişi yok') && !!(await Mb.$('#et_add')));
+  ok('unknown From: "kayıtlı kişi yok", member: no "kişi olarak ekleyin" (22b)', (await txt(Mb, '#et_match')).includes('kayıtlı kişi yok') && !(await Mb.$('#et_add')));
   await Mb.evaluate(v => { const e = document.getElementById('et_from'); e.value = v; e.dispatchEvent(new Event('input', { bubbles: true })); },
     `"Ayşe Örnek" <AYSE.${RUN}@ORNEK.TEST>`); await sleep(100);
   ok('pasted From matches contact e-mail case-insensitively → auto selected', (await txt(Mb, '#et_match')).includes('Eşleşti') && (await txt(Mb, '#et_reqBtn')).includes('Ayşe Örnek'));

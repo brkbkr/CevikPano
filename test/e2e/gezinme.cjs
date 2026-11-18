@@ -287,6 +287,10 @@ const LABELS = ['Pano', 'İş listesi', 'Zaman planı', 'Yol haritası', 'Zaman 
       sel: !!document.querySelector('#projSel, #wsCur, #wsSwitch'), conf: [...document.querySelectorAll('#rail')].some(x => /Yapılandırma|Proje ayarları/.test(x.textContent)) }; }, [WS, PX]);
   ok('A2 tree: workspace row button (aria-expanded/controls), current project aria-current=page, old selectors gone', t1.tag === 'BUTTON' && t1.exp === 'true' && t1.list
     && t1.cur === 'page' && t1.pages === 1 && t1.name === WSN && t1.img === 0 && !t1.sel && !t1.conf, JSON.stringify(t1));
+  /* 22b: alan adı önce alan sayfasını açar (açık kalır); alan sayfasındayken tıklamak aç/kapa yapar */
+  await Mp.click(`#wsTree [data-wstog="${WS}"]`); await sleep(250);
+  ok('A2 tree: workspace name opens the workspace page (row stays open)', await Mp.evaluate(WS => DB.ui.view === 'workspace' && DB.ui.workspace === WS
+    && !!document.querySelector(`[data-wspage="${WS}"]`) && document.querySelector(`#wsTree [data-wstog="${WS}"]`).getAttribute('aria-expanded') === 'true', WS));
   await Mp.click(`#wsTree [data-wstog="${WS}"]`); await sleep(200);
   ok('A2 tree: workspace row collapses, focus stays on the row', await Mp.evaluate(WS => { const r = document.querySelector(`#wsTree [data-wstog="${WS}"]`);
     return r.getAttribute('aria-expanded') === 'false' && document.getElementById(r.getAttribute('aria-controls')).hidden && DB.ui.wsOpen?.[WS] === false && document.activeElement === r; }, WS));
@@ -303,8 +307,8 @@ const LABELS = ['Pano', 'İş listesi', 'Zaman planı', 'Yol haritası', 'Zaman 
       cur: l.querySelector('[aria-current="page"]')?.dataset.proj }; }, [WS2, P6]);
   ok('A2: >5 projects → 3 rows (current included) + "Tüm projeler (6)"', t2.rows.length === 3 && t2.rows.includes(P6[4]) && t2.cur === P6[4] && t2.all === 'Tüm projeler (6)', JSON.stringify(t2));
   await Mp.click(`#wsTree [data-wsall="${WS2}"]`); await sleep(400);
-  ok('A2: "Tüm projeler (n)" opens Projeler focused on that workspace group', await Mp.evaluate(WS2 => DB.ui.view === 'projects'
-    && document.activeElement?.dataset.wsgrp === WS2 && document.querySelector('#rail [data-v="projects"]')?.getAttribute('aria-current') === 'page', WS2));
+  ok('A2: "Tüm projeler (n)" opens the workspace page (22b: Projeler menüde yok)', await Mp.evaluate(WS2 => DB.ui.view === 'workspace' && DB.ui.workspace === WS2
+    && document.querySelectorAll(`[data-wspage="${WS2}"] [data-wsproj]`).length === 6 && !document.querySelector('#rail [data-v="projects"]'), WS2));
   /* genel ekrandayken hatırlanan proje kalın (zeminsiz); ağaçtan seçince Pano; proje ekranındayken aynı sekme */
   ok('A2: on a general screen the remembered project is bold, not current', await Mp.evaluate(P => { const a = document.querySelector(`#wsTree [data-proj="${P}"]`);
     return a.classList.contains('is-last') && !a.hasAttribute('aria-current'); }, P6[4]));
@@ -328,7 +332,7 @@ const LABELS = ['Pano', 'İş listesi', 'Zaman planı', 'Yol haritası', 'Zaman 
 
   // A2-4) başkası proje ekler / siler / üyelikten çıkarır → ≤4 sn (+ pay) güncellenir; aç/kapa bozulmaz
   await go(Mp, PX, 'board');
-  await Mp.click(`#wsTree [data-wstog="${WS2}"]`); await sleep(200);        // 6 projeli alan kapalı
+  await Mp.evaluate(WS2 => { wsOpenSet(WS2, false); save(); renderRail(); }, WS2); await sleep(200);        // 6 projeli alan kapalı
   const NP = 'p_nvnew' + RUN;
   await A.evaluate(async ([NP, WS, M, R]) => { const k = projCode('Yeni ' + R, new Set(DB.projects.map(x => x.code || x.key)));
     DB.projects.push({ id: NP, key: k, code: k, name: 'Sonradan ' + R, lead: SESSION, counter: 0, members: [SESSION, M], archived: false, workspaceId: WS }); save(); await flushAll(); }, [NP, WS, M, RUN]);
@@ -338,83 +342,89 @@ const LABELS = ['Pano', 'İş listesi', 'Zaman planı', 'Yol haritası', 'Zaman 
   await A.evaluate(async NP => { DB.projects = DB.projects.filter(p => p.id !== NP); save(); await flushAll(); }, NP);
   const tDel = await waitFor(Mp, NP => !document.querySelector(`#wsTree [data-proj="${NP}"]`), NP, 9000);
   ok('A2: project deleted by someone else leaves the tree (poll)', tDel >= 0 && tDel <= 6000, tDel + ' ms');
-  await Mp.click(`#wsTree [data-wstog="${WS2}"]`); await sleep(200);
+  await Mp.evaluate(WS2 => { wsOpenSet(WS2, true); save(); renderRail(); }, WS2); await sleep(200);
   await go(Mp, P6[5], 'board');
   await A.evaluate(async ([P, M]) => { const p = DB.projects.find(x => x.id === P); p.members = p.members.filter(x => x !== M); save(); await flushAll(); }, [P6[5], M]);
   const tOut = await waitFor(Mp, pid => DB.ui.project !== pid && !!P() && !document.querySelector(`#wsTree [data-proj="${pid}"]`), P6[5], 9000).catch(() => -1);
   ok('A2: removed from the current project → falls back to another project', tOut >= 0, tOut + ' ms');
 
-  // A2-5) Kenar çubuğunu özelleştir (üye): açıklama, sabit satırlar, Kullanıcılar/Sistem yok, taslak; Vazgeç / Esc atar
+  /* 22b: üyenin özelleştirme listesi: Projeler / Cariler / Kullanıcılar / Sistem yok */
   await go(Mp, PX, 'board');
   await Mp.click('#rail [data-navws]'); await sleep(150); await Mp.click('#navPop [data-navcz]'); await sleep(300);
-  const c1 = await Mp.evaluate(() => { const m = document.querySelector('#scrim .modal');
+  const mRows = await Mp.evaluate(() => [...document.querySelectorAll('[data-czrow]')].map(r => r.dataset.czrow).join());
+  await Mp.keyboard.press('Escape'); await sleep(150);
+  ok('A2 member: customize list without Projeler/Cariler/Kullanıcılar/Sistem', mRows === 'home,recent,ws,reports', mRows);
+  // A2-5) Kenar çubuğunu özelleştir (22b: yönetici; üyede yalnız Son kullanılanlar + Raporlar): açıklama, sabit satırlar, taslak; Vazgeç / Esc atar
+  await go(Dp, PX, 'board');
+  await Dp.click('#rail [data-navws]'); await sleep(150); await Dp.click('#navPop [data-navcz]'); await sleep(300);
+  const c1 = await Dp.evaluate(() => { const m = document.querySelector('#scrim .modal');
     return { role: m?.getAttribute('role'), lab: document.getElementById(m?.getAttribute('aria-labelledby'))?.textContent, p: m?.querySelector('.nv-czb > p')?.textContent,
       rows: [...m.querySelectorAll('[data-czrow]')].map(r => r.dataset.czrow), fixed: [...m.querySelectorAll('.nv-cz-r.fixed')].map(r => r.dataset.czrow + ':' + !r.querySelector('[data-czgrip]') + ':' + /Sabit/.test(r.textContent)),
       cnt: document.getElementById('cz_n').textContent, live: document.getElementById('cz_live')?.getAttribute('role') }; });
-  ok('A2 customize: dialog, description, fixed rows (no grip, "Sabit"), member without Kullanıcılar/Sistem, Raporlar movable', c1.role === 'dialog' && c1.lab === 'Kenar çubuğunu özelleştir'
+  ok('A2 customize: dialog, description, fixed rows (no grip, "Sabit"), admin list (no Projeler), Raporlar movable', c1.role === 'dialog' && c1.lab === 'Kenar çubuğunu özelleştir'
     && c1.p === 'Seçili öğeler kenar çubuğunda her zaman görünür; seçmediklerin "Daha fazla" menüsünde. Değişiklikler yalnız seni etkiler.'
-    && c1.rows.join() === 'home,recent,ws,projects,customers,reports' && c1.fixed.join() === 'home:true:true,ws:true:true' && c1.cnt === '6 öğe · 6 görünür' && c1.live === 'status', JSON.stringify(c1));
-  await Mp.click('[data-czchk="projects"]'); await sleep(100);
-  ok('A2 customize: draft only — rail unchanged before saving', await Mp.evaluate(() => !!document.querySelector('#rail [data-v="projects"]') && !DB.ui.nav
-    && document.querySelector('[data-czchk="projects"]').getAttribute('aria-checked') === 'false' && /Daha fazla menüsünde/.test(document.querySelector('[data-czrow="projects"]').textContent)));
-  await Mp.click('#scrim .m-f [data-close]'); await sleep(200);
-  ok('A2 customize: Vazgeç discards', await Mp.evaluate(() => !document.getElementById('scrim').classList.contains('on') && !DB.ui.nav && !!document.querySelector('#rail [data-v="projects"]')));
-  await Mp.click('#rail [data-navws]'); await sleep(150); await Mp.click('#navPop [data-navcz]'); await sleep(300);
-  await Mp.click('[data-czchk="customers"]'); await Mp.keyboard.press('Escape'); await sleep(200);
-  ok('A2 customize: Esc discards', await Mp.evaluate(() => !document.getElementById('scrim').classList.contains('on') && !DB.ui.nav));
+    && c1.rows.join() === 'home,recent,ws,customers,reports,users,system' && c1.fixed.join() === 'home:true:true,ws:true:true' && c1.cnt === '7 öğe · 7 görünür' && c1.live === 'status', JSON.stringify(c1));
+  await Dp.click('[data-czchk="customers"]'); await sleep(100);
+  ok('A2 customize: draft only — rail unchanged before saving', await Dp.evaluate(() => !!document.querySelector('#rail [data-v="customers"]') && !DB.ui.nav
+    && document.querySelector('[data-czchk="customers"]').getAttribute('aria-checked') === 'false' && /Daha fazla menüsünde/.test(document.querySelector('[data-czrow="customers"]').textContent)));
+  await Dp.click('#scrim .m-f [data-close]'); await sleep(200);
+  ok('A2 customize: Vazgeç discards', await Dp.evaluate(() => !document.getElementById('scrim').classList.contains('on') && !DB.ui.nav && !!document.querySelector('#rail [data-v="customers"]')));
+  await Dp.click('#rail [data-navws]'); await sleep(150); await Dp.click('#navPop [data-navcz]'); await sleep(300);
+  await Dp.click('[data-czchk="reports"]'); await Dp.keyboard.press('Escape'); await sleep(200);
+  ok('A2 customize: Esc discards', await Dp.evaluate(() => !document.getElementById('scrim').classList.contains('on') && !DB.ui.nav));
 
   // A2-6) sırala: Alt+↑ tutamakta + duyuru; ⋯ → En üste taşı; gizle; Kaydet → kenar çubuğu, Daha fazla, adres çalışır, kalıcı
-  await Mp.click('#rail [data-navws]'); await sleep(150); await Mp.click('#navPop [data-navcz]'); await sleep(300);
-  await Mp.focus('[data-czgrip="customers"]'); await Mp.keyboard.press('Alt+ArrowUp'); await sleep(100);
-  const c2 = await Mp.evaluate(() => ({ live: document.getElementById('cz_live').textContent, rows: [...document.querySelectorAll('[data-czrow]')].map(r => r.dataset.czrow).join(),
+  await Dp.click('#rail [data-navws]'); await sleep(150); await Dp.click('#navPop [data-navcz]'); await sleep(300);
+  await Dp.focus('[data-czgrip="reports"]'); await Dp.keyboard.press('Alt+ArrowUp'); await sleep(100);
+  const c2 = await Dp.evaluate(() => ({ live: document.getElementById('cz_live').textContent, rows: [...document.querySelectorAll('[data-czrow]')].map(r => r.dataset.czrow).join(),
     f: document.activeElement.dataset.czgrip, lab: document.activeElement.getAttribute('aria-label') }));
-  ok('A2 customize: Alt+↑ on the grip moves and announces ("Cariler 4. sıraya taşındı")', c2.live === 'Cariler 4. sıraya taşındı' && c2.rows === 'home,recent,ws,customers,projects,reports'
-    && c2.f === 'customers' && /4\. sırada/.test(c2.lab), JSON.stringify(c2));
-  await Mp.click('[data-czmore="customers"]'); await sleep(150);
-  const c3 = await Mp.evaluate(() => ({ role: document.getElementById('czPop')?.getAttribute('role'), items: [...document.querySelectorAll('#czPop [role="menuitem"]')].map(b => b.textContent.trim()),
+  ok('A2 customize: Alt+↑ on the grip moves and announces ("Raporlar 4. sıraya taşındı")', c2.live === 'Raporlar 4. sıraya taşındı' && c2.rows === 'home,recent,ws,reports,customers,users,system'
+    && c2.f === 'reports' && /4\. sırada/.test(c2.lab), JSON.stringify(c2));
+  await Dp.click('[data-czmore="reports"]'); await sleep(150);
+  const c3 = await Dp.evaluate(() => ({ role: document.getElementById('czPop')?.getAttribute('role'), items: [...document.querySelectorAll('#czPop [role="menuitem"]')].map(b => b.textContent.trim()),
     focus: !!document.activeElement.closest('#czPop') }));
   ok('A2 customize: ⋯ menu (Yukarı / Aşağı / En üste taşı)', c3.role === 'menu' && c3.items.join() === 'Yukarı taşı,Aşağı taşı,En üste taşı' && c3.focus, JSON.stringify(c3));
-  await Mp.click('#czPop [data-czmv="top"]'); await sleep(100);
-  ok('A2 customize: "En üste taşı" → 2nd place (fixed items stay), announced', await Mp.evaluate(() => document.getElementById('cz_live').textContent === 'Cariler 2. sıraya taşındı'
-    && [...document.querySelectorAll('[data-czrow]')].map(r => r.dataset.czrow).join() === 'home,customers,ws,recent,projects,reports'));
-  await Mp.click('[data-czchk="projects"]');
-  await Mp.click('#cz_ok'); await sleep(300);
-  const c4 = await railState(Mp);
-  ok('A2 customize: saved → rail order, hidden item in "Daha fazla"', JSON.stringify(c4.nav) === JSON.stringify({ order: ['customers', 'recent', 'projects', 'reports'], hidden: ['projects'] })
-    && c4.items.join() === 'home,customers,recent,greports' && c4.more && !(await Mp.evaluate(() => !!document.querySelector('#rail [data-v="projects"]'))), JSON.stringify(c4));
-  await Mp.click('#navMore [data-navmore]'); await sleep(150);
-  const c5 = await Mp.evaluate(() => ({ role: document.getElementById('navPop')?.getAttribute('role'), items: [...document.querySelectorAll('#navPop [role="menuitem"]')].map(b => b.textContent.trim()) }));
-  ok('A2 "Daha fazla": menu with the hidden item + Kenar çubuğunu özelleştir', c5.role === 'menu' && c5.items.join() === 'Projeler,Kenar çubuğunu özelleştir', JSON.stringify(c5));
-  await Mp.click('#navPop [data-v="projects"]'); await sleep(300);
-  ok('A2 "Daha fazla": hidden screen opens', await Mp.evaluate(() => DB.ui.view === 'projects' && !document.getElementById('navPop')));
-  await hash(Mp, 'home'); await hash(Mp, 'projects');
-  ok('A2: hidden screen address still works', await Mp.evaluate(() => DB.ui.view === 'projects'));
-  await Mp.keyboard.press('g'); await Mp.keyboard.press('h'); await sleep(250); await Mp.keyboard.press("g"); await Mp.keyboard.press("j"); await sleep(300);
-  ok('A2: hidden screen shortcut (g j) still works', await Mp.evaluate(() => DB.ui.view === 'projects'));
-  await Mp.evaluate(() => flushAll()); await Mp.reload(); await sleep(2200);
-  ok('A2 customize: kept after reload (user_prefs)', JSON.stringify((await railState(Mp)).items) === JSON.stringify(['home', 'customers', 'recent', 'greports']));
+  await Dp.click('#czPop [data-czmv="top"]'); await sleep(100);
+  ok('A2 customize: "En üste taşı" → 2nd place (fixed items stay), announced', await Dp.evaluate(() => document.getElementById('cz_live').textContent === 'Raporlar 2. sıraya taşındı'
+    && [...document.querySelectorAll('[data-czrow]')].map(r => r.dataset.czrow).join() === 'home,reports,ws,recent,customers,users,system'));
+  await Dp.click('[data-czchk="customers"]');
+  await Dp.click('#cz_ok'); await sleep(300);
+  const c4 = await railState(Dp);
+  ok('A2 customize: saved → rail order, hidden item in "Daha fazla"', JSON.stringify(c4.nav) === JSON.stringify({ order: ['reports', 'recent', 'customers', 'users', 'system'], hidden: ['customers'] })
+    && c4.items.join() === 'home,greports,recent,users,system' && c4.more && !(await Dp.evaluate(() => !!document.querySelector('#rail [data-v="customers"]'))), JSON.stringify(c4));
+  await Dp.click('#navMore [data-navmore]'); await sleep(150);
+  const c5 = await Dp.evaluate(() => ({ role: document.getElementById('navPop')?.getAttribute('role'), items: [...document.querySelectorAll('#navPop [role="menuitem"]')].map(b => b.textContent.trim()) }));
+  ok('A2 "Daha fazla": menu with the hidden item + Kenar çubuğunu özelleştir', c5.role === 'menu' && c5.items.join() === 'Cariler,Kenar çubuğunu özelleştir', JSON.stringify(c5));
+  await Dp.click('#navPop [data-v="customers"]'); await sleep(300);
+  ok('A2 "Daha fazla": hidden screen opens', await Dp.evaluate(() => DB.ui.view === 'customers' && !document.getElementById('navPop')));
+  await hash(Dp, 'home'); await hash(Dp, 'customers');
+  ok('A2: hidden screen address still works', await Dp.evaluate(() => DB.ui.view === 'customers'));
+  await Dp.keyboard.press('g'); await Dp.keyboard.press('h'); await sleep(250); await Dp.keyboard.press("g"); await Dp.keyboard.press("j"); await sleep(300);
+  ok('A2: Projeler (menüde yok) shortcut g j still works for admin', await Dp.evaluate(() => DB.ui.view === 'projects'));
+  await Dp.evaluate(() => flushAll()); await Dp.reload(); await sleep(2200);
+  ok('A2 customize: kept after reload (user_prefs)', JSON.stringify((await railState(Dp)).items) === JSON.stringify(['home', 'greports', 'recent', 'users', 'system']));
   ok('A2 customize: personal — other users unchanged', await A.evaluate(() => !DB.ui.nav && !document.querySelector('#navMore [data-navmore]')));
-  await Mp.click('#rail [data-navws]'); await sleep(150); await Mp.click('#navPop [data-navcz]'); await sleep(300);
-  await Mp.click('#cz_reset'); await sleep(100);
-  ok('A2 customize: Varsayılana dön resets the draft only', await Mp.evaluate(() => [...document.querySelectorAll('[data-czrow]')].map(r => r.dataset.czrow).join() === 'home,recent,ws,projects,customers,reports'
+  await Dp.click('#rail [data-navws]'); await sleep(150); await Dp.click('#navPop [data-navcz]'); await sleep(300);
+  await Dp.click('#cz_reset'); await sleep(100);
+  ok('A2 customize: Varsayılana dön resets the draft only', await Dp.evaluate(() => [...document.querySelectorAll('[data-czrow]')].map(r => r.dataset.czrow).join() === 'home,recent,ws,customers,reports,users,system'
     && document.querySelectorAll('[data-czchk][aria-checked="false"]').length === 0 && !!DB.ui.nav));
-  await Mp.click('#cz_ok'); await sleep(300);
-  const c6 = await railState(Mp);
-  ok('A2 customize: default saved → nav removed, no "Daha fazla"', c6.nav === undefined && !c6.more && c6.items.join() === 'home,recent,projects,customers,greports', JSON.stringify(c6));
+  await Dp.click('#cz_ok'); await sleep(300);
+  const c6 = await railState(Dp);
+  ok('A2 customize: default saved → nav removed, no "Daha fazla"', c6.nav === undefined && !c6.more && c6.items.join() === 'home,recent,customers,greports,users,system', JSON.stringify(c6));
 
   // A2-7) izleyici de özelleştirir ("+" yok, ⋯ var); yönetici Kullanıcılar/Sistem'i görür
   await go(Vp, PX, 'board');
   ok('A2 viewer: no "+" new workspace, ⋯ present', await Vp.evaluate(() => !document.querySelector('#rail [data-wsnew]') && !!document.querySelector('#rail [data-navws]')));
   await Vp.click('#rail [data-navws]'); await sleep(150); await Vp.click('#navPop [data-navcz]'); await sleep(300);
-  await Vp.click('[data-czchk="customers"]'); await Vp.click('#cz_ok'); await sleep(300); await Vp.evaluate(() => flushAll()); await Vp.reload(); await sleep(2200);
-  ok('A2 viewer: customizes and it persists', await Vp.evaluate(() => DB.ui.nav?.hidden?.join() === 'customers' && !document.querySelector('#rail [data-v="customers"]')
+  await Vp.click('[data-czchk="reports"]'); await Vp.click('#cz_ok'); await sleep(300); await Vp.evaluate(() => flushAll()); await Vp.reload(); await sleep(2200);
+  ok('A2 viewer: customizes and it persists', await Vp.evaluate(() => DB.ui.nav?.hidden?.join() === 'reports' && !document.querySelector('#rail [data-v="greports"]')
     && !!document.querySelector('#navMore [data-navmore]')));
   await Vp.evaluate(async () => { delete DB.ui.nav; save(); render(); await flushAll(); });
   await go(Dp, PX, 'board');
   await Dp.click('#rail [data-navws]'); await sleep(150); await Dp.click('#navPop [data-navcz]'); await sleep(300);
   const dRows = await Dp.evaluate(() => [...document.querySelectorAll('[data-czrow]')].map(r => r.dataset.czrow).join());
   await Dp.keyboard.press('Escape'); await sleep(150);
-  ok('A2 admin: Kullanıcılar and Sistem in rail and in the customize list', dRows === 'home,recent,ws,projects,customers,reports,users,system'
+  ok('A2 admin: Kullanıcılar and Sistem in rail and in the customize list', dRows === 'home,recent,ws,customers,reports,users,system'
     && await Dp.evaluate(() => !!document.querySelector('#rail [data-v="users"]') && !!document.querySelector('#rail [data-v="system"]')), dRows);
 
   // A2-8) erişilebilirlik: açık ve koyu temada sol menü metinleri AA (≥4.5:1)
@@ -469,8 +479,8 @@ const LABELS = ['Pano', 'İş listesi', 'Zaman planı', 'Yol haritası', 'Zaman 
   await Mo.screenshot({ path: SS + 'm_drawer.png' });
   await Mo.keyboard.press('Escape'); await sleep(300);
   ok('mobile ☰: Esc closes, focus back to ☰', await Mo.evaluate(() => !document.body.classList.contains('nav-open') && document.activeElement.id === 'navBtn'));
-  await Mo.click('#navBtn'); await sleep(350); await Mo.click('#rail .nav a[data-v="customers"]'); await sleep(400);
-  ok('mobile ☰: picking a screen closes the drawer (general screen: no tabs)', await Mo.evaluate(() => DB.ui.view === 'customers' && !document.body.classList.contains('nav-open')
+  await Mo.click('#navBtn'); await sleep(350); await Mo.click('#rail .nav a[data-v="greports"]'); await sleep(400);
+  ok('mobile ☰: picking a screen closes the drawer (general screen: no tabs)', await Mo.evaluate(() => DB.ui.view === 'greports' && !document.body.classList.contains('nav-open')
     && document.getElementById('tabbar').hidden));
   await Mo.click('#navBtn'); await sleep(350); await Mo.click('#navScrim', { position: { x: 360, y: 400 } }); await sleep(300);
   ok('mobile ☰: scrim click closes', await Mo.evaluate(() => !document.body.classList.contains('nav-open')));

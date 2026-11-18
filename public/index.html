@@ -2872,6 +2872,29 @@ button.id-pv:hover{background:var(--surface);border-color:var(--line)}
   .gr-tab{flex:1;justify-content:center;height:44px;padding:0 6px}
   .gr-c:disabled{min-height:48px}
 }
+/* Alan rolleri ve alan sayfası (22b) */
+.ws-role{font-size:11px;font-weight:650;padding:2px 8px;border-radius:999px;background:var(--surface3);color:var(--ink2);white-space:nowrap}
+.ws-role[data-r="admin"]{background:var(--accent-soft);color:var(--accent-d)}
+.ws-role[data-r="viewer"]{background:var(--surface2);color:var(--meta)}
+.ws-role.own{background:#FEF3C7;color:#92400E}
+.wsp-mems{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px}
+.wsp-mems li{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--surface)}
+.wsp-mems li .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.wsp-sec{display:flex;align-items:center;gap:8px;margin:22px 2px 10px}
+.wsp-sec h3{margin:0;font-size:14px}
+.wsm-res{display:flex;flex-direction:column;gap:2px;margin-top:4px;max-height:180px;overflow:auto}
+.wsm-res:empty{display:none}
+.wsm-res button{display:flex;align-items:center;gap:8px;text-align:left;background:none;border:1px solid transparent;border-radius:6px;padding:5px 8px;cursor:pointer;font:inherit}
+.wsm-res button:hover,.wsm-res button:focus-visible{background:var(--accent-soft)}
+.wsm-list{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;max-height:240px;overflow:auto}
+.wsm-list li{display:flex;align-items:center;gap:8px;padding:4px 6px;border:1px solid var(--line);border-radius:6px}
+.wsm-list li .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.wsm-list select{width:auto}
+.wsm-note{font-size:12px;color:var(--meta);margin-top:4px}
+.wsr-rows{display:flex;flex-direction:column;gap:6px}
+.wsr-row{display:flex;align-items:center;gap:8px}
+.wsr-row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wsr-row select{width:auto;min-width:170px}
 </style>
 </head>
 <body>
@@ -3042,10 +3065,11 @@ async function flushSync() {
   syncing = (async () => {
     const now = holdMask(snapOf(DB));
     let ch = diffSnap(SNAP, now);
-    if (typeof canEdit === 'function' && !canEdit()) ch = ch.filter(x => x.c === '_prefs');
+    if (typeof canEditAny === 'function' && !canEditAny()) ch = ch.filter(x => x.c === '_prefs');
     else if (typeof isAdmin === 'function' && !isAdmin())
-      /* Kolonlar (statuses) süzülmez: projenin üyesi olan Üye de değiştirir, yetkiyi sunucu denetler (#12). */
-      ch = ch.filter(x => !['fields', 'rules', '_settings', 'customers'].includes(x.c) && !(['projects', 'workspaces'].includes(x.c) && x.op === 'del')
+      /* Kolonlar (statuses) ve projeye özel alanlar süzülmez: alan yöneticisi de değiştirir, yetkiyi sunucu denetler (#12, 22b). */
+      ch = ch.filter(x => !['rules', '_settings', 'customers'].includes(x.c) && !(x.c === 'fields' && !(x.data?.projectId || x.base?.projectId))
+        && !(['projects', 'workspaces'].includes(x.c) && x.op === 'del')
         && !(x.c === 'users' && x.id !== ME.id));
     if (!ch.length) { SNAP = now; setSync('ok'); return; }
     setSync('saving');
@@ -4281,9 +4305,9 @@ function wireBacklogAdd() {
 }
 
 /* ---- sprint yaşam döngüsü (Jira ile aynı kurallar) ----
-   Başlatma/tamamlama yalnız proje yöneticisinde (canManageProject); asıl kural sunucuda (store.js checkSprintState).
+   Başlatma/tamamlama yalnız alan yöneticisinde (canManageProject); asıl kural sunucuda (store.js checkSprintState).
    Sprint süresi projede (projects.data.sprintWeeks, 1–8 hafta, varsayılan 1). */
-const SPRINT_FORBIDDEN = 'Sprinti yalnızca proje yöneticisi başlatıp bitirebilir';
+const SPRINT_FORBIDDEN = 'Sprinti yalnızca alan yöneticisi başlatıp bitirebilir';
 const sprintWeeks = p => { const w = p?.sprintWeeks; return Number.isInteger(w) && w >= 1 && w <= 8 ? w : 1; };
 const sprintEnd = (start, p) => iso(addD(start + 'T12:00', sprintWeeks(p) * 7 - 1));
 /* Yeni sprintin önerilen tarihleri: önceki sprintin bitişinin ertesi günü (yoksa bu pazartesi) + süre. */
@@ -4391,7 +4415,7 @@ function renderSprint() {
       <span class="as-eic">${ic('sprint')}</span>
       <h3>Aktif sprint yok</h3>
       <p>Bir sprint başladığında işleri burada kolonlarıyla, ilerlemesi ve kalan günüyle görürsünüz.</p>
-      ${man ? `<a class="btn pri" id="asPlan" href="#backlog">${ic('backlog')}Sprint planla</a>` : '<p class="sub">Sprinti proje yöneticisi başlatır.</p>'}</div>`;
+      ${man ? `<a class="btn pri" id="asPlan" href="#backlog">${ic('backlog')}Sprint planla</a>` : '<p class="sub">Sprinti alan yöneticisi başlatır.</p>'}</div>`;
   const st = sprintStats(s.id);
   const left = s.end ? Math.round((hmDay(s.end) - hmDay(TODAY)) / 864e5) : null;
   const pct = st.n ? st.done / st.n * 100 : 0, hp = st.est ? st.estDone / st.est * 100 : 0;
@@ -5659,7 +5683,7 @@ function sprintForm(id) {
   const pr = P();
   if (!pr) return toast('Önce bir proje seçin');
   const s = id ? sprint(id) : null;
-  if (!s && !canManageProject(pr)) return toast('Sprinti yalnızca proje yöneticisi oluşturabilir');
+  if (!s && !canManageProject(pr)) return toast('Sprinti yalnızca alan yöneticisi oluşturabilir');
   const def = s ? { start: s.start || '', end: s.end || '' } : sprintRange(pr);
   const bl = issuesOf().filter(i => !i.sprintId && i.type !== 'epic' && !isDone(i));
   const scope = s ? sprintStats(s.id) : { n: 0, est: 0 };
@@ -5767,7 +5791,7 @@ function reqList(cur, required, pr) {
       `${esc(p.name)} — ${esc(custShort(c))}`, esc(p.email || p.title || '')));
     const out = rows.join('') || '<div class="qm-empty">Eşleşen kişi yok</div>';
     return (required ? '' : pmOpt('', cur, `<span class="c-av none">${ic('x')}</span>`, 'Yok') + '<hr>') + out
-      + (canEdit() ? `<hr><button type="button" class="qm-opt" role="menuitem" data-qv="__add">${ic('userplus')}<span class="qm-l">Yeni kişi ekle</span></button>` : '');
+      + (isAdmin() ? `<hr><button type="button" class="qm-opt" role="menuitem" data-qv="__add">${ic('userplus')}<span class="qm-l">Yeni kişi ekle</span></button>` : '');
   };
 }
 /* Seçici: tek kapı (yeni iş, iş detayı, e-postadan talep). */
@@ -5785,7 +5809,7 @@ function reqStoreCustomer(d) {
 }
 /* Hızlı kişi ekle (yönetici + üye): ad zorunlu, e-posta, telefon. */
 function quickContact(pre = {}, cb) {
-  if (!canEdit()) return;
+  if (!isAdmin()) return toast('Kişi eklemeyi yalnızca yönetici yapabilir');
   const cs = (DB.customers || []).filter(c => c && c.active !== false).sort((a, b) => custShort(a).localeCompare(custShort(b), 'tr'));
   if (!cs.length) return toast('Etkin cari yok. Yöneticinize cari ekletin.', { warn: true });
   const m = openSub(`<div class="id-mh"><span class="id-mic">${ic('userplus')}</span>
@@ -5872,8 +5896,8 @@ function emailTalep(pid) {
     const f = parseFrom($('#et_from').value), hit = reqByEmail(f.email), out = $('#et_match');
     if (hit) { setReq(hit, true); out.innerHTML = `${ic('check')}Eşleşti: <b>${esc(reqName(hit))}</b>`; return; }
     if (auto) setReq(null);
-    out.innerHTML = f.email && !REQ ? `${ic('alert')}Bu adresle kayıtlı kişi yok. Listeden seçin ya da
-      <button type="button" class="id-link" id="et_add">${ic('userplus')}kişi olarak ekleyin</button>` : '';
+    out.innerHTML = f.email && !REQ ? (isAdmin() ? `${ic('alert')}Bu adresle kayıtlı kişi yok. Listeden seçin ya da
+      <button type="button" class="id-link" id="et_add">${ic('userplus')}kişi olarak ekleyin</button>` : `${ic('alert')}Bu adresle kayıtlı kişi yok. Listeden seçin ya da yöneticinize kişi ekletin.`) : '';
     const a = $('#et_add'); if (a) a.onclick = () => quickContact({ customerId: pr.customerId, name: f.name, email: f.email }, r => { setReq(r); match(); });
   };
   setReq(null);
@@ -5991,6 +6015,7 @@ document.addEventListener('change', e => {
 const VIEWS = {
   home:      { s: 'global', t: 'Benim işlerim',     c: 'Genel bakış',       r: renderHome,      tb: toolbarHome },
   projects:  { s: 'global', t: 'Projeler',          c: 'Yönetim',           r: renderProjects,  tb: toolbarProjects },
+  workspace: { s: 'global', t: 'Çalışma alanı',     c: 'Çalışma alanları',  r: renderWsPage,    tb: () => '' },
   customers: { s: 'global', t: 'Cariler',           c: 'Yönetim',           r: renderCustomers, tb: () => '' },
   greports:  { s: 'global', t: 'Genel raporlar',    c: 'Tüm projeler',      r: renderGr,        tb: () => '' },
   pool:      { s: 'global', t: 'Talep havuzu',      c: 'Genel bakış',       r: renderPool,      tb: () => '' },
@@ -6020,12 +6045,16 @@ function viewAllowed(v) {
   if (v === 'board') return !P() || !AGILE();
   if (v === 'sprint') return !!P() && AGILE();
   if (v === 'pool') return poolProjects().length > 0;            // talep projesi yoksa havuz yok (görev 12)
-  if (v === 'admin' || v === 'users' || v === 'system') return isAdmin();
+  if (v === 'users' || v === 'system' || v === 'customers') return isAdmin();
+  if (v === 'admin') return isAdmin() || (!!P() && wsRole(CU(), wsOf(P())) === 'admin');   // proje ayarları: alan yöneticisi (22b)
+  if (v === 'workspace') return !!wsById(DB.ui.workspace) && !!wsRole(CU(), DB.ui.workspace);
   return true;
 }
 
 function render() {
   ensureSel();
+  /* Eski Projeler bağlantısı üyeleri seçili çalışma alanına götürür. */
+  if (DB.ui.view === 'projects' && !isAdmin()) DB.ui.view = 'workspace';
   if (!viewAllowed(DB.ui.view)) {
     DB.ui.view = projectStartView(P());
     save();
@@ -6813,13 +6842,17 @@ function runRules(i, trigger, ctx = {}) {
    5) YÖNETİM GÖRÜNÜMÜ
    ============================================================ */
 function toolbarAdmin() {
-  const tabs = [['workflow', 'İş akışı'], ['types', 'İş tipleri'], ['fields', 'Özel alanlar'], ['rules', 'Otomasyon'], ['people', 'Modüller & genel']];
+  const tabs = [['workflow', 'İş akışı'], ['types', 'İş tipleri'], ['fields', 'Özel alanlar'], ['rules', 'Otomasyon'], ['people', 'Modüller & genel']]
+    .filter(([v]) => isAdmin() || v === 'workflow');
   return `<div class="seg" id="adminTabs">${tabs.map(([v, l]) =>
-    `<button data-a="${v}" class="${(DB.ui.adminTab || 'workflow') === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+    `<button data-a="${v}" class="${adminTab() === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
 }
+/* Genel ayarlar (iş tipleri, özel alanlar, otomasyon, modüller, varsayılan akış) sunucuda yalnız sistem yöneticisinde
+   (ADMIN_ONLY, _settings); alan yöneticisi yalnız projeye özel İş akışı sekmesini görür. */
+const adminTab = () => isAdmin() ? (DB.ui.adminTab || 'workflow') : 'workflow';
 
 function renderAdmin() {
-  const tab = DB.ui.adminTab || 'workflow';
+  const tab = adminTab();
   if (tab === 'workflow') {
     const ss = stats(), pr = P(), nDone = ss.filter(s => s.cat === 'done').length;
     /* Proje türü ve kolonlar (#12): tür burada da görünür, değişiklik aynı pencereyle. */
@@ -6860,9 +6893,9 @@ function renderAdmin() {
       <div style="font-size:11.5px;color:var(--ink3);margin-top:8px">
         Şablon uygulamak mevcut durumları yeniden adlandırır; fazla durumlar silinir, eksikler eklenir.
         İşler en yakın sıradaki duruma taşınır.</div>
-      <div class="sec">Yeni projelerin varsayılan akışı</div>
+      ${isAdmin() ? `<div class="sec">Yeni projelerin varsayılan akışı</div>
       <div id="defFlow"></div>
-      <button class="btn sm" id="saveDefFlow" style="margin-top:6px">Varsayılanı kaydet</button>
+      <button class="btn sm" id="saveDefFlow" style="margin-top:6px">Varsayılanı kaydet</button>` : ''}
     </div>`;
   }
 
@@ -7431,7 +7464,7 @@ const SHORTCUTS = [
 ];
 function palette() {
   const items = [
-    ...Object.entries(VIEWS).filter(([v]) => viewAllowed(v)).map(([v, o]) => ({ t: 'Git', n: viewTitle(v), run: () => { DB.ui.view = v; save(); render(); } })),
+    ...Object.entries(VIEWS).filter(([v]) => viewAllowed(v) && v !== 'workspace').map(([v, o]) => ({ t: 'Git', n: viewTitle(v), run: () => { DB.ui.view = v; save(); render(); } })),
     { t: 'Eylem', n: 'Yeni iş oluştur', run: () => newIssueForm() },
     { t: 'Eylem', n: 'Süre kaydet', run: () => logWorkForm() },
     { t: 'Eylem', n: 'Yeni proje oluştur', run: () => newProjectForm() },
@@ -7444,7 +7477,7 @@ function palette() {
       { t: 'Yönetim', n: 'Sistem: yedekler ve veri', run: () => { location.hash = 'system'; } },
       { t: 'Yönetim', n: 'Veriyi dışa aktar (yedek indir)', run: () => $('#btnExport').click() },
     ] : []),
-    ...(canEdit() ? [{ t: 'Eylem', n: 'Yeni çalışma alanı', run: () => wsForm() }] : []),
+    ...(isAdmin() ? [{ t: 'Eylem', n: 'Yeni çalışma alanı', run: () => wsForm() }] : []),
     ...visibleWs().map(w => ({ t: 'Alan', n: w.name, run: () => pickWs(w.id) })),
     ...selectableProjects().map(p => ({ t: 'Proje', n: `${p.key} — ${p.name}`, run: () => {
       DB.ui.project = p.id;
@@ -7809,7 +7842,7 @@ function grPeriod() {
   return { from: m + '-01', to: iso(last), label: monthName(m), month: m, file: m };
 }
 /* Görünüm kapsamındaki projeler (arşivliler dahil: geçmiş dönem etiketle görünür). */
-const grScope = () => isSuper() ? DB.projects.slice() : userProjects(CU()?.id);
+const grScope = () => isSuper() ? DB.projects.slice() : userProjects(CU()?.id).filter(projVisible);
 const GR_NONE = '__none', GR_UNK = '__unk';
 const GR_FKEYS = ['ws', 'proj', 'cu', 'user', 'type', 'bill'];
 
@@ -8172,7 +8205,14 @@ const ROLES = {
 const CU = () => user(SESSION) || DB.users[0];
 const role = () => CU()?.role || 'admin';
 const isAdmin = () => role() === 'admin' || role() === 'super';
-const canEdit = () => role() !== 'viewer';
+/* Yazma yetkisi bağlama göre (22b): verilen proje, yoksa açık işin projesi, yoksa seçili proje; proje yoksa genel rol.
+   Etkin rol wsRole/projectRole ile (sunucudaki store.js wsRole ile aynı kural). */
+const canEdit = (p) => {
+  const pr = p !== undefined ? p : ((typeof OPEN_ISSUE !== 'undefined' && OPEN_ISSUE && issue(OPEN_ISSUE)) ? projOfI(issue(OPEN_ISSUE)) : P());
+  return pr ? wsAtLeast(projectRole(CU(), pr), 'member') : role() !== 'viewer';
+};
+/* Herhangi bir alanda yazabiliyor mu (gönderim süzgeci). */
+const canEditAny = () => role() !== 'viewer' || wsAll().some(w => wsAtLeast(wsRole(CU(), w), 'member'));
 
 /* Basit tuzlu özet. Kriptografik güvenlik iddiası yoktur —
    parolanın düz metin durmasını engeller, o kadar. */
@@ -8417,8 +8457,10 @@ function userEditor(id) {
   const color = u?.color || USER_COLORS[DB.users.length % USER_COLORS.length];
   const roleOpts = ROLE_KEYS.filter(r => ROLES[r] && (r !== 'super' || isSuper()));
   const curRole = u?.role || 'member';
-  const memberOf = new Set(u ? userProjects(u.id).map(p => p.id) : DB.projects.filter(p => !p.archived).map(p => p.id));
   const dis = locked ? 'disabled' : '';
+  /* Alan + rol (22b): '' erişim yok, '__all' üyesiz (herkese açık) alanda genel role göre. */
+  const wsCur = w => { if (wsLegacy(w)) return '__all'; if (u && wsOwner(w) === u.id) return '__own'; return (u && w.members.find(m => m.userId === u.id)?.role) || ''; };
+  const wsRows = wsAll().filter(w => !w.archived).sort(wsSort);
 
   openModal(`<div class="m-h">${u ? avat(u.id, 1) : ''}<b>${isNew ? 'Yeni kullanıcı' : esc(u.name)}</b>
       ${u ? roleChip(u.role) : ''} ${u ? `<span class="chip ${userStatus(u)[1]}">${userStatus(u)[0]}</span>` : ''}
@@ -8446,11 +8488,16 @@ function userEditor(id) {
             <span>${roleChip(r)}<span class="usub">${esc(ROLES[r][1])}</span></span></label>`).join('')}
         </div>
 
-        <div class="sec">Projeler</div>
-        <div class="usub" style="margin-bottom:8px">Kullanıcı yalnızca üyesi olduğu projeleri görür ve onlarda iş alabilir.</div>
-        <div class="projchecks">
-          ${DB.projects.map(p => `<label class="memchip ${memberOf.has(p.id) ? 'on' : ''}"><input type="checkbox" data-up="${esc(p.id)}" ${memberOf.has(p.id) ? 'checked' : ''} ${dis}>
-            ${esc(p.name)}${p.archived ? ' <em>arşiv</em>' : ''}</label>`).join('') || '<span class="usub">Henüz proje yok.</span>'}
+        <div class="sec">Çalışma alanları</div>
+        <div class="usub" style="margin-bottom:8px">Kişi yalnızca üyesi olduğu çalışma alanlarını ve projelerini görür. Yönetici: projelerin tasarımını yönetir · Üye: iş açar, süre kaydeder · İzleyici: yalnız görür. Sistem yöneticisi her alanda Yöneticidir.</div>
+        <div class="wsr-rows" id="ue_ws">
+          ${wsRows.map(w => { const c = wsCur(w), nm = esc(w.name);
+            return `<div class="wsr-row">${wsBadge(w, 'sm')}<span class="nm">${nm}</span>
+              <select class="inp" data-uws="${esc(w.id)}" data-cur="${c}" aria-label="${nm}: rol" ${dis || (c === '__own' ? 'disabled' : '')}>
+                ${c === '__own' ? '<option value="__own" selected>Sahip · Yönetici</option>' : ''}
+                ${c === '__all' ? '<option value="__all" selected>Herkese açık (genel role göre)</option>' : ''}
+                <option value="" ${c === '' ? 'selected' : ''}>Erişim yok</option>
+                ${['admin', 'member', 'viewer'].map(k => `<option value="${k}" ${c === k ? 'selected' : ''}>${WS_ROLE_LBL[k]}</option>`).join('')}</select></div>`; }).join('') || '<span class="usub">Henüz çalışma alanı yok.</span>'}
         </div>
 
         ${isNew ? `<div class="sec">İlk giriş parolası</div>
@@ -8500,7 +8547,6 @@ function userEditor(id) {
   const err = msg => { $('#ue_err').textContent = msg; };
   $$('[data-col]').forEach(b => b.onclick = () => { pickColor = b.dataset.col; $$('[data-col]').forEach(x => x.classList.toggle('on', x === b)); });
   $$('input[name="ue_r"]').forEach(r => r.onchange = () => $$('.rolecard').forEach(c => c.classList.toggle('on', c.contains(r) && r.checked)));
-  $$('[data-up]').forEach(c => c.onchange = () => c.closest('.memchip').classList.toggle('on', c.checked));
   const nameEl = $('#ue_n'), unEl = $('#ue_u'), iniEl = $('#ue_i');
   if (isNew) {
     nameEl.oninput = () => {
@@ -8539,14 +8585,20 @@ function userEditor(id) {
     if (!DB.users.some(x => (x.role === 'admin' || x.role === 'super') && x.active)) {
       Object.assign(target, prev); if (isNew) DB.users.pop(); return err('En az bir aktif yönetici kalmalı.');
     }
-    /* proje üyelikleri */
-    $$('[data-up]').forEach(c => {
-      const p = DB.projects.find(x => x.id === c.dataset.up); if (!p) return;
-      if (!p.members?.length) p.members = DB.users.filter(x => x.id !== target.id).map(x => x.id);
-      const has = p.members.includes(target.id);
-      if (c.checked && !has) p.members.push(target.id);
-      if (!c.checked && has) p.members = p.members.filter(x => x !== target.id);
+    /* alan üyelikleri (22b): değişen satırlar. Herkese açık alan ilk kez kişiye rol verilince, var olan kişiler
+       genel rolleriyle listeye alınır (kimsenin erişimi kopmasın). */
+    $$('[data-uws]').forEach(sel => {
+      const w = (DB.workspaces || []).find(x => x.id === sel.dataset.uws), v = sel.value;
+      if (!w || v === sel.dataset.cur || v === '__all' || v === '__own') return;
+      let list = wsLegacy(w) ? wsSeed().filter(m => m.userId !== target.id) : w.members.slice();
+      list = list.filter(m => m.userId !== target.id);
+      if (v) list.push({ userId: target.id, role: v });
+      const o = wsOwner(w);
+      if (o && !list.some(m => m.userId === o)) list.unshift({ userId: o, role: 'admin' });
+      w.members = list;
     });
+    /* Yeni kişi: üye listesi dolu eski projelere (herkese açık alanlarda) eskisi gibi eklenir. */
+    if (isNew) DB.projects.forEach(p => { if (!p.archived && p.members?.length && wsLegacy(wsById(wsOf(p))) && !p.members.includes(target.id)) p.members.push(target.id); });
     ok.disabled = true;
     save();
     try { await flushAll(); } catch (e) { }
@@ -9023,9 +9075,43 @@ const wsOf = p => { const id = p?.workspaceId; return id && (DB.workspaces || []
 /* Sunucudaki ad kıyasıyla aynı: kırp, boşlukları teke indir, Türkçe küçük harf. */
 const wsKey = s => String(s ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr');
 const wsArchived = id => wsById(id)?.archived === true;
-const wsMine = w => !!w && ((w.createdBy != null && w.createdBy === SESSION) || WS_MINE.has(w.id));
-/* Ad/renk/açıklama ve arşiv: alanı açan ya da yönetici (Genel'in açanı yok: yalnız yönetici). */
-const canManageWs = w => !!w && canEdit() && (isAdmin() || wsMine(w));
+const wsMine = w => !!w && ((wsOwner(w) != null && wsOwner(w) === SESSION) || WS_MINE.has(w.id));
+
+/* ---- Alan üyelikleri ve rolleri (22b) ----
+   data.members = [{ userId, role: 'admin'|'member'|'viewer' }], data.ownerId (yoksa createdBy) = sahip.
+   Etkin rol TEK yerde: wsRole (sunucudaki store.js wsRole ile aynı). Sistem yöneticisi ve sahip 'admin'; üye listesi
+   boş/tanımsız (eski) alanda genel rol; listede olmayan null (erişim yok). Proje rolü = alanındaki rol. */
+const WS_ROLE_LBL = { admin: 'Yönetici', member: 'Üye', viewer: 'İzleyici' };
+const WS_ROLE_DSC = { admin: 'Projelerin kolon, tür, ayar ve üyelerini yönetir', member: 'İş açar, düzenler, kendi süresini kaydeder', viewer: 'Yalnız görür' };
+const WS_RANK = { viewer: 1, member: 2, admin: 3 };
+const wsOwner = w => w?.ownerId ?? w?.createdBy ?? null;
+const wsLegacy = w => !Array.isArray(w?.members) || w.members.length === 0;
+function wsRole(u, ws) {
+  if (!u) return null;
+  if (u.role === 'admin' || u.role === 'super') return 'admin';
+  const w = ws && typeof ws === 'object' ? ws : wsById(ws);
+  const o = wsOwner(w);
+  if (o && o === u.id) return 'admin';
+  if (wsLegacy(w)) return u.role === 'viewer' ? 'viewer' : 'member';
+  const r = w.members.find(x => x && x.userId === u.id)?.role;
+  return WS_RANK[r] ? r : null;
+}
+const projectRole = (u, p) => wsRole(u, wsOf(p));
+const wsAtLeast = (r, need) => (WS_RANK[r] || 0) >= WS_RANK[need];
+/* Proje tasarımı (kolon, tür, proje ayarı/üyeleri): alan yöneticisi; eski alanda bugünkü kural (projenin üyesi olan Üye). */
+function canDesign(p) {
+  if (!p) return false;
+  const w = wsById(wsOf(p)), r = wsRole(CU(), w);
+  return r === 'admin' || (wsLegacy(w) && r === 'member' && isMember(p));
+}
+/* Alana yeni proje: alan yöneticisi; eski alanda Üye de. */
+const canNewProj = wsId => { const w = wsById(wsId), r = wsRole(CU(), w); return !!w && !w.archived && (r === 'admin' || (wsLegacy(w) && r === 'member')); };
+const canNewProjAny = () => wsAll().some(w => canNewProj(w.id));
+/* Proje görünürlüğü: alanda rolü olmalı; eski alanda ayrıca projenin üye listesi (bugünkü davranış). Üyeli alanda
+   erişimi alan üyeliği belirler (proje üye listesi ekip listesi olarak kalır). */
+const projVisible = p => { const w = wsById(wsOf(p)); return !!wsRole(CU(), w) && (!wsLegacy(w) || isMember(p)); };
+/* Ad/renk/açıklama, üyeler ve arşiv: alan yöneticisi (sahip dahil) ya da sistem yöneticisi. */
+const canManageWs = w => !!w && wsRole(CU(), w) === 'admin';
 const wsSort = (a, b) => (a.id === WS_DEFAULT ? -1 : 0) - (b.id === WS_DEFAULT ? -1 : 0)
   || String(a.name || '').localeCompare(String(b.name || ''), 'tr');
 const wsInitial = n => ([...String(n ?? '').trim()][0] || '?').toLocaleUpperCase('tr');
@@ -9041,8 +9127,8 @@ const wsBadge = (w, cls = '') => `<span class="ws-badge ${cls}" style="--ws-c:${
    ve kendi açtıklarını. Genel önce, sonra ada göre. */
 function visibleWs(archived = false) {
   const admin = isAdmin();
-  return wsAll().filter(w => (w.archived === true) === archived && (admin || wsMine(w)
-    || DB.projects.some(p => wsOf(p) === w.id && !p.archived && isMember(p)))).sort(wsSort);
+  return wsAll().filter(w => (w.archived === true) === archived && (admin || (wsRole(CU(), w) && (!wsLegacy(w) || wsMine(w)
+    || DB.projects.some(p => wsOf(p) === w.id && !p.archived && isMember(p)))))).sort(wsSort);
 }
 /* Seçicilerde görünen projeler: görebildiği ve alanı arşivli olmayanlar (ws verilirse yalnız o alanınkiler). */
 const selectableProjects = (ws = '') => DB.projects.filter(p => canSeeProject(p) && !wsArchived(wsOf(p)) && (!ws || wsOf(p) === ws));
@@ -9053,7 +9139,7 @@ function ensureSel() {
   if (!DB) return;
   DB.ui ||= {};
   const p = P();
-  if (p && !wsArchived(wsOf(p)) && (isAdmin() || isMember(p))) { DB.ui.workspace = wsOf(p); return; }
+  if (p && !wsArchived(wsOf(p)) && (isAdmin() || projVisible(p))) { DB.ui.workspace = wsOf(p); return; }
   const vis = visibleWs();
   if (!vis.some(w => w.id === DB.ui.workspace))
     DB.ui.workspace = (vis.find(w => wsFirstProj(w.id)) || vis[0])?.id || null;
@@ -9079,7 +9165,6 @@ const NAV_ITEMS = {
   home:      { t: 'Benim işlerim',     ic: 'home',     v: 'home', fixed: true },
   recent:    { t: 'Son kullanılanlar', ic: 'recent' },
   ws:        { t: 'Çalışma alanları',  ic: 'layers',   fixed: true },
-  projects:  { t: 'Projeler',          ic: 'folder',   v: 'projects' },
   customers: { t: 'Cariler',           ic: 'building', v: 'customers' },
   reports:   { t: 'Raporlar',          ic: 'reports',  v: 'greports' },
   pool:      { t: 'Talep havuzu',      ic: 'inbox',    v: 'pool' },
@@ -9087,7 +9172,7 @@ const NAV_ITEMS = {
   system:    { t: 'Sistem',            ic: 'system',   v: 'system' },
 };
 /* Sırası değişebilen / gizlenebilen öğeler (varsayılan sıra). Benim işlerim 1., Çalışma alanları 3. sırada sabit. */
-const NAV_MOVABLE = ['recent', 'projects', 'customers', 'reports', 'pool', 'users', 'system'];
+const NAV_MOVABLE = ['recent', 'customers', 'reports', 'pool', 'users', 'system'];
 const navAvail = k => !NAV_ITEMS[k].v || viewAllowed(NAV_ITEMS[k].v);
 /* Kayıtlı tercih → geçerli sıra + gizliler (bilinmeyen kimlik atılır; sonradan eklenen öğe görünür olarak sona). */
 function navCfg() {
@@ -9148,7 +9233,7 @@ function navWs(w) {
   let body = '';
   if (open) {
     const r = wsProjRows(w.id);
-    body = r.rows.length ? r.rows.map(navProj).join('') + (r.more ? `<li><a href="#projects" class="nv-proj all" data-wsall="${id}">${ic('grid')}<span class="tx">Tüm projeler (${r.n})</span></a></li>` : '')
+    body = r.rows.length ? r.rows.map(navProj).join('') + (r.more ? `<li><a href="#workspace" class="nv-proj all" data-wsall="${id}">${ic('grid')}<span class="tx">Tüm projeler (${r.n})</span></a></li>` : '')
       : '<li class="nv-empty">Henüz proje yok</li>';
   }
   return `<li><button type="button" class="nv-ws" data-wstog="${id}" aria-expanded="${open}" aria-controls="nvp-${id}" ${w.id === DB.ui.workspace ? 'aria-current="true"' : ''}>${wsBadge(w)}<span class="tx">${esc(w.name)}</span>${ic('down').replace('class="i"', 'class="i chev"')}</button>
@@ -9159,7 +9244,7 @@ const RAIL = { key: '', other: false };
    Toplam en çok 4 alan varsa hepsi doğrudan görünür. */
 function navTree() {
   const vis = visibleWs();
-  if (!vis.length) return `<ul class="nv-tree" id="wsTree" aria-labelledby="nvSec"><li class="nv-empty nv-nows">Henüz çalışma alanı yok</li>${canEdit()
+  if (!vis.length) return `<ul class="nv-tree" id="wsTree" aria-labelledby="nvSec"><li class="nv-empty nv-nows">Henüz çalışma alanı yok</li>${isAdmin()
     ? `<li><button type="button" class="nv-item nv-add" data-wsnew>${ic('plus')}<span class="tx">Yeni çalışma alanı</span></button></li>` : ''}</ul>`;
   const rec = (Array.isArray(DB.ui.recentWs) ? DB.ui.recentWs : []).filter(id => id !== DB.ui.workspace);
   const top = new Set([DB.ui.workspace, ...rec].filter(id => vis.some(w => w.id === id)).slice(0, 4));
@@ -9188,7 +9273,7 @@ function renderRail() {
   const { order, hidden } = navCfg();
   const first = order[0] && !hidden.includes(order[0]) ? [order[0]] : [], rest = order.slice(1).filter(k => !hidden.includes(k));
   const html = `<nav class="nav nv-list" aria-label="Ana menü">${navItem('home')}${first.map(navItem).join('')}</nav>
-    <div class="nv-sech"><span class="l" id="nvSec">${ic('layers')}Çalışma alanları</span>${canEdit()
+    <div class="nv-sech"><span class="l" id="nvSec">${ic('layers')}Çalışma alanları</span>${isAdmin()
       ? `<button type="button" class="nv-ib" data-wsnew aria-label="Yeni çalışma alanı" title="Yeni çalışma alanı">${ic('plus')}</button>` : ''}
       <button type="button" class="nv-ib" data-navws aria-label="Çalışma alanı seçenekleri" title="Çalışma alanı seçenekleri" aria-haspopup="menu" aria-expanded="false">${ic('more')}</button></div>
     ${navTree()}
@@ -9259,7 +9344,11 @@ function navClick(e) {
   const t = e.target; if (!(t instanceof Element)) return;
   const b = t.closest('[data-wstog],[data-wsother],[data-navrecent],[data-navws],[data-navmore],[data-navcz],[data-wsall]'); if (!b) return;
   const d = b.dataset;
-  if ('wstog' in d) { wsOpenSet(d.wstog, !wsIsOpen(d.wstog)); save(); return renderRail(); }
+  /* Alan adı: alan sayfasını açar (ağaçta da açılır); zaten o alanın sayfasındaysa ağacı aç/kapa (22b). */
+  if ('wstog' in d) {
+    if (DB.ui.view === 'workspace' && DB.ui.workspace === d.wstog) { wsOpenSet(d.wstog, !wsIsOpen(d.wstog)); save(); return renderRail(); }
+    return openWsPage(d.wstog);
+  }
   if ('wsother' in d) { RAIL.other = !RAIL.other; return renderRail(); }
   if ('navrecent' in d) return b.closest('#navPop') ? undefined : navPopOpen(b, 'recent');
   if ('navws' in d) return navPopOpen(b, 'ws');
@@ -9267,6 +9356,7 @@ function navClick(e) {
   if ('navcz' in d) { navDrawer(false); return navCustomize(); }
   if ('wsall' in d) {
     e.preventDefault(); navDrawer(false);
+    if (!isAdmin()) return openWsPage(d.wsall);
     DB.ui.view = 'projects'; save(); render();
     const g = document.querySelector(`[data-wsgrp="${CSS.escape(d.wsall)}"]`);
     if (g) { g.tabIndex = -1; g.scrollIntoView({ block: 'start' }); g.focus({ preventScroll: true }); }
@@ -9445,10 +9535,10 @@ const wsDialog = (labelId) => { const m = $('#scrim .modal'); if (!m) return;
 
 /* Yeni çalışma alanı / düzenleme penceresi. Ad: zorunlu, ≤60, etkin alanlar arasında tekil (tr). */
 function wsForm(id) {
-  if (!canEdit()) return toast('İzleyiciler çalışma alanı oluşturamaz');
   const w = id ? (DB.workspaces || []).find(x => x.id === id) : null;
   if (id && !w) return toast('Çalışma alanı bulunamadı');
-  if (w && !canManageWs(w)) return toast('Bu çalışma alanını yalnızca açan kişi ya da yönetici değiştirebilir');
+  if (!w && !isAdmin()) return toast('Çalışma alanını yalnızca yönetici açabilir');
+  if (w && !canManageWs(w)) return toast('Bu çalışma alanını yalnızca alan yöneticisi değiştirebilir');
   let color = w ? safeColor(w.color) : WS_COLORS[1][0];
   const tab0 = WS_COLORS.some(([c]) => c === color) ? color : WS_COLORS[0][0];
   openModal(`<div class="m-h"><b id="wsf_t">${w ? 'Çalışma alanını düzenle' : 'Yeni çalışma alanı'}</b><button class="x" data-close aria-label="Kapat">×</button></div>
@@ -9464,6 +9554,7 @@ function wsForm(id) {
         <div class="ws-cname" id="wsf_cn"></div></div>
       <div class="ws-fld"><label for="wsf_d">Açıklama <span class="opt" id="wsf_dc">isteğe bağlı · 0/500</span></label>
         <textarea class="inp" id="wsf_d" rows="2" maxlength="500" placeholder="Bu alanda hangi projeler duracak?">${esc(w?.description || '')}</textarea></div>
+      ${wsMembersFld(w)}
     </div>
     <div class="m-f"><button class="btn" data-close>Vazgeç</button><button class="btn pri" id="wsf_ok">${w ? 'Kaydet' : 'Oluştur'}</button></div>`, 'narrow ws-dlg');
   wsDialog('wsf_t');
@@ -9507,22 +9598,26 @@ function wsForm(id) {
     const name = inp.value.trim().replace(/\s+/g, ' '), description = desc.value.trim();
     if (w) {
       Object.assign(w, { name, color, description });
+      WSF.apply(w);
       closeModal(); save(); render(); return toast(`${name} kaydedildi`);
     }
     const nid = uid('ws'); WS_MINE.add(nid);
-    (DB.workspaces ||= []).push({ id: nid, name, color, description, archived: false });
+    const nw = { id: nid, name, color, description, archived: false };
+    WSF.apply(nw);
+    (DB.workspaces ||= []).push(nw);
     DB.ui.workspace = nid; DB.ui.project = null; DB.board.q = '';
     closeModal(); save(); render(); toast(`${name} oluşturuldu`);
   };
   inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); submit(); } };
   $('#wsf_ok').onclick = submit;
   paint();
+  WSF.wire();
 }
 
 function wsSetArchived(id, on) {
   const w = (DB.workspaces || []).find(x => x.id === id);
   if (!w) return toast('Çalışma alanı bulunamadı');
-  if (!canManageWs(w)) return toast('Bu çalışma alanını yalnızca açan kişi ya da yönetici değiştirebilir');
+  if (!canManageWs(w)) return toast('Bu çalışma alanını yalnızca alan yöneticisi değiştirebilir');
   if (on) {
     if (id === WS_DEFAULT) return toast('Genel çalışma alanı arşivlenemez');
     if (!wsAll().some(x => x.id !== id && !x.archived)) return toast('Son etkin çalışma alanı arşivlenemez');
@@ -9549,9 +9644,9 @@ function wsDelete(id) {
 /* "Çalışma alanını değiştir": yalnız projenin workspaceId'si değişir; anahtarlar, sprintler, üyeler, süreler aynı. */
 function moveProjectForm(pid) {
   const p = DB.projects.find(x => x.id === pid); if (!p) return;
-  if (!canEdit()) return toast('İzleyiciler projeyi taşıyamaz');
+  if (!canDesign(p)) return toast('Projeyi yalnızca alan yöneticisi taşıyabilir');
   const from = wsOf(p);
-  const act = visibleWs(), arch = visibleWs(true);
+  const act = visibleWs().filter(w => w.id === from || canNewProj(w.id)), arch = visibleWs(true);
   if (!act.some(w => w.id === from) && !arch.some(w => w.id === from) && wsById(from)) (wsArchived(from) ? arch : act).push(wsById(from));
   let to = from;
   const opt = (w, dis) => { const n = DB.projects.filter(x => wsOf(x) === w.id && !x.archived).length;
@@ -9602,17 +9697,113 @@ function wsEmptyView() {
   const wsHasAny = ws && DB.projects.some(p => wsOf(p) === ws.id && !p.archived);
   if (!selectableProjects().length && (!ws || wsHasAny))
     return `<div class="ws-empty" data-wsempty="b"><span class="ws-empty-ic">${ic(edit ? 'users' : 'eye')}</span>
-      <h3>Henüz bir projeye eklenmedin</h3>${edit
-        ? `<p>Kendi çalışma alanını açıp ilk projeni oluşturabilirsin. Ekibin bir projesindeysen yöneticin seni üye olarak ekleyebilir.</p>
+      <h3>Henüz bir projeye eklenmedin</h3>${isAdmin()
+        ? `<p>Bir çalışma alanı açıp ilk projeyi oluşturabilirsin.</p>
            <div class="acts"><button type="button" class="btn pri" data-wsnew>${ic('layers')}Çalışma alanı oluştur</button></div>`
-        : '<p>Yöneticinden seni bir projeye eklemesini iste. Eklendiğinde projeler burada ve sol menüde görünür.</p>'}</div>`;
+        : '<p data-wsask>Çalışma alanını yalnızca yönetici açabilir. Yöneticine başvur: seni bir çalışma alanına eklediğinde projeler burada ve sol menüde görünür.</p>'}</div>`;
   return `<div class="ws-empty" data-wsempty="a"><span class="ctx">${wsBadge(ws, 'sm')}${esc(ws?.name || '')}</span><span class="ws-empty-ic">${ic('folderplus')}</span>
-    <h3>Bu çalışma alanında henüz proje yok</h3>${edit
+    <h3>Bu çalışma alanında henüz proje yok</h3>${ws && canNewProj(ws.id)
       ? `<p>İlk projeyi ekleyince pano, backlog ve raporlar burada açılır. Başka bir alana sol menüden geçebilirsin.</p>
          <div class="acts"><button type="button" class="btn pri" data-wsnewproj="${esc(ws?.id || '')}">${ic('plus')}Yeni proje</button></div>`
       : '<p>Bir yönetici bu alana proje eklediğinde burada görünecek.</p>'}</div>`;
 }
 
+
+/* ============================ ALAN ÜYELERİ VE ALAN SAYFASI (22b) ============================
+   Alan penceresinde "Üyeler": kişi ara + ekle, her kişiye rol. Sahip kaldırılamaz ve hep Yönetici; sahibi yalnız
+   sistem yöneticisi seçer/devreder. Eski (üye listesi tanımsız) alanda liste kişilerin genel rolleriyle önerilir;
+   üye bölümüne dokunulmadıkça kayda yazılmaz (alan herkese açık kalır). Yetki sunucuda (store.js). */
+const wsPeople = () => DB.users.filter(u => u.active && !u.system);
+const wsSeed = () => wsPeople().filter(u => u.role !== 'admin' && u.role !== 'super')
+  .map(u => ({ userId: u.id, role: u.role === 'viewer' ? 'viewer' : 'member' }));
+const WSF = { mem: new Map(), owner: null, dirty: false, legacy: false, w: null };
+function wsMembersFld(w) {
+  WSF.w = w; WSF.dirty = false; WSF.legacy = !!w && wsLegacy(w);
+  WSF.owner = w ? wsOwner(w) : SESSION;
+  WSF.mem = new Map((w ? (WSF.legacy ? wsSeed() : w.members) : []).filter(x => x && x.userId).map(x => [x.userId, x.role]));
+  const own = isAdmin() ? `<div class="ws-fld"><label for="wsf_o">Sahip <span class="opt">alan Yöneticisi; yalnız sistem yöneticisi değiştirir</span></label>
+      <select class="inp" id="wsf_o">${DB.users.filter(u => u.active && (!u.system || u.id === WSF.owner)).map(u => `<option value="${esc(u.id)}" ${u.id === WSF.owner ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select></div>` : '';
+  return `${own}<div class="ws-fld" id="wsf_mf"><label for="wsf_q">Üyeler <span class="opt" id="wsf_mc"></span></label>
+      <input class="inp" id="wsf_q" placeholder="Kişi ara ve ekle…" autocomplete="off" aria-controls="wsf_res">
+      <div class="wsm-res" id="wsf_res" role="listbox" aria-label="Eklenecek kişiler"></div>
+      ${WSF.legacy ? '<div class="wsm-note" id="wsf_leg">Bu alan şu an herkese açık (genel role göre). Listeyi değiştirip kaydedersen yalnız listedekiler erişir.</div>' : ''}
+      <ul class="wsm-list" id="wsf_ml" aria-label="Alan üyeleri"></ul></div>`;
+}
+WSF.paint = () => {
+  const ml = $('#wsf_ml'); if (!ml) return;
+  const owner = WSF.owner, rows = [...WSF.mem.entries()].filter(([id]) => id !== owner);
+  const ou = user(owner);
+  ml.innerHTML = (ou ? `<li data-wsfm="${esc(owner)}">${avat(owner)}<span class="nm">${esc(ou.name)}</span><span class="ws-role own" data-r="admin">Sahip · Yönetici</span></li>` : '')
+    + rows.map(([id, r]) => { const u = user(id); return `<li data-wsfm="${esc(id)}">${avat(id)}<span class="nm">${esc(u?.name || id)}</span>
+      <select class="inp sm" data-wsfr="${esc(id)}" aria-label="${esc(u?.name || id)}: rol">${['admin', 'member', 'viewer'].map(k =>
+        `<option value="${k}" ${r === k ? 'selected' : ''}>${WS_ROLE_LBL[k]}</option>`).join('')}</select>
+      <button type="button" class="iconbtn bare" data-wsfdel="${esc(id)}" aria-label="${esc(u?.name || id)}: alandan çıkar" title="Çıkar">${ic('x')}</button></li>`; }).join('');
+  $('#wsf_mc').textContent = `${rows.length + (ou ? 1 : 0)} kişi`;
+  $$('[data-wsfr]', ml).forEach(sel => sel.onchange = () => { WSF.mem.set(sel.dataset.wsfr, sel.value); WSF.dirty = true; });
+  $$('[data-wsfdel]', ml).forEach(b => b.onclick = () => { WSF.mem.delete(b.dataset.wsfdel); WSF.dirty = true; WSF.paint(); WSF.find(); $('#wsf_q')?.focus(); });
+};
+WSF.find = () => {
+  const q = $('#wsf_q'), res = $('#wsf_res'); if (!q || !res) return;
+  const k = qmKey(q.value).trim();
+  if (!k) { res.innerHTML = ''; return; }
+  const hit = wsPeople().filter(u => u.id !== WSF.owner && !WSF.mem.has(u.id)
+    && [u.name, u.username, u.email].some(t => t && qmKey(t).includes(k))).slice(0, 8);
+  res.innerHTML = hit.map(u => `<button type="button" role="option" data-wsfadd="${esc(u.id)}">${avat(u.id)}<span>${esc(u.name)}</span>
+    <span class="usub">@${esc(u.username || '')}</span></button>`).join('') || '<div class="wsm-note">Eşleşen kişi yok</div>';
+  $$('[data-wsfadd]', res).forEach(b => b.onclick = () => { WSF.mem.set(b.dataset.wsfadd, 'member'); WSF.dirty = true; q.value = ''; res.innerHTML = ''; WSF.paint(); q.focus(); });
+};
+WSF.wire = () => {
+  const q = $('#wsf_q'); if (!q) return;
+  q.oninput = WSF.find;
+  q.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('#wsf_res [data-wsfadd]')?.click(); } };
+  const o = $('#wsf_o');
+  if (o) o.onchange = () => { const prev = WSF.owner; WSF.owner = o.value; WSF.mem.delete(o.value); if (prev && !WSF.mem.has(prev)) WSF.mem.set(prev, 'admin'); WSF.dirty = true; WSF.paint(); };
+  WSF.paint();
+};
+/* Kayda yaz: yeni alanda her zaman; var olanda üye bölümü değiştiyse. Sahip listede ilk ve Yönetici. */
+WSF.apply = w => {
+  const isNew = !WSF.w;
+  if (!isNew && !WSF.dirty) return;
+  if (isAdmin() && WSF.owner) w.ownerId = WSF.owner;
+  const owner = isAdmin() ? WSF.owner : wsOwner(w);
+  w.members = [...(owner ? [{ userId: owner, role: 'admin' }] : []),
+    ...[...WSF.mem.entries()].filter(([id]) => id !== owner).map(([userId, role]) => ({ userId, role }))];
+};
+
+/* Alan sayfası: sol menüde alan adına tıklayınca. Projeler (Projeler ekranı kartları), "+ Proje", üyeler, düzenle/arşivle. */
+function openWsPage(id) {
+  const w = wsById(id); if (!w) return;
+  navDrawer(false);
+  if (DB.ui.workspace !== id || !P() || wsOf(P()) !== id) { DB.ui.workspace = id; DB.ui.project = wsFirstProj(id)?.id || null; DB.board.q = ''; }
+  wsOpenSet(id, true);
+  DB.ui.view = 'workspace'; save(); render();
+}
+function renderWsPage() {
+  const w = wsById(DB.ui.workspace), r = w ? wsRole(CU(), w) : null;
+  if (!w || !r) return `<div class="panel"><div class="empty">Çalışma alanı bulunamadı ya da bu alana erişimin yok.</div></div>`;
+  const id = esc(w.id), adm = r === 'admin', arch = w.archived === true;
+  const all = DB.projects.filter(p => wsOf(p) === w.id && (isAdmin() || projVisible(p)));
+  const projs = all.filter(p => !p.archived || isSuper() || DB.ui.showArchived);
+  const owner = wsOwner(w);
+  const mems = wsLegacy(w) ? [] : w.members.filter(m => m && user(m.userId));
+  const badge = (uid0, role0) => uid0 === owner ? `<span class="ws-role own" data-r="admin">Sahip · Yönetici</span>` : `<span class="ws-role" data-r="${esc(role0)}">${esc(WS_ROLE_LBL[role0] || role0)}</span>`;
+  const memList = wsLegacy(w)
+    ? `<div class="wsm-note" data-wsplegacy>Bu alanın üye listesi yok: herkes genel rolüyle erişir.${owner && user(owner) ? ` Sahip: <b>${esc(user(owner).name)}</b>.` : ''}</div>`
+    : `<ul class="wsp-mems" aria-label="Alan üyeleri">${mems.map(m => `<li data-wspm="${esc(m.userId)}">${avat(m.userId)}<span class="nm">${esc(user(m.userId).name)}</span>${badge(m.userId, m.role)}</li>`).join('')}</ul>`;
+  return `<section class="ws-page" data-wspage="${id}" aria-labelledby="wsp-h">
+    <div class="ws-gh">${wsBadge(w, 'lg' + (arch ? ' is-arch' : ''))}
+      <div class="tx"><h2 id="wsp-h"><span class="t">${esc(w.name)}</span><span class="cnt">${all.filter(p => !p.archived).length} proje</span>
+        <span class="ws-role" data-r="${r}" data-wsmyrole="${r}" title="Bu alandaki rolün">${WS_ROLE_LBL[r]}</span>${arch ? `<span class="ws-chip">${ic('archive')}Arşivlendi</span>` : ''}</h2>
+        ${w.description ? `<div class="ds" title="${esc(w.description)}">${esc(w.description)}</div>` : ''}</div>
+      <div class="acts">${!arch && canNewProj(w.id) ? `<button type="button" class="btn pri" data-wsnewproj="${id}">${ic('plus')}Proje</button>` : ''}
+        ${adm && !arch ? `<button type="button" class="btn" data-wsedit="${id}">${ic('pencil')}Düzenle</button>` : ''}
+        ${adm && !arch && w.id !== WS_DEFAULT ? `<button type="button" class="btn" data-wsarch="${id}">${ic('archive')}Arşivle</button>` : ''}
+        ${adm && arch ? `<button type="button" class="btn" data-wsunarch="${id}">${ic('unarchive')}Arşivden çıkar</button>` : ''}</div></div>
+    ${projs.length ? `<div class="ws-grid">${projs.map(p => wsProjCard(p, arch)).join('')}</div>`
+      : `<div class="ws-gempty">${ic('folderplus')}<span class="tx">Bu çalışma alanında henüz proje yok</span></div>`}
+    <div class="wsp-sec"><h3>Üyeler</h3>${adm && !arch ? `<button type="button" class="btn sm" data-wsedit="${id}" data-wspmed>${ic('users')}Üyeleri düzenle</button>` : ''}</div>
+    ${memList}</section>`;
+}
 /* ============================ CARİLER (issue #11) ============================
    Müşteri ve tedarikçiler (docs/tasarim/cariler); çalışma alanından bağımsız, ortak liste. Ekle/düzenle/pasife al/sil
    yalnız yönetici. Yetki ve bütünlük sunucuda (store.js: ADMIN_ONLY, vergi no tekilliği, bağlı projesi olan cari silinmez,
@@ -10004,7 +10195,7 @@ function cuPickList(cur, pr, q = '') {
 function cuProjRow(p) {
   const cur = p.customerId || '', c = cuById(cur), pid = esc(p.id);
   if (!cur && !cuList().length) return '';
-  if (canEdit()) return `<div class="cu-plink"><label class="lbl" for="pcu-${pid}">${ic('building')}Cari</label>
+  if (canDesign(p)) return `<div class="cu-plink"><label class="lbl" for="pcu-${pid}">${ic('building')}Cari</label>
       <select class="inp" id="pcu-${pid}" data-pcust="${pid}">${cuOptions(cur)}</select>
       ${c && !cuActive(c) ? `<div class="cu-hint">${ic('pause')}Bağlı cari pasif; bağ korunur. Değiştirirseniz yalnız etkin cariler seçilebilir.</div>` : ''}</div>`;
   return `<div class="cu-plink"><span class="lbl">${ic('building')}Cari</span><span class="val">${c
@@ -10052,7 +10243,7 @@ function cuInput(e) {
 function cuChange(e) {
   const s = e.target; if (!(s instanceof Element) || !s.matches('[data-pcust]')) return;
   const p = DB.projects.find(x => x.id === s.dataset.pcust); if (!p) return;
-  if (!canEdit()) return toast('İzleyiciler projeyi değiştiremez');
+  if (!canDesign(p)) { render(); return toast(canEdit(p) ? 'Projeyi yalnızca alan yöneticisi değiştirebilir' : 'İzleyiciler projeyi değiştiremez'); }
   const v = s.value;
   if (!v) { if (p.customerId === undefined) return; delete p.customerId; save(); render(); return toast(`${p.name}: cari bağı kaldırıldı`); }
   if (v === p.customerId) return;
@@ -10064,8 +10255,8 @@ function cuChange(e) {
 
 /* ============================ PROJELER ============================ */
 function toolbarProjects() {
-  return `${canEdit() ? `<span class="ws-tb" style="display:contents"><button class="btn pri" id="pNew">${ic('plus')}Yeni proje</button>
-    <button class="btn" id="wsNewBtn" data-wsnew>${ic('layers')}Yeni çalışma alanı</button></span>` : ''}
+  return `${canNewProjAny() ? `<span class="ws-tb" style="display:contents"><button class="btn pri" id="pNew">${ic('plus')}Yeni proje</button>
+    ${isAdmin() ? `<button class="btn" id="wsNewBtn" data-wsnew>${ic('layers')}Yeni çalışma alanı</button>` : ''}</span>` : ''}
     <div class="spacer"></div>
     <span style="font-size:12px;color:var(--ink3)">Proje oluşturma ve üye ekleme herkese açık · silme yalnızca yöneticide</span>`;
 }
@@ -10108,12 +10299,12 @@ function wsGroup(w, list, arch) {
       arch ? `<span class="ws-chip">${ic('archive')}Arşivlendi</span>` : ''}</h2>
       ${w.description ? `<div class="ds" title="${esc(w.description)}">${esc(w.description)}</div>` : ''}</div>
     <div class="acts">${arch ? (manage ? `<button type="button" class="btn" data-wsunarch="${id}">${ic('unarchive')}Arşivden çıkar</button>` : '')
-      : canEdit() ? `<button type="button" class="btn ghost" data-wsnewproj="${id}" aria-label="${esc(w.name)} alanına proje ekle">${ic('plus')}Proje</button>` : ''}
+      : canNewProj(w.id) ? `<button type="button" class="btn ghost" data-wsnewproj="${id}" aria-label="${esc(w.name)} alanına proje ekle">${ic('plus')}Proje</button>` : ''}
       ${items ? wsPopMenu(`${w.name}: alan işlemleri`, 'Alan işlemleri', items) : ''}</div></div>`;
   return `<section class="ws-grp ${arch ? 'is-arch' : ''}" data-wsgrp="${id}" aria-labelledby="wsg-${id}">${head}
     ${projs.length ? `<div class="ws-grid">${projs.map(p => wsProjCard(p, arch)).join('')}</div>`
       : `<div class="ws-gempty">${ic('folderplus')}<span class="tx">Bu çalışma alanında henüz proje yok</span>${
-        canEdit() && !arch ? `<button type="button" class="btn" data-wsnewproj="${id}">${ic('plus')}Yeni proje</button>` : ''}</div>`}</section>`;
+        canNewProj(w.id) && !arch ? `<button type="button" class="btn" data-wsnewproj="${id}">${ic('plus')}Yeni proje</button>` : ''}</div>`}</section>`;
 }
 
 /* ⋯ düğmesi + açılır menü. Menü DOM'da gizli durur (data-arch / data-delproj işleyicileri bağlı kalsın). */
@@ -10127,13 +10318,13 @@ function wsProjCard(p, arch) {
   const cur = p.id === DB.ui.project, pid = esc(p.id);
   const items = [
     canEditCols(p) && !arch ? `<button type="button" class="ws-mi" role="menuitem" data-ptypedlg="${pid}">${ic('swap')}<span class="two">Türü değiştir…<span class="why">Şu an ${TYPE_LABEL[projType(p)]}</span></span></button>` : '',
-    canEdit() ? `<button type="button" class="ws-mi" role="menuitem" data-movproj="${pid}">${ic('move')}Çalışma alanını değiştir…</button>` : '',
-    canAdmin() ? `<button type="button" class="ws-mi" role="menuitem" data-arch="${pid}">${ic(p.archived ? 'unarchive' : 'archive')}${p.archived ? 'Yeniden etkinleştir' : 'Arşivle'}</button>` : '',
+    canDesign(p) ? `<button type="button" class="ws-mi" role="menuitem" data-movproj="${pid}">${ic('move')}Çalışma alanını değiştir…</button>` : '',
+    canDesign(p) ? `<button type="button" class="ws-mi" role="menuitem" data-arch="${pid}">${ic(p.archived ? 'unarchive' : 'archive')}${p.archived ? 'Yeniden etkinleştir' : 'Arşivle'}</button>` : '',
     isAdmin() ? `<div class="ws-hr" role="separator"></div><button type="button" class="ws-mi danger" role="menuitem" data-delproj="${pid}"
       ${DB.projects.length < 2 ? 'disabled title="Son proje silinemez"' : ''}>${ic('trash')}Projeyi sil</button>` : ''].join('');
   return `<article class="ws-pcard ${cur ? 'is-cur' : ''}" data-wsproj="${pid}">
     <div class="ws-ph"><span class="ws-key">${esc(p.key)}</span>
-      <input class="inp ws-pname" data-projname="${pid}" value="${esc(p.name)}" aria-label="Proje adı" ${canEdit() ? '' : 'disabled'}>
+      <input class="inp ws-pname" data-projname="${pid}" value="${esc(p.name)}" aria-label="Proje adı" ${canDesign(p) ? '' : 'disabled'}>
       ${typeTag(projType(p))}
       ${p.archived ? `<span class="ws-chip">${ic('archive')}arşiv</span>` : cur ? `<span class="ws-chip cur">${ic('check')}seçili</span>` : ''}
       ${items ? wsPopMenu(`${p.name}: işlemler`, 'Proje işlemleri', items) : ''}</div>
@@ -10142,7 +10333,7 @@ function wsProjCard(p, arch) {
     <div><div class="ws-plbl">Üyeler (${memsOf(p).length})</div>
       <div class="ws-mems">${DB.users.filter(u => u.active).map(u => {
         const on = isMember(p, u.id);
-        return `<button class="memchip ${on ? 'on' : ''}" data-mem="${pid}" data-memu="${esc(u.id)}" aria-pressed="${on}" ${canEdit() ? '' : 'disabled'}>
+        return `<button class="memchip ${on ? 'on' : ''}" data-mem="${pid}" data-memu="${esc(u.id)}" aria-pressed="${on}" ${canDesign(p) ? '' : 'disabled'}>
           ${avat(u.id)}<span>${esc(u.name)}</span>${on ? '<em>✓</em>' : '<em>+</em>'}</button>`;
       }).join('')}</div></div>
     <div class="ws-pf"><span class="lead2">Yürüten <b>${esc(user(p.lead)?.name || '—')}</b></span>
@@ -10160,10 +10351,10 @@ const LAST_DONE = 'Projede en az bir Bitti kolonu kalmalı';
 const colKey = s => String(s ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr');
 const colsOf = pid => DB.statuses.filter(s => s.projectId === pid).sort((a, b) => (a.ord ?? 0) - (b.ord ?? 0));
 /* Kolonları ve türü değiştirebilen: yönetici ya da projenin üyesi olan Üye (izleyici hiçbir zaman). */
-const canEditCols = p => !!p && canEdit() && (isAdmin() || isMember(p));
-/* Proje yöneticiliği için tek kapı (sprint başlat/bitir, sprint süresi). Bugün: yönetici ya da proje üyesi (#12);
-   çalışma alanı rolleri gelince yalnız burası değişir. Sunucudaki karşılığı store.js → canConfigure. */
-const canManageProject = p => !!p && (isAdmin() || canEditCols(p));
+const canEditCols = p => canDesign(p);
+/* Proje yöneticiliği için tek kapı (sprint oluştur/başlat/bitir, sprint süresi): projenin alanında Yönetici
+   (sistem yöneticisi ve alan sahibi dahil; üyesiz eski alanda yalnız sistem yöneticisi). Sunucuda store.js → canManageSprint. */
+const canManageProject = p => !!p && wsRole(CU(), wsOf(p)) === 'admin';
 const typeTag = t => t === 'agile' ? `<span class="pt-type agile">${ic('sprint')}Agile</span>` : `<span class="pt-type">${ic('board')}Pano</span>`;
 const catOk = c => ['todo', 'inprogress', 'done'].includes(c) ? c : 'todo';
 function colNameErr(name, others) {
@@ -10556,10 +10747,11 @@ const nameKey = s => String(s).trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr
 const PKEY_RE = /^[\p{L}\p{N}_-]{1,20}$/u;
 
 function newProjectForm(preset = {}) {
-  if (!canEdit()) return toast('İzleyiciler proje oluşturamaz');
+  if (!canNewProjAny()) return toast(role() === 'viewer' ? 'İzleyiciler proje oluşturamaz' : 'Proje açmak için alan yöneticisi yetkisi gerekli');
+  if (preset.workspaceId && !canNewProj(preset.workspaceId)) preset = { ...preset, workspaceId: undefined };
   /* Alan seçimi (#22): grubun "+ Proje"si o alanı, diğer girişler seçili alanı önerir. */
   const fromWs = !!(preset.workspaceId && wsById(preset.workspaceId) && !wsArchived(preset.workspaceId));
-  const def = [preset.workspaceId, DB.ui.workspace, WS_DEFAULT].find(id => wsById(id) && !wsArchived(id)) || WS_DEFAULT;
+  const def = [preset.workspaceId, DB.ui.workspace, WS_DEFAULT, ...wsAll().map(w => w.id)].find(id => canNewProj(id)) || WS_DEFAULT;
   /* Adımlar arası korunan girdiler: ad, anahtar, alan, cari, üyeler; kolonlar şablonla yeniden dolar. */
   const st = { k: 'kanban', sel: 'kanban', name: '', key: '', keyTouched: false, ws: def, cu: '', picked: new Set([SESSION]),
     flow: null, base: '', src: 'default', epic: false, def: false, err: {} };
@@ -10642,7 +10834,7 @@ function newProjectForm(preset = {}) {
   /* ---- Adım 2: ayrıntılar ---- */
   const details = (o = {}) => {
     const t = T(), admin = isAdmin(), cols = st.flow, op = OPEN_LBL[opensAt(t)];
-    const wsl = visibleWs();
+    const wsl = visibleWs().filter(w => canNewProj(w.id));
     if (!wsl.some(w => w.id === st.ws) && wsById(st.ws)) wsl.unshift(wsById(st.ws));
     const E = st.err, fe = (id, m) => m ? `<div class="ps-err" id="${id}" role="alert">${ic('alert')}${esc(m)}</div>` : '';
     const keySug = E.key === 'Bu anahtar kullanımda' ? freeKey(st.key) : '';
@@ -11378,7 +11570,7 @@ function ensureSuper() {
 /* ---------- arşiv ---------- */
 function ensureArchive() { DB.projects.forEach(p => { if (p.archived === undefined) p.archived = false; }); }
 const liveProjects = () => DB.projects.filter(p => isSuper() || !p.archived);
-const canSeeProject = p => isSuper() || (!p.archived && isMember(p));
+const canSeeProject = p => isSuper() || (!p.archived && projVisible(p));
 
 function toggleArchive(pid) {
   const p = DB.projects.find(x => x.id === pid);
