@@ -696,43 +696,53 @@ describe('çalışma alanları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () =
     await pool.query(`DELETE FROM misc_records WHERE collection='workspaces'`);
   });
 
-  test('oluşturma: açan kişi sunucuda yazılır (sahte createdBy düzeltilir), güncellemede korunur', async () => {
-    let r = await U1.sync([ws('ws_a', { name: 'Ar-Ge', color: '#3E7BC4', description: 'açıklama', createdBy: 'u_admin' })]);
+  test('oluşturma: yalnız sistem yöneticisi açar (üye/izleyici 403); açan ve sahip sunucuda yazılır, güncellemede korunur', async () => {
+    let r = await U1.sync([ws('ws_a', { name: 'Ar-Ge', color: '#3E7BC4' })]);
+    assert.equal(r.status, 200);
+    assert.deepEqual(reasons(r), ['Çalışma alanını yalnızca yönetici açabilir']);
+    assert.equal(await row('workspaces', 'ws_a'), undefined);
+    /* Yönetici açar; sahibini başka bir kişi seçebilir (sahip alan yöneticisidir). Sahte createdBy düzeltilir. */
+    r = await A.sync([ws('ws_a', { name: 'Ar-Ge', color: '#3E7BC4', description: 'açıklama', createdBy: 'u_ws2', ownerId: 'u_ws1' })]);
     assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
     assert.deepEqual(r.json.adjusted, [{ c: 'workspaces', id: 'ws_a' }]);
     let w = await row('workspaces', 'ws_a');
-    assert.equal(w.created_by, 'u_ws1'); assert.equal(w.archived, false);
-    r = await U1.sync([ws('ws_a', { ...w.data, description: 'yeni', createdBy: 'u_ws2' })]);
+    assert.equal(w.created_by, 'u_admin'); assert.equal(w.data.ownerId, 'u_ws1'); assert.equal(w.archived, false);
+    /* Sahip (alan yöneticisi) düzenler; createdBy ve ownerId'yi değiştiremez. */
+    r = await U1.sync([ws('ws_a', { ...w.data, description: 'yeni', createdBy: 'u_ws2', ownerId: 'u_ws2' })]);
     assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
     assert.ok(r.json.adjusted.some(x => x.id === 'ws_a'));
     w = await row('workspaces', 'ws_a');
-    assert.equal(w.created_by, 'u_ws1'); assert.equal(w.data.description, 'yeni');
-    /* createdBy alanı gönderilmese de korunur. */
-    const { createdBy, ...rest } = w.data;
+    assert.equal(w.created_by, 'u_admin'); assert.equal(w.data.ownerId, 'u_ws1'); assert.equal(w.data.description, 'yeni');
+    /* createdBy / ownerId gönderilmese de korunur. */
+    const { createdBy, ownerId, ...rest } = w.data;
     r = await U1.sync([ws('ws_a', { ...rest, color: '#1F6F5C' })]);
     assert.equal(r.json.applied, 1);
-    assert.equal((await row('workspaces', 'ws_a')).created_by, 'u_ws1');
-    assert.equal(createdBy, 'u_ws1');
-    /* Yeni alanda doğru createdBy gönderilirse düzeltme bildirilmez. */
-    r = await U1.sync([ws('ws_dogru', { name: 'Doğru açan', createdBy: 'u_ws1' })]);
+    assert.equal((await row('workspaces', 'ws_a')).created_by, 'u_admin');
+    assert.equal((await row('workspaces', 'ws_a')).data.ownerId, 'u_ws1');
+    assert.equal(createdBy, 'u_admin'); assert.equal(ownerId, 'u_ws1');
+    /* Yeni alanda doğru createdBy gönderilirse düzeltme bildirilmez; sahip seçilmezse açan yöneticidir. */
+    r = await A.sync([ws('ws_dogru', { name: 'Doğru açan', createdBy: 'u_admin', ownerId: 'u_admin' })]);
     assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
     assert.deepEqual(r.json.adjusted, []);
+    r = await A.sync([ws('ws_sahipsiz', { name: 'Sahipsiz açılan' })]);
+    assert.equal((await row('workspaces', 'ws_sahipsiz')).data.ownerId, 'u_admin');
+    await pool.query(`DELETE FROM workspaces WHERE id='ws_sahipsiz'`);
   });
 
   test('ad: zorunlu, en fazla 60, etkin alanlarda Türkçe büyük/küçük harf ve boşluk duyarsız tekil', async () => {
-    let r = await U1.sync([ws('ws_ik', { name: 'İnsan Kaynakları' })]);
+    let r = await A.sync([ws('ws_ik', { name: 'İnsan Kaynakları', ownerId: 'u_ws1' })]);
     assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
     for (const name of ['insan kaynakları', '  İNSAN   KAYNAKLARI ', 'İnsan Kaynakları']) {
-      r = await U2.sync([ws('ws_ik2', { name })]);
+      r = await A.sync([ws('ws_ik2', { name })]);
       assert.equal(r.json.applied, 0, name);
       assert.deepEqual(reasons(r), ['Bu adla etkin bir çalışma alanı zaten var'], name);
     }
     for (const name of ['', '   ', 'x'.repeat(61), 12, null, ['a']]) {
-      r = await U2.sync([ws('ws_bad', { name })]);
+      r = await A.sync([ws('ws_bad', { name })]);
       assert.equal(r.json.applied, 0, String(name));
       assert.match(reasons(r)[0], /Çalışma alanı adı gerekli/, String(name));
     }
-    r = await U2.sync([ws('ws_60', { name: 'y'.repeat(60) })]);
+    r = await A.sync([ws('ws_60', { name: 'y'.repeat(60), ownerId: 'u_ws2' })]);
     assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
     /* Kendi adını büyük/küçük harf değiştirerek güncellemek çakışma sayılmaz. */
     const ik = (await row('workspaces', 'ws_ik')).data;
@@ -741,7 +751,7 @@ describe('çalışma alanları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () =
     /* Arşivli alanla aynı ad serbest; arşivden çıkarmada etkin adla çakışırsa reddedilir. */
     r = await U1.sync([ws('ws_ik', { ...ik, name: 'insan kaynakları', archived: true })]);
     assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
-    r = await U2.sync([ws('ws_ik2', { name: 'İnsan Kaynakları' })]);
+    r = await A.sync([ws('ws_ik2', { name: 'İnsan Kaynakları', ownerId: 'u_ws2' })]);
     assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
     r = await U1.sync([ws('ws_ik', { ...ik, name: 'insan kaynakları', archived: false })]);
     assert.deepEqual(reasons(r), ['Bu adla etkin bir çalışma alanı zaten var']);
@@ -752,23 +762,26 @@ describe('çalışma alanları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () =
   });
 
   test('ad tekilliği eşzamanlı oluşturmada da korunur', async () => {
-    const [r1, r2] = await Promise.all([U1.sync([ws('ws_es1', { name: 'Eşzamanlı' })]), U2.sync([ws('ws_es2', { name: 'eşzamanlı' })])]);
+    const A2 = client(); await A2.login('admin', 'test-admin-pw');
+    const [r1, r2] = await Promise.all([A.sync([ws('ws_es1', { name: 'Eşzamanlı' })]), A2.sync([ws('ws_es2', { name: 'eşzamanlı' })])]);
     assert.equal(r1.json.applied + r2.json.applied, 1, JSON.stringify([r1.json, r2.json]));
     assert.equal((await pool.query(`SELECT count(*) n FROM workspaces WHERE id IN ('ws_es1','ws_es2')`)).rows[0].n, '1');
   });
 
-  test('aynı kimlikle eşzamanlı oluşturma: ikincisi üzerine yazmaz (409), açan kişi değişmez', async () => {
-    const [r1, r2] = await Promise.all([U1.sync([ws('ws_ayni', { name: 'Aynı kimlik' })]), U2.sync([ws('ws_ayni', { name: 'Aynı kimlik' })])]);
+  test('aynı kimlikle eşzamanlı oluşturma: ikincisi üzerine yazmaz (409), sahip değişmez', async () => {
+    const A2 = client(); await A2.login('admin', 'test-admin-pw');
+    const [r1, r2] = await Promise.all([A.sync([ws('ws_ayni', { name: 'Aynı kimlik', ownerId: 'u_ws1' })]),
+      A2.sync([ws('ws_ayni', { name: 'Aynı kimlik', ownerId: 'u_ws2' })])]);
     assert.equal(r1.status, 200); assert.equal(r2.status, 200);
     assert.equal(r1.json.applied + r2.json.applied, 1, JSON.stringify([r1.json, r2.json]));
     const winner = r1.json.applied ? 'u_ws1' : 'u_ws2';
-    assert.equal((await row('workspaces', 'ws_ayni')).created_by, winner);
+    assert.equal((await row('workspaces', 'ws_ayni')).data.ownerId, winner);
     /* Kesin yarış: ilk kayıt henüz onaylanmamışken ikinci oluşturma gelir → bekler, üzerine yazmaz. */
     const c = await pool.connect();
     try {
       await c.query('BEGIN');
       await c.query(`INSERT INTO workspaces (id, data) VALUES ('ws_yaris', '{"id":"ws_yaris","name":"Yarış alanı","createdBy":"u_ws1"}')`);
-      const pending = U2.sync([ws('ws_yaris', { name: 'Yarış alanı', description: 'ikinci' })]);
+      const pending = A.sync([ws('ws_yaris', { name: 'Yarış alanı', description: 'ikinci' })]);
       await new Promise(r => setTimeout(r, 300));
       await c.query('COMMIT');
       const r = await pending;
@@ -779,12 +792,12 @@ describe('çalışma alanları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () =
     assert.equal(w.created_by, 'u_ws1'); assert.equal(w.data.description, undefined);
     /* yeniden denemede kayıt var: güncelleme kuralları işler (başkasının alanı) */
     assert.deepEqual(reasons(await U2.sync([ws('ws_yaris', { name: 'Yarış alanı', description: 'ikinci' })])),
-      ['Bu çalışma alanını yalnızca açan kişi ya da yönetici değiştirebilir']);
+      ['Bu çalışma alanını yalnızca alan yöneticisi değiştirebilir']);
     await pool.query(`DELETE FROM workspaces WHERE id IN ('ws_ayni','ws_yaris')`);
   });
 
   test('doğrulama: renk HEX, açıklama ≤500, archived boolean (metin 500 değil ret)', async () => {
-    const r = await U1.sync([
+    const r = await A.sync([
       ws('ws_c1', { name: 'Renk 1', color: 'red' }), ws('ws_c2', { name: 'Renk 2', color: '#fff;' + XSS }),
       ws('ws_c3', { name: 'Renk 3', color: 12 }), ws('ws_d1', { name: 'Açıklama', description: 'x'.repeat(501) }),
       ws('ws_ar', { name: 'Arşiv', archived: 'evet' }),
@@ -796,7 +809,8 @@ describe('çalışma alanları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () =
     assert.deepEqual(reasons(r), ['Renk #RRGGBB biçiminde olmalı', 'Renk #RRGGBB biçiminde olmalı', 'Renk #RRGGBB biçiminde olmalı',
       'Açıklama en fazla 500 karakter', 'Arşiv bilgisi true ya da false olmalı', 'Arşiv bilgisi true ya da false olmalı',
       'Geçersiz çalışma alanı']);
-    const ok = await U1.sync([ws('ws_c4', { name: 'Renk 4', color: '#abc', description: '' }), ws('ws_c5', { name: 'Renk 5', color: '' })]);
+    const ok = await A.sync([ws('ws_c4', { name: 'Renk 4', color: '#abc', description: '', ownerId: 'u_ws1' }),
+      ws('ws_c5', { name: 'Renk 5', color: '', ownerId: 'u_ws1' })]);
     assert.equal(ok.json.applied, 2, JSON.stringify(ok.json.rejected));
   });
 
@@ -809,7 +823,7 @@ describe('çalışma alanları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () =
       const d = { archived: v }; assert.equal(normalizeArchived(d), false, String(v)); assert.strictEqual(d.archived, v);
     }
     assert.throws(() => validate('projects', { name: 'x', archived: 'evet' }), /Arşiv bilgisi/);
-    let r = await U1.sync([
+    let r = await A.sync([
       { c: 'projects', id: 'p_arm', op: 'put', data: { name: 'Metin arşiv', key: 'PAM', archived: 'true' } },
       { c: 'projects', id: 'p_arm0', op: 'put', data: { name: 'Sayı arşiv', key: 'PA0', archived: 0 } },
       ws('ws_arm', { name: 'Metin arşivli alan', archived: 'FALSE' }),
@@ -831,7 +845,7 @@ describe('çalışma alanları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () =
 
   test('ad HTML olarak değil metin olarak saklanır', async () => {
     const name = '<script>alert(1)</script>';
-    const r = await U1.sync([ws('ws_xss', { name })]);
+    const r = await A.sync([ws('ws_xss', { name })]);
     assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
     assert.equal((await A.state()).json.data.workspaces.find(x => x.id === 'ws_xss').name, name);
   });
@@ -841,15 +855,16 @@ describe('çalışma alanları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () =
     const r = await V.sync([ws('ws_v', { name: 'İzleyici' }), ws('ws_a', { name: 'Değişti' }), { c: 'workspaces', id: 'ws_c4', op: 'del' },
       { c: 'projects', id: 'p1', op: 'put', data: { ...p1, workspaceId: 'ws_a' } }]);
     assert.equal(r.json.applied, 0);
-    assert.deepEqual(reasons(r), Array(4).fill('salt okunur kullanıcı'));
+    assert.deepEqual(reasons(r), ['Çalışma alanını yalnızca yönetici açabilir', 'salt okunur kullanıcı',
+      'Bu değişiklik için yönetici yetkisi gerekli', 'salt okunur kullanıcı']);
     assert.equal(await row('workspaces', 'ws_v'), undefined);
   });
 
-  test('başkasının alanını yalnız açan kişi ya da yönetici değiştirir/arşivler', async () => {
+  test('başkasının alanını yalnız alan yöneticisi (sahip dahil) ya da sistem yöneticisi değiştirir/arşivler', async () => {
     const a = (await row('workspaces', 'ws_a')).data;
-    const MSG = 'Bu çalışma alanını yalnızca açan kişi ya da yönetici değiştirebilir';
+    const MSG = 'Bu çalışma alanını yalnızca alan yöneticisi değiştirebilir';
     let r = await U2.sync([ws('ws_a', { ...a, name: 'Ele geçirildi' }), ws('ws_a', { ...a, archived: true }),
-      ws('ws_a', { ...a, createdBy: 'u_ws2' })]);
+      ws('ws_a', { ...a, createdBy: 'u_ws2', ownerId: 'u_ws2' })]);
     assert.equal(r.json.applied, 0);
     assert.deepEqual(reasons(r), [MSG, MSG]);                           // createdBy denemesi değişiklik sayılmaz
     assert.equal((await row('workspaces', 'ws_a')).name, 'Ar-Ge');
@@ -859,7 +874,7 @@ describe('çalışma alanları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () =
     r = await A.sync([ws('ws_a', { ...a, name: 'Ar-Ge Merkezi' })]);
     assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
     const w = await row('workspaces', 'ws_a');
-    assert.equal(w.name, 'Ar-Ge Merkezi'); assert.equal(w.created_by, 'u_ws1');   // yönetici düzenlese de açan değişmez
+    assert.equal(w.name, 'Ar-Ge Merkezi'); assert.equal(w.data.ownerId, 'u_ws1');   // yönetici düzenlese de sahip değişmez
     r = await U1.sync([ws('ws_a', { ...w.data, name: 'Ar-Ge' })]);
     assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
   });
@@ -869,7 +884,7 @@ describe('çalışma alanları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () =
     let r = await A.sync([ws('ws1', { ...g, archived: true }), { c: 'workspaces', id: 'ws1', op: 'del' }]);
     assert.deepEqual(reasons(r), ['Genel çalışma alanı arşivlenemez', 'Genel çalışma alanı silinemez']);
     r = await U1.sync([ws('ws1', { ...g, name: 'Benim' })]);
-    assert.deepEqual(reasons(r), ['Bu çalışma alanını yalnızca açan kişi ya da yönetici değiştirebilir']);
+    assert.deepEqual(reasons(r), ['Bu çalışma alanını yalnızca alan yöneticisi değiştirebilir']);
     r = await A.sync([ws('ws1', { ...g, name: 'Ortak' })]);
     assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
     assert.equal((await row('workspaces', 'ws1')).name, 'Ortak');
@@ -902,7 +917,7 @@ describe('çalışma alanları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () =
     const it = (await A.req('GET', '/api/trash')).json.find(x => x.collection === 'workspaces' && x.record_id === 'ws_c5');
     assert.equal(it.title, 'Renk 5');
     assert.equal((await A.req('POST', `/api/trash/${it.id}/restore`, {})).json.restored, 1);
-    assert.equal((await row('workspaces', 'ws_c5')).created_by, 'u_ws1');
+    assert.equal((await row('workspaces', 'ws_c5')).data.ownerId, 'u_ws1');
   });
 
   test('silme: projesi olan alan silinmez (arşivli proje dahil) — "Önce projeleri taşıyın"', async () => {
@@ -1006,7 +1021,7 @@ describe('çalışma alanları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () =
     assert.equal((await A.req('POST', `/api/backups/${pre.id}/restore`, {})).status, 200);
     const st2 = (await A.state()).json.data;
     assert.equal(st2.workspaces.length, pre.counts.workspaces);
-    assert.equal(st2.workspaces.find(x => x.id === 'ws_a').createdBy, 'u_ws1');
+    assert.equal(st2.workspaces.find(x => x.id === 'ws_a').ownerId, 'u_ws1');
     assert.equal(st2.projects.find(x => x.id === 'p_ts').workspaceId, 'ws_60');
   });
 
@@ -1470,7 +1485,7 @@ describe('proje türü ve kolonlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
   test('üye olmayan Üye kolon ekleyemez, değiştiremez, silemez (403); başka projeye taşıyamaz', async () => {
     const r = await N.sync([S('pk1_n', 'pk1', 'Yabancı', 'todo', 5), S('pk1_a', 'pk1', 'Değişti', 'todo', 0),
       D('statuses', 'pk1_b'), S('pk1_c', 'pk_bos', 'Bitti 2', 'done', 9)]);
-    assert.deepEqual(reasons(r), Array(4).fill('Kolonları yalnızca yönetici ya da proje üyesi değiştirebilir'));
+    assert.deepEqual(reasons(r), Array(4).fill('Kolonları yalnızca alan yöneticisi değiştirebilir'));
     assert.equal(r.json.applied, 0);
     assert.equal((await row('statuses', 'pk1_a')).name, 'Yapılacak');
     /* projesi olmayan kolon */
@@ -1569,7 +1584,7 @@ describe('proje türü ve kolonlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
       { c: 'sprints', id: 'sp_k1', op: 'put', data: { projectId: 'pk_ag', name: 'S1', state: 'active' } }]));
     assert.deepEqual(reasons(await M.sync([P('pk_ag', { type: 'board', members: ['u_admin', 'u_k_m'] })])), ['Önce aktif sprinti tamamlayın']);
     assert.deepEqual(reasons(await N.sync([P('pk_ag', { type: 'board', members: ['u_admin', 'u_k_m'] })])),
-      ['Proje türünü yalnızca yönetici ya da proje üyesi değiştirebilir']);
+      ['Proje türünü yalnızca alan yöneticisi değiştirebilir']);
     assert.equal((await row('projects', 'pk_ag')).type, 'agile');
     /* türsüz proje + genel sprint açık → agile sayılır */
     await setSprintModule(true);
@@ -1639,7 +1654,7 @@ describe('proje türü ve kolonlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
     assert.equal((await cols('pk1')).filter(s => s.cat === 'done').length, 1);
   });
   test('gruplama: yeni çalışma alanı + o alanda proje ve yeni cari + ona bağlı proje tek gönderimde (proje dizide önce gelse de)', async () => {
-    ok(await M.sync([P('pk_wsp', { workspaceId: 'ws_k1', members: ['u_k_m'] }),
+    ok(await A.sync([P('pk_wsp', { workspaceId: 'ws_k1', members: ['u_k_m'] }),
       { c: 'workspaces', id: 'ws_k1', op: 'put', data: { name: 'Kolon alanı', color: '#3E7BC4' } }]));
     assert.equal((await row('projects', 'pk_wsp')).workspaceId, 'ws_k1');
     assert.ok(await row('workspaces', 'ws_k1'));
@@ -1671,7 +1686,7 @@ describe('proje türü ve kolonlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
   test('üye listesi: üye olmayan değiştiremez (403); üye ve yönetici değiştirir; boş listeye kendini ekleyebilir; yeni projede serbest', async () => {
     const pk1 = await row('projects', 'pk1');
     assert.deepEqual(reasons(await N.sync([P('pk1', { ...pk1, members: [...pk1.members, 'u_k_n'] })])),
-      ['Proje üyelerini yalnızca yönetici ya da proje üyesi değiştirebilir']);
+      ['Proje üyelerini yalnızca alan yöneticisi değiştirebilir']);
     assert.deepEqual((await row('projects', 'pk1')).members, ['u_admin', 'u_k_m']);
     ok(await N.sync([P('pk1', { ...pk1, name: 'pk1 yeni ad' })]));                // üye listesine dokunmayan düzenleme serbest
     ok(await M.sync([P('pk1', { ...pk1, members: ['u_admin', 'u_k_m', 'u_k_n'] })]));
@@ -1680,7 +1695,7 @@ describe('proje türü ve kolonlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
     const bos = await row('projects', 'pk_bos');
     ok(await N.sync([P('pk_bos', { ...bos, members: ['u_k_n'] })]));               // liste boştu: kendini ekler
     assert.deepEqual(reasons(await M.sync([P('pk_bos', { ...bos, members: [] })])),
-      ['Proje üyelerini yalnızca yönetici ya da proje üyesi değiştirebilir']);
+      ['Proje üyelerini yalnızca alan yöneticisi değiştirebilir']);
     ok(await N.sync([P('pk_bos', { ...bos, members: [] })]));
     ok(await N.sync([P('pk_yeni_n', { members: ['u_admin'] })]));                  // yeni proje: serbest
   });
@@ -2080,9 +2095,11 @@ describe('talep eden', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     ok(await U.sync([g({ requester: null })]));
   });
 
-  test('hızlı kişi ekleme: üye ekler (yalnız ad/e-posta/telefon), izleyici 403, değişiklik akışına düşer', async () => {
+  test('hızlı kişi ekleme: yalnız sistem yöneticisi ekler (yalnız ad/e-posta/telefon), üye ve izleyici 403, değişiklik akışına düşer', async () => {
     const s0 = (await U.state()).json.seq;
-    const r = await U.req('POST', '/api/customers/c_tl2/contacts',
+    const den = await U.req('POST', '/api/customers/c_tl2/contacts', { name: 'Üye denemesi' });
+    assert.equal(den.status, 403); assert.equal(den.json.error, 'Kişi eklemeyi yalnızca yönetici yapabilir');
+    const r = await A.req('POST', '/api/customers/c_tl2/contacts',
       { name: '  Cem Yeni  ', email: 'cem@ornek.test', phone: '0212 000 00 00', title: 'Müdür', id: 'ct_zorla' });
     assert.equal(r.status, 200, JSON.stringify(r.json));
     const ct = r.json.contact;
@@ -2099,13 +2116,13 @@ describe('talep eden', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     rejectedWith(await U.sync([{ c: 'customers', id: 'c_tl2', op: 'put', data: { ...d, name: 'Değişti' }, base: d }]), 'Bu değişiklik için yönetici yetkisi gerekli');
 
     assert.equal((await V.req('POST', '/api/customers/c_tl2/contacts', { name: 'İzci' })).status, 403);
-    assert.equal((await U.req('POST', '/api/customers/c_tl2/contacts', { name: '   ' })).status, 400);
-    assert.equal((await U.req('POST', '/api/customers/c_tl2/contacts', { name: 'x'.repeat(121) })).status, 400);
-    assert.equal((await U.req('POST', '/api/customers/c_tl2/contacts', { name: 'Kötü', email: 'yok' })).status, 400);
-    const nf = await U.req('POST', '/api/customers/c_yok/contacts', { name: 'Kimse' });
+    assert.equal((await A.req('POST', '/api/customers/c_tl2/contacts', { name: '   ' })).status, 400);
+    assert.equal((await A.req('POST', '/api/customers/c_tl2/contacts', { name: 'x'.repeat(121) })).status, 400);
+    assert.equal((await A.req('POST', '/api/customers/c_tl2/contacts', { name: 'Kötü', email: 'yok' })).status, 400);
+    const nf = await A.req('POST', '/api/customers/c_yok/contacts', { name: 'Kimse' });
     assert.equal(nf.status, 404); assert.match(nf.json.error, /Yöneticinize cari ekletin/);
-    assert.equal((await U.req('POST', '/api/customers/c_tlp/contacts', { name: 'Pasife' })).status, 400);
-    assert.equal((await U.req('POST', '/api/customers/c_tl2/contacts', { name: 'CSRF' }, { 'x-pano': '' })).status, 403);
+    assert.equal((await A.req('POST', '/api/customers/c_tlp/contacts', { name: 'Pasife' })).status, 400);
+    assert.equal((await A.req('POST', '/api/customers/c_tl2/contacts', { name: 'CSRF' }, { 'x-pano': '' })).status, 403);
     assert.equal((await client().req('POST', '/api/customers/c_tl2/contacts', { name: 'Anonim' })).status, 401);
     assert.equal((await row('customers', 'c_tl2')).data.contacts.length, 2);
   });
