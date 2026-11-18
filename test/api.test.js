@@ -1301,6 +1301,38 @@ describe('cariler', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     assert.equal(r.json.applied, 0); assert.equal(r.json.rejected.length, 0);
   });
 
+  test('silme ↔ bağlama yarışı: cari satırı kilitli; önce bağlayan sayılır (409), önce silen bağlamayı "Cari bulunamadı" yapar', async () => {
+    const pa = (await row('projects', 'p_cu1')).data;
+    const pending = async p => Promise.race([p.then(() => 'bitti'), new Promise(r => setTimeout(() => r('bekliyor'), 400))]);
+    /* 1) bağlayan önce: işlem açık iken silme bekler, bağ işlenince sayılır */
+    ok(await A.sync([cu('c_r1', firm('Yarış Carisi 1'))]));
+    const t1 = await pool.connect();
+    try {
+      await t1.query('BEGIN');
+      await t1.query(`SELECT active FROM customers WHERE id='c_r1' FOR SHARE`);
+      await t1.query(`UPDATE projects SET data = data || '{"customerId":"c_r1"}'::jsonb WHERE id='p_cu1'`);
+      const d = A.sync([del('customers', 'c_r1')]);
+      assert.equal(await pending(d), 'bekliyor');
+      await t1.query('COMMIT');
+      rejectedWith(await d, 'Bu cariye bağlı 1 proje var; silmek yerine pasife alın');
+    } finally { t1.release(); }
+    ok(await A.sync([{ c: 'projects', id: 'p_cu1', op: 'put', data: pa }]));
+    ok(await A.sync([del('customers', 'c_r1')]));
+    /* 2) silen önce: bağlama bekler, cari silinince reddedilir; proje bağsız kalır */
+    ok(await A.sync([cu('c_r2', firm('Yarış Carisi 2'))]));
+    const t2 = await pool.connect();
+    try {
+      await t2.query('BEGIN');
+      await t2.query(`SELECT 1 FROM customers WHERE id='c_r2' FOR UPDATE`);
+      await t2.query(`DELETE FROM customers WHERE id='c_r2'`);
+      const l = U.sync([{ c: 'projects', id: 'p_cu1', op: 'put', data: { ...pa, customerId: 'c_r2' } }]);
+      assert.equal(await pending(l), 'bekliyor');
+      await t2.query('COMMIT');
+      rejectedWith(await l, 'Cari bulunamadı');
+    } finally { t2.release(); }
+    assert.equal((await row('projects', 'p_cu1')).customer_id, null);
+  });
+
   test('silme: silinen cari yedeklerden de çıkar (unvan/TCKN kalmaz), diğer cariler ve sayım güncel', async () => {
     const NAME = 'Yedek Silme Deneme Ltd.', TCKN = '10000000278', KEEP = 'Yedekte Kalan A.Ş.';
     ok(await A.sync([cu('c_ys', firm(NAME, { taxNo: TCKN, contacts: [{ id: 'ct_ys', name: 'Yedek Yetkili' }] })), cu('c_yk', firm(KEEP))]));
