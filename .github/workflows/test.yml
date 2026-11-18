@@ -75,6 +75,8 @@ jobs:
         run: node test/e2e/proje-sablonu.cjs
       - name: Genel raporlar testi (pivot, faturalanabilir saat, Excel, performans)
         run: node test/e2e/genel-raporlar.cjs
+      - name: Talep eden ve talep havuzu testi
+        run: node test/e2e/talep.cjs
       - name: Sunucu günlüğü
         if: failure()
         run: cat server.log

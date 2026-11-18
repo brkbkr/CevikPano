@@ -1025,6 +1025,8 @@ button.c-av::after{content:"";position:absolute;inset:-6px}
 .qm{position:fixed;z-index:120;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);
   padding:6px;width:220px;max-height:min(440px,calc(100vh - 16px));overflow:auto;color:var(--ink)}
 .qm.as{width:260px}
+.qm.req{width:320px}
+.qm-wrap.sheet .qm.req{top:0;max-height:none;border-radius:0}
 .qm-h{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta);padding:6px 8px}
 .qm-opt{display:flex;align-items:center;gap:9px;width:100%;min-height:36px;padding:4px 8px;border-radius:8px;font-size:13px;
   color:var(--ink);text-align:left;background:none;border:0}
@@ -1160,6 +1162,29 @@ button.c-av::after{content:"";position:absolute;inset:-6px}
 .hm-adv{max-width:144px}
 .hm-adv.to-done svg.i{color:var(--ok)}
 .hm-adv.none{visibility:hidden}
+
+/* talep havuzu ve talep eden (görev 12) */
+.tp-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.tp-bar select.inp{width:auto;min-width:160px;max-width:100%}
+.tp-bar .spacer{flex:1}
+.tp-un{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink2);min-height:36px}
+.tp-list{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.tp-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;column-gap:12px;min-height:60px;padding:8px 14px;border-bottom:1px solid var(--line)}
+.tp-row:last-child{border-bottom:0}
+.tp-main{min-width:0}
+.tp-sub{flex-wrap:wrap;white-space:normal;row-gap:2px}
+.tp-rq{display:inline-flex;align-items:center;gap:4px;min-width:0} .tp-rq svg.i{width:12px;height:12px}
+.tp-rq.none{color:var(--late);font-weight:600}
+.tp-as{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink2);white-space:nowrap}
+.tp-match{display:flex;align-items:center;flex-wrap:wrap;gap:4px;min-height:18px} .tp-match svg.i{width:14px;height:14px}
+.id-reqwarn{display:flex;align-items:flex-start;gap:6px;font-size:12px;color:var(--id-late);background:var(--id-late-bg);border-radius:8px;padding:6px 8px;margin:2px 0 6px}
+.id-reqwarn svg.i{width:14px;height:14px;flex-shrink:0;margin-top:1px}
+.id-pick small{color:var(--meta);font-weight:500}
+@media (max-width:600px){
+  .tp-row{grid-template-columns:minmax(0,1fr);row-gap:8px;padding:10px 12px}
+  .tp-row .btn{justify-self:start;min-height:40px}
+  .tp-bar select.inp{flex:1 1 100%}
+}
 
 /* izleyici */
 .hm-ro-note{display:flex;align-items:center;gap:8px;padding:10px 14px;margin-bottom:6px;font-size:12px;color:var(--ink2);background:var(--surface2);
@@ -4969,6 +4994,7 @@ function issueProps(i) {
       ${row('Tip', pb('type', 'type', `${tIcon(i.type)}<span class="t">${esc(TYPE[i.type]?.[2] || i.type)}</span>`, 'Tip: ' + (TYPE[i.type]?.[2] || i.type)))}`)
     + grp('users', 'Kişiler', row('Atanan', pb('assignee', 'as', nm(i.assignee, 'Atanmamış'), 'Atanan: ' + (user(i.assignee)?.name || 'Atanmamış')))
       + (MOD('reporter') ? row('Raporlayan', pb('reporter', 'rep', nm(i.reporter, 'Yok'), 'Raporlayan: ' + (user(i.reporter)?.name || 'Yok'))) : ''))
+    + (reqMode(pr) || i.requester ? grp('building', 'Talep eden', reqDetail(i, ed, reqMode(pr), row, pb)) : '')
     + grp('cal', 'Planlama', (projType(pr) === 'agile' ? row('Sprint', pb('sprintId', 'sprint', `<span class="t">${sp ? esc(sp.name) + (sp.state === 'active' ? ' <small>aktif</small>' : '') : 'Backlog'}</span>`, 'Sprint: ' + (sp?.name || 'Backlog'))) : '')
       + (MOD('epic') ? row('Epik', pb('epicId', 'epic', ep ? `<span class="id-epic">${ic('layers')}${esc(ep.summary)}</span>` : '<span class="t muted">Yok</span>', 'Epik: ' + (ep?.summary || 'Yok'))) : '')
       + row('Başlangıç', ed ? dateField({ id: 'idStart', f: 'start', value: der('start') ? der('start').v : i.start, label: 'Başlangıç', err: der('start')?.msg, quick: true })
@@ -5004,6 +5030,11 @@ function idSet(i, f, v) {
   if (f === 'statusId') { if (i.statusId === v || !stat(v)) return false; delete i.doneFrom; setStatus(i, v); }
   else if (f === 'priority') { if (!setPriority(i, +v)) return false; }
   else if (f === 'assignee') { if (!setAssignee(i, v || null)) return false; }
+  else if (f === 'requester') {
+    if (reqVal(i.requester) === reqVal(v)) return false;
+    logHist(i, 'Talep eden', reqName(i.requester) || '—', reqName(v) || '—');
+    i.requester = v || null;
+  }
   else {
     const isDur = f === 'estimate' || f === 'remainingEst';
     const before = isDur ? fmtDur(f === 'estimate' ? i.estimate : remaining(i)) : histName(f, i[f]);
@@ -5060,6 +5091,8 @@ function propMenu(kind, btn) {
       pick: v => after(idSet(i, 'statusId', v)) }),
     pri: () => ({ kind: 'pri', title: 'Öncelik', list: () => qmPriList(i), pick: v => after(idSet(i, 'priority', +v)) }),
     as: () => ({ kind: 'as', title: 'Atanan kişi', search: issueUsers(i).length > 8, list: q => qmAsList(i, q), pick: v => after(idSet(i, 'assignee', v || null)) }),
+    req: () => ({ kind: 'req', title: 'Talep eden', search: true, list: reqList(reqVal(i.requester), reqMode(projOfI(i)) === 'req', projOfI(i)),
+      pick: v => (v === '__add' ? quickContact({ customerId: projOfI(i)?.customerId }, r => after(idSet(i, 'requester', r))) : after(idSet(i, 'requester', reqParse(v)))) }),
     rep: () => ({ title: 'Raporlayan', search: DB.users.length > 8, list: usersList(i.reporter, DB.users.filter(u => u.active !== false && !u.system)), pick: v => after(idSet(i, 'reporter', v)) }),
     type: () => ({ title: 'Tip', list: () => ISSUE_TYPES().map(t => pmOpt(t, i.type, tIcon(t), esc(TYPE[t][2]))).join(''), pick: v => after(idSet(i, 'type', v)) }),
     sprint: () => ({ title: 'Sprint', list: () => pmOpt('', i.sprintId || '', ic('backlog'), 'Backlog')
@@ -5294,6 +5327,8 @@ function newIssueForm(preset = {}, keep) {
   const sp = keep ? keep.sprintId : (preset.sprintId ?? (activeSprint()?.id || ''));
   const ep = keep?.epicId || '';
   NI_AS = keep ? keep.assignee : null;
+  const rm = reqMode(pr);
+  let NI_REQ = keep?.requester || null;
   const fs = fieldsFor();
   const moreN = ['Durum', 'Faturalama', 'Fatura türü', fs.length ? `${fs.length} özel alan` : '', 'Etiketler'].filter(Boolean).join(', ');
   openModal(`
@@ -5310,6 +5345,8 @@ function newIssueForm(preset = {}, keep) {
       <div class="id-err" id="f_sum_e" role="alert"></div>
       <div class="id-fl"><label for="f_desc">Açıklama <span class="opt">(isteğe bağlı)</span></label></div>
       <textarea class="inp" id="f_desc" rows="3" placeholder="Ayrıntı, kabul ölçütü ya da bağlantı ekleyin…"></textarea>
+      ${rm ? `<div class="id-fl"><span>Talep eden ${rm === 'req' ? '<span class="req">*</span>' : '<span class="opt">(isteğe bağlı)</span>'}</span></div>
+        <button type="button" class="id-pick" id="f_reqBtn" aria-haspopup="menu" aria-describedby="f_req_e"></button><div class="id-err" id="f_req_e" role="alert"></div>` : ''}
       <div class="id-fl">Öncelik</div>
       <div class="id-seg" id="f_pri" role="radiogroup" aria-label="Öncelik">${LVLS.map(p => `<button type="button" role="radio" data-pri="${p}" aria-checked="${p === p0}"><span class="prio ${PRI[p][0]}">${ic(PRI[p][0])}</span>${PRI[p][1]}</button>`).join('')}</div>
       <div class="id-g2">
@@ -5344,6 +5381,11 @@ function newIssueForm(preset = {}, keep) {
     b.innerHTML = u ? `${avat(u.id)}<span class="t">${esc(u.name)}</span>${ic('down')}` : `<span class="c-av none">${ic('userx')}</span><span class="t">Atanmamış</span>${ic('down')}`;
     b.setAttribute('aria-label', 'Atanan: ' + (u ? u.name : 'Atanmamış')); };
   setAs(NI_AS);
+  const setReq = r => { NI_REQ = r && reqInfo(r)?.p ? r : null; const b = $('#f_reqBtn'); if (!b) return;
+    b.innerHTML = reqBtnHtml(NI_REQ); b.classList.toggle('empty', !NI_REQ);
+    b.setAttribute('aria-label', 'Talep eden: ' + (reqName(NI_REQ) || 'Seçilmedi')); if (NI_REQ) $('#f_req_e').innerHTML = ''; };
+  setReq(NI_REQ);
+  if ($('#f_reqBtn')) $('#f_reqBtn').onclick = e => { e.stopPropagation(); reqPick($('#f_reqBtn'), '#f_reqBtn', NI_REQ, pr, setReq); };
   const sum = $('#f_sum');
   const cnt = () => { $('#f_sum_c').textContent = `${sum.value.length} / 200`; if (sum.value.trim()) { $('#f_sum_e').innerHTML = ''; sum.removeAttribute('aria-invalid'); } };
   sum.oninput = cnt;
@@ -5374,6 +5416,7 @@ function newIssueForm(preset = {}, keep) {
     const s = sum.value.trim();
     if (!s) { $('#f_sum_e').innerHTML = ic('alert') + 'Özet boş olamaz. Kısa bir başlık yazın.'; sum.setAttribute('aria-invalid', 'true'); sum.focus(); return; }
     if (!checkDates()) return;
+    if (rm === 'req' && !NI_REQ) { $('#f_req_e').innerHTML = ic('alert') + 'Talep eden gerekli. Bir kişi seçin ya da yeni kişi ekleyin.'; return $('#f_reqBtn').focus(); }
     const est = parseDur($('#f_est').value);
     const cf = {};
     $$('#f_more [data-cf]').forEach(el => { const f = DB.fields.find(x => x.id === el.dataset.cf); if (!f) return;
@@ -5386,10 +5429,11 @@ function newIssueForm(preset = {}, keep) {
       estimate: est, remainingEst: est, sprintId: $('#f_sp')?.value || null, epicId: $('#f_ep')?.value || null, parentId: preset.parentId || null,
       start: $('#f_start').value || '', due: $('#f_due').value || '', cf, billable: $('#f_bill').value, billType: $('#f_btype').value,
       labels: $('#f_lbl').value.split(',').map(x => x.trim()).filter(Boolean),
+      ...(rm ? { requester: NI_REQ || null } : {}),
     }, pr.key);
     save();
     if (!again) { closeModal(); render(); return toast(it.key + ' oluşturuldu'); }
-    const k = { type: $('#f_type').value, priority: pri, sprintId: $('#f_sp')?.value || '', epicId: $('#f_ep')?.value || '', assignee: NI_AS };
+    const k = { type: $('#f_type').value, priority: pri, sprintId: $('#f_sp')?.value || '', epicId: $('#f_ep')?.value || '', assignee: NI_AS, requester: NI_REQ };
     RERENDER = true;
     newIssueForm(preset, k);
     toast(it.key + ' oluşturuldu');
@@ -5434,6 +5478,275 @@ function nextRemaining(i, hours, mode, value) {
 
 const logWorkForm = (issueId, userId, date) => worklogForm({ issueId, date });
 
+/* ============================ TALEP EDEN + TALEP HAVUZU (görev 12, E1) ============================
+   issues.data.requester = {customerId, contactId}: etkin bir carinin yetkili kişisi. 'talep' şablonlu projede zorunlu,
+   cari bağlı diğer projelerde isteğe bağlı, diğerlerinde gizli. Raporlayan (kullanıcı) ayrı alandır, değişmez.
+   Kural ve yetki sunucuda (store.js checkRequester, POST /api/customers/:id/contacts); burası yalnız deneyim. */
+const isTalep = p => p?.template === 'talep';
+const reqMode = p => (isTalep(p) ? 'req' : p?.customerId ? 'opt' : '');
+const reqVal = r => (r && r.customerId && r.contactId ? `${r.customerId}|${r.contactId}` : '');
+const reqParse = v => { const [customerId, contactId] = String(v || '').split('|'); return customerId && contactId ? { customerId, contactId } : null; };
+const custShort = c => (c ? c.shortName || c.name || '' : '');
+/* Seçilebilir kişiler: etkin carilerin yetkili kişileri; projenin carisi önce. */
+function reqPeople(pr) {
+  const cs = (DB.customers || []).filter(c => c && c.active !== false)
+    .sort((a, b) => (b.id === pr?.customerId) - (a.id === pr?.customerId) || custShort(a).localeCompare(custShort(b), 'tr'));
+  const out = [];
+  for (const c of cs) for (const p of Array.isArray(c.contacts) ? c.contacts : []) if (p && p.id && p.name) out.push({ c, p });
+  return out;
+}
+function reqInfo(r) {
+  if (!r || !r.customerId) return null;
+  const c = (DB.customers || []).find(x => x.id === r.customerId);
+  const p = c && Array.isArray(c.contacts) ? c.contacts.find(x => x && x.id === r.contactId) : null;
+  return { c, p };
+}
+const reqName = r => { const x = reqInfo(r); return !x ? '' : x.p ? `${x.p.name} — ${custShort(x.c)}` : 'Silinmiş kişi'; };
+/* Kimden adresiyle eşleşen kişi (harf duyarsız). */
+function reqByEmail(em) {
+  const k = String(em || '').trim().toLowerCase(); if (!k) return null;
+  const hit = reqPeople().find(({ p }) => String(p.email || '').trim().toLowerCase() === k);
+  return hit ? { customerId: hit.c.id, contactId: hit.p.id } : null;
+}
+/* "Ad Soyad <ad@ornek.com>" ya da yalnız adres. */
+function parseFrom(s) {
+  s = String(s || '').trim();
+  const m = /^(.*?)<\s*([^<>\s]+@[^<>\s]+)\s*>\s*$/.exec(s);
+  if (m) return { name: m[1].replace(/^["'\s]+|["'\s]+$/g, ''), email: m[2] };
+  const e = /[^\s<>"',;]+@[^\s<>"',;]+\.[^\s<>"',;]+/.exec(s);
+  return { name: '', email: e ? e[0] : '' };
+}
+const reqBtnHtml = r => { const x = reqInfo(r);
+  return !x ? `<span class="c-av none">${ic('userx')}</span><span class="t">Seçilmedi</span>${ic('down')}`
+    : x.p ? `<span class="c-av none">${ic('building')}</span><span class="t">${esc(x.p.name)} <small>— ${esc(custShort(x.c))}</small></span>${ic('down')}`
+    : `<span class="c-av none">${ic('userx')}</span><span class="t muted">Silinmiş kişi</span>${ic('down')}`; };
+function reqList(cur, required, pr) {
+  return q => {
+    const k = qmKey(q).trim();
+    const hit = x => !k || [x.p.name, x.p.email, x.p.title, x.c.name, x.c.shortName].some(t => t && qmKey(t).includes(k));
+    const rows = reqPeople(pr).filter(hit).slice(0, 200).map(({ c, p }) => pmOpt(`${c.id}|${p.id}`, cur, `<span class="c-av none">${ic('building')}</span>`,
+      `${esc(p.name)} — ${esc(custShort(c))}`, esc(p.email || p.title || '')));
+    const out = rows.join('') || '<div class="qm-empty">Eşleşen kişi yok</div>';
+    return (required ? '' : pmOpt('', cur, `<span class="c-av none">${ic('x')}</span>`, 'Yok') + '<hr>') + out
+      + (canEdit() ? `<hr><button type="button" class="qm-opt" role="menuitem" data-qv="__add">${ic('userplus')}<span class="qm-l">Yeni kişi ekle</span></button>` : '');
+  };
+}
+/* Seçici: tek kapı (yeni iş, iş detayı, e-postadan talep). */
+function reqPick(btn, sel, cur, pr, onPick, pre = {}) {
+  const required = reqMode(pr) === 'req';
+  pmOpen({ btn, sel, kind: 'req', title: 'Talep eden', search: true, list: reqList(reqVal(cur), required, pr),
+    pick: v => (v === '__add' ? quickContact({ customerId: pr?.customerId, ...pre }, onPick) : onPick(reqParse(v))) });
+}
+/* Sunucunun döndürdüğü cari kaydını yerel veriye ve SNAP'e yazar (üye cariyi /api/sync ile gönderemez). */
+function reqStoreCustomer(d) {
+  if (!d || !d.id) return;
+  const arr = (DB.customers ||= []), k = arr.findIndex(x => x && x.id === d.id);
+  if (k >= 0) { const o = arr[k]; for (const key of Object.keys(o)) delete o[key]; Object.assign(o, d); } else arr.push(d);
+  if (SNAP) (SNAP.rec.customers ||= new Map()).set(String(d.id), cj(d));
+}
+/* Hızlı kişi ekle (yönetici + üye): ad zorunlu, e-posta, telefon. */
+function quickContact(pre = {}, cb) {
+  if (!canEdit()) return;
+  const cs = (DB.customers || []).filter(c => c && c.active !== false).sort((a, b) => custShort(a).localeCompare(custShort(b), 'tr'));
+  if (!cs.length) return toast('Etkin cari yok. Yöneticinize cari ekletin.', { warn: true });
+  const m = openSub(`<div class="id-mh"><span class="id-mic">${ic('userplus')}</span>
+      <div class="tx"><b id="qcTitle">Yeni kişi ekle</b><div class="sub">Carinin yetkili kişisi olarak eklenir</div></div>
+      <button type="button" class="id-ib" data-close aria-label="Kapat">${ic('x')}</button></div>
+    <div class="id-mb">
+      <div class="id-fl"><label for="qc_cu">Cari <span class="req">*</span></label></div>
+      <select class="inp" id="qc_cu">${cs.map(c => `<option value="${esc(c.id)}" ${c.id === pre.customerId ? 'selected' : ''}>${esc(custShort(c))}</option>`).join('')}</select>
+      <div class="id-fl"><label for="qc_n">Ad soyad <span class="req">*</span></label></div>
+      <input class="inp" id="qc_n" maxlength="120" autocomplete="off" value="${esc(pre.name || '')}">
+      <div class="id-fl"><label for="qc_e">E-posta <span class="opt">(isteğe bağlı)</span></label></div>
+      <input class="inp" id="qc_e" type="email" maxlength="200" autocomplete="off" value="${esc(pre.email || '')}">
+      <div class="id-fl"><label for="qc_p">Telefon <span class="opt">(isteğe bağlı)</span></label></div>
+      <input class="inp" id="qc_p" maxlength="30" autocomplete="off" inputmode="tel">
+      <div class="id-err" id="qc_err" role="alert"></div>
+    </div>
+    <div class="m-f"><span class="spacer"></span><button type="button" class="btn" data-close>Vazgeç</button>
+      <button type="button" class="btn pri" id="qc_ok">${ic('check')}Kişiyi ekle</button></div>`, 'id-m tp-qc');
+  m.setAttribute('aria-labelledby', 'qcTitle');
+  setTimeout(() => (pre.name ? $('#qc_e') : $('#qc_n'))?.focus(), 40);
+  const err = t => { $('#qc_err').innerHTML = t ? ic('alert') + esc(t) : ''; };
+  $('#qc_ok').onclick = async () => {
+    const name = $('#qc_n').value.trim(), email = $('#qc_e').value.trim(), phone = $('#qc_p').value.trim(), cid = $('#qc_cu').value;
+    if (!name) { err('Ad gerekli.'); return $('#qc_n').focus(); }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { err('E-posta adresi geçersiz.'); return $('#qc_e').focus(); }
+    const b = $('#qc_ok'); b.disabled = true;
+    try {
+      const r = await API.post(`/api/customers/${encodeURIComponent(cid)}/contacts`, { name, email, phone });
+      reqStoreCustomer(r.customer);
+      closeSub();
+      toast(`${name} eklendi`);
+      cb?.({ customerId: cid, contactId: r.contact.id });
+    } catch (e) { b.disabled = false; err(e.message || 'Kişi eklenemedi'); }
+  };
+  m.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName === 'INPUT') { e.preventDefault(); $('#qc_ok').click(); } });
+}
+/* İş detayındaki "Talep eden" bölümü: kişi, cari, e-posta, telefon. */
+function reqDetail(i, ed, rm, row, pb) {
+  const x = reqInfo(i.requester);
+  const lab = !x ? `<span class="c-av none">${ic('userx')}</span><span class="t muted">Seçilmedi</span>`
+    : x.p ? `<span class="c-av none">${ic('building')}</span><span class="t">${esc(x.p.name)}</span>`
+    : `<span class="c-av none">${ic('userx')}</span><span class="t muted">Silinmiş kişi</span>`;
+  let h = rm === 'req' && !x ? `<div class="id-reqwarn" role="note">${ic('alert')}<span>Bu talepte talep eden yok.${ed ? ' Bir kişi seçin.' : ''}</span></div>` : '';
+  h += row('Kişi', pb('requester', 'req', lab, 'Talep eden: ' + (reqName(i.requester) || 'Seçilmedi')));
+  if (x) h += row('Cari', `<span class="id-pv ro" data-reqcust>${x.c ? esc(custShort(x.c)) : '<span class="muted">Silinmiş cari</span>'}</span>`);
+  if (x?.p?.email) h += row('E-posta', `<span class="id-pv ro"><a href="mailto:${esc(x.p.email)}">${esc(x.p.email)}</a></span>`);
+  if (x?.p?.phone) h += row('Telefon', `<span class="id-pv ro">${esc(x.p.phone)}</span>`);
+  return h;
+}
+
+/* ---- E-postadan talep oluştur: Kimden, Konu, Gövde (düz metin); Kimden kişinin e-postasıyla eşleşirse seçilir ---- */
+function emailTalep(pid) {
+  if (!canEdit()) return;
+  const ps = poolProjects();
+  if (!ps.length) return toast('Talep projesi yok');
+  let pr = ps.find(p => p.id === pid) || ps.find(p => p.id === DB.ui.project) || ps[0];
+  let REQ = null, auto = false;
+  openModal(`
+    <div class="id-mh"><span class="id-mic">${ic('mail')}</span>
+      <div class="tx"><b id="etTitle">E-postadan talep oluştur</b><div class="sub">E-postayı yapıştırın; konu özet, gövde açıklama olur</div></div>
+      <button type="button" class="id-ib" data-close aria-label="Kapat">${ic('x')}</button></div>
+    <div class="id-mb">
+      ${ps.length > 1 ? `<div class="id-fl"><label for="et_proj">Proje</label></div>
+        <select class="inp" id="et_proj">${ps.map(p => `<option value="${esc(p.id)}" ${p === pr ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>` : ''}
+      <div class="id-fl"><label for="et_from">Kimden</label></div>
+      <input class="inp" id="et_from" maxlength="300" autocomplete="off" placeholder="Ad Soyad &lt;ad@ornek.com&gt;">
+      <div class="id-fl"><span>Talep eden <span class="req">*</span></span></div>
+      <button type="button" class="id-pick" id="et_reqBtn" aria-haspopup="menu"></button>
+      <div class="id-hint tp-match" id="et_match" role="status"></div>
+      <div class="id-err" id="et_req_e" role="alert"></div>
+      <div class="id-fl"><label for="et_sub">Konu <span class="req">*</span></label><span class="num id-cc" id="et_sub_c">0 / 500</span></div>
+      <input class="inp" id="et_sub" maxlength="500" autocomplete="off">
+      <div class="id-err" id="et_sub_e" role="alert"></div>
+      <div class="id-fl"><label for="et_body">Gövde <span class="opt">(düz metin)</span></label></div>
+      <textarea class="inp" id="et_body" rows="7"></textarea>
+    </div>
+    <div class="m-f"><span class="spacer"></span><button type="button" class="btn" data-close>Vazgeç</button>
+      <button type="button" class="btn pri" id="et_ok">${ic('check')}Talep oluştur</button></div>`, 'id-m id-new tp-et');
+  const m = $('#scrim .modal'); m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-labelledby', 'etTitle');
+  const setReq = (r, isAuto = false) => { REQ = r && reqInfo(r)?.p ? r : null; auto = !!REQ && isAuto;
+    const b = $('#et_reqBtn'); b.innerHTML = reqBtnHtml(REQ); b.classList.toggle('empty', !REQ);
+    b.setAttribute('aria-label', 'Talep eden: ' + (reqName(REQ) || 'Seçilmedi')); if (REQ) $('#et_req_e').innerHTML = ''; };
+  const match = () => {
+    const f = parseFrom($('#et_from').value), hit = reqByEmail(f.email), out = $('#et_match');
+    if (hit) { setReq(hit, true); out.innerHTML = `${ic('check')}Eşleşti: <b>${esc(reqName(hit))}</b>`; return; }
+    if (auto) setReq(null);
+    out.innerHTML = f.email && !REQ ? `${ic('alert')}Bu adresle kayıtlı kişi yok. Listeden seçin ya da
+      <button type="button" class="id-link" id="et_add">${ic('userplus')}kişi olarak ekleyin</button>` : '';
+    const a = $('#et_add'); if (a) a.onclick = () => quickContact({ customerId: pr.customerId, name: f.name, email: f.email }, r => { setReq(r); match(); });
+  };
+  setReq(null);
+  $('#et_from').addEventListener('input', match);
+  $('#et_proj')?.addEventListener('change', e => { pr = ps.find(p => p.id === e.target.value) || pr; });
+  $('#et_sub').addEventListener('input', () => { $('#et_sub_c').textContent = `${$('#et_sub').value.length} / 500`; if ($('#et_sub').value.trim()) $('#et_sub_e').innerHTML = ''; });
+  $('#et_reqBtn').onclick = e => { e.stopPropagation(); const f = parseFrom($('#et_from').value);
+    reqPick($('#et_reqBtn'), '#et_reqBtn', REQ, pr, r => { setReq(r); match(); }, { name: f.name, email: f.email }); };
+  setTimeout(() => $('#et_from').focus(), 40);
+  $('#et_ok').onclick = () => {
+    const s = $('#et_sub').value.trim();
+    if (!REQ) { $('#et_req_e').innerHTML = ic('alert') + 'Talep eden gerekli. Bir kişi seçin ya da yeni kişi ekleyin.'; return $('#et_reqBtn').focus(); }
+    if (!s) { $('#et_sub_e').innerHTML = ic('alert') + 'Konu gerekli.'; return $('#et_sub').focus(); }
+    const st = statsOf(pr.id), s0 = st.find(x => x.cat === 'todo') || st[0];
+    const it = createIssue(pr, { summary: s.slice(0, 500), description: $('#et_body').value.replace(/\s+$/, ''), statusId: s0?.id, requester: REQ }, pr.key);
+    save(); closeModal(); render(); toast(it.key + ' oluşturuldu');
+  };
+}
+
+/* ---- Talep havuzu: tüm 'talep' projelerinin "yapılacak" kategorisindeki işleri (proje erişimine göre) ---- */
+const TP = { proj: '', cust: '', un: false };
+const poolProjects = () => DB.projects.filter(p => isTalep(p) && navProjOk(p));
+function poolItems() {
+  const ps = new Set(poolProjects().map(p => p.id));
+  return DB.issues.filter(i => ps.has(i.projectId) && stat(i.statusId)?.cat === 'todo' && i.type !== 'epic');
+}
+function renderPool() {
+  const ps = poolProjects(), all = poolItems(), edit = canEdit();
+  if (TP.proj && !ps.some(p => p.id === TP.proj)) TP.proj = '';
+  const list = all.filter(i => (!TP.proj || i.projectId === TP.proj) && (!TP.cust || i.requester?.customerId === TP.cust) && (!TP.un || !i.assignee))
+    .sort((a, b) => (b.created || 0) - (a.created || 0));
+  const cids = [...new Set(all.map(i => i.requester?.customerId).filter(Boolean))].filter(id => (DB.customers || []).some(c => c.id === id));
+  if (TP.cust && !cids.includes(TP.cust)) TP.cust = '';
+  const mailBtn = id => edit ? `<button type="button" class="btn ${id === 'tp_mail2' ? 'pri' : ''}" id="${id}">${ic('mail')}E-postadan talep oluştur</button>` : '';
+  const bar = `<div class="tp-bar" role="group" aria-label="Talep havuzu süzgeci">
+      <select class="inp" id="tp_proj" aria-label="Proje"><option value="">Tüm talep projeleri</option>${ps.map(p => `<option value="${esc(p.id)}" ${TP.proj === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
+      <select class="inp" id="tp_cust" aria-label="Cari"><option value="">Tüm cariler</option>${cids.map(id => `<option value="${esc(id)}" ${TP.cust === id ? 'selected' : ''}>${esc(custShort(DB.customers.find(c => c.id === id)))}</option>`).join('')}</select>
+      <label class="tp-un"><input type="checkbox" id="tp_un" ${TP.un ? 'checked' : ''}> Yalnız atanmamış</label>
+      <span class="spacer"></span>${all.length ? mailBtn('tp_mail') : ''}</div>`;
+  const age = t => { const d = Math.floor((Date.now() - (+t || Date.now())) / 864e5); return d <= 0 ? 'bugün' : `${d} gün önce`; };
+  const row = i => {
+    const id = esc(i.id), u = user(i.assignee), rn = reqName(i.requester);
+    return `<div class="tp-row" data-tprow="${id}">
+      <div class="tp-main"><button type="button" class="hm-t" data-open="${id}" title="${esc(i.summary)}">${esc(i.summary)}</button>
+        <div class="hm-sub tp-sub"><span class="k">${esc(i.key)}</span><span class="hm-sep"></span><span class="pj">${ic('folder')}${esc(projName(i.projectId))}</span>
+          <span class="hm-sep"></span><span class="tp-rq ${rn ? '' : 'none'}">${ic('building')}${rn ? esc(rn) : 'Talep eden yok'}</span>
+          <span class="hm-sep"></span><span>${age(i.created)}</span></div></div>
+      <span class="tp-as">${u ? `${avat(u.id)}<span>${esc(u.name)}</span>` : `<span class="c-av none">${ic('userx')}</span><span class="muted">Atanmamış</span>`}</span>
+      ${edit ? `<button type="button" class="btn sm" data-tpmove="${id}" aria-label="Taşı ve ata: ${esc(i.key)}">${ic('move')}Taşı / ata</button>` : ''}</div>`;
+  };
+  let body;
+  if (!all.length) body = `<div class="hm-empty" data-tpempty="none"><span class="hm-empty-ic">${ic('inbox')}</span><h3>Havuzda bekleyen talep yok</h3>
+      <p>Talep projelerinin “yapılacak” kolonlarındaki işler burada toplanır.</p><div class="acts">${mailBtn('tp_mail2')}</div></div>`;
+  else if (!list.length) body = `<div class="hm-empty" data-tpempty="filter"><span class="hm-empty-ic">${ic('filter')}</span><h3>Süzgece uyan talep yok</h3>
+      <p>Havuzda ${all.length} talep var.</p><div class="acts"><button type="button" class="btn" id="tp_clear">Süzgeci temizle</button></div></div>`;
+  else body = `<div class="tp-list" aria-label="Bekleyen talepler">${list.map(row).join('')}</div>`;
+  return `<div class="hm-c tp-c" id="tpPool">
+    ${edit ? '' : `<div class="hm-ro-note">${ic('eye')}İzleyici olarak görüntülüyorsun; talepleri dağıtamazsın.</div>`}
+    ${all.length ? bar : ''}${body}</div>`;
+}
+/* İşi başka projeye taşır: yeni anahtar, hedefin ilk "yapılacak" kolonu; sprint/epik/üst iş bağı kopar. */
+function moveIssueTo(i, pr) {
+  if (!pr || i.projectId === pr.id) return false;
+  const from = projName(i.projectId), st = statsOf(pr.id), s0 = st.find(s => s.cat === 'todo') || st[0];
+  if (!s0) return false;
+  i.projectId = pr.id; i.key = `${pr.key}-${++pr.counter}`; i.statusId = s0.id;
+  i.sprintId = null; i.epicId = null; i.parentId = null;
+  logHist(i, 'Proje', from, pr.name);
+  return true;
+}
+function poolMove(id) {
+  const i = issue(id); if (!i || !canEdit()) return;
+  const ps = DB.projects.filter(p => navProjOk(p) && statsOf(p.id).length);
+  const asOpts = (p, cur) => `<option value="">Atanmamış</option>${memsOf(p).filter(u => u.active !== false && !u.system)
+    .map(u => `<option value="${esc(u.id)}" ${u.id === cur ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}`;
+  openModal(`<div class="id-mh"><span class="id-mic">${ic('move')}</span>
+      <div class="tx"><b id="tmTitle">Talebi taşı ve ata</b><div class="sub"><span class="k">${esc(i.key)}</span> ${esc(i.summary)}</div></div>
+      <button type="button" class="id-ib" data-close aria-label="Kapat">${ic('x')}</button></div>
+    <div class="id-mb">
+      <div class="id-fl"><label for="tm_proj">Proje</label></div>
+      <select class="inp" id="tm_proj">${ps.map(p => `<option value="${esc(p.id)}" ${p.id === i.projectId ? 'selected' : ''}>${esc(p.name)}${isTalep(p) ? ' · talep' : ''}</option>`).join('')}</select>
+      <div class="id-fl"><label for="tm_as">Atanan</label></div>
+      <select class="inp" id="tm_as">${asOpts(projOfI(i), i.assignee)}</select>
+    </div>
+    <div class="m-f"><span class="spacer"></span><button type="button" class="btn" data-close>Vazgeç</button>
+      <button type="button" class="btn pri" id="tm_ok">${ic('check')}Kaydet</button></div>`, 'id-m tp-tm');
+  const m = $('#scrim .modal'); m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-labelledby', 'tmTitle');
+  $('#tm_proj').onchange = e => { const p = DB.projects.find(x => x.id === e.target.value); $('#tm_as').innerHTML = asOpts(p, $('#tm_as').value); };
+  setTimeout(() => $('#tm_proj').focus(), 40);
+  $('#tm_ok').onclick = () => {
+    const x = issue(id); if (!x) return closeModal();
+    const p = DB.projects.find(q => q.id === $('#tm_proj').value), as = $('#tm_as').value || null;
+    const moved = moveIssueTo(x, p), assigned = setAssignee(x, as);
+    if (moved || assigned) { x.updatedAt = Date.now(); save(); }
+    closeModal(); render();
+    if (moved || assigned) toast(`${x.key}${moved ? ` ${p.name} projesine taşındı` : ''}${moved && assigned ? ',' : ''}${assigned ? ` ${user(as)?.name || 'atanmamış'} ${as ? 'kişisine atandı' : 'yapıldı'}` : ''}`);
+  };
+}
+document.addEventListener('click', e => {
+  if (DB?.ui?.view !== 'pool' || !e.target.closest?.('#tpPool')) return;
+  const t = e.target;
+  if (t.closest('#tp_mail, #tp_mail2')) return emailTalep(TP.proj);
+  if (t.closest('#tp_clear')) { TP.proj = ''; TP.cust = ''; TP.un = false; return render(); }
+  const mv = t.closest('[data-tpmove]'); if (mv) return poolMove(mv.dataset.tpmove);
+});
+document.addEventListener('change', e => {
+  if (DB?.ui?.view !== 'pool' || !e.target.closest?.('#tpPool')) return;
+  const id = e.target.id;
+  if (id === 'tp_proj') TP.proj = e.target.value; else if (id === 'tp_cust') TP.cust = e.target.value; else if (id === 'tp_un') TP.un = e.target.checked; else return;
+  render(); $('#' + id)?.focus();
+});
+
 /* ============================ YÖNLENDİRME ============================ */
 /* s: 'proj' → proje sekmesi (yalnız seçili proje varken sekme satırında), 'global' → genel ekran (sekme satırı yok). */
 const VIEWS = {
@@ -5441,6 +5754,7 @@ const VIEWS = {
   projects:  { s: 'global', t: 'Projeler',          c: 'Yönetim',           r: renderProjects,  tb: toolbarProjects },
   customers: { s: 'global', t: 'Cariler',           c: 'Yönetim',           r: renderCustomers, tb: () => '' },
   greports:  { s: 'global', t: 'Genel raporlar',    c: 'Tüm projeler',      r: renderGr,        tb: () => '' },
+  pool:      { s: 'global', t: 'Talep havuzu',      c: 'Genel bakış',       r: renderPool,      tb: () => '' },
   board:     { s: 'proj',   t: 'Pano',              c: 'Çevik pano',        r: renderBoard,     tb: toolbarBoard },
   backlog:   { s: 'proj',   t: 'Backlog',           c: 'Planlama',          r: renderBacklog,   tb: toolbarBacklog },
   plan:      { s: 'proj',   t: 'Zaman planı',       c: 'Planlama',          r: renderPlan,      tb: toolbarPlan },
@@ -5463,6 +5777,7 @@ const TAB_IC = { board: 'board', backlog: 'backlog', plan: 'plan', roadmap: 'roa
 function viewAllowed(v) {
   if (!VIEWS[v]) return false;
   if (v === 'roadmap') return MOD('epic');
+  if (v === 'pool') return poolProjects().length > 0;            // talep projesi yoksa havuz yok (görev 12)
   if (v === 'admin' || v === 'users' || v === 'system') return isAdmin();
   return true;
 }
@@ -8509,11 +8824,12 @@ const NAV_ITEMS = {
   projects:  { t: 'Projeler',          ic: 'folder',   v: 'projects' },
   customers: { t: 'Cariler',           ic: 'building', v: 'customers' },
   reports:   { t: 'Raporlar',          ic: 'reports',  v: 'greports' },
+  pool:      { t: 'Talep havuzu',      ic: 'inbox',    v: 'pool' },
   users:     { t: 'Kullanıcılar',      ic: 'users',    v: 'users' },
   system:    { t: 'Sistem',            ic: 'system',   v: 'system' },
 };
 /* Sırası değişebilen / gizlenebilen öğeler (varsayılan sıra). Benim işlerim 1., Çalışma alanları 3. sırada sabit. */
-const NAV_MOVABLE = ['recent', 'projects', 'customers', 'reports', 'users', 'system'];
+const NAV_MOVABLE = ['recent', 'projects', 'customers', 'reports', 'pool', 'users', 'system'];
 const navAvail = k => !NAV_ITEMS[k].v || viewAllowed(NAV_ITEMS[k].v);
 /* Kayıtlı tercih → geçerli sıra + gizliler (bilinmeyen kimlik atılır; sonradan eklenen öğe görünür olarak sona). */
 function navCfg() {
