@@ -172,7 +172,10 @@ async function applyOnce(pool, me, ordered, opts = {}) {
       const pids = st.map(ch => ch.op === 'put' ? ch.data?.projectId : null);
       if (st.length) pids.push(...(await c.query('SELECT DISTINCT project_id FROM statuses WHERE id = ANY($1)',
         [st.map(ch => ch.id)])).rows.map(r => r.project_id));
-      await lockColumns(c, ctx, pids);
+      /* Yetkisiz kişi kilit almaz: kolonlarını değiştiremeyeceği projenin kilidi atlanır (değişikliği applyRecord'da reddedilir). */
+      const allowed = [];
+      for (const pid of new Set(pids)) if (await colAllowed(c, me, pid)) allowed.push(pid);
+      await lockColumns(c, ctx, allowed);
     }
     for (const [, i, ch] of ordered) {
       const reject = reason => { const r = { c: ch?.c, id: ch?.id, reason }; rejIdx.set(r, i); rejected.push(r); };
@@ -239,8 +242,9 @@ async function applyRecord(c, ctx, ch) {
   const { me, batch } = ctx;
   const table = tableOf(ch.c);
   if (ch.c === 'statuses') {
-    /* Danışma kilidi satır kilidinden ÖNCE (kilit sırası hep aynı: kilitlenme olmasın). */
+    /* Danışma kilidi satır kilidinden ÖNCE (kilit sırası hep aynı: kilitlenme olmasın); yetki kilitten de önce. */
     const pre = (await c.query('SELECT project_id FROM statuses WHERE id=$1', [ch.id])).rows[0]?.project_id;
+    await colAuth(c, me, pre, ch.op === 'put' ? ch.data?.projectId : null);
     await lockColumns(c, ctx, [pre, ch.op === 'put' ? ch.data?.projectId : null]);
   }
   const sel = table
@@ -439,6 +443,25 @@ async function canConfigure(c, me, pid, forbidden = COLS_FORBIDDEN) {
     ? (await c.query('SELECT data FROM projects WHERE id=$1', [pid])).rows[0]?.data : undefined;
   if (!p) throw new HttpError(400, 'Durumun projesi yok');
   if (!designOk(me, await wsOfProjectData(c, p), p)) throw new HttpError(403, forbidden);
+}
+
+/* Kolon danışma kilidinden ÖNCE yetki (yetkisiz istek kilit alıp başkasının kolon düzenlemesini bekletemez).
+   İletiler sonraki denetimlerle aynı: ilk proje (kolonun bugünkü, yoksa yeni projesi) için erişim/salt okunur
+   (checkScope), iki proje için de canConfigure. Olmayan proje burada atlanır (sonraki denetimler reddeder). */
+async function colAuth(c, me, pre, next) {
+  if (isAdminRole(me.role)) return;
+  const first = pre || next;
+  for (const pid of new Set([pre, next])) {
+    const p = await projById(c, pid);
+    if (!p) continue;
+    const ws = await wsOfProjectData(c, p);
+    if (pid === first) needMember(me, ws);
+    if (!designOk(me, ws, p)) throw new HttpError(403, COLS_FORBIDDEN);
+  }
+}
+async function colAllowed(c, me, pid) {
+  try { await colAuth(c, me, pid, null); return true; }
+  catch (e) { if (e instanceof HttpError) return false; throw e; }
 }
 
 /* Tür değişimi (hesaplanan türe göre): yetki + Pano'ya geçerken aktif sprint olmamalı. Proje satırı
