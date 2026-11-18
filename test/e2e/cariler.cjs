@@ -63,7 +63,8 @@ const ID = { B: 'cu_b' + RUN, C: 'cu_c' + RUN, D: 'cu_d' + RUN, X: 'cu_x' + RUN 
   // 1) menü herkese görünür (sol menü + dar ekran sekmesi)
   for (const [n, p] of [['admin', A], ['member', Mb], ['viewer', Vb]]) {
     ok(`menu: "Cariler" visible for ${n}`, await p.evaluate(() => { const a = document.querySelector('.nav a[data-v="customers"]');
-      return !!a && a.offsetParent !== null && a.textContent.trim() === 'Cariler' && !!document.querySelector('#vtabs [data-v="customers"]'); }));
+      /* Cariler genel ekran: proje sekmesi değil; dar ekranda ☰ çekmecedeki aynı sol menüden açılır. */
+      return !!a && a.offsetParent !== null && a.textContent.trim() === 'Cariler' && !!a.closest('#rail') && !document.querySelector('#vtabs [data-v="customers"]'); }));
   }
 
   // 2) boş durum (yalnız henüz hiç cari yoksa — temiz veritabanında)

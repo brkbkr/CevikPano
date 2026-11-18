@@ -120,9 +120,11 @@ const XSS = '<img src=x onerror="window.__xss=1">';
     const g = { ...t, id, key: 'GH-' + R, summary: `HM-T${R} ghost`, statusId: 'yok_durum_' + R, due: '', start: '', estimate: 0, priority: 3 };
     DB.issues.push(g); SNAP.rec.issues.set(id, cj(g)); render(); }, [RUN, ID('ghost')]);
   const names = await M.evaluate(() => ({ title: document.getElementById('title').textContent, hash: location.hash,
-    nav: document.querySelector('.nav a[data-v="home"]').textContent.trim(), tab: document.querySelector('#vtabs [data-v="home"]').textContent.trim() }));
+    nav: document.querySelector('.nav a[data-v="home"]').textContent.trim(),
+    /* Benim işlerim genel ekran: proje sekmesi değil (sekme satırı gizli); dar ekranda ☰ çekmecedeki sol menüde (#rail). */
+    tab: document.querySelector('#tabbar').hidden && !document.querySelector('#vtabs [data-v="home"]') && !!document.querySelector('#rail .nav a[data-v="home"]') }));
   ok('login opens "Benim işlerim" at #home', names.title === 'Benim işlerim' && names.hash === '#home', JSON.stringify(names));
-  ok('menu and mobile tab renamed', names.nav === 'Benim işlerim' && names.tab === 'Benim işlerim', JSON.stringify(names));
+  ok('menu renamed, general screen without project tabs', names.nav === 'Benim işlerim' && names.tab === true, JSON.stringify(names));
   await M.evaluate(() => { location.hash = 'board'; }); await sleep(500);
   await M.keyboard.press('g'); await M.keyboard.press('h'); await sleep(500);
   ok('g h goes to Benim işlerim', await M.evaluate(() => location.hash === '#home' && document.getElementById('title').textContent === 'Benim işlerim'));

@@ -119,8 +119,8 @@ const ok = (name, cond, extra = '') => { if (!cond) FAILS++; console.log((cond ?
   ok('mobile modal no horizontal overflow', ov <= 1, String(ov));
   await M.screenshot({ path: SS + 'm_issue.png' });
   await M.evaluate(() => closeModal());
-  await M.click('#vtabs [data-v="__data"]'); await sleep(400);
-  ok('mobile account menu has logout', await M.isVisible('[data-act="logout"]'));
+  await M.click('#acctBtn'); await sleep(400);
+  ok('mobile account menu has logout', await M.isVisible('#acctMenu [data-act="logout"]'));
   await M.screenshot({ path: SS + 'm_menu.png' });
 
   // 13) silinmiş duruma bağlı iş çökertmiyor

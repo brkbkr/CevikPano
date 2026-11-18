@@ -73,18 +73,20 @@ const PC = 'p_ptc' + RUN, PA = 'p_pta' + RUN;          // kolon testi projesi (P
   // 1) türsüz proje + genel sprint kapalı → Pano: menü "İş listesi", kapsam yok, sprint yok
   const pano = await A.evaluate(() => {
     closeModal(); DB.ui.project = 'p1'; DB.ui.view = 'board'; render();
-    const r = { type: projType(P()), stored: 'type' in P(), nav: document.querySelector('.nav a[data-v="backlog"]').textContent.trim(),
+    const r = { type: projType(P()), stored: 'type' in P(), nav: document.querySelector('#vtabs [data-v="backlog"]').textContent.trim(),
       tab: document.querySelector('#vtabs [data-v="backlog"]').textContent.trim(), scope: !!document.getElementById('scope'),
       cols: !!document.getElementById('colsEdit') };
     DB.ui.view = 'backlog'; render();
-    Object.assign(r, { title: document.getElementById('title').textContent, newSprint: !!document.getElementById('newSprint'),
+    /* Proje ekranında başlık proje adı; açık ekranın adı seçili sekmede. */
+    Object.assign(r, { title: document.querySelector('#vtabs [aria-selected="true"]').textContent.trim(), name: document.getElementById('title').textContent === P().name,
+      newSprint: !!document.getElementById('newSprint'),
       list: /İş listesi/.test(document.querySelector('#view .sb-h b')?.textContent || ''), boxes: document.querySelectorAll('.sprintbox.active').length });
     newIssueForm(); r.spField = !!document.getElementById('f_sp'); closeModal();
     DB.ui.view = 'reports'; render(); r.burn = /Sprint burndown|Sprint hızı/.test(document.getElementById('view').textContent);
     return r;
   });
   ok('türsüz proje (sprint kapalı) Pano sayılır, kayda yazılmaz', pano.type === 'board' && !pano.stored, JSON.stringify(pano));
-  ok('Pano: menü/sekme "İş listesi", başlık "İş listesi"', pano.nav === 'İş listesi' && pano.tab === 'İş listesi' && pano.title === 'İş listesi', JSON.stringify(pano));
+  ok('Pano: sekme "İş listesi", açık sekme "İş listesi", başlık proje adı', pano.nav === 'İş listesi' && pano.tab === 'İş listesi' && pano.title === 'İş listesi' && pano.name, JSON.stringify(pano));
   ok('Pano: kapsam geçişi, "+ Sprint oluştur", sprint kutusu, Sprint alanı, burndown/hız yok',
     !pano.scope && !pano.newSprint && pano.list && !pano.boxes && !pano.spField && !pano.burn, JSON.stringify(pano));
   ok('admin panoda "Kolonları düzenle" görür', pano.cols);
@@ -92,18 +94,19 @@ const PC = 'p_ptc' + RUN, PA = 'p_pta' + RUN;          // kolon testi projesi (P
   // 2) Agile projesi (test içinde type:'agile') → proje değişince menü/araç çubuğu tek çizimde değişir
   const agile = await A.evaluate(PA => {
     DB.ui.project = PA; DB.ui.view = 'board'; DB.board.scope = 'sprint'; render();
-    const r = { nav: document.querySelector('.nav a[data-v="backlog"]').textContent.trim(), scope: !!document.getElementById('scope') };
+    const r = { nav: document.querySelector('#vtabs [data-v="backlog"]').textContent.trim(), scope: !!document.getElementById('scope') };
     DB.ui.view = 'backlog'; render();
-    Object.assign(r, { title: document.getElementById('title').textContent, newSprint: !!document.getElementById('newSprint'),
+    Object.assign(r, { title: document.querySelector('#vtabs [aria-selected="true"]').textContent.trim(), name: document.getElementById('title').textContent === P().name,
+      newSprint: !!document.getElementById('newSprint'),
       active: document.querySelectorAll('.sprintbox.active').length });
     newIssueForm(); r.spField = !!document.getElementById('f_sp'); closeModal();
     DB.ui.view = 'reports'; render(); r.burn = /Sprint burndown/.test(document.getElementById('view').textContent);
     DB.ui.project = 'p1'; DB.ui.view = 'board'; render();
-    r.back = { nav: document.querySelector('.nav a[data-v="backlog"]').textContent.trim(), scope: !!document.getElementById('scope') };
+    r.back = { nav: document.querySelector('#vtabs [data-v="backlog"]').textContent.trim(), scope: !!document.getElementById('scope') };
     return r;
   }, PA);
   ok('Agile: menü "Backlog", kapsam geçişi, aktif sprint kutusu, "+ Sprint oluştur", Sprint alanı, burndown',
-    agile.nav === 'Backlog' && agile.title === 'Backlog' && agile.scope && agile.newSprint && agile.active === 1 && agile.spField && agile.burn, JSON.stringify(agile));
+    agile.nav === 'Backlog' && agile.title === 'Backlog' && agile.name && agile.scope && agile.newSprint && agile.active === 1 && agile.spField && agile.burn, JSON.stringify(agile));
   ok('Agile → Pano proje değişimi tek çizimde menüyü ve kapsamı değiştirir', agile.back.nav === 'İş listesi' && !agile.back.scope, JSON.stringify(agile.back));
   ok('Pano: pano aktif sprint kapsamı istense de tüm işleri gösterir', await A.evaluate(() => {
     DB.board.scope = 'sprint'; DB.board.q = ''; DB.board.filterUser = ''; DB.board.filterType = ''; render();
