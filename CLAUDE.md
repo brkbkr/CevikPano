@@ -27,6 +27,12 @@ Jira benzeri çevik proje yönetimi. Arayüz ve tüm metinler **Türkçe**; kull
 - Tarayıcı regresyonu: temiz DB + `node scripts/seed-demo.mjs http://localhost:3100 test/fixtures/demo.json` + `node test/e2e/regresyon.cjs`
   (sunucu `ADMIN_PASSWORD=admin12345 DEFAULT_USER_PASSWORD=Baslangic123 PORT=3100` ile).
 
+## Çalışma süreci ve roller
+- Her istek `.claude/skills/gelistirme-sureci/SKILL.md` sürecinden geçer: Product Owner → İş analisti → Web tasarımcısı →
+  Yazılımcı → Testçi → kullanıcı onayı → test sitesi → PO kabulü. Roller `.claude/agents/` altında; her adımda ilgili rolü ayrı alt ajan olarak çalıştır.
+- Yeni görsel dil/yerleşim/ekran önce kullanıcıya taslak olarak gösterilir (`docs/tasarim/`).
+- PR'ları birleştirmek ve canlıya yayınlamak kullanıcının kararıdır.
+
 ## Ortamlar ve yayın
 - Sunucu (Oracle, Ubuntu ARM): canlı `/opt/cevikpano` ← GitHub `production`; test `/opt/cevikpano-test` ← `main`.
   `deploy/pano-deploy.sh` (systemd zamanlayıcı, 2 dk) dalı izler, kurar, sağlık kontrolü yapar, başarısızsa geri döner.
