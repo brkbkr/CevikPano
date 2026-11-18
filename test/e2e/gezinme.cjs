@@ -351,9 +351,9 @@ const LABELS = ['Pano', 'İş listesi', 'Zaman planı', 'Yol haritası', 'Zaman 
     return { role: m?.getAttribute('role'), lab: document.getElementById(m?.getAttribute('aria-labelledby'))?.textContent, p: m?.querySelector('.nv-czb > p')?.textContent,
       rows: [...m.querySelectorAll('[data-czrow]')].map(r => r.dataset.czrow), fixed: [...m.querySelectorAll('.nv-cz-r.fixed')].map(r => r.dataset.czrow + ':' + !r.querySelector('[data-czgrip]') + ':' + /Sabit/.test(r.textContent)),
       cnt: document.getElementById('cz_n').textContent, live: document.getElementById('cz_live')?.getAttribute('role') }; });
-  ok('A2 customize: dialog, description, fixed rows (no grip, "Sabit"), member without Kullanıcılar/Sistem', c1.role === 'dialog' && c1.lab === 'Kenar çubuğunu özelleştir'
+  ok('A2 customize: dialog, description, fixed rows (no grip, "Sabit"), member without Kullanıcılar/Sistem, Raporlar movable', c1.role === 'dialog' && c1.lab === 'Kenar çubuğunu özelleştir'
     && c1.p === 'Seçili öğeler kenar çubuğunda her zaman görünür; seçmediklerin "Daha fazla" menüsünde. Değişiklikler yalnız seni etkiler.'
-    && c1.rows.join() === 'home,recent,ws,projects,customers' && c1.fixed.join() === 'home:true:true,ws:true:true' && c1.cnt === '5 öğe · 5 görünür' && c1.live === 'status', JSON.stringify(c1));
+    && c1.rows.join() === 'home,recent,ws,projects,customers,reports' && c1.fixed.join() === 'home:true:true,ws:true:true' && c1.cnt === '6 öğe · 6 görünür' && c1.live === 'status', JSON.stringify(c1));
   await Mp.click('[data-czchk="projects"]'); await sleep(100);
   ok('A2 customize: draft only — rail unchanged before saving', await Mp.evaluate(() => !!document.querySelector('#rail [data-v="projects"]') && !DB.ui.nav
     && document.querySelector('[data-czchk="projects"]').getAttribute('aria-checked') === 'false' && /Daha fazla menüsünde/.test(document.querySelector('[data-czrow="projects"]').textContent)));
@@ -368,7 +368,7 @@ const LABELS = ['Pano', 'İş listesi', 'Zaman planı', 'Yol haritası', 'Zaman 
   await Mp.focus('[data-czgrip="customers"]'); await Mp.keyboard.press('Alt+ArrowUp'); await sleep(100);
   const c2 = await Mp.evaluate(() => ({ live: document.getElementById('cz_live').textContent, rows: [...document.querySelectorAll('[data-czrow]')].map(r => r.dataset.czrow).join(),
     f: document.activeElement.dataset.czgrip, lab: document.activeElement.getAttribute('aria-label') }));
-  ok('A2 customize: Alt+↑ on the grip moves and announces ("Cariler 4. sıraya taşındı")', c2.live === 'Cariler 4. sıraya taşındı' && c2.rows === 'home,recent,ws,customers,projects'
+  ok('A2 customize: Alt+↑ on the grip moves and announces ("Cariler 4. sıraya taşındı")', c2.live === 'Cariler 4. sıraya taşındı' && c2.rows === 'home,recent,ws,customers,projects,reports'
     && c2.f === 'customers' && /4\. sırada/.test(c2.lab), JSON.stringify(c2));
   await Mp.click('[data-czmore="customers"]'); await sleep(150);
   const c3 = await Mp.evaluate(() => ({ role: document.getElementById('czPop')?.getAttribute('role'), items: [...document.querySelectorAll('#czPop [role="menuitem"]')].map(b => b.textContent.trim()),
@@ -376,12 +376,12 @@ const LABELS = ['Pano', 'İş listesi', 'Zaman planı', 'Yol haritası', 'Zaman 
   ok('A2 customize: ⋯ menu (Yukarı / Aşağı / En üste taşı)', c3.role === 'menu' && c3.items.join() === 'Yukarı taşı,Aşağı taşı,En üste taşı' && c3.focus, JSON.stringify(c3));
   await Mp.click('#czPop [data-czmv="top"]'); await sleep(100);
   ok('A2 customize: "En üste taşı" → 2nd place (fixed items stay), announced', await Mp.evaluate(() => document.getElementById('cz_live').textContent === 'Cariler 2. sıraya taşındı'
-    && [...document.querySelectorAll('[data-czrow]')].map(r => r.dataset.czrow).join() === 'home,customers,ws,recent,projects'));
+    && [...document.querySelectorAll('[data-czrow]')].map(r => r.dataset.czrow).join() === 'home,customers,ws,recent,projects,reports'));
   await Mp.click('[data-czchk="projects"]');
   await Mp.click('#cz_ok'); await sleep(300);
   const c4 = await railState(Mp);
-  ok('A2 customize: saved → rail order, hidden item in "Daha fazla"', JSON.stringify(c4.nav) === JSON.stringify({ order: ['customers', 'recent', 'projects'], hidden: ['projects'] })
-    && c4.items.join() === 'home,customers,recent' && c4.more && !(await Mp.evaluate(() => !!document.querySelector('#rail [data-v="projects"]'))), JSON.stringify(c4));
+  ok('A2 customize: saved → rail order, hidden item in "Daha fazla"', JSON.stringify(c4.nav) === JSON.stringify({ order: ['customers', 'recent', 'projects', 'reports'], hidden: ['projects'] })
+    && c4.items.join() === 'home,customers,recent,greports' && c4.more && !(await Mp.evaluate(() => !!document.querySelector('#rail [data-v="projects"]'))), JSON.stringify(c4));
   await Mp.click('#navMore [data-navmore]'); await sleep(150);
   const c5 = await Mp.evaluate(() => ({ role: document.getElementById('navPop')?.getAttribute('role'), items: [...document.querySelectorAll('#navPop [role="menuitem"]')].map(b => b.textContent.trim()) }));
   ok('A2 "Daha fazla": menu with the hidden item + Kenar çubuğunu özelleştir', c5.role === 'menu' && c5.items.join() === 'Projeler,Kenar çubuğunu özelleştir', JSON.stringify(c5));
@@ -392,15 +392,15 @@ const LABELS = ['Pano', 'İş listesi', 'Zaman planı', 'Yol haritası', 'Zaman 
   await Mp.keyboard.press('g'); await Mp.keyboard.press('h'); await sleep(250); await Mp.keyboard.press("g"); await Mp.keyboard.press("j"); await sleep(300);
   ok('A2: hidden screen shortcut (g j) still works', await Mp.evaluate(() => DB.ui.view === 'projects'));
   await Mp.evaluate(() => flushAll()); await Mp.reload(); await sleep(2200);
-  ok('A2 customize: kept after reload (user_prefs)', JSON.stringify((await railState(Mp)).items) === JSON.stringify(['home', 'customers', 'recent']));
+  ok('A2 customize: kept after reload (user_prefs)', JSON.stringify((await railState(Mp)).items) === JSON.stringify(['home', 'customers', 'recent', 'greports']));
   ok('A2 customize: personal — other users unchanged', await A.evaluate(() => !DB.ui.nav && !document.querySelector('#navMore [data-navmore]')));
   await Mp.click('#rail [data-navws]'); await sleep(150); await Mp.click('#navPop [data-navcz]'); await sleep(300);
   await Mp.click('#cz_reset'); await sleep(100);
-  ok('A2 customize: Varsayılana dön resets the draft only', await Mp.evaluate(() => [...document.querySelectorAll('[data-czrow]')].map(r => r.dataset.czrow).join() === 'home,recent,ws,projects,customers'
+  ok('A2 customize: Varsayılana dön resets the draft only', await Mp.evaluate(() => [...document.querySelectorAll('[data-czrow]')].map(r => r.dataset.czrow).join() === 'home,recent,ws,projects,customers,reports'
     && document.querySelectorAll('[data-czchk][aria-checked="false"]').length === 0 && !!DB.ui.nav));
   await Mp.click('#cz_ok'); await sleep(300);
   const c6 = await railState(Mp);
-  ok('A2 customize: default saved → nav removed, no "Daha fazla"', c6.nav === undefined && !c6.more && c6.items.join() === 'home,recent,projects,customers', JSON.stringify(c6));
+  ok('A2 customize: default saved → nav removed, no "Daha fazla"', c6.nav === undefined && !c6.more && c6.items.join() === 'home,recent,projects,customers,greports', JSON.stringify(c6));
 
   // A2-7) izleyici de özelleştirir ("+" yok, ⋯ var); yönetici Kullanıcılar/Sistem'i görür
   await go(Vp, PX, 'board');
@@ -414,7 +414,7 @@ const LABELS = ['Pano', 'İş listesi', 'Zaman planı', 'Yol haritası', 'Zaman 
   await Dp.click('#rail [data-navws]'); await sleep(150); await Dp.click('#navPop [data-navcz]'); await sleep(300);
   const dRows = await Dp.evaluate(() => [...document.querySelectorAll('[data-czrow]')].map(r => r.dataset.czrow).join());
   await Dp.keyboard.press('Escape'); await sleep(150);
-  ok('A2 admin: Kullanıcılar and Sistem in rail and in the customize list', dRows === 'home,recent,ws,projects,customers,users,system'
+  ok('A2 admin: Kullanıcılar and Sistem in rail and in the customize list', dRows === 'home,recent,ws,projects,customers,reports,users,system'
     && await Dp.evaluate(() => !!document.querySelector('#rail [data-v="users"]') && !!document.querySelector('#rail [data-v="system"]')), dRows);
 
   // A2-8) erişilebilirlik: açık ve koyu temada sol menü metinleri AA (≥4.5:1)

@@ -2470,6 +2470,295 @@ button.id-pv:hover{background:var(--surface);border-color:var(--line)}
   .modal.id-m .m-f{position:sticky;bottom:0}
 }
 @media (prefers-reduced-motion:reduce){ .id-morebtn svg.i{transition:none} }
+
+/* ================= genel raporlar (gr-, docs/tasarim/genel-raporlar) ================= */
+:root{--gr-heat:#2563EB;--gr-bar:#2563EB;--gr-bar-bg:#E3EAF5;--gr-sub-bg:#F9FBFE}
+:root[data-theme="dark"]{--gr-heat:#60A5FA;--gr-bar:#60A5FA;--gr-bar-bg:#1E2B45;--gr-sub-bg:#0E1729}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){--gr-heat:#60A5FA;--gr-bar:#60A5FA;--gr-bar-bg:#1E2B45;--gr-sub-bg:#0E1729} }
+.gr{display:flex;flex-direction:column;gap:14px;min-width:0}
+.gr-panel{display:flex;flex-direction:column;gap:14px;min-width:0}
+.gr-tabs{display:flex;gap:2px;margin:12px -20px 0;padding:0 14px}
+.gr-tab{display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 12px;border:0;background:none;border-radius:8px 8px 0 0;font-size:13px;font-weight:550;color:var(--nv-tab-ink);white-space:nowrap;position:relative;margin-bottom:-1px;text-decoration:none}
+.gr-tab svg.i{width:16px;height:16px;color:var(--meta)}
+.gr-tab:hover{background:var(--nv-tab-hover);color:var(--ink)}
+.gr-tab[aria-selected="true"]{color:var(--nv-tab-on);font-weight:650}
+.gr-tab[aria-selected="true"] svg.i{color:var(--nv-tab-bar)}
+.gr-tab[aria-selected="true"]::after{content:"";position:absolute;left:8px;right:8px;bottom:0;height:3px;border-radius:3px 3px 0 0;background:var(--nv-tab-bar)}
+
+/* süzgeç çubuğu */
+.gr-fbar{display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:var(--shadow-sm)}
+.gr-frow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.gr-per{display:inline-flex;align-items:center;gap:4px}
+.gr-step{display:inline-flex;align-items:center;height:36px;border:1px solid var(--line2);border-radius:9px;background:var(--surface);overflow:hidden}
+.gr-step button{width:32px;height:34px;border:0;background:none;display:grid;place-items:center;color:var(--ink2);padding:0}
+.gr-step button:hover{background:var(--surface2)}
+.gr-step button svg.i{width:16px;height:16px}
+.gr-step b{min-width:118px;text-align:center;font-size:13px;font-weight:650;padding:0 4px;border-left:1px solid var(--line);border-right:1px solid var(--line);height:34px;display:grid;place-items:center}
+.gr-range{display:inline-flex;align-items:center;gap:6px}
+.gr-range .inp{width:132px;font-family:var(--mono);font-size:12.5px}
+.gr-range span{color:var(--meta)}
+.gr-fhint{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--meta)}
+.gr-fhint svg.i{width:14px;height:14px}
+.gr-fgrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.gr-fb{display:flex;align-items:center;gap:6px;height:36px;padding:0 9px 0 11px;border:1px solid var(--line2);border-radius:9px;background:var(--surface);font-size:13px;white-space:nowrap;min-width:0;text-align:left}
+.gr-fb > svg.i:last-child{margin-left:auto}
+.gr-fb .lb{color:var(--meta);font-weight:550}
+.gr-fb .v{color:var(--ink);font-weight:600;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.gr-fb > svg.i{width:14px;height:14px;color:var(--meta)}
+.gr-fb:hover{background:var(--surface2)}
+.gr-fb.on{border-color:color-mix(in srgb,var(--accent) 55%,transparent);background:var(--accent-soft)}
+.gr-fb.on .v{color:var(--accent-d)}
+.gr-fb.on .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0}
+.gr-fbtn{display:none}
+.gr-chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-top:10px;border-top:1px dashed var(--line)}
+.gr-chips .lbl{font-size:12px;color:var(--meta);margin-right:2px}
+.gr-chip{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 4px 0 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent-d);font-size:12px;font-weight:600;max-width:100%}
+.gr-chip .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gr-chip .t span{color:var(--ink2);font-weight:550}
+.gr-chip button{width:22px;height:22px;border:0;border-radius:50%;background:none;display:grid;place-items:center;color:var(--accent-d);padding:0;position:relative}
+.gr-chip button::before{content:"";position:absolute;inset:-7px}
+.gr-chip button:hover{background:color-mix(in srgb,var(--accent) 18%,transparent)}
+.gr-chip button svg.i{width:13px;height:13px;stroke-width:2.2}
+.gr-clear{height:28px;padding:0 8px;font-size:12.5px}
+
+/* özet kutuları (benim işlerim dilinden, sade) */
+.gr-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.gr-kpi{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-sm);min-width:0}
+.gr-kpi .ic{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);flex-shrink:0}
+.gr-kpi .ic svg.i{width:18px;height:18px}
+.gr-kpi .tx{min-width:0}
+.gr-kpi .l{display:block;font-size:12px;color:var(--ink2);font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gr-kpi b{display:block;font-family:var(--mono);font-size:20px;font-weight:700;letter-spacing:-.02em;margin-top:1px;font-variant-numeric:tabular-nums}
+.gr-kpi b small{font-family:var(--sans);font-size:12px;font-weight:550;color:var(--meta);margin-left:3px;letter-spacing:0}
+.gr-kpi .s{display:block;font-size:11.5px;color:var(--meta);margin-top:1px}
+
+/* rapor kartı (pivot / fatura) */
+.gr-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-sm);min-width:0}
+.gr-card-h{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.gr-card-h .spacer{flex:1}
+.gr-card-h .meta{font-size:12px;color:var(--meta)}
+.gr-card-h .meta b{font-family:var(--mono);color:var(--ink2);font-weight:650}
+.gr-dim{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink2);font-weight:550}
+.gr-dim select.inp{font-weight:600;color:var(--ink);min-width:132px}
+.gr-swap{width:36px;height:36px;border-radius:9px;border:1px solid var(--line);background:var(--surface2);display:grid;place-items:center;color:var(--ink2);padding:0}
+.gr-swap svg.i{width:16px;height:16px}
+.gr-xls svg.i{color:var(--ok)}
+.gr-pv-wrap{overflow-x:auto;border-radius:0 0 12px 12px}
+.gr-pv{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
+.gr-pv th{font-size:12px;font-weight:600;color:var(--ink2);background:var(--surface2);padding:8px 12px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.gr-pv th.dimh{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta)}
+.gr-pv th.dimh span{color:var(--ink3);font-weight:600;margin:0 4px}
+.gr-pv th .ph{display:inline-flex;align-items:center;gap:7px;justify-content:flex-end}
+.gr-pv td{border-bottom:1px solid var(--line);padding:0;text-align:right;white-space:nowrap}
+.gr-pv tbody tr:last-child td{border-bottom:0}
+.gr-pv .rh{position:sticky;left:0;z-index:1;background:var(--surface);text-align:left;padding:8px 12px;min-width:240px;border-right:1px solid var(--line)}
+.gr-pv th.rh{background:var(--surface2);z-index:2}
+.gr-pv tfoot .rh,.gr-pv tfoot td{background:var(--surface2)}
+.gr-rn{display:flex;align-items:center;gap:8px;min-width:0}
+.gr-rn .nm{font-weight:650;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gr-rn .sub{display:block;font-size:11.5px;color:var(--meta);font-weight:500;margin-top:1px}
+.gr-rn.none .nm{color:var(--ink2);font-weight:600}
+.gr-rn.none > svg.i{width:16px;height:16px;color:var(--meta)}
+.gr-c{display:flex;align-items:center;justify-content:flex-end;width:100%;min-width:96px;height:44px;padding:0 12px;border:0;background:none;font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--ink);border-radius:0}
+.gr-c:hover{box-shadow:inset 0 0 0 2px var(--accent)}
+.gr-c:focus-visible{box-shadow:inset 0 0 0 2px var(--accent),var(--ring)}
+.gr-c.z{color:var(--ink3)}
+.gr-c[aria-pressed="true"]{background:var(--accent)!important;color:var(--accent-ink);font-weight:700}
+.gr-pv .tot{background:var(--surface2)}
+.gr-pv .tot .gr-c{font-weight:700}
+.gr-pv tfoot td{border-top:1px solid var(--line2);border-bottom:0}
+.gr-pv tfoot .rh{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);border-top:1px solid var(--line2)}
+.gr-pv tfoot .gr-c{font-weight:700}
+.gr-pv tfoot .grand .gr-c{color:var(--accent-d)}
+.gr-foot{display:flex;align-items:center;gap:6px;padding:9px 12px;border-top:1px solid var(--line);font-size:11.5px;color:var(--meta)}
+.gr-foot svg.i{width:14px;height:14px}
+
+/* etiketler: arşivli proje / pasif cari (ikon + metin, yalnız renge dayanmaz) */
+.gr-tag{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px 0 5px;border-radius:6px;border:1px dashed var(--line2);background:var(--surface);color:var(--ink2);font-size:11px;font-weight:650;white-space:nowrap;flex-shrink:0}
+.gr-tag svg.i{width:12px;height:12px}
+
+/* hücre kayıt listesi */
+.gr-drill{overflow:hidden;border:1px solid color-mix(in srgb,var(--accent) 40%,var(--line));box-shadow:var(--shadow-sm),0 0 0 3px color-mix(in srgb,var(--accent) 8%,transparent)}
+.gr-drill .gr-card-h{background:color-mix(in srgb,var(--accent) 5%,var(--surface));border-radius:12px 12px 0 0}
+.gr-dt{flex:1;min-width:0}
+.gr-dt b{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;letter-spacing:-.01em;flex-wrap:wrap}
+.gr-dt b .x{color:var(--meta);font-weight:500}
+.gr-dt .s{display:block;font-size:12px;color:var(--meta);margin-top:2px}
+.gr-dsum{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--accent-d);white-space:nowrap}
+.gr-dsum small{font-family:var(--sans);font-size:12px;font-weight:550;color:var(--meta);margin-left:3px}
+.gr-dl{width:100%;border-collapse:collapse;font-size:13px}
+.gr-dl th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta);background:var(--surface2);padding:8px 12px;border-bottom:1px solid var(--line)}
+.gr-dl td{padding:9px 12px;border-bottom:1px solid var(--line);color:var(--ink2);vertical-align:middle}
+.gr-dl th.r,.gr-dl td.r{text-align:right}
+.gr-dl td.d{font-family:var(--mono);font-size:12px;color:var(--ink2);white-space:nowrap}
+.gr-dl td.h{font-family:var(--mono);font-size:12.5px;color:var(--ink);font-weight:600;white-space:nowrap}
+.gr-dl .who{display:flex;align-items:center;gap:7px;color:var(--ink);white-space:nowrap}
+.gr-is{display:flex;align-items:center;gap:8px;min-width:0}
+.gr-is .gr-key{font-family:var(--mono);font-size:11.5px;font-weight:650;color:var(--accent-d);text-decoration:none;white-space:nowrap}
+.gr-is .gr-key:hover{text-decoration:underline}
+.gr-is span{color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gr-dl tfoot td{background:var(--surface2);border-bottom:0;font-weight:700;color:var(--ink)}
+.gr-dl tfoot td.lbl{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2)}
+.gr-dl tfoot .eq{font-family:var(--sans);font-size:11.5px;font-weight:550;color:var(--ok);margin-right:8px}
+.gr-dl tfoot .eq svg.i{width:13px;height:13px;vertical-align:-2px;margin-right:3px}
+
+/* faturalanabilir saat tablosu */
+.gr-ft{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+.gr-ft th{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta);background:var(--surface2);padding:9px 12px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.gr-ft th:first-child{text-align:left}
+.gr-ft td{padding:0 12px;height:52px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--ink);white-space:nowrap}
+.gr-ft td:first-child{text-align:left;font-family:var(--sans);font-size:13px;padding-left:6px}
+.gr-ft td.t{font-weight:700}
+.gr-ft tbody tr.top:hover td{background:var(--surface2)}
+.gr-ft tr.sub td{background:var(--gr-sub-bg);height:44px;color:var(--ink2)}
+.gr-ft tr.sub td:first-child{padding-left:50px;position:relative}
+.gr-ft tr.sub td:first-child::before{content:"";position:absolute;left:24px;top:0;bottom:0;width:1px;background:var(--line2)}
+.gr-ft tr.sub td:first-child::after{content:"";position:absolute;left:24px;top:50%;width:14px;height:1px;background:var(--line2)}
+.gr-ft tr.sub.last td:first-child::before{bottom:50%}
+.gr-ft tfoot td{background:var(--surface2);font-weight:700;border-bottom:0;border-top:1px solid var(--line2)}
+.gr-ft tfoot td:first-child{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);padding-left:50px}
+.gr-ft tfoot td.grand{color:var(--accent-d)}
+.gr-xr{display:flex;align-items:center;gap:6px;min-width:0}
+.gr-tg{width:36px;height:36px;border:0;border-radius:8px;background:none;display:grid;place-items:center;color:var(--ink2);padding:0;flex-shrink:0}
+.gr-tg:hover{background:var(--surface3)}
+.gr-tg svg.i{width:16px;height:16px;transition:transform .15s}
+.gr-tg[aria-expanded="false"] svg.i{transform:rotate(-90deg)}
+.gr-xr .nm{font-weight:650;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gr-xr .sub{font-size:11.5px;color:var(--meta);white-space:nowrap}
+.gr-xr .nmw{display:flex;flex-direction:column;min-width:0}
+.gr-xr .nmr{display:flex;align-items:center;gap:6px;min-width:0}
+.gr-pk{font-family:var(--mono);font-size:11px;font-weight:650;color:var(--meta);flex-shrink:0;width:34px}
+.gr-pn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);font-weight:550}
+.gr-rate{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end}
+.gr-rate i{display:block;width:64px;height:6px;border-radius:3px;background:var(--gr-bar-bg);overflow:hidden}
+.gr-rate i b{display:block;height:100%;background:var(--gr-bar);border-radius:3px}
+.gr-rate span{min-width:38px;text-align:right}
+.gr-fc-list{display:none} .gr-fcw{display:none}
+
+/* bildirim */
+.gr-toast{display:inline-flex;align-items:center;gap:10px;padding:10px 8px 10px 14px;border-radius:12px;background:var(--gr-toast);color:var(--gr-toast-ink);box-shadow:var(--shadow-lg);font-size:13px;font-weight:550;max-width:100%}
+/* fatura kartı (mobil) */
+.gr-fc{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-sm);overflow:hidden}
+.gr-fc.tot{background:var(--surface2)}
+.gr-fc-h{display:flex;align-items:flex-start;gap:8px;padding:12px 12px 0}
+.gr-fc-h .nmw{flex:1;min-width:0}
+.gr-fc-h .nm{display:block;font-weight:700;font-size:14px;color:var(--ink);line-height:1.3}
+.gr-fc-h .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;font-size:11.5px;color:var(--meta);align-items:center}
+.gr-fc-h .pct{font-family:var(--mono);font-weight:700;font-size:15px;color:var(--ink)}
+.gr-fc-n{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:10px 12px 8px}
+.gr-fc-n div{min-width:0}
+.gr-fc-n span{display:block;font-size:11px;color:var(--meta);font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gr-fc-n b{display:block;font-family:var(--mono);font-size:13.5px;font-weight:650;margin-top:1px;font-variant-numeric:tabular-nums}
+.gr-fc-n div.t b{font-weight:800}
+.gr-fc-bar{display:block;height:6px;margin:0 12px 12px;border-radius:3px;background:var(--gr-bar-bg);overflow:hidden}
+.gr-fc-bar b{display:block;height:100%;background:var(--gr-bar);border-radius:3px}
+.gr-fc-tg{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:0 12px;border:0;border-top:1px solid var(--line);background:none;font-size:13px;font-weight:600;color:var(--accent-d);text-align:left}
+.gr-fc-tg svg.i{width:16px;height:16px;margin-left:auto;transition:transform .15s}
+.gr-fc-tg[aria-expanded="true"] svg.i{transform:rotate(180deg)}
+.gr-fc-p{border-top:1px solid var(--line);background:var(--gr-sub-bg)}
+.gr-fc-p li{padding:10px 12px;border-bottom:1px solid var(--line)}
+.gr-fc-p li:last-child{border-bottom:0}
+.gr-fc-p .r1{display:flex;align-items:center;gap:6px;min-width:0}
+.gr-fc-p .r2{display:flex;gap:12px;margin-top:4px;font-family:var(--mono);font-size:12px;color:var(--ink2);flex-wrap:wrap}
+.gr-fc-p .r2 em{font-style:normal;font-family:var(--sans);color:var(--meta);font-size:11px;margin-right:3px}
+.gr-tabs{margin:0;padding:0;border-bottom:1px solid var(--line)}
+.gr .btn.ghost{border-color:transparent;background:none;box-shadow:none;color:var(--accent-d)}
+.gr .btn.ghost:hover{background:var(--accent-soft)}
+.gr .btn{display:inline-flex;align-items:center;gap:6px}
+.gr .btn svg.i{width:16px;height:16px}
+.gr-eflk{display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+.gr-fs{display:flex;align-items:center;gap:6px;height:36px;padding:0 4px 0 10px;border:1px solid var(--line2);border-radius:9px;background:var(--surface);font-size:13px;min-width:0}
+.gr-fs .lb{color:var(--meta);font-weight:550;white-space:nowrap}
+.gr-fs select.inp{flex:1;min-width:0;border:0;background-color:transparent;height:32px;padding-left:2px;font-weight:600;color:var(--ink);box-shadow:none}
+.gr-fs.on{border-color:color-mix(in srgb,var(--accent) 55%,transparent);background:var(--accent-soft)}
+.gr-fs.on select.inp{color:var(--accent-d)}
+.gr-fs:focus-within{box-shadow:var(--ring)}
+.gr-unk{width:22px;height:22px;border-radius:50%;display:inline-grid;place-items:center;background:var(--surface3);color:var(--meta);font-size:11px;font-weight:700;flex-shrink:0}
+.gr-key{border:0;background:none;padding:0;font-family:var(--mono);font-size:11.5px;font-weight:650;color:var(--accent-d);white-space:nowrap;cursor:pointer}
+.gr-key:hover{text-decoration:underline}
+.gr-pv th.rh{font-weight:inherit}
+.gr-pv tbody th.rh{font-size:13px;color:var(--ink);text-align:left}
+.gr-c:disabled{cursor:default}
+.gr-c:disabled:hover{box-shadow:none}
+.gr .hm-empty{border:1px solid var(--line)}
+.gr-close{flex-shrink:0}
+.gr-dims{display:flex;align-items:center;gap:8px}
+.gr .gr-fbtn{display:none}
+@media (max-width:767px){
+
+  .gr-fbar{padding:10px;gap:8px}
+  .gr-frow{flex-wrap:nowrap}
+  .gr-fgrid,.gr-fhint,.gr-frow .gr-seg-per{display:none}
+  .gr-fbtn{display:inline-flex;height:44px;flex-shrink:0;padding:0 12px}
+  .gr-fbtn .n{font-family:var(--mono);font-size:11px;font-weight:700;min-width:20px;height:20px;border-radius:10px;display:grid;place-items:center;background:var(--accent);color:var(--accent-ink);padding:0 5px}
+  .gr-per{flex:1;min-width:0}
+  .gr-step{height:46px;flex:1;min-width:0}
+  .gr-step button{width:44px;height:44px}
+  .gr-step b{flex:1;min-width:0;height:44px;font-size:13px}
+  .gr-step .now{display:none}
+  .gr-range{flex:1;min-width:0}
+  .gr-range .inp{width:auto;flex:1;min-width:0;height:44px;padding:0 8px;font-size:12px}
+  .gr-chips{gap:6px}
+  .gr-chips .lbl{display:none}
+  .gr-chip{height:36px;padding-right:2px}
+  .gr-chip button{width:32px;height:32px}
+  .gr-chip button::before{inset:-6px}
+  .gr-is .gr-key{display:inline-flex;align-items:center;min-height:44px;margin:-10px 0}
+  .gr-clear{height:44px}
+
+  .gr-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .gr-kpi{padding:10px 12px;gap:10px}
+  .gr-kpi .ic{display:none}
+  .gr-kpi b{font-size:17px}
+
+  .gr-card-h{padding:10px;gap:8px}
+  .gr-card-h .meta{order:5;flex:1 1 100%}
+  .gr-dims{display:grid!important;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);gap:6px;flex:1 1 100%;align-items:end}
+  .gr-dim{flex-direction:column;align-items:stretch;gap:4px;font-size:11.5px;min-width:0}
+  .gr-dim select.inp{min-width:0;width:100%;height:44px;font-size:14px}
+  .gr-swap{width:44px;height:44px}
+  .gr-card-h .spacer{display:none}
+  .gr-xls{height:44px;flex:1 1 100%}
+  .gr-pv .rh{min-width:150px;max-width:150px;box-shadow:6px 0 8px -6px rgba(11,27,51,.25)}
+  .gr-rn .sub{display:none}
+  .gr-rn{flex-wrap:wrap;gap:4px 8px}
+  .gr-rn .nm{white-space:normal;line-height:1.25;font-size:12.5px}
+  .gr-c{min-width:84px;height:48px;padding:0 10px}
+  .gr-pv th{padding:8px 10px}
+  .gr-pv th .ph .c-av{display:none}
+
+  .gr-dt b{font-size:13.5px}
+  .gr-close{width:44px;height:44px}
+  .gr-dl thead{display:none}
+  .gr-dl,.gr-dl tbody,.gr-dl tfoot{display:block}
+  .gr-dl tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:10px 12px;border-bottom:1px solid var(--line)}
+  .gr-dl td{padding:0;border:0}
+  .gr-dl td.d{grid-column:1;grid-row:1;font-size:11.5px;color:var(--meta)}
+  .gr-dl td.p{display:none}
+  .gr-dl td.i{grid-column:1 / -1;grid-row:2}
+  .gr-dl td.a{grid-column:1 / -1;grid-row:3;font-size:12.5px;white-space:normal}
+  .gr-dl td.h{grid-column:2;grid-row:1;text-align:right}
+  .gr-dl tfoot tr{background:var(--surface2);border-bottom:0;border-radius:0 0 12px 12px}
+  .gr-dl tfoot td{background:none}
+  .gr-dl tfoot td.lbl{grid-column:1;grid-row:1}
+  .gr-dl tfoot td.sp{display:none}
+  .gr-dl tfoot td.h{grid-column:2;grid-row:1}
+  .gr-dl tfoot .eq{display:none}
+
+  .gr-ftwrap{display:none}
+  .gr-fc-list{display:flex;flex-direction:column;gap:10px} .gr-fcw{display:block}
+  .gr-foot{padding:9px 2px 0;border:0}
+  .gr-fbar.open .gr-fgrid{display:grid;grid-template-columns:minmax(0,1fr)}
+  .gr-fbar.open .gr-frow .gr-seg-per{display:flex;flex:1 1 100%}
+  .gr-fbar.open .gr-seg-per button{flex:1;justify-content:center;height:40px}
+  .gr-frow{flex-wrap:wrap}
+  .gr-fs{height:44px}
+  .gr .gr-fbtn{display:inline-flex}
+  .gr .gr-now{display:none}
+  .gr-fs select.inp{height:42px;font-size:15px}
+  .gr-tab{flex:1;justify-content:center;height:44px;padding:0 6px}
+  .gr-c:disabled{min-height:48px}
+}
 </style>
 </head>
 <body>
@@ -5151,6 +5440,7 @@ const VIEWS = {
   home:      { s: 'global', t: 'Benim işlerim',     c: 'Genel bakış',       r: renderHome,      tb: toolbarHome },
   projects:  { s: 'global', t: 'Projeler',          c: 'Yönetim',           r: renderProjects,  tb: toolbarProjects },
   customers: { s: 'global', t: 'Cariler',           c: 'Yönetim',           r: renderCustomers, tb: () => '' },
+  greports:  { s: 'global', t: 'Genel raporlar',    c: 'Tüm projeler',      r: renderGr,        tb: () => '' },
   board:     { s: 'proj',   t: 'Pano',              c: 'Çevik pano',        r: renderBoard,     tb: toolbarBoard },
   backlog:   { s: 'proj',   t: 'Backlog',           c: 'Planlama',          r: renderBacklog,   tb: toolbarBacklog },
   plan:      { s: 'proj',   t: 'Zaman planı',       c: 'Planlama',          r: renderPlan,      tb: toolbarPlan },
@@ -5180,7 +5470,7 @@ function viewAllowed(v) {
 function render() {
   if (VIEWS[DB.ui.view] && !viewAllowed(DB.ui.view)) DB.ui.view = 'board';
   const v = VIEWS[DB.ui.view] || VIEWS.board;
-  if (location.hash.slice(1) !== DB.ui.view) try { history.replaceState(null, '', '#' + DB.ui.view); } catch (_) { }
+  if (location.hash.slice(1) !== viewHash(DB.ui.view)) try { history.replaceState(null, '', '#' + viewHash(DB.ui.view)); } catch (_) { }
   ensureSel(); noteRecent();
   const pr = P();
   renderHead(v, pr);
@@ -5194,6 +5484,7 @@ function render() {
   renderAcctBtn();
   renderFileBar();
   wireToolbar();
+  grAfterRender();
 }
 
 /* Başlık: proje ekranında "Çalışma alanı / ANAHTAR" yolu + proje adı; genel ekranda eskisi gibi. */
@@ -5203,7 +5494,8 @@ function renderHead(v, pr) {
     $('#crumb').innerHTML = `<nav class="nv-crumb" aria-label="Konum"><a href="#projects" data-v="projects">${w ? wsBadge(w, 'sm') : ''}<span class="t">${esc(w?.name || '')}</span></a><span class="sep" aria-hidden="true">/</span><span class="key">${esc(pr.key)}</span></nav>`;
     $('#title').innerHTML = `<span class="t">${esc(pr.name)}</span>`;
   } else {
-    $('#crumb').textContent = `${pr ? pr.key : wsById(DB.ui.workspace)?.name || 'ÇevikPano'} · ${v.c}`;
+    if (v === VIEWS.greports) { const sc = grScope(); $('#crumb').textContent = `Tüm projeler · ${sc.length} proje · ${new Set(sc.map(wsOf)).size} çalışma alanı`; }
+    else $('#crumb').textContent = `${pr ? pr.key : wsById(DB.ui.workspace)?.name || 'ÇevikPano'} · ${v.c}`;
     $('#title').textContent = viewTitle(VIEWS[DB.ui.view] ? DB.ui.view : 'board');
   }
 }
@@ -5389,8 +5681,9 @@ function wireToolbar() {
 function wire() {
   wireWsSwitch();
   wireNav();
+  wireGr();
   addEventListener('hashchange', () => {
-    const v = location.hash.slice(1); if (VIEWS[v]) { DB.ui.view = v; save(); render(); }
+    const v = hashView(); if (v) { if (v !== DB.ui.view || v === 'greports') { DB.ui.view = v; save(); render(); } }
   });
 
   document.addEventListener('click', e => {
@@ -5402,7 +5695,7 @@ function wire() {
       e.preventDefault();
       const v = nv.dataset.v;
       if (v === '__proj') return navToProj();
-      if (VIEWS[v]) { DB.ui.view = v; try { history.replaceState(null, '', '#' + v); } catch (_) {} save(); render(); }
+      if (VIEWS[v]) { DB.ui.view = v; try { history.replaceState(null, '', '#' + viewHash(v)); } catch (_) {} save(); render(); }
       return;
     }
 
@@ -5563,8 +5856,8 @@ function wire() {
 function startApp(useHash) {
   ensureProjects();
   ensureSel();
-  if (useHash && location.hash.slice(1) in VIEWS) DB.ui.view = location.hash.slice(1);
-  try { history.replaceState(null, '', '#' + DB.ui.view); } catch (_) {}
+  if (useHash && hashView()) DB.ui.view = hashView();
+  try { history.replaceState(null, '', '#' + viewHash(DB.ui.view)); } catch (_) {}
   render();
 }
 
@@ -5577,11 +5870,11 @@ addEventListener('beforeunload', e => {
 function boot() {
   ensureSchema();
   ensureAccounts();
-  if (location.hash.slice(1) in VIEWS) DB.ui.view = location.hash.slice(1);
+  if (hashView()) DB.ui.view = hashView();
   if (DB.cfg) { H_PER_DAY = DB.cfg.h || 8; D_PER_WEEK = DB.cfg.d || 5; }
   DB.issues.forEach(i => { if (i.remainingEst == null) i.remainingEst = Math.max(0, (i.estimate || 0) - (i.spent || 0)); });
   ensureSel();
-  if (location.hash.slice(1) in VIEWS) DB.ui.view = location.hash.slice(1);
+  if (hashView()) DB.ui.view = hashView();
   render();
 }
 
@@ -6742,6 +7035,7 @@ function toolbarEffort() {
       <button data-u="h" class="${DB.ui.efUnit === 'wd' ? '' : 'on'}">Saat</button>
       <button data-u="wd" class="${DB.ui.efUnit === 'wd' ? 'on' : ''}">Gün/hafta</button>
     </div>
+    <a href="#raporlar/sure" class="btn ghost gr-eflk" id="efGr">${ic('reports')}Tüm projeler: Genel raporlar →</a>
     <button class="btn" id="efSum">Aylık genel özet</button>
     <button class="btn pri" id="efXlsx">Excel raporu</button>`;
 }
@@ -6904,6 +7198,383 @@ function wireEffort() {
   const sm = $('#efSum'); if (sm) sm.onclick = () => monthlySummary();
 
 }
+
+
+/* ============================================================
+   Bölüm 8b: GENEL RAPORLAR (docs/tasarim/genel-raporlar, grup D1)
+   Tüm projelerde süre: "Süre" (serbest pivot) ve "Faturalanabilir saat" (cari başına). Adres #raporlar/sure, #raporlar/fatura.
+   Hesap Efor raporuyla aynı kurallar (dönem, işin projesi, billOf/btypeOf); fark yalnız kapsam ve toplama biçimi:
+   kayıtlar TEK geçişte süzülüp toplanır, iş/proje/kişi aramaları önceden kurulan Map'lerden yapılır (50.000 kayıt).
+   Kapsam: süper hepsi, diğerleri userProjects (üye listesi boş projeler herkese). Sunucu herkese her şeyi gönderir;
+   bu bir güvenlik sınırı değildir, yalnız görünüm kapsamıdır. Süzgeçler kişisel (DB.ui.grF → user_prefs).
+   ============================================================ */
+const GR = { cell: null, open: new Set(), sl: 0, sheet: false, last: null };
+const GR_FMT = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const grH = h => GR_FMT.format(Math.round((h || 0) * 100) / 100);
+const grR2 = h => Math.round((h || 0) * 100) / 100;
+const grTab = () => DB.ui.grTab === 'fatura' ? 'fatura' : 'sure';
+const grF = () => (DB.ui.grF && typeof DB.ui.grF === 'object' && !Array.isArray(DB.ui.grF)) ? DB.ui.grF : (DB.ui.grF = {});
+/* Adres: #raporlar/sure | #raporlar/fatura (başına "/" da kabul). Diğer ekranlar #görünüm. */
+function hashView(h = location.hash.slice(1)) {
+  h = decodeURIComponent(String(h || '')).replace(/^\//, '');
+  const m = /^raporlar(?:\/(sure|fatura))?$/.exec(h);
+  if (m) { if (m[1]) DB.ui.grTab = m[1]; return 'greports'; }
+  return Object.hasOwn(VIEWS, h) ? h : null;
+}
+const viewHash = v => v === 'greports' ? 'raporlar/' + grTab() : v;
+
+function grPeriod() {
+  const f = grF();
+  if (f.range === 'custom' && f.from && f.to) {
+    const [a, b] = f.from <= f.to ? [f.from, f.to] : [f.to, f.from];
+    return { from: a, to: b, label: `${trDate(a)} – ${trDate(b)}`, file: `${a}_${b}` };
+  }
+  const m = /^\d{4}-\d{2}$/.test(f.month || '') ? f.month : TODAY.slice(0, 7);
+  const last = new Date(+m.slice(0, 4), +m.slice(5, 7), 0);
+  return { from: m + '-01', to: iso(last), label: monthName(m), month: m, file: m };
+}
+/* Görünüm kapsamındaki projeler (arşivliler dahil: geçmiş dönem etiketle görünür). */
+const grScope = () => isSuper() ? DB.projects.slice() : userProjects(CU()?.id);
+const GR_NONE = '__none', GR_UNK = '__unk';
+const GR_FKEYS = ['ws', 'proj', 'cu', 'user', 'type', 'bill'];
+
+/* Bağlam: bir kez kurulur (Map'ler), boyut anahtarları buradan okunur. */
+function grCtx() {
+  const scope = grScope(), f = grF();
+  const PM = new Map(), WS = new Map(), CUM = new Map(cuList().map(c => [c.id, c]));
+  scope.forEach(p => { PM.set(p.id, p); WS.set(p.id, wsOf(p)); });
+  /* alan seçiliyse proje listesi daralır; geçersiz proje seçimi temizlenir */
+  if (f.ws && !scope.some(p => WS.get(p.id) === f.ws)) delete f.ws;
+  if (f.proj && (!PM.has(f.proj) || (f.ws && WS.get(f.proj) !== f.ws))) delete f.proj;
+  if (f.user && f.user !== GR_UNK && !DB.users.some(u => u.id === f.user)) delete f.user;
+  if (f.type && !TYPE[f.type]) delete f.type;
+  if (f.bill && !BILLABLE.includes(f.bill)) delete f.bill;
+  if (f.cu && f.cu !== GR_NONE && !CUM.has(f.cu)) delete f.cu;
+  const IM = new Map(); DB.issues.forEach(i => { if (PM.has(i.projectId)) IM.set(i.id, i); });
+  const UM = new Map(DB.users.map(u => [u.id, u]));
+  const cuOfP = p => p.customerId && CUM.has(p.customerId) ? p.customerId : GR_NONE;
+  return { scope, f, PM, WS, CUM, IM, UM, cuOfP, SM: new Map((DB.sprints || []).map(s => [s.id, s])) };
+}
+
+/* Boyutlar: Efor DIMS ile aynı anahtarlar; Cari ve Çalışma alanı eklenir, eski "Müşteri" özel alanı ayrı boyut. */
+function grDims(X) {
+  const WK = new Map();
+  const wk = d => { let v = WK.get(d); if (!v) { v = iso(monday(new Date(d))); WK.set(d, v); } return v; };
+  const pName = id => { const p = X.PM.get(id); return p ? `${p.key} — ${p.name}` : '—'; };
+  const D = {
+    user:     { l: 'Kişi', k: (w) => X.UM.has(w.userId) ? w.userId : GR_UNK, n: id => id === GR_UNK ? 'Bilinmeyen' : (X.UM.get(id)?.name || 'Bilinmeyen') },
+    project:  { l: 'Proje', k: (w, i, p) => p.id, n: pName, tag: id => X.PM.get(id)?.archived ? 'arch' : '' },
+    customer: { l: 'Cari', k: (w, i, p) => X.cuOfP(p), n: id => id === GR_NONE ? 'Cari bağlı değil' : (X.CUM.get(id)?.name || '—'),
+                tag: id => id !== GR_NONE && !cuActive(X.CUM.get(id)) ? 'pas' : '' },
+    ws:       { l: 'Çalışma alanı', k: (w, i, p) => X.WS.get(p.id), n: id => wsById(id)?.name || '—' },
+    month:    { l: 'Ay', k: w => w.date.slice(0, 7), n: m => monthName(m), time: true },
+    week:     { l: 'Hafta', k: w => wk(w.date), n: d => trDate(d) + ' haftası', time: true },
+    type:     { l: 'İş tipi', k: (w, i) => i.type, n: t => TYPE[t]?.[2] || '—' },
+    billable: { l: 'Faturalama', k: (w, i) => billOf(i), n: x => x },
+    billType: { l: 'Fatura türü', k: (w, i) => btypeOf(i), n: x => x },
+  };
+  if (MOD('epic')) D.epic = { l: 'Epik', k: (w, i) => i.epicId || GR_NONE, n: id => id === GR_NONE ? 'Epik yok' : (issue(id)?.summary || '—') };
+  if (anyAgile()) D.sprint = { l: 'Sprint', k: (w, i) => i.sprintId || GR_NONE, n: id => id === GR_NONE ? 'Backlog' : (X.SM.get(id)?.name || '—') };
+  if (DB.fields.some(x => x.key === 'musteri')) D.cfCust = { l: 'Müşteri (iş alanı)', k: (w, i) => customerOf(i) || GR_NONE, n: x => x === GR_NONE ? '—' : x };
+  return D;
+}
+
+/* TEK GEÇİŞ: dönem + süzgeç + kapsam; pivot hücreleri, satır/sütun toplamları ve cari/proje faturalama birlikte. */
+function grCompute() {
+  const X = grCtx(), f = X.f, per = grPeriod(), D = grDims(X);
+  const rowK = D[f.row] ? f.row : 'customer';
+  const colK = f.col === '' ? '' : (D[f.col] ? f.col : 'user');
+  const rD = D[rowK], cD = colK ? D[colK] : null;
+  const cells = new Map(), rT = new Map(), cT = new Map(), bill = new Map(), logs = [], issues = new Set(), projs = new Set();
+  let grand = 0;
+  const F0 = BILLABLE[0];
+  for (const w of DB.worklogs) {
+    const d = w.date;
+    if (!d || d < per.from || d > per.to) continue;
+    const i = X.IM.get(w.issueId); if (!i) continue;
+    const p = X.PM.get(i.projectId); if (!p) continue;
+    if (f.proj && p.id !== f.proj) continue;
+    if (f.ws && X.WS.get(p.id) !== f.ws) continue;
+    if (f.user && (f.user === GR_UNK ? X.UM.has(w.userId) : w.userId !== f.user)) continue;
+    if (f.type && i.type !== f.type) continue;
+    const b = billOf(i);
+    if (f.bill && b !== f.bill) continue;
+    const cu = X.cuOfP(p);
+    if (f.cu && cu !== f.cu) continue;
+    const h = +w.hours || 0;
+    logs.push({ w, i, p, cu });
+    issues.add(i.id); projs.add(p.id);
+    grand += h;
+    const r = rD.k(w, i, p) ?? GR_NONE, c = cD ? (cD.k(w, i, p) ?? GR_NONE) : '';
+    rT.set(r, (rT.get(r) || 0) + h);
+    if (cD) {
+      cT.set(c, (cT.get(c) || 0) + h);
+      let m = cells.get(r); if (!m) cells.set(r, m = new Map());
+      m.set(c, (m.get(c) || 0) + h);
+    }
+    let bc = bill.get(cu); if (!bc) bill.set(cu, bc = { f: 0, n: 0, p: new Map() });
+    let bp = bc.p.get(p.id); if (!bp) bc.p.set(p.id, bp = { f: 0, n: 0 });
+    if (b === F0) { bc.f += h; bp.f += h; } else { bc.n += h; bp.n += h; }
+  }
+  const order = (Dm, tot) => [...tot.keys()].sort((a, b) => {
+    const sa = a === GR_NONE || a === GR_UNK, sb = b === GR_NONE || b === GR_UNK;
+    if (sa !== sb) return sa ? 1 : -1;
+    if (Dm.time) return String(a).localeCompare(String(b));
+    return (tot.get(b) - tot.get(a)) || String(Dm.n(a)).localeCompare(String(Dm.n(b)), 'tr');
+  });
+  const rows = order(rD, rT), cols = cD ? order(cD, cT) : [];
+  return { X, D, f, per, rowK, colK, rD, cD, cells, rT, cT, bill, logs, issues, projs, grand, rows, cols };
+}
+
+/* ---- görünüm ---- */
+function grTag(kind) {
+  return kind === 'arch' ? `<span class="gr-tag">${ic('archive')}Arşivli</span>` : kind === 'pas' ? `<span class="gr-tag">${ic('pause')}Pasif</span>` : '';
+}
+function grDimLabel(Dm, k, id) {
+  if (k === 'user') return `<span class="gr-rn">${id === GR_UNK ? '<span class="gr-unk" aria-hidden="true">?</span>' : avat(id)}<span class="nm">${esc(Dm.n(id))}</span></span>`;
+  if (k === 'customer' && id === GR_NONE) return `<span class="gr-rn none">${ic('link')}<span class="nm">${esc(Dm.n(id))}</span></span>`;
+  return `<span class="gr-rn"><span class="nm" title="${esc(Dm.n(id))}">${esc(Dm.n(id))}</span>${Dm.tag ? grTag(Dm.tag(id)) : ''}</span>`;
+}
+function grFilterBar(R) {
+  const X = R.X, f = R.f, per = R.per, custom = f.range === 'custom';
+  const wsIds = [...new Set(X.scope.map(p => X.WS.get(p.id)))];
+  const wsOpts = wsIds.map(id => [id, wsById(id)?.name || '—']).sort((a, b) => a[1].localeCompare(b[1], 'tr'));
+  const pOpts = X.scope.filter(p => !f.ws || X.WS.get(p.id) === f.ws).sort((a, b) => String(a.key).localeCompare(String(b.key), 'tr'))
+    .map(p => [p.id, `${p.key} — ${p.name}${p.archived ? ' (arşivli)' : ''}`]);
+  const cuIds = new Set(X.scope.map(X.cuOfP));
+  const cOpts = cuList().filter(c => cuIds.has(c.id)).sort(cuSort).map(c => [c.id, c.name + (cuActive(c) ? '' : ' (pasif)')]);
+  if (cuIds.has(GR_NONE)) cOpts.push([GR_NONE, 'Cari bağlı değil']);
+  const uOpts = DB.users.filter(u => !u.system || isSuper()).map(u => [u.id, u.name]).sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'tr'));
+  uOpts.push([GR_UNK, 'Bilinmeyen (silinmiş)']);
+  const tOpts = Object.keys(TYPE).map(t => [t, TYPE[t][2]]);
+  const bOpts = BILLABLE.map(b => [b, b]);
+  const sel = (k, l, all, opts) => `<label class="gr-fs ${f[k] ? 'on' : ''}"><span class="lb">${l}</span>
+      <select class="inp" data-grf="${k}" aria-label="${l}"><option value="">${all}</option>${opts.map(([v, t]) =>
+        `<option value="${esc(v)}" ${f[k] === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label>`;
+  const nameOf = { ws: id => wsById(id)?.name, proj: id => { const p = X.PM.get(id); return p && `${p.key} — ${p.name}`; },
+    cu: id => id === GR_NONE ? 'Cari bağlı değil' : X.CUM.get(id)?.name, user: id => id === GR_UNK ? 'Bilinmeyen' : X.UM.get(id)?.name,
+    type: t => TYPE[t]?.[2], bill: b => b };
+  const LBL = { ws: 'Alan', proj: 'Proje', cu: 'Cari', user: 'Kişi', type: 'İş tipi', bill: 'Faturalama' };
+  const act = GR_FKEYS.filter(k => f[k]);
+  return `<section class="gr-fbar ${GR.sheet ? 'open' : ''}" aria-label="Süzgeçler">
+    <div class="gr-frow">
+      <div class="cu-seg gr-seg-per" role="radiogroup" aria-label="Dönem türü">
+        <button type="button" role="radio" data-grrange="month" aria-checked="${!custom}">Ay</button>
+        <button type="button" role="radio" data-grrange="custom" aria-checked="${custom}">Aralık</button></div>
+      ${custom ? `<div class="gr-range"><input class="inp" type="date" data-grd="from" value="${esc(per.from)}" aria-label="Başlangıç"><span aria-hidden="true">–</span><input class="inp" type="date" data-grd="to" value="${esc(per.to)}" aria-label="Bitiş"></div>`
+        : `<div class="gr-per"><div class="gr-step"><button type="button" data-grm="-1" aria-label="Önceki ay">${ic('back')}</button><b id="grPer" aria-live="polite">${esc(per.label)}</b><button type="button" data-grm="1" aria-label="Sonraki ay">${ic('chevr')}</button></div>
+          <button type="button" class="btn ghost gr-now" data-grm="0">Bu ay</button></div>`}
+      <button type="button" class="btn gr-fbtn" data-grsheet aria-expanded="${GR.sheet}">${ic('filter')}Süzgeçler <span class="n">${act.length}</span></button>
+      <span class="gr-fhint">${ic('lock')}Süzgeçler sana özel hatırlanır</span>
+    </div>
+    <div class="gr-fgrid">
+      ${sel('ws', 'Alan', 'Tümü', wsOpts)}${sel('proj', 'Proje', 'Tümü', pOpts)}${sel('cu', 'Cari', 'Tümü', cOpts)}
+      ${sel('user', 'Kişi', 'Herkes', uOpts)}${sel('type', 'İş tipi', 'Tümü', tOpts)}${sel('bill', 'Faturalama', 'Tümü', bOpts)}
+    </div>
+    ${act.length ? `<div class="gr-chips"><span class="lbl">${act.length} süzgeç etkin:</span>${act.map(k =>
+      `<span class="gr-chip"><span class="t"><span>${LBL[k]}:</span> ${esc(nameOf[k](f[k]) || '—')}</span><button type="button" data-grx="${k}" aria-label="${LBL[k]} süzgecini kaldır">${ic('x')}</button></span>`).join('')}
+      <button type="button" class="btn ghost gr-clear" data-grclear>Süzgeçleri temizle</button></div>` : ''}
+  </section>`;
+}
+const grKpi = (icn, l, v, s, unit = 'sa') => `<div class="gr-kpi"><span class="ic">${ic(icn)}</span><span class="tx"><span class="l">${l}</span><b>${v}${unit ? `<small>${unit}</small>` : ''}</b>${s ? `<span class="s">${s}</span>` : ''}</span></div>`;
+function grEmpty() {
+  return `<section class="gr-card hm-empty gr-empty" data-grempty><span class="hm-empty-ic">${ic('clock')}</span><h3>Bu süzgeçlerle süre kaydı yok</h3>
+    <p>Dönemi değiştir ya da süzgeçleri kaldır.</p><div class="acts"><button type="button" class="btn" data-grclear>${ic('x')}Süzgeçleri temizle</button>
+    <button type="button" class="btn gr-xls" data-grxls>${ic('issues')}Excel'e aktar</button></div></section>`;
+}
+
+function renderGr() {
+  const t0 = performance.now();
+  const R = grCompute(), tab = grTab();
+  GR.last = R;
+  const tabs = `<div class="gr-tabs" role="tablist" aria-label="Genel raporlar">
+    <a href="#raporlar/sure" class="gr-tab" role="tab" id="grtab-sure" aria-selected="${tab === 'sure'}" aria-controls="grPanel" tabindex="${tab === 'sure' ? 0 : -1}">${ic('clock')}Süre</a>
+    <a href="#raporlar/fatura" class="gr-tab" role="tab" id="grtab-fatura" aria-selected="${tab === 'fatura'}" aria-controls="grPanel" tabindex="${tab === 'fatura' ? 0 : -1}">${ic('issues')}Faturalanabilir saat</a></div>`;
+  const body = !R.logs.length ? grEmpty() : tab === 'fatura' ? grFatura(R) : grSure(R);
+  GR.ms = performance.now() - t0;
+  return `<div class="gr" data-grms="${GR.ms.toFixed(1)}">${tabs}<div id="grPanel" role="tabpanel" aria-labelledby="grtab-${tab}" class="gr-panel">${grFilterBar(R)}${body}</div></div>`;
+}
+
+function grSure(R) {
+  const { rD, cD, rows, cols, cells, rT, cT, grand, rowK, colK, D } = R;
+  const dims = Object.entries(D);
+  let max = 0;
+  if (cD) cells.forEach(m => m.forEach(v => { if (v > max) max = v; })); else rT.forEach(v => { if (v > max) max = v; });
+  const heat = v => v && max ? `background:color-mix(in srgb,var(--gr-heat) ${(v / max * 12).toFixed(1)}%,transparent)` : '';
+  const cs = GR.cell;
+  const btn = (r, c, v, cls = '') => {
+    const on = !!cs && cs.r === String(r) && cs.c === String(c);
+    return `<button type="button" class="gr-c ${v ? '' : 'z'} ${cls}" data-grr="${esc(r)}" data-grc="${esc(c)}" aria-pressed="${on}" ${cls ? '' : `style="${heat(v)}"`}
+      aria-label="${esc(r === '*' ? 'Toplam' : rD.n(r))}${c === '*' || !cD ? '' : ' × ' + esc(cD.n(c))}: ${grH(v)} saat" ${v ? '' : 'disabled'}>${v ? grH(v) : '·'}</button>`;
+  };
+  const opt = (sel, none) => (none ? `<option value="" ${sel === '' ? 'selected' : ''}>Yok</option>` : '')
+    + dims.map(([k, o]) => `<option value="${k}" ${sel === k ? 'selected' : ''}>${esc(o.l)}</option>`).join('');
+  const head = `<tr><th class="rh dimh" scope="col">${esc(rD.l)}${cD ? `<span>/</span>${esc(cD.l)}` : ''}</th>
+    ${cols.map(c => `<th scope="col" title="${esc(cD.n(c))}"><span class="ph">${colK === 'user' ? (c === GR_UNK ? '<span class="gr-unk" aria-hidden="true">?</span>' : avat(c)) : ''}${esc(cD.n(c))}${cD.tag ? grTag(cD.tag(c)) : ''}</span></th>`).join('')}
+    <th scope="col" class="tot">Toplam</th></tr>`;
+  const body = rows.map(r => `<tr><th scope="row" class="rh">${grDimLabel(rD, rowK, r)}</th>
+    ${cols.map(c => `<td>${btn(r, c, cells.get(r)?.get(c) || 0)}</td>`).join('')}
+    <td class="tot">${btn(r, '*', rT.get(r), 'b')}</td></tr>`).join('');
+  const foot = `<tr><th scope="row" class="rh">Toplam</th>${cols.map(c => `<td>${btn('*', c, cT.get(c), 'b')}</td>`).join('')}
+    <td class="tot grand">${btn('*', '*', grand, 'b')}</td></tr>`;
+  const nP = R.projs.size;
+  return `<div class="gr-kpis">${grKpi('clock', 'Toplam süre', `<span data-grtotal="${grR2(grand)}">${grH(grand)}</span>`)}
+      ${grKpi('cal', 'Adam-gün', grH(grand / H_PER_DAY), `${H_PER_DAY} saatlik gün`, '')}
+      ${grKpi('issues', 'Kayıt', R.logs.length.toLocaleString('tr-TR'), '', '')}
+      ${grKpi('tag', 'İş', R.issues.size.toLocaleString('tr-TR'), `${nP} projede`, '')}</div>
+    <section class="gr-card" aria-label="Süre tablosu">
+      <div class="gr-card-h"><div class="gr-dims">
+        <label class="gr-dim">Satır<select class="inp" data-grdim="row">${opt(rowK)}</select></label>
+        <button type="button" class="gr-swap" data-grswap aria-label="Satır ve sütunu değiştir" title="Satır ve sütunu değiştir" ${cD ? '' : 'disabled'}>${ic('swap')}</button>
+        <label class="gr-dim">Sütun<select class="inp" data-grdim="col">${opt(colK, true)}</select></label></div>
+        <span class="meta"><b>${rows.length}</b> ${esc(rD.l.toLocaleLowerCase('tr'))}${cD ? ` × <b>${cols.length}</b> ${esc(cD.l.toLocaleLowerCase('tr'))}` : ''} · ${esc(R.per.label)}</span>
+        <span class="spacer"></span>
+        <button type="button" class="btn gr-xls" data-grxls>${ic('issues')}Excel'e aktar</button></div>
+      <div class="gr-pv-wrap" id="grPvWrap"><table class="gr-pv" id="grPv"><thead>${head}</thead><tbody>${body}</tbody><tfoot>${foot}</tfoot></table></div>
+      <div class="gr-foot">${ic('info')}Bir hücreye tıkla ya da Enter'a bas: o kesitin süre kayıtları altta açılır.</div>
+    </section>${grDrill(R)}`;
+}
+
+const GR_DRILL_MAX = 500;
+function grDrill(R) {
+  const cs = GR.cell; if (!cs) return '';
+  const { rD, cD } = R;
+  const list = R.logs.filter(x => (cs.r === '*' || String(rD.k(x.w, x.i, x.p) ?? GR_NONE) === cs.r)
+    && (cs.c === '*' || !cD || String(cD.k(x.w, x.i, x.p) ?? GR_NONE) === cs.c));
+  if (!list.length) { GR.cell = null; return ''; }
+  list.sort((a, b) => a.w.date.localeCompare(b.w.date) || String(a.i.key).localeCompare(String(b.i.key)));
+  const tot = list.reduce((a, x) => a + (+x.w.hours || 0), 0);
+  const cellV = cs.r === '*' && cs.c === '*' ? R.grand : cs.c === '*' || !cD ? R.rT.get(cs.r) : cs.r === '*' ? R.cT.get(cs.c) : R.cells.get(cs.r)?.get(cs.c);
+  const same = grR2(cellV) === grR2(tot);
+  const ttl = [cs.r === '*' ? 'Tüm ' + rD.l.toLocaleLowerCase('tr') : rD.n(cs.r), cD && cs.c !== '*' ? cD.n(cs.c) : ''].filter(Boolean);
+  const nI = new Set(list.map(x => x.i.id)).size;
+  const shown = list.slice(0, GR_DRILL_MAX);
+  return `<section class="gr-card gr-drill" id="grDrill" aria-labelledby="grDrT">
+    <div class="gr-card-h"><div class="gr-dt"><b id="grDrT">${ttl.map(esc).join(' <span class="x">×</span> ')}</b>
+      <span class="s">${esc(R.per.label)} · ${list.length} kayıt · ${nI} iş</span></div>
+      <span class="gr-dsum" data-grdsum="${grR2(tot)}">${grH(tot)}<small>sa</small></span>
+      <button type="button" class="iconbtn gr-close" data-grclose aria-label="Kayıt listesini kapat">${ic('x')}</button></div>
+    <table class="gr-dl"><thead><tr><th>Tarih</th><th>Kişi</th><th>İş</th><th>Açıklama</th><th class="r">Saat</th></tr></thead>
+    <tbody>${shown.map(({ w, i }) => `<tr><td class="d">${trDate(w.date)}</td>
+      <td class="p"><span class="who">${R.X.UM.has(w.userId) ? avat(w.userId) : '<span class="gr-unk" aria-hidden="true">?</span>'}${esc(R.X.UM.get(w.userId)?.name || 'Bilinmeyen')}</span></td>
+      <td class="i"><span class="gr-is"><button type="button" class="gr-key" data-open="${esc(i.id)}">${esc(i.key)}</button><span>${esc(i.summary)}</span></span></td>
+      <td class="a">${esc(w.comment || '')}</td><td class="h r">${grH(w.hours)}</td></tr>`).join('')}</tbody>
+    <tfoot><tr><td class="lbl">Toplam</td><td class="sp" colspan="3">${list.length > GR_DRILL_MAX ? `İlk ${GR_DRILL_MAX} kayıt gösteriliyor; tümü Excel'de.` : ''}</td>
+      <td class="h r">${same ? `<span class="eq">${ic('check')}hücreyle aynı</span>` : ''}${grH(tot)}</td></tr></tfoot></table></section>`;
+}
+
+/* Faturalanabilir saat: cari başına Faturalanacak / Faturalanmayacak / Toplam / Oran; "Cari bağlı değil" en altta. */
+function grBillRows(R) {
+  const X = R.X;
+  return [...R.bill.entries()].map(([id, v]) => ({ id, f: v.f, n: v.n, t: v.f + v.n,
+    name: id === GR_NONE ? 'Cari bağlı değil' : (X.CUM.get(id)?.name || '—'), pas: id !== GR_NONE && !cuActive(X.CUM.get(id)),
+    projs: [...v.p.entries()].map(([pid, x]) => ({ p: X.PM.get(pid), f: x.f, n: x.n, t: x.f + x.n })).sort((a, b) => b.t - a.t || String(a.p.key).localeCompare(String(b.p.key))) }))
+    .sort((a, b) => (a.id === GR_NONE) - (b.id === GR_NONE) || b.t - a.t || a.name.localeCompare(b.name, 'tr'));
+}
+const grPct = (f, t) => t ? Math.round(f / t * 100) : 0;
+const grRate = (f, t) => `<span class="gr-rate"><i aria-hidden="true"><b style="width:${grPct(f, t)}%"></b></i><span>%${grPct(f, t)}</span></span>`;
+function grFatura(R) {
+  const rows = grBillRows(R);
+  const F = rows.reduce((a, r) => a + r.f, 0), N = rows.reduce((a, r) => a + r.n, 0), T = F + N;
+  const nm = r => `${r.id === GR_NONE ? ic('link') : ''}<span class="nmw"><span class="nmr"><span class="nm">${esc(r.name)}</span>${r.pas ? grTag('pas') : ''}</span><span class="sub">${r.projs.length} proje</span></span>`;
+  const table = rows.map(r => { const open = GR.open.has(r.id), sid = 'grfp-' + esc(r.id);
+    return `<tr class="top" data-grcu="${esc(r.id)}"><td><span class="gr-xr"><button type="button" class="gr-tg" data-grtog="${esc(r.id)}" aria-expanded="${open}" aria-controls="${sid}" aria-label="${esc(r.name)}: projeler">${ic('down')}</button>${nm(r)}</span></td>
+      <td>${grH(r.f)}</td><td>${grH(r.n)}</td><td class="t">${grH(r.t)}</td><td>${grRate(r.f, r.t)}</td></tr>
+      ${open ? r.projs.map((x, k) => `<tr class="sub ${k === r.projs.length - 1 ? 'last' : ''}" data-grsub="${esc(r.id)}"><td><span class="gr-xr"><span class="gr-pk">${esc(x.p.key)}</span><span class="gr-pn">${esc(x.p.name)}</span>${x.p.archived ? grTag('arch') : ''}</span></td>
+        <td>${grH(x.f)}</td><td>${grH(x.n)}</td><td class="t">${grH(x.t)}</td><td>${grRate(x.f, x.t)}</td></tr>`).join('') : ''}`; }).join('');
+  const cards = rows.map(r => { const open = GR.open.has(r.id);
+    return `<article class="gr-fc"><div class="gr-fc-h"><span class="nmw"><span class="nm">${esc(r.name)}</span><span class="tags">${r.pas ? grTag('pas') : ''}${r.projs.length} proje</span></span><span class="pct">%${grPct(r.f, r.t)}</span></div>
+      <div class="gr-fc-n"><div><span>Faturalanacak</span><b>${grH(r.f)}</b></div><div><span>Faturalanmayacak</span><b>${grH(r.n)}</b></div><div class="t"><span>Toplam</span><b>${grH(r.t)}</b></div></div>
+      <span class="gr-fc-bar" aria-hidden="true"><b style="width:${grPct(r.f, r.t)}%"></b></span>
+      <button type="button" class="gr-fc-tg" data-grtog="${esc(r.id)}" aria-expanded="${open}">Projeler (${r.projs.length})${ic('down')}</button>
+      ${open ? `<ul class="gr-fc-p">${r.projs.map(x => `<li><span class="r1"><span class="gr-pk">${esc(x.p.key)}</span><span class="gr-pn">${esc(x.p.name)}</span>${x.p.archived ? grTag('arch') : ''}</span>
+        <span class="r2"><span>F ${grH(x.f)}</span><span>FY ${grH(x.n)}</span><b>T ${grH(x.t)}</b><span>%${grPct(x.f, x.t)}</span></span></li>`).join('')}</ul>` : ''}</article>`; }).join('');
+  return `<div class="gr-kpis">${grKpi('issues', 'Faturalanacak', `<span data-grf-f="${grR2(F)}">${grH(F)}</span>`)}${grKpi('pause', 'Faturalanmayacak', `<span data-grf-n="${grR2(N)}">${grH(N)}</span>`)}
+      ${grKpi('clock', 'Toplam', `<span data-grf-t="${grR2(T)}">${grH(T)}</span>`)}${grKpi('reports', 'Faturalanabilir oran', '%' + grPct(F, T), `${rows.filter(r => r.id !== GR_NONE).length} cari · ${R.projs.size} proje`, '')}</div>
+    <section class="gr-card" aria-label="Faturalanabilir saat">
+      <div class="gr-card-h"><span class="meta"><b>${rows.length}</b> satır · ${esc(R.per.label)} · cari = projenin carisi</span><span class="spacer"></span>
+        <button type="button" class="btn gr-xls" data-grxls>${ic('issues')}Excel'e aktar</button></div>
+      <div class="gr-ftwrap"><table class="gr-ft" id="grFt"><colgroup><col style="width:38%"><col><col><col><col style="width:150px"></colgroup>
+        <thead><tr><th scope="col">Cari</th><th scope="col">Faturalanacak</th><th scope="col">Faturalanmayacak</th><th scope="col">Toplam</th><th scope="col">Oran</th></tr></thead>
+        <tbody>${table}</tbody>
+        <tfoot><tr><td>Toplam</td><td>${grH(F)}</td><td>${grH(N)}</td><td class="grand">${grH(T)}</td><td>${grRate(F, T)}</td></tr></tfoot></table></div>
+      <div class="gr-fc-list">${cards}<article class="gr-fc tot"><div class="gr-fc-n"><div><span>Faturalanacak</span><b>${grH(F)}</b></div><div><span>Faturalanmayacak</span><b>${grH(N)}</b></div><div class="t"><span>Toplam</span><b>${grH(T)}</b></div></div></article></div>
+      <div class="gr-foot">${ic('info')}Faturalama işin alanından gelir; alanı boş işler "Faturalanacak" sayılır. Faturalanacak + Faturalanmayacak = Toplam.</div>
+    </section>`;
+}
+
+/* ---- Excel: "Özet" (ekrandaki tablo + üstte dönem/süzgeçler) ve "Detay" (her kayıt) ---- */
+function grExcel() {
+  const R = grCompute(), tab = grTab();
+  if (!R.logs.length) return toast('Aktarılacak süre kaydı yok: bu süzgeçlerle süre kaydı bulunmuyor', { warn: true });
+  const X = R.X, f = R.f;
+  const LBL = { ws: 'Alan', proj: 'Proje', cu: 'Cari', user: 'Kişi', type: 'İş tipi', bill: 'Faturalama' };
+  const val = { ws: id => wsById(id)?.name, proj: id => X.PM.get(id)?.name, cu: id => id === GR_NONE ? 'Cari bağlı değil' : X.CUM.get(id)?.name,
+    user: id => id === GR_UNK ? 'Bilinmeyen' : X.UM.get(id)?.name, type: t => TYPE[t]?.[2], bill: b => b };
+  const top = [[tab === 'fatura' ? 'Genel rapor — Faturalanabilir saat' : 'Genel rapor — Süre'], ['Dönem', R.per.label],
+    ['Süzgeçler', GR_FKEYS.filter(k => f[k]).map(k => `${LBL[k]}: ${val[k](f[k]) || '—'}`).join(' · ') || 'Yok'], []];
+  let sum;
+  if (tab === 'fatura') {
+    const rows = grBillRows(R), F = rows.reduce((a, r) => a + r.f, 0), N = rows.reduce((a, r) => a + r.n, 0);
+    sum = [...top, ['Cari', 'Faturalanacak', 'Faturalanmayacak', 'Toplam', 'Oran %'],
+      ...rows.map(r => [r.name + (r.pas ? ' (pasif)' : ''), grR2(r.f), grR2(r.n), grR2(r.t), grPct(r.f, r.t)]),
+      ['TOPLAM', grR2(F), grR2(N), grR2(F + N), grPct(F, F + N)], [], ['Proje kırılımı'],
+      ['Cari', 'Proje', 'Faturalanacak', 'Faturalanmayacak', 'Toplam', 'Oran %'],
+      ...rows.flatMap(r => r.projs.map(x => [r.name, `${x.p.key} — ${x.p.name}${x.p.archived ? ' (arşivli)' : ''}`, grR2(x.f), grR2(x.n), grR2(x.t), grPct(x.f, x.t)]))];
+  } else {
+    const { rD, cD, rows, cols } = R;
+    sum = [...top, [cD ? `${rD.l} / ${cD.l}` : rD.l, ...cols.map(c => cD.n(c)), 'Toplam'],
+      ...rows.map(r => [rD.n(r), ...cols.map(c => grR2(R.cells.get(r)?.get(c) || 0)), grR2(R.rT.get(r))]),
+      ['TOPLAM', ...cols.map(c => grR2(R.cT.get(c))), grR2(R.grand)]];
+  }
+  const det = R.logs.slice().sort((a, b) => a.w.date.localeCompare(b.w.date) || String(a.i.key).localeCompare(String(b.i.key)));
+  const detail = [['Cari', 'Alan', 'Proje', 'Tarih', 'Kişi', 'İş', 'Açıklama', 'Tür', 'Faturalama', 'Saat'],
+    ...det.map(({ w, i, p, cu }) => [cu === GR_NONE ? 'Cari bağlı değil' : (X.CUM.get(cu)?.name || ''), wsById(X.WS.get(p.id))?.name || '',
+      p.name, trDate(w.date), X.UM.get(w.userId)?.name || 'Bilinmeyen', `${i.key} — ${i.summary}`, w.comment?.trim() || '',
+      btypeOf(i), billOf(i), grR2(w.hours)]),
+    ['', '', '', '', '', '', '', '', 'TOPLAM', grR2(R.grand)]];
+  const blob = makeXlsx([{ name: 'Özet', rows: sum, widths: [34, 16, 16, 16, 16, 12] },
+    { name: 'Detay', rows: detail, widths: [26, 18, 24, 12, 20, 36, 40, 12, 16, 10] }]);
+  download(blob, `genel-rapor-${tab}-${R.per.file}.xlsx`);
+  toast('Excel dosyası hazırlandı');
+}
+
+/* ---- olaylar: #view içinde tek yerden (yeniden çizimde kaybolmaz) ---- */
+function grSet(fn) { fn(grF()); save(); render(); }
+function wireGr() {
+  const v = $('#view');
+  v.addEventListener('click', e => {
+    if (DB.ui.view !== 'greports') return;
+    const t = e.target, q = s => t.closest(s);
+    let b;
+    if ((b = q('[data-grrange]'))) return grSet(f => { f.range = b.dataset.grrange; if (f.range === 'custom' && !f.from) { const p = grPeriod(); f.from = p.from; f.to = p.to; } });
+    if ((b = q('[data-grm]'))) return grSet(f => { const n = +b.dataset.grm; f.month = n ? shiftMonth(grPeriod().month || TODAY.slice(0, 7), n) : TODAY.slice(0, 7); });
+    if ((b = q('[data-grx]'))) return grSet(f => { delete f[b.dataset.grx]; });
+    if (q('[data-grclear]')) return grSet(f => { GR_FKEYS.forEach(k => delete f[k]); GR.cell = null; });
+    if (q('[data-grsheet]')) { GR.sheet = !GR.sheet; return render(); }
+    if (q('[data-grswap]')) return grSet(f => { const R = GR.last; if (!R?.colK) return; f.row = R.colK; f.col = R.rowK; GR.cell = null; });
+    if (q('[data-grxls]')) return grExcel();
+    if (q('[data-grclose]')) { const c = GR.cell; GR.cell = null; render(); if (c) $(`#grPv [data-grr="${CSS.escape(c.r)}"][data-grc="${CSS.escape(c.c)}"]`)?.focus(); return; }
+    if ((b = q('[data-grtog]'))) { const id = b.dataset.grtog; GR.open.has(id) ? GR.open.delete(id) : GR.open.add(id); render();
+      return $(`#view [data-grtog="${CSS.escape(id)}"]${b.classList.contains('gr-fc-tg') ? '.gr-fc-tg' : '.gr-tg'}`)?.focus(); }
+    if ((b = q('.gr-c[data-grr]'))) {
+      const r = b.dataset.grr, c = b.dataset.grc, same = GR.cell && GR.cell.r === r && GR.cell.c === c;
+      GR.cell = same ? null : { r, c }; render();
+      $(`#grPv [data-grr="${CSS.escape(r)}"][data-grc="${CSS.escape(c)}"]`)?.focus({ preventScroll: true });
+      if (!same) $('#grDrill')?.scrollIntoView({ block: 'nearest' });
+    }
+  });
+  v.addEventListener('change', e => {
+    if (DB.ui.view !== 'greports') return;
+    const t = e.target;
+    if (t.dataset.grf) return grSet(f => { if (t.value) f[t.dataset.grf] = t.value; else delete f[t.dataset.grf]; GR.cell = null; });
+    if (t.dataset.grd) return grSet(f => { if (t.value) f[t.dataset.grd] = t.value; });
+    if (t.dataset.grdim) return grSet(f => { f[t.dataset.grdim] = t.value; GR.cell = null; });
+  });
+  v.addEventListener('scroll', e => { if (e.target.id === 'grPvWrap') GR.sl = e.target.scrollLeft; }, true);
+}
+/* yeniden çizimden sonra pivotun yatay kaydırması geri gelir (poll ile tazelemede yer kaybolmasın) */
+function grAfterRender() { const w = $('#grPvWrap'); if (w && GR.sl) w.scrollLeft = GR.sl; }
 
 
 /* ============================================================
@@ -7837,11 +8508,12 @@ const NAV_ITEMS = {
   ws:        { t: 'Çalışma alanları',  ic: 'layers',   fixed: true },
   projects:  { t: 'Projeler',          ic: 'folder',   v: 'projects' },
   customers: { t: 'Cariler',           ic: 'building', v: 'customers' },
+  reports:   { t: 'Raporlar',          ic: 'reports',  v: 'greports' },
   users:     { t: 'Kullanıcılar',      ic: 'users',    v: 'users' },
   system:    { t: 'Sistem',            ic: 'system',   v: 'system' },
 };
 /* Sırası değişebilen / gizlenebilen öğeler (varsayılan sıra). Benim işlerim 1., Çalışma alanları 3. sırada sabit. */
-const NAV_MOVABLE = ['recent', 'projects', 'customers', 'users', 'system'];
+const NAV_MOVABLE = ['recent', 'projects', 'customers', 'reports', 'users', 'system'];
 const navAvail = k => !NAV_ITEMS[k].v || viewAllowed(NAV_ITEMS[k].v);
 /* Kayıtlı tercih → geçerli sıra + gizliler (bilinmeyen kimlik atılır; sonradan eklenen öğe görünür olarak sona). */
 function navCfg() {
@@ -10944,7 +11616,7 @@ async function enterApp(useHash, fromLogin) {
   $('#login').style.display = 'none';
   document.body.classList.remove('locked');
   if (fromLogin) DB.ui.view = 'home';
-  if (useHash && location.hash.slice(1) in VIEWS) DB.ui.view = location.hash.slice(1);
+  if (useHash && hashView()) DB.ui.view = hashView();
   startApp(false);
   save();
   renderFileBar();
