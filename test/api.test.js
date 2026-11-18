@@ -1656,3 +1656,206 @@ describe('proje türü ve kolonlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
     ok(await N.sync([P('pk_yeni_n', { members: ['u_admin'] })]));                  // yeni proje: serbest
   });
 });
+
+describe('geçmiş ve yorum koruması', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  const LOCKED = 'Geçmiş kaydı değiştirilemez';
+  const NOT_OWNER = 'Başkasının yorumunu yalnızca yönetici değiştirebilir';
+  const NO_ISSUE = 'Geçmiş kaydının işi bulunamadı';
+  const I = (id, extra = {}) => ({ c: 'issues', id, op: 'put', data: { projectId: 'ph1', summary: id, statusId: 'ph1_a', ...extra } });
+  const H = (id, data) => ({ c: 'history', id, op: 'put', data: { field: 'Durum', from: 'A', to: 'B', ...data } });
+  const C = (id, data) => ({ c: 'comments', id, op: 'put', data: { body: 'yorum', ...data } });
+  const D = (c, id) => ({ c, id, op: 'del' });
+  const reasons = r => r.json.rejected.map(x => x.reason);
+  const row = async (table, id) => (await pool.query(`SELECT data FROM ${table} WHERE id=$1`, [id])).rows[0]?.data;
+  const ok = r => { assert.equal(r.status, 200, JSON.stringify(r.json)); assert.deepEqual(r.json.rejected, []); return r; };
+  const adj = (r, c, id) => r.json.adjusted.some(x => x.c === c && x.id === id);
+  let A, M, N, V;
+  const newUser = async (id, username, role) => {
+    await A.sync([{ c: 'users', id, op: 'put', data: { username, name: username, role, active: true } }]);
+    const k = client(); await k.login(username, 'Start12345');
+    assert.equal((await k.req('POST', '/api/auth/password', { newPassword: 'GecYeni123456' })).status, 200);
+    return k;
+  };
+
+  before(async () => {
+    A = client(); await A.login('admin', 'test-admin-pw');
+    M = await newUser('u_h_m', 'gecuye', 'member');
+    N = await newUser('u_h_n', 'gecuye2', 'member');
+    V = await newUser('u_h_v', 'gecizci', 'viewer');
+    ok(await A.sync([
+      { c: 'projects', id: 'ph1', op: 'put', data: { name: 'Geçmiş', key: 'GEC', counter: 0 } },
+      { c: 'statuses', id: 'ph1_a', op: 'put', data: { projectId: 'ph1', name: 'Yapılacak', cat: 'todo', ord: 0 } },
+      I('ih1'), I('ih2'),
+    ]));
+  });
+
+  test('üye: sahte userId oturuma düzeltilir (adjusted); zaman ±5 dk kırpılır; zamansız kayda şimdi yazılır', async () => {
+    const t0 = Date.now();
+    const r = ok(await M.sync([
+      H('hh_fake', { issueId: 'ih1', userId: 'u_admin', at: t0 }),
+      H('hh_ileri', { issueId: 'ih1', userId: 'u_h_m', at: t0 + 3600e3 }),
+      H('hh_geri', { issueId: 'ih1', userId: 'u_h_m', at: t0 - 3600e3 }),
+      H('hh_yok', { issueId: 'ih1', userId: 'u_h_m' }),
+      H('hh_dogru', { issueId: 'ih1', userId: 'u_h_m', at: t0 }),
+    ]));
+    assert.equal(r.json.applied, 5);
+    const t1 = Date.now();
+    const fake = await row('history', 'hh_fake');
+    assert.equal(fake.userId, 'u_h_m'); assert.equal(fake.at, t0);
+    assert.ok(adj(r, 'history', 'hh_fake'));
+    const ileri = await row('history', 'hh_ileri'), geri = await row('history', 'hh_geri'), yok = await row('history', 'hh_yok');
+    assert.ok(ileri.at <= t1 + 5 * 60e3 && ileri.at >= t0 + 5 * 60e3, String(ileri.at));
+    assert.ok(geri.at >= t0 - 5 * 60e3 && geri.at <= t1 - 5 * 60e3, String(geri.at));
+    assert.ok(yok.at >= t0 && yok.at <= t1);
+    for (const id of ['hh_ileri', 'hh_geri', 'hh_yok']) assert.ok(adj(r, 'history', id), id);
+    assert.ok(!adj(r, 'history', 'hh_dogru'));
+    assert.equal((await row('history', 'hh_dogru')).at, t0);
+  });
+
+  test('yönetici yazar/zaman zorlamasından muaf (Birleştir/seed)', async () => {
+    const r = ok(await A.sync([H('hh_adm', { issueId: 'ih1', userId: 'u_h_n', at: 1000 })]));
+    const d = await row('history', 'hh_adm');
+    assert.equal(d.userId, 'u_h_n'); assert.equal(d.at, 1000);
+    assert.ok(!adj(r, 'history', 'hh_adm'));
+  });
+
+  test('olmayan işe geçmiş reddedilir; aynı gönderimde açılan işin geçmişi (dizide önce gelse de) kabul edilir', async () => {
+    assert.deepEqual(reasons(await M.sync([H('hh_yetim', { issueId: 'i_yok_h', userId: 'u_h_m', at: Date.now() })])), [NO_ISSUE]);
+    assert.equal(await row('history', 'hh_yetim'), undefined);
+    assert.deepEqual(reasons(await M.sync([H('hh_bos', { userId: 'u_h_m', at: Date.now() })])), ['Geçmiş kaydının işi yok']);
+    ok(await M.sync([H('hh_yeni', { issueId: 'ih_yeni', field: 'Oluşturma', kind: 'create', from: null, to: 'ih_yeni', at: Date.now() }), I('ih_yeni')]));
+    assert.equal((await row('history', 'hh_yeni')).issueId, 'ih_yeni');
+    assert.equal((await row('history', 'hh_yeni')).kind, 'create');
+  });
+
+  test('var olan geçmiş kaydı: aynı veri sessizce geçer; değiştirme ve silme üye ve yöneticide 403', async () => {
+    const cur = await row('history', 'hh_dogru');
+    const same = ok(await M.sync([{ c: 'history', id: 'hh_dogru', op: 'put', data: { ...cur }, base: cur }]));
+    assert.equal(same.json.applied, 0);
+    ok(await A.sync([{ c: 'history', id: 'hh_dogru', op: 'put', data: { ...cur } }]));
+    assert.deepEqual(reasons(await M.sync([{ c: 'history', id: 'hh_dogru', op: 'put', data: { ...cur, to: 'C' }, base: cur }])), [LOCKED]);
+    assert.deepEqual(reasons(await A.sync([{ c: 'history', id: 'hh_dogru', op: 'put', data: { ...cur, to: 'C' }, base: cur }])), [LOCKED]);
+    assert.deepEqual(reasons(await N.sync([{ c: 'history', id: 'hh_dogru', op: 'put', data: { ...cur, issueId: 'ih2' } }])), [LOCKED]);
+    assert.deepEqual(reasons(await M.sync([D('history', 'hh_dogru')])), [LOCKED]);
+    assert.deepEqual(reasons(await A.sync([D('history', 'hh_dogru')])), [LOCKED]);
+    assert.deepEqual(await row('history', 'hh_dogru'), cur);
+    /* Olmayan kaydı silme ret değildir (etkisiz). */
+    const r = ok(await M.sync([D('history', 'hh_hic_yok')]));
+    assert.equal(r.json.applied, 0);
+    /* Yeniden gönderim: sunucunun düzelttiği yazar/zaman dışında aynı veri → ret yok. */
+    const fake = await row('history', 'hh_fake');
+    const re = ok(await M.sync([H('hh_fake', { ...fake, userId: 'u_admin' })]));
+    assert.equal(re.json.applied, 0);
+    assert.deepEqual(await row('history', 'hh_fake'), fake);
+  });
+
+  test('izleyici geçmiş yazamaz ve silemez', async () => {
+    assert.deepEqual(reasons(await V.sync([H('hh_v', { issueId: 'ih1', userId: 'u_h_v', at: Date.now() }), D('history', 'hh_dogru')])),
+      ['salt okunur kullanıcı', 'salt okunur kullanıcı']);
+    assert.equal(await row('history', 'hh_v'), undefined);
+    assert.ok(await row('history', 'hh_dogru'));
+  });
+
+  test('metinler 200 (alan adı 100) karaktere "…" ile kırpılır; nesne değer metne çevrilir', async () => {
+    const r = ok(await M.sync([H('hh_uzun', { issueId: 'ih1', at: Date.now(), field: 'F'.repeat(150), from: 'x'.repeat(250), to: ['a', 'b'], rule: 'k'.repeat(300) })]));
+    const d = await row('history', 'hh_uzun');
+    assert.equal(d.from.length, 200); assert.ok(d.from.endsWith('…'));
+    assert.equal(d.field.length, 100); assert.ok(d.field.endsWith('…'));
+    assert.equal(d.rule.length, 200);
+    assert.equal(d.to, '["a","b"]');
+    assert.ok(adj(r, 'history', 'hh_uzun'));
+    /* Kısa metinler ve sayı/boolean/null değerler aynen kalır. */
+    ok(await M.sync([H('hh_tur', { issueId: 'ih1', at: Date.now(), from: 3, to: true })]));
+    const t = await row('history', 'hh_tur');
+    assert.strictEqual(t.from, 3); assert.strictEqual(t.to, true);
+  });
+
+  test('iş + geçmiş + yorum silmeleri aynı istekte (dizide önce gelse de): ret yok, hepsi çöp kutusunda; geri yüklemede "Geri yükleme" satırı', async () => {
+    ok(await M.sync([I('ih_sil'), C('ch_sil_n', { issueId: 'ih_sil' }), H('hh_sil', { issueId: 'ih_sil', at: Date.now() })]));
+    ok(await N.sync([C('ch_sil_baska', { issueId: 'ih_sil', userId: 'u_h_n' })]));
+    /* Bugünkü istemci iş silmede yorumları da siler (başkasınınki dahil); proje silmede geçmişi de. */
+    const r = ok(await M.sync([D('history', 'hh_sil'), D('comments', 'ch_sil_baska'), D('comments', 'ch_sil_n'), D('issues', 'ih_sil')]));
+    assert.equal(r.json.applied, 1);
+    for (const [t, id] of [['issues', 'ih_sil'], ['history', 'hh_sil'], ['comments', 'ch_sil_baska']]) assert.equal(await row(t, id), undefined, id);
+    const del = (await pool.query(`SELECT collection, record_id, batch_id FROM deleted_records WHERE record_id IN ('ih_sil','hh_sil','ch_sil_baska','ch_sil_n')`)).rows;
+    assert.equal(del.length, 4);
+    assert.equal(new Set(del.map(x => x.batch_id)).size, 1);
+    const s0 = (await A.state()).json.seq;
+    const it = (await A.req('GET', '/api/trash')).json.find(x => x.record_id === 'ih_sil');
+    const rr = await A.req('POST', `/api/trash/${it.id}/restore`, {});
+    assert.equal(rr.json.restored, 4);                                  // "Geri yükleme" satırı sayılmaz
+    assert.equal((await row('history', 'hh_sil')).issueId, 'ih_sil');   // eski geçmiş geri geldi
+    const hs = (await pool.query(`SELECT data FROM history WHERE issue_id='ih_sil' AND data->>'kind'='restore'`)).rows.map(x => x.data);
+    assert.equal(hs.length, 1);
+    assert.equal(hs[0].field, 'Geri yükleme'); assert.equal(hs[0].userId, 'u_admin');
+    assert.ok(Math.abs(hs[0].at - Date.now()) < 60e3);
+    const ch = (await A.req('GET', `/api/changes?since=${s0}`)).json;
+    assert.ok(ch.items.some(x => x.c === 'history' && x.id === hs[0].id && x.op === 'put'), JSON.stringify(ch.items.map(x => x.c + ':' + x.id)));
+  });
+
+  test('yönetici proje silme (bugünkü istemci sırası: geçmiş/yorum silmeleri işlerden önce): ret yok', async () => {
+    ok(await A.sync([
+      { c: 'projects', id: 'ph2', op: 'put', data: { name: 'Silinecek', key: 'SLN', counter: 0 } },
+      { c: 'statuses', id: 'ph2_a', op: 'put', data: { projectId: 'ph2', name: 'Yapılacak', cat: 'todo', ord: 0 } },
+      { c: 'issues', id: 'ih_p2', op: 'put', data: { projectId: 'ph2', summary: 'x', statusId: 'ph2_a' } },
+    ]));
+    ok(await M.sync([H('hh_p2', { issueId: 'ih_p2', at: Date.now() }), C('ch_p2', { issueId: 'ih_p2' })]));
+    ok(await A.sync([D('comments', 'ch_p2'), D('history', 'hh_p2'), D('issues', 'ih_p2'), D('statuses', 'ph2_a'), D('projects', 'ph2')]));
+    for (const [t, id] of [['projects', 'ph2'], ['issues', 'ih_p2'], ['history', 'hh_p2'], ['comments', 'ch_p2']]) assert.equal(await row(t, id), undefined, id);
+  });
+
+  test('yorumlar: başkasının yorumunu üye değiştiremez/silemez (403); kendi yorumu ve yönetici serbest; yeni yorumda yazar oturum', async () => {
+    let r = ok(await M.sync([C('ch_m', { issueId: 'ih1', userId: 'u_h_n', at: Date.now() })]));
+    assert.equal((await row('comments', 'ch_m')).userId, 'u_h_m');
+    assert.ok(adj(r, 'comments', 'ch_m'));
+    r = ok(await M.sync([C('ch_m2', { issueId: 'ih1', at: Date.now() })]));               // yazarsız → oturum
+    assert.equal((await row('comments', 'ch_m2')).userId, 'u_h_m');
+    const cur = await row('comments', 'ch_m');
+    assert.deepEqual(reasons(await N.sync([{ c: 'comments', id: 'ch_m', op: 'put', data: { ...cur, body: 'değişti' }, base: cur }])), [NOT_OWNER]);
+    assert.deepEqual(reasons(await N.sync([D('comments', 'ch_m')])), [NOT_OWNER]);
+    assert.deepEqual(reasons(await V.sync([D('comments', 'ch_m')])), ['salt okunur kullanıcı']);
+    assert.equal((await row('comments', 'ch_m')).body, 'yorum');
+    /* Kendi yorumu: düzenler; yazarı başkasına aktaramaz (sunucu korur). */
+    r = ok(await M.sync([{ c: 'comments', id: 'ch_m', op: 'put', data: { ...cur, body: 'düzenlendi', userId: 'u_h_n' }, base: cur }]));
+    assert.deepEqual([(await row('comments', 'ch_m')).body, (await row('comments', 'ch_m')).userId], ['düzenlendi', 'u_h_m']);
+    assert.ok(adj(r, 'comments', 'ch_m'));
+    /* Yönetici başkasının yorumunu düzenler ve siler; yönetici yazar muafiyeti yorumda da geçerli. */
+    const c2 = await row('comments', 'ch_m');
+    ok(await A.sync([{ c: 'comments', id: 'ch_m', op: 'put', data: { ...c2, body: 'yönetici düzeltti' }, base: c2 }]));
+    assert.deepEqual([(await row('comments', 'ch_m')).body, (await row('comments', 'ch_m')).userId], ['yönetici düzeltti', 'u_h_m']);
+    ok(await A.sync([C('ch_a', { issueId: 'ih1', userId: 'u_h_n' })]));
+    assert.equal((await row('comments', 'ch_a')).userId, 'u_h_n');
+    ok(await A.sync([D('comments', 'ch_m')]));
+    assert.equal(await row('comments', 'ch_m'), undefined);
+    /* Kendi yorumunu siler; olmayan yorumu silmek ret değildir. */
+    ok(await M.sync([D('comments', 'ch_m2'), D('comments', 'ch_hic_yok')]));
+    assert.equal(await row('comments', 'ch_m2'), undefined);
+  });
+
+  test('içe aktarma (replaceAll) eski, uzun, yazarsız, zamansız geçmişi atlamaz; metinleri kırpar', async () => {
+    const before = (await A.state()).json.data;
+    const data = {
+      projects: [{ id: 'pz', key: 'ESK', name: 'Eski', counter: 1 }],
+      issues: [{ id: 'iz1', projectId: 'pz', key: 'ESK-1', summary: 'eski' }],
+      history: [
+        { id: 'hz_yazarsiz', issueId: 'iz1', field: 'Durum', from: 'A', to: 'B' },
+        { id: 'hz_uzun', issueId: 'iz1', userId: 'u_admin', at: '2019-01-01T00:00:00Z', field: 'Özet', from: 'u'.repeat(5000), to: { eski: 1 } },
+        { id: 'hz_issiz', field: 'Durum', from: 1, to: 2, at: 12 },
+        { id: 'hz_alan', issueId: 'iz1', userId: 7, field: 'A'.repeat(300), from: null, to: false },
+      ],
+    };
+    const r = await A.req('POST', '/api/import', { data });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.equal(r.json.history, 4);
+    assert.ok(!r.json.skipped, JSON.stringify(r.json));
+    const u = await row('history', 'hz_uzun');
+    assert.equal(u.from.length, 200); assert.ok(u.from.endsWith('…')); assert.equal(u.to, '{"eski":1}');
+    assert.equal((await row('history', 'hz_alan')).field.length, 100);
+    assert.equal((await row('history', 'hz_yazarsiz')).userId, undefined);
+    const pre = (await A.req('GET', '/api/backups')).json.find(b => b.kind === 'pre-import');
+    assert.equal((await A.req('POST', `/api/backups/${pre.id}/restore`, {})).status, 200);
+    const after = (await A.state()).json.data;
+    assert.equal(after.history.length, before.history.length);           // geri yükleme de geçmişi atlamadı
+    assert.equal(after.comments.length, before.comments.length);
+  });
+});
