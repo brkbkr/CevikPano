@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="tr" data-theme="light"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pano kartı ve öncelik taslağı (issue #8, 1. dilim)</title>
+<style>
+/* ---- uygulamadan kopyalanan token'lar (tasarım dili v3 + sol menü v4) ---- */
+:root{
+  --paper:#F3F6FB; --surface:#FFFFFF; --surface2:#F6F9FD; --surface3:#EBF1F9;
+  --line:#E1E8F2; --line2:#CCD7E6;
+  --ink:#0B1B33; --ink2:#43546E; --ink3:#7E8CA3;
+  --accent:#2563EB; --accent-d:#1D4ED8; --accent-soft:#EAF1FE;
+  --ring:0 0 0 3px rgba(37,99,235,.20);
+  --shadow-sm:0 1px 2px rgba(11,27,51,.05);
+  --shadow:0 1px 2px rgba(11,27,51,.04),0 8px 20px -6px rgba(11,27,51,.10);
+  --shadow-lg:0 30px 60px -15px rgba(11,27,51,.30),0 2px 6px rgba(11,27,51,.06);
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --track:#E6ECF4;
+  /* ---- yeni: kart ve öncelik token'ları ---- */
+  --meta:#64748B;                 /* kart meta metni (ink3 beyazda 3.4:1 kalıyordu → 4.8:1) */
+  --late:#B91C1C; --today:#B45309; --ok:#15803D; --over:#B45309;
+  --p-acil:#B91C1C;   --p-acil-bg:#FEF2F2;   --p-acil-ln:#FECACA;
+  --p-yuksek:#C2410C; --p-yuksek-bg:#FFF7ED; --p-yuksek-ln:#FED7AA;
+  --p-orta:#1D4ED8;   --p-orta-bg:#EFF6FF;   --p-orta-ln:#BFDBFE;
+  --p-dusuk:#475569;  --p-dusuk-bg:#F1F5F9;  --p-dusuk-ln:#E2E8F0;
+}
+[data-theme="dark"]{
+  --paper:#060B16; --surface:#0C1424; --surface2:#101A2E; --surface3:#16223A;
+  --line:#1B2842; --line2:#273857;
+  --ink:#E6EDF8; --ink2:#A3B2CB; --ink3:#6B7C99;
+  --accent:#60A5FA; --accent-d:#93C5FD; --accent-soft:rgba(96,165,250,.14);
+  --ring:0 0 0 3px rgba(96,165,250,.28);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 20px -6px rgba(0,0,0,.55);
+  --shadow-lg:0 30px 60px -15px rgba(0,0,0,.75),0 2px 6px rgba(0,0,0,.4);
+  --track:#1E2B45;
+  --meta:#8494AE; --late:#F87171; --today:#FBBF24; --ok:#34D399; --over:#FBBF24;
+  --p-acil:#FCA5A5;   --p-acil-bg:rgba(248,113,113,.14);  --p-acil-ln:rgba(248,113,113,.30);
+  --p-yuksek:#FDBA74; --p-yuksek-bg:rgba(251,146,60,.14); --p-yuksek-ln:rgba(251,146,60,.30);
+  --p-orta:#93C5FD;   --p-orta-bg:rgba(96,165,250,.14);   --p-orta-ln:rgba(96,165,250,.30);
+  --p-dusuk:#B4C0D3;  --p-dusuk-bg:rgba(148,163,184,.12); --p-dusuk-ln:rgba(148,163,184,.24);
+}
+
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--paper);color:var(--ink);padding:28px;
+  -webkit-font-smoothing:antialiased}
+h1{font-size:20px;margin:0 0 4px;letter-spacing:-.02em}
+.lead{color:var(--ink2);font-size:13px;margin:0 0 20px;max-width:900px}
+h2{font-size:13px;font-weight:700;margin:0 0 10px;color:var(--ink2);letter-spacing:.01em}
+h2 small{font-weight:500;color:var(--meta)}
+svg.i{width:14px;height:14px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+.layout{display:grid;grid-template-columns:316px 1fr;gap:28px;align-items:start}
+.states{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+.panel{background:var(--surface2);border:1px solid var(--line);border-radius:14px;padding:16px}
+.panel p.note{font-size:12px;color:var(--ink2);margin:10px 0 0;line-height:1.45}
+
+/* ---- pano kolonu ---- */
+.col{background:var(--surface2);border:1px solid var(--line);border-radius:14px;padding:10px}
+.col-h{display:flex;align-items:center;gap:8px;padding:4px 4px 10px;font-size:12px;font-weight:700;
+  letter-spacing:.04em;text-transform:uppercase;color:var(--ink2)}
+.col-h .dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.col-h .n{font-family:var(--mono);font-weight:600;font-size:11px;color:var(--meta);background:var(--surface3);
+  padding:1px 7px;border-radius:999px;text-transform:none;letter-spacing:0}
+.col-h .add{margin-left:auto;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:var(--meta)}
+.stack{display:flex;flex-direction:column;gap:8px}
+
+/* ---- kart ---- */
+.card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  padding:12px 12px 10px;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s;cursor:grab}
+.card .sum{margin:0 0 8px;font-size:13.5px;font-weight:600;line-height:1.4;letter-spacing:-.005em;color:var(--ink);
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;padding-right:4px}
+.card.hover,.card:hover{border-color:color-mix(in srgb,var(--accent) 35%,var(--line));box-shadow:var(--shadow);transform:translateY(-1px)}
+.card.focus{box-shadow:var(--ring);border-color:var(--accent)}
+.card.done .sum{color:var(--meta);font-weight:550}
+.card.done{background:color-mix(in srgb,var(--surface) 70%,var(--surface2))}
+
+/* meta satırı: öncelik · bitiş · ilerleme */
+.meta{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--meta);flex-wrap:nowrap;min-height:24px;white-space:nowrap}
+.meta .sep{width:3px;height:3px;border-radius:50%;background:var(--line2);flex-shrink:0}
+.due{display:inline-flex;align-items:center;gap:4px;font-weight:500}
+.due.late{color:var(--late);font-weight:650}
+.due.today{color:var(--today);font-weight:650}
+.due.ok{color:var(--ok);font-weight:600}
+.est{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10.5px}
+.est .b{width:30px;height:4px;border-radius:4px;background:var(--track);overflow:hidden}
+.est .b i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.est.over{color:var(--over)} .est.over .b i{background:var(--over)}
+.est.full .b i{background:var(--ok)}
+
+/* öncelik rozeti (tıklanabilir) */
+.prio{position:relative;display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 7px 0 5px;border-radius:7px;
+  font-size:11px;font-weight:650;border:1px solid transparent;font-family:inherit;cursor:pointer;flex-shrink:0}
+.prio::after{content:"";position:absolute;inset:-7px -3px}   /* 36px dokunma alanı */
+.prio svg.i{width:13px;height:13px;stroke-width:2.2}
+.prio.acil{color:var(--p-acil);background:var(--p-acil-bg);border-color:var(--p-acil-ln)}
+.prio.yuksek{color:var(--p-yuksek);background:var(--p-yuksek-bg);border-color:var(--p-yuksek-ln)}
+.prio.orta{color:var(--p-orta);background:var(--p-orta-bg);border-color:var(--p-orta-ln)}
+.prio.dusuk{color:var(--p-dusuk);background:var(--p-dusuk-bg);border-color:var(--p-dusuk-ln)}
+.prio.open{box-shadow:var(--ring)}
+
+/* etiketler */
+.tags{display:flex;gap:4px;margin:0 0 8px;flex-wrap:wrap}
+.tag{font-size:10.5px;font-weight:550;color:var(--ink2);background:var(--surface3);border-radius:6px;padding:2px 7px;
+  display:inline-flex;align-items:center;gap:5px}
+.tag i{width:6px;height:6px;border-radius:50%;display:inline-block}
+
+/* alt satır */
+.foot{display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
+.type{width:18px;height:18px;border-radius:5px;display:grid;place-items:center;flex-shrink:0}
+.type svg.i{width:12px;height:12px;stroke-width:2.2}
+.type.gorev{color:#2563EB;background:#EAF1FE} .type.hikaye{color:#15803D;background:#E8F7EE} .type.hata{color:#B91C1C;background:#FDECEC}
+[data-theme="dark"] .type.gorev{color:#93C5FD;background:rgba(96,165,250,.14)}
+[data-theme="dark"] .type.hikaye{color:#6EE7B7;background:rgba(52,211,153,.14)}
+[data-theme="dark"] .type.hata{color:#FCA5A5;background:rgba(248,113,113,.14)}
+.key{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--meta)}
+.subs{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10.5px;color:var(--meta);
+  padding:1px 6px;border-radius:6px;background:var(--surface2);border:1px solid var(--line)}
+.sp{flex:1}
+.av{position:relative;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;
+  font-size:9.5px;letter-spacing:.02em;flex-shrink:0;cursor:pointer;border:0;font-family:inherit;box-shadow:0 0 0 2px var(--surface)}
+.av::after{content:"";position:absolute;inset:-6px}
+.av.none{background:transparent;color:var(--meta);border:1.5px dashed var(--line2);box-shadow:none}
+.av.none svg.i{width:12px;height:12px}
+.av.open{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent)}
+.done-btn{position:absolute;top:9px;right:9px;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--line2);
+  background:var(--surface);display:grid;place-items:center;color:var(--meta)}
+.done-btn svg.i{width:12px;height:12px}
+.card.hover .sum{padding-right:30px}
+
+/* sürükleme */
+.slot{height:86px;border-radius:12px;border:1.5px dashed color-mix(in srgb,var(--accent) 55%,var(--line2));
+  background:var(--accent-soft)}
+.card.drag{transform:rotate(2deg) translateY(-4px) scale(1.02);box-shadow:var(--shadow-lg);border-color:var(--accent);cursor:grabbing}
+.ghost{opacity:.4}
+.dragwrap{position:relative;padding:8px 6px 18px;min-height:168px}
+.dragwrap .card.drag{position:absolute;left:18px;right:2px;top:28px;z-index:2}
+
+/* açılır menüler */
+.pop{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);padding:6px;width:220px}
+.pop .h{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--meta);padding:6px 8px 6px}
+.opt{display:flex;align-items:center;gap:9px;min-height:36px;padding:0 8px;border-radius:8px;font-size:13px;color:var(--ink)}
+.opt.hl{background:var(--surface3)}
+.opt .kbd{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--meta);border:1px solid var(--line);
+  border-radius:5px;padding:0 5px;line-height:17px}
+.opt .chk{color:var(--accent);margin-left:auto}
+.opt .chk + .kbd{margin-left:6px}
+.opt .ic{width:22px;height:22px;border-radius:6px;display:grid;place-items:center}
+.opt .ic svg.i{width:13px;height:13px;stroke-width:2.2}
+.opt .sub{display:block;font-size:11px;color:var(--meta);font-weight:400}
+.opt .av{width:26px;height:26px;font-size:10px;box-shadow:none}
+.search{display:flex;align-items:center;gap:8px;margin:2px 2px 6px;height:36px;padding:0 10px;border-radius:9px;
+  border:1px solid var(--accent);box-shadow:var(--ring);background:var(--surface);font-size:13px;color:var(--ink)}
+.search .ph{color:var(--meta)}
+.search .caret{width:1.5px;height:16px;background:var(--accent);margin-left:-6px}
+.pop hr{border:0;border-top:1px solid var(--line);margin:6px 2px}
+.anchor{position:relative}
+.anchor .pop{position:absolute;z-index:5}
+
+/* öncelik ölçeği */
+.scale{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.scale .s{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+.scale .s .prio{margin-bottom:8px}
+.scale .s div{font-size:11.5px;color:var(--ink2);line-height:1.45}
+.scale .s code{font-family:var(--mono);font-size:10.5px;color:var(--meta)}
+
+/* mobil alt sayfa */
+.phone{width:100%;max-width:390px;border-radius:22px;overflow:hidden;border:1px solid var(--line);background:var(--paper);position:relative;height:440px}
+.phone .dim{position:absolute;inset:0;background:rgba(11,27,51,.38)}
+[data-theme="dark"] .phone .dim{background:rgba(0,0,0,.55)}
+.phone .bg{padding:14px}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:18px 18px 0 0;padding:8px 12px 16px;box-shadow:var(--shadow-lg)}
+.sheet .grab{width:38px;height:4px;border-radius:4px;background:var(--line2);margin:2px auto 10px}
+.sheet .ttl{font-size:14px;font-weight:700;padding:0 6px 4px}
+.sheet .ttl small{display:block;font-weight:500;font-size:12px;color:var(--meta);margin-top:2px}
+.sheet .opt{min-height:48px;font-size:14px}
+.phones{display:grid;grid-template-columns:repeat(2,minmax(0,390px));gap:22px}
+
+.legend{margin-top:24px;font-size:12.5px;color:var(--ink2);background:var(--surface);border-radius:14px;padding:14px 18px;border:1px solid var(--line);line-height:1.55}
+.legend b{color:var(--ink)} .legend ol{margin:6px 0 0;padding-left:18px} .legend li{margin:3px 0}
+.sec{margin-top:26px}
+
+@media (max-width:640px){
+  body{padding:14px}
+  .layout,.states,.phones{grid-template-columns:1fr}
+  .scale{grid-template-columns:1fr 1fr}
+  .card .sum{font-size:14px}
+  .prio{height:26px;font-size:11.5px}
+  .av{width:28px;height:28px;font-size:10.5px}
+  .meta{flex-wrap:wrap;row-gap:4px}
+  .desk-only{display:none}
+  .dragwrap .card.drag{left:12px;right:14px}
+}
+@media (min-width:641px){ .mob-only{display:none} }
+</style></head><body>
+
+<h1>Pano kartı ve öncelik — taslak</h1>
+<p class="lead">Issue #8, ilk dilim (kriter 1, 2, 3, 6). Başlık her zaman en belirgin öğe; altında tek satırlık meta (öncelik · bitiş · ilerleme);
+  en altta anahtar, tip, alt iş sayacı ve kişi. Kırmızı yalnızca <b>Acil</b> ve <b>gecikme</b> için kullanılır.</p>
+
+<div class="layout">
+  <div>
+    <h2>Pano kolonu <small>· gerçek görünüm</small></h2>
+    <div class="col">
+      <div class="col-h"><span class="dot"></span>Devam ediyor <span class="n">6</span>
+        <span class="add" title="İş ekle"><svg class="i" style="width:16px;height:16px" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></div>
+      <div class="stack" id="column"></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="states">
+      <div class="panel">
+        <h2>Üzerine gelme <small>· hafif kaldırma + tamamla düğmesi</small></h2>
+        <div id="hoverCard"></div>
+        <p class="note">Kart 1px yükselir, kenar mavileşir. Sağ üstte "Tamamla" dairesi yalnızca üzerine gelince (mobilde her zaman) görünür; eski kartta sürekli duran onay kutusu gürültüyü azaltmak için gizlendi.</p>
+      </div>
+      <div class="panel">
+        <h2>Sürükleme <small>· kaldırılmış kart + bırakma yeri</small></h2>
+        <div class="dragwrap">
+          <div class="slot"></div>
+          <div id="dragCard"></div>
+        </div>
+        <p class="note">Sürüklenen kart 2° eğilir ve büyük gölge alır; bırakılacağı yer mavi kesikli alanla gösterilir.</p>
+      </div>
+      <div class="panel desk-only">
+        <h2>Öncelik rozetine tıklandı <small>· 4 seçenek</small></h2>
+        <div class="anchor" style="height:306px">
+          <div id="prioCard"></div>
+          <div class="pop" style="left:6px;top:96px" id="prioMenu"></div>
+        </div>
+        <p class="note">Seçim anında kaydedilir; menü kapanır. Klavye: yukarı/aşağı ok ve 1–4 tuşları, Esc kapatır. Mevcut seviye onay işaretiyle gösterilir.</p>
+      </div>
+      <div class="panel desk-only">
+        <h2>Avatara tıklandı <small>· kişi arama + liste</small></h2>
+        <div class="anchor" style="height:350px">
+          <div id="avCard"></div>
+          <div class="pop" style="right:0;top:104px;width:250px" id="avMenu"></div>
+        </div>
+        <p class="note">Arama kutusu otomatik odaklanır. "Bana ata" en üstte; kişinin açık iş sayısı yük dengesi için gösterilir.</p>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>Öncelik ölçeği <small>· renk + ikon + metin; eski 1–5 veri eşlemesi</small></h2>
+      <div class="scale" id="scale"></div>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <h2>Mobil (390px) <small>· hızlı menüler alt sayfa olarak açılır</small></h2>
+  <div class="phones">
+    <div class="phone"><div class="bg" id="phoneBg1"></div><div class="dim"></div>
+      <div class="sheet"><div class="grab"></div>
+        <div class="ttl">Öncelik<small>Oyak Liman – 2027 yılbaşı güncellemesi</small></div>
+        <div id="sheetPrio"></div></div></div>
+    <div class="phone"><div class="bg" id="phoneBg2"></div><div class="dim"></div>
+      <div class="sheet"><div class="grab"></div>
+        <div class="ttl">Atanan kişi<small>Ekol Lojistik SGK teşvik başvurusu</small></div>
+        <div class="search"><svg class="i" viewBox="0 0 24 24" style="color:var(--meta)"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="ph">Kişi ara…</span></div>
+        <div id="sheetAv"></div></div></div>
+  </div>
+</div>
+
+<div class="legend"><b>Tasarım kararları</b>
+  <ol>
+    <li><b>Hiyerarşi:</b> başlık 13.5px/600 ve en koyu renk; diğer her şey tek tonda (<code>--meta</code>) ve küçük. Tarih aralığı, iş günü, "Tahmin/harcandı" yazıları kaldırıldı; yerlerine tek satırlık meta geldi (ayrıntı iş detayında).</li>
+    <li><b>Kırmızı bütçesi:</b> kırmızı yalnızca Acil rozeti ve gecikmede. Tahmin aşımı turuncu çubuk + "9s/8s" ile, bugün biten iş amber metinle gösterilir; kart kenarı/arka planı hiç renklenmez.</li>
+    <li><b>Öncelik:</b> 4 seviye, Lucide tarzı çizgi ikonlar (çift ok yukarı, ok yukarı, eşittir, ok aşağı) + metin; açık temada en düşük kontrast 4.9:1 (Yüksek), koyu temada 8:1 üstü. Eski veri eşlemesi: 1 Kritik = Acil, 2 = Yüksek, 3 (ve boş) = Orta, 4 Düşük ve 5 Önemsiz = Düşük.</li>
+    <li><b>Tek tık düzenleme:</b> rozet ve avatar düğmedir; görsel boyutları 22–24px, görünmez dokunma alanı 36px. Masaüstünde karta bağlı küçük menü, 390px'te 48px satırlı alt sayfa.</li>
+    <li><b>Atanmamış</b> iş kesikli daire + kişi ekle ikonuyla gösterilir (tıklanınca aynı kişi menüsü). Etiketler en fazla 2 + "+n", nötr gri; yalnız renk noktası dekoratif, adı her zaman yazılı.</li>
+  </ol>
+</div>
+
+<script>
+const I = {
+  acil:'<path d="m7 11 5-5 5 5"/><path d="m7 18 5-5 5 5"/>',
+  yuksek:'<path d="m6 15 6-6 6 6"/>',
+  orta:'<path d="M6 9h12M6 15h12"/>',
+  dusuk:'<path d="m6 9 6 6 6-6"/>',
+  cal:'<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M16 3v4M8 3v4M3.5 10h17"/>',
+  alert:'<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16.2v.3"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  check:'<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  checkc:'<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
+  gorev:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
+  hikaye:'<path d="M6 4h12v16l-6-4-6 4z"/>',
+  hata:'<rect x="8" y="7" width="8" height="12" rx="4"/><path d="M12 7V4M9 4.5 10 7M15 4.5 14 7M4 12h4M16 12h4M5 18l3-1.5M19 18l-3-1.5"/>',
+  subs:'<path d="M5 4v12a2 2 0 0 0 2 2h3"/><path d="M5 9h5"/><rect x="12" y="6" width="8" height="5" rx="1.5"/><rect x="12" y="15" width="8" height="5" rx="1.5"/>',
+  userplus:'<circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 11.5-4.2"/><path d="M19 14v6M16 17h6"/>',
+  userx:'<circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 11.5-4.2"/><path d="m17 15 4 4M21 15l-4 4"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+};
+const ic = (n, s='') => `<svg class="i" viewBox="0 0 24 24" ${s}>${I[n]}</svg>`;
+const PR = { acil:'Acil', yuksek:'Yüksek', orta:'Orta', dusuk:'Düşük' };
+const TY = { gorev:'Görev', hikaye:'Hikâye', hata:'Hata' };
+const U = {
+  AD:['Ayşe Demir','#2563EB',4], MK:['Mehmet Kaya','#0F766E',6], ZA:['Zeynep Arslan','#7C3AED',3],
+  EY:['Emre Yıldız','#BE185D',2], SÇ:['Selin Çelik','#B45309',5]
+};
+const LBL = { Bordro:'#2563EB', Sözleşme:'#7C3AED', Hukuk:'#0F766E', Raporlama:'#B45309', 'e-Defter':'#BE185D', SGK:'#15803D' };
+
+const prio = (p, cls='') => `<button class="prio ${p} ${cls}" aria-label="Öncelik: ${PR[p]} (değiştir)">${ic(p)}${PR[p]}</button>`;
+const av = (u, cls='') => u ? `<button class="av ${cls}" style="background:${U[u][1]}" title="${U[u][0]}" aria-label="Atanan: ${U[u][0]} (değiştir)">${u}</button>`
+  : `<button class="av none ${cls}" title="Atanmamış" aria-label="Atanmamış (kişi ata)">${ic('userplus')}</button>`;
+
+function due(c) {
+  if (c.done) return `<span class="due ok">${ic('checkc')}Tamamlandı</span>`;
+  if (c.late) return `<span class="due late">${ic('alert')}${c.late} gün gecikti</span>`;
+  if (c.today) return `<span class="due today">${ic('clock')}Bugün</span>`;
+  return c.due ? `<span class="due">${ic('cal')}${c.due}</span>` : '';
+}
+function est(c) {
+  if (!c.est) return '';
+  const pct = Math.min(100, Math.round(c.sp / c.est * 100));
+  const cls = c.sp > c.est ? 'over' : c.sp === c.est ? 'full' : '';
+  return `<span class="est ${cls}" title="Harcanan / tahmin"><span class="b"><i style="width:${pct}%"></i></span>${c.sp}s/${c.est}s</span>`;
+}
+function card(c, o = {}) {
+  const parts = [prio(c.p, o.prioOpen ? 'open' : ''), due(c), est(c)].filter(Boolean);
+  const tags = (c.tags || []);
+  return `<article class="card ${c.done ? 'done' : ''} ${o.cls || ''}">
+    ${o.hover ? `<span class="done-btn" title="Tamamla">${ic('check')}</span>` : ''}
+    <p class="sum">${c.t}</p>
+    ${tags.length ? `<div class="tags">${tags.slice(0, 2).map(t => `<span class="tag"><i style="background:${LBL[t]}"></i>${t}</span>`).join('')}${tags.length > 2 ? `<span class="tag">+${tags.length - 2}</span>` : ''}</div>` : ''}
+    <div class="meta">${parts.join('<span class="sep"></span>')}</div>
+    <div class="foot">
+      <span class="type ${c.ty}" title="${TY[c.ty]}" aria-label="${TY[c.ty]}">${ic(c.ty)}</span>
+      <span class="key">${c.k}</span>
+      ${c.subs ? `<span class="subs" title="Alt işler: ${c.subs} tamamlandı">${ic('subs', 'style="width:12px;height:12px"')}${c.subs}</span>` : ''}
+      <span class="sp"></span>
+      ${av(c.u, o.avOpen ? 'open' : '')}
+    </div>
+  </article>`;
+}
+
+const C = [
+  { t:'Oyak Liman – 2027 yılbaşı güncellemesi', p:'acil', late:3, est:8, sp:6, subs:'2/5', ty:'gorev', k:'PANO-12', u:'AD', tags:['Bordro'] },
+  { t:'Sanipak sözleşme takibi', p:'yuksek', today:true, est:4, sp:3, ty:'hikaye', k:'PANO-18', u:'MK', tags:['Sözleşme','Hukuk'] },
+  { t:'Borusan e-Defter dönem kapanışında berat hatası', p:'yuksek', due:'2 Ara', est:8, sp:9, ty:'hata', k:'PANO-23', u:'ZA', tags:['e-Defter'] },
+  { t:'Ekol Lojistik SGK teşvik başvurusu', p:'orta', due:'26 Kas', ty:'gorev', k:'PANO-21', u:null, tags:['SGK'] },
+  { t:'Arçelik bayi performans raporu için yönetim sunumu taslağı', p:'dusuk', due:'10 Ara', subs:'0/3', ty:'hikaye', k:'PANO-25', u:'EY',
+    tags:['Raporlama','Sözleşme','Bordro'] },
+  { t:'Koç Holding KDV iade dosyasının teslimi', p:'orta', done:true, est:5, sp:5, ty:'gorev', k:'PANO-9', u:'SÇ' },
+];
+
+document.getElementById('column').innerHTML = C.map(c => card(c)).join('');
+document.getElementById('hoverCard').innerHTML = card(C[1], { cls:'hover', hover:true });
+document.getElementById('dragCard').innerHTML = card({ ...C[3] }, { cls:'drag' });
+document.getElementById('prioCard').innerHTML = card(C[0], { prioOpen:true });
+document.getElementById('avCard').innerHTML = card(C[3], { avOpen:true });
+
+const prioOpts = (cur, big) => ['acil','yuksek','orta','dusuk'].map((p, n) => `
+  <div class="opt ${p === 'yuksek' && !big ? 'hl' : ''}" role="menuitemradio" aria-checked="${p === cur}">
+    <span class="ic prio ${p}" style="padding:0;height:22px;width:22px;justify-content:center">${ic(p)}</span>${PR[p]}
+    ${p === cur ? `<span class="chk">${ic('check', 'style="width:16px;height:16px"')}</span>` : ''}
+    ${big ? '' : `<span class="kbd">${n + 1}</span>`}
+  </div>`).join('');
+document.getElementById('prioMenu').innerHTML = `<div class="h">Öncelik</div>${prioOpts('acil')}`;
+document.getElementById('sheetPrio').innerHTML = prioOpts('acil', true);
+
+const people = (big) => `
+  <div class="opt ${big ? '' : 'hl'}"><span class="av" style="background:${U.AD[1]}">AD</span>
+    <span>Bana ata<span class="sub">Ayşe Demir · ${U.AD[2]} açık iş</span></span></div>
+  ${['MK','ZA','EY'].concat(big ? [] : ['SÇ']).map(k => `<div class="opt"><span class="av" style="background:${U[k][1]}">${k}</span>
+    <span>${U[k][0]}<span class="sub">${U[k][2]} açık iş</span></span></div>`).join('')}`;
+document.getElementById('avMenu').innerHTML = `
+  <div class="search">${ic('search', 'style="color:var(--meta)"')}<span class="caret"></span><span class="ph">Kişi ara…</span></div>
+  ${people(false)}`;
+document.getElementById('sheetAv').innerHTML = people(true);
+
+document.getElementById('phoneBg1').innerHTML = card(C[0]);
+document.getElementById('phoneBg2').innerHTML = card(C[3]);
+
+document.getElementById('scale').innerHTML = [
+  ['acil','Hemen ele alınmalı; gün içinde.','eski 1 (Kritik)'],
+  ['yuksek','Bu hafta bitmeli.','eski 2'],
+  ['orta','Varsayılan seviye.','eski 3 · boş'],
+  ['dusuk','Zaman kaldıkça.','eski 4 ve 5 (Önemsiz)'],
+].map(([p, d, m]) => `<div class="s">${prio(p)}<div>${d}<br><code>${m}</code></div></div>`).join('');
+</script>
+</body></html>
