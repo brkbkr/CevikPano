@@ -359,3 +359,35 @@ t('kullanıcı görünüm alanları doğrulanır (XSS)', async () => {
   const r2 = await m.sync([{ c: 'issues', id: 'i_x', op: 'put', data: { projectId: 'p_y', key: '<b>-1', summary: 's' } }]);
   assert.equal(r2.json.rejected.length, 1);
 });
+
+/* ---------------- kullanıcı yönetimi ---------------- */
+t('yönetici: rastgele parola üretir (bir kez döner), oturumları kapatır, ek bilgileri görür', async () => {
+  const a = client(); await a.login('admin', 'test-admin-pw');
+  await a.sync([{ c: 'users', id: 'u_km', op: 'put', data: { username: 'km', name: 'KM', role: 'member', active: true, email: 'km@firma.com', title: 'Analist' } }]);
+  let r = await a.req('POST', '/api/users/u_km/password', { generate: true, requireChange: false });
+  assert.equal(r.status, 200);
+  assert.equal(r.json.password.length, 12);
+  assert.equal(r.json.mustChange, false);
+  const k = client();
+  const lg = await k.login('km', r.json.password);
+  assert.equal(lg.json.mustChange, false);
+  assert.equal((await k.state()).status, 200);                       // zorunlu değişim yok
+  const meta = (await a.req('GET', '/api/admin/users')).json.find(x => x.id === 'u_km');
+  assert.equal(meta.sessions, 1);
+  assert.ok(meta.lastLoginAt);
+  assert.equal(JSON.stringify(meta).includes('hash'), false);
+  r = await a.req('POST', '/api/users/u_km/sessions/revoke', {});
+  assert.equal(r.json.revoked, 1);
+  assert.equal((await k.state()).status, 401);
+  /* belirli parola, kısa parola reddi */
+  assert.equal((await a.req('POST', '/api/users/u_km/password', { password: 'kisa' })).status, 400);
+  assert.equal((await a.req('POST', '/api/users/u_km/password', { password: 'Belirli12345' })).json.mustChange, true);
+  /* e-posta doğrulaması */
+  const bad = await a.sync([{ c: 'users', id: 'u_km', op: 'put', data: { username: 'km', name: 'KM', email: 'gecersiz' } }]);
+  assert.equal(bad.json.rejected.length, 1);
+  /* üye bu uçlara erişemez */
+  const m = client(); await m.login('km', 'Belirli12345'); await m.req('POST', '/api/auth/password', { newPassword: 'KmYeni123456' });
+  assert.equal((await m.req('GET', '/api/admin/users')).status, 403);
+  assert.equal((await m.req('POST', '/api/users/u_admin/sessions/revoke', {})).status, 403);
+  assert.equal((await m.req('POST', '/api/users/u_km/password', { generate: true })).status, 403);
+});

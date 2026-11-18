@@ -329,6 +329,9 @@ async function applyUser(c, ctx, ch) {
   if (extra.color != null && !/^#[0-9a-f]{3,8}$/i.test(String(extra.color))) throw new HttpError(400, 'Geçersiz renk');
   if (extra.capacity != null && !(typeof extra.capacity === 'number' && extra.capacity >= 0 && extra.capacity <= 168))
     throw new HttpError(400, 'Kapasite 0-168 saat olmalı');
+  if (extra.email != null && extra.email !== '' && !(typeof extra.email === 'string' && extra.email.length <= 200
+      && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(extra.email))) throw new HttpError(400, 'E-posta adresi geçersiz');
+  if (extra.title != null && !(typeof extra.title === 'string' && extra.title.length <= 120)) throw new HttpError(400, 'Unvan en fazla 120 karakter');
 
   if (!cur) {
     if (!meAdmin) throw new HttpError(403, 'Kullanıcı eklemek için yönetici olmalısınız');
@@ -403,9 +406,9 @@ export async function bootstrap(pool, log = console.log) {
   }
 }
 
-export function randomPassword() {
+export function randomPassword(len = 14) {
   const a = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
-  const b = new Uint32Array(14); crypto.getRandomValues(b);
+  const b = new Uint32Array(len); crypto.getRandomValues(b);
   return Array.from(b, x => a[x % a.length]).join('');
 }
 

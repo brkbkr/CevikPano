@@ -635,6 +635,52 @@ label.field{font-size:11px;text-transform:none;letter-spacing:0;color:var(--ink2
 .act-c{color:var(--ink3)}
 .act-t{color:var(--ink2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 
+/* ---------- kullanıcılar ---------- */
+.ustats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.ustat{text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;box-shadow:var(--shadow-sm)}
+.ustat[data-uf]:hover{border-color:var(--line2)}
+.ustat.on{border-color:var(--accent);box-shadow:var(--ring)}
+.ustat b{display:block;font-size:22px;font-weight:700;letter-spacing:-.03em}
+.ustat span{font-size:11.5px;color:var(--ink3)}
+.utable tbody tr.urow{cursor:pointer}
+.utable tbody tr.urow:hover td{background:var(--surface2)}
+.utable tr.off td{opacity:.6}
+.ucell{display:flex;align-items:center;gap:10px}
+.ucell b{font-weight:600}
+.usub{font-size:11.5px;color:var(--ink3);font-weight:400}
+.ucell .usub,.rolecard .usub,.pwshow .usub{display:block}
+.chip.role-super{background:var(--risk-bg);color:var(--risk);border-color:var(--risk-line)}
+.chip.role-admin{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.chip.role-member{background:var(--done-bg);color:var(--done);border-color:var(--done-line)}
+.chip.role-viewer{background:var(--todo-bg);color:var(--todo);border-color:var(--todo-line)}
+.perm td.pc,.perm th{text-align:center}
+.perm th.who,.perm td.who{text-align:left}
+.perm .yes{color:var(--done);font-weight:700}
+.perm .no{color:var(--line2)}
+.swatches{display:flex;gap:6px;flex-wrap:wrap}
+.sw{width:26px;height:26px;border-radius:50%;border:2px solid transparent;box-shadow:0 0 0 1px var(--line)}
+.sw.on{border-color:var(--surface);box-shadow:0 0 0 2px var(--ink)}
+.rolecards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.rolecard{display:flex;gap:9px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:12px;cursor:pointer;background:var(--surface)}
+.rolecard.on{border-color:var(--accent);box-shadow:var(--ring)}
+.rolecard input{margin-top:3px}
+.rolecard .usub{margin-top:4px}
+.projchecks{display:flex;gap:6px;flex-wrap:wrap}
+.projchecks .memchip input{margin:0 2px 0 4px}
+.pwopts{display:flex;flex-direction:column;gap:6px;font-size:13px}
+.ued-actions{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.ued-actions .btn{justify-content:flex-start}
+.pwshow{margin-top:6px;padding:10px;border:1px solid var(--done-line);background:var(--done-bg);border-radius:10px;display:flex;flex-direction:column;gap:6px}
+.pwline{display:flex;gap:8px;align-items:center}
+.pwline code{font-family:var(--mono);font-size:14px;font-weight:600;background:var(--surface);border:1px solid var(--line);padding:4px 8px;border-radius:7px;user-select:all}
+.modal .m-b.ued{grid-template-columns:1fr 300px}
+@media (max-width:900px){
+  .utable thead{display:none}
+  .utable tr.urow{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:10px 12px;border-bottom:1px solid var(--line)}
+  .utable tr.urow td{border:none;padding:0!important;text-align:left!important}
+  .utable tr.urow td.who{grid-column:1/-1}
+}
+
 /* ---------- ortam şeridi ve sürümler ---------- */
 .envbar{position:fixed;top:0;left:0;right:0;z-index:300;height:28px;display:flex;align-items:center;justify-content:center;gap:12px;
   background:repeating-linear-gradient(135deg,#F59E0B 0 14px,#F7B035 14px 28px);color:#1F1300;font-size:12px;font-weight:600;padding:0 12px;white-space:nowrap;overflow:hidden}
@@ -728,6 +774,7 @@ body.env-test .pop{top:90px}
     <nav class="nav">
       <a href="#projects"  data-v="projects"><span class="g">▦</span>Projeler</a>
       <a href="#admin"     data-v="admin"><span class="g">⚙</span>Proje ayarları</a>
+      <a href="#users"     data-v="users"><span class="g">◎</span>Kullanıcılar</a>
       <a href="#system"    data-v="system"><span class="g">⛁</span>Sistem</a>
     </nav>
     <div class="online" id="online"></div>
@@ -765,6 +812,7 @@ body.env-test .pop{top:90px}
         <button data-v="search">Arama</button>
         <button data-v="projects">Projeler</button>
         <button data-v="admin">Ayarlar</button>
+        <button data-v="users">Kullanıcılar</button>
         <button data-v="system">Sistem</button>
         <button data-v="__proj">Proje ▾</button>
         <button data-v="__data">Hesap ▾</button>
@@ -2389,13 +2437,14 @@ const VIEWS = {
   effort:    { t: 'Efor raporu',       c: 'Takip',             r: renderEffort,    tb: toolbarEffort },
   search:    { t: 'Arama',             c: 'Sorgu',             r: renderSearch,    tb: toolbarSearch },
   admin:     { t: 'Proje ayarları',    c: 'Yönetim',           r: renderAdmin,     tb: toolbarAdmin },
+  users:     { t: 'Kullanıcılar',      c: 'Yönetim',           r: renderUsers,     tb: toolbarUsers },
   system:    { t: 'Sistem',            c: 'Yönetim',           r: renderSystem,    tb: toolbarSystem },
   reports:   { t: 'Raporlar',          c: 'Takip',             r: renderReports,   tb: () => `<span style="color:var(--ink3);font-size:12px">Zaman çizelgesindeki hafta seçimi buradaki hesapları da belirler.</span>` },
 };
 
 function render() {
   if (DB.ui.view === 'roadmap' && !MOD('epic')) DB.ui.view = 'board';
-  if ((DB.ui.view === 'admin' || DB.ui.view === 'system') && !isAdmin()) DB.ui.view = 'board';
+  if (['admin', 'system', 'users'].includes(DB.ui.view) && !isAdmin()) DB.ui.view = 'board';
   const v = VIEWS[DB.ui.view] || VIEWS.board;
   if (location.hash.slice(1) !== DB.ui.view) try { history.replaceState(null, '', '#' + DB.ui.view); } catch (_) { }
   $('#crumb').textContent = `${P().key} · ${v.c}`;
@@ -2420,7 +2469,7 @@ function render() {
 
 /* Kapalı modüllerin ekranlarını menüden kaldırır */
 function syncNav() {
-  const hidden = { roadmap: !MOD('epic'), admin: !isAdmin(), system: !isAdmin() };
+  const hidden = { roadmap: !MOD('epic'), admin: !isAdmin(), system: !isAdmin(), users: !isAdmin() };
   $$('.nav a, #vtabs button').forEach(el => {
     if (hidden[el.dataset.v]) el.style.display = 'none';
     else if (VIEWS[el.dataset.v]) el.style.display = '';
@@ -3052,7 +3101,7 @@ function runRules(i, trigger, ctx = {}) {
    5) YÖNETİM GÖRÜNÜMÜ
    ============================================================ */
 function toolbarAdmin() {
-  const tabs = [['workflow', 'İş akışı'], ['types', 'İş tipleri'], ['fields', 'Özel alanlar'], ['rules', 'Otomasyon'], ['people', 'Kullanıcılar & proje']];
+  const tabs = [['workflow', 'İş akışı'], ['types', 'İş tipleri'], ['fields', 'Özel alanlar'], ['rules', 'Otomasyon'], ['people', 'Modüller & genel']];
   return `<div class="seg" id="adminTabs">${tabs.map(([v, l]) =>
     `<button data-a="${v}" class="${(DB.ui.adminTab || 'workflow') === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
 }
@@ -3140,7 +3189,10 @@ function renderAdmin() {
         <span class="chip ${MOD(k) ? 'cat-done' : 'lbl'}">${MOD(k) ? 'açık' : 'kapalı'}</span>
       </div>`).join('')}
     </div>
-    ${usersPanel()}
+    <div class="panel"><h3>Kullanıcılar ve erişim</h3>
+      <div class="sub">Kullanıcı ekleme, rol, parola ve proje üyelikleri artık ayrı bir ekranda.</div>
+      <button class="btn pri" data-v="users" style="margin-top:4px">Kullanıcılar ekranına git</button>
+      <button class="btn" id="myPw" style="margin-top:4px">Kendi parolamı değiştir</button></div>
     <div class="panel"><h3>Genel ayarlar</h3>
       <div class="sub">Proje oluşturma, üye ekleme ve silme işlemleri <b>Projeler</b> ekranındadır.</div>
       <button class="btn" data-v="projects" style="margin-top:4px">Projeler ekranına git</button>
@@ -4139,7 +4191,364 @@ async function logout() {
   location.reload();
 }
 
-/* ---- kullanıcı yönetimi (yalnızca yönetici) ---- */
+
+/* ============================================================
+   KULLANICILAR (yönetici) — kişiler, roller, parolalar, projeler
+   Parolalar sunucuda tek yönlü özet (bcrypt) olarak saklanır; kimse,
+   yönetici dahil, mevcut bir parolayı göremez. Yönetici yeni parola
+   belirler ya da rastgele üretir; üretilen parola bir kez gösterilir.
+   ============================================================ */
+let USERS_META = null, USERS_META_AT = 0;
+const UF = { q: '', role: '', status: '' };
+const ROLE_KEYS = ['super', 'admin', 'member', 'viewer'];
+const USER_COLORS = ['#4F46E5', '#1F6F5C', '#6B4FBB', '#C0392B', '#B45309', '#3E7BC4', '#2B7A78', '#8E44AD', '#0F766E', '#BE185D'];
+/* [yetki, süper, yönetici, üye, izleyici] */
+const PERMS = [
+  ['Atandığı projeleri ve işleri görme', 1, 1, 1, 1],
+  ['İş oluşturma, düzenleme, yorum yazma', 1, 1, 1, 0],
+  ['Kendi süre kaydını girme', 1, 1, 1, 0],
+  ['Başkası adına süre kaydı girme / silme', 1, 1, 0, 0],
+  ['Proje oluşturma, düzenleme, arşivleme', 1, 1, 1, 0],
+  ['Proje silme', 1, 1, 0, 0],
+  ['İş akışı, iş tipleri, özel alanlar, otomasyon', 1, 1, 0, 0],
+  ['Kullanıcı ekleme, rol ve parola yönetimi', 1, 1, 0, 0],
+  ['Yedekler, çöp kutusu, içe aktarma, etkinlik', 1, 1, 0, 0],
+  ['Arşivlenmiş ve üyesi olmadığı projeleri görme', 1, 0, 0, 0],
+  ['Süper yöneticileri yönetme', 1, 0, 0, 0],
+];
+
+const metaOf = id => USERS_META?.find(m => m.id === id) || null;
+const userProjects = id => DB.projects.filter(p => !p.members?.length || p.members.includes(id));
+const userStatus = u => !u.active ? ['Pasif', 'lbl']
+  : (metaOf(u.id)?.mustChange ?? u.mustChange) ? ['İlk giriş bekleniyor', 'cat-inprogress'] : ['Aktif', 'cat-done'];
+const roleChip = r => `<span class="chip role-${esc(r)}">${esc(ROLES[r]?.[0] || r)}</span>`;
+const canManage = u => isSuper() || u.role !== 'super';
+
+async function loadUsersMeta(force) {
+  if (!force && USERS_META && Date.now() - USERS_META_AT < 20000) return;
+  try { USERS_META = await API.get('/api/admin/users'); USERS_META_AT = Date.now(); }
+  catch (e) { USERS_META = USERS_META || []; }
+  if (DB?.ui?.view === 'users' && !$('#scrim').classList.contains('on')) {
+    const v = $('#view'); if (v) { v.innerHTML = renderUsers(true); wireUsersView(); }
+  }
+}
+
+function filteredUsers() {
+  const q = UF.q.trim().toLocaleLowerCase('tr');
+  return DB.users.filter(u => {
+    if (UF.role && u.role !== UF.role) return false;
+    const st = userStatus(u)[0];
+    if (UF.status === 'active' && !u.active) return false;
+    if (UF.status === 'inactive' && u.active) return false;
+    if (UF.status === 'pending' && st !== 'İlk giriş bekleniyor') return false;
+    if (!q) return true;
+    return [u.name, u.username, u.email, u.title].some(x => String(x || '').toLocaleLowerCase('tr').includes(q));
+  }).sort((a, b) => (b.active - a.active) || ROLE_KEYS.indexOf(a.role) - ROLE_KEYS.indexOf(b.role)
+    || String(a.name).localeCompare(String(b.name), 'tr'));
+}
+
+function toolbarUsers() {
+  return `<div class="search"><input class="inp" id="uq" placeholder="İsim, kullanıcı adı, e-posta ara…" value="${esc(UF.q)}"></div>
+    <select class="inp" id="ufRole" style="width:auto"><option value="">Tüm roller</option>
+      ${ROLE_KEYS.filter(r => ROLES[r]).map(r => `<option value="${r}" ${UF.role === r ? 'selected' : ''}>${esc(ROLES[r][0])}</option>`).join('')}</select>
+    <select class="inp" id="ufStatus" style="width:auto">
+      ${[['', 'Tüm durumlar'], ['active', 'Aktif'], ['pending', 'İlk giriş bekleniyor'], ['inactive', 'Pasif']].map(([v, l]) =>
+        `<option value="${v}" ${UF.status === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+    <div class="spacer"></div>
+    <button class="btn pri" id="uAdd">+ Kullanıcı ekle</button>`;
+}
+
+function renderUsers(fromMeta) {
+  if (!isAdmin()) return `<div class="panel"><div class="empty">Bu ekrana yalnızca yöneticiler erişebilir.</div></div>`;
+  if (!fromMeta) { setTimeout(() => loadUsersMeta(false), 0); setTimeout(wireUsersView, 0); }
+  const all = DB.users, list = filteredUsers();
+  const weekAgo = Date.now() - 7 * 86400000;
+  const recent = all.filter(u => { const t = metaOf(u.id)?.lastLoginAt; return t && new Date(t).getTime() > weekAgo; }).length;
+  const stat = (n, l, f) => `<button class="ustat ${f && UF.status === f ? 'on' : ''}" ${f !== undefined ? `data-uf="${f}"` : ''}><b>${n}</b><span>${l}</span></button>`;
+  return `<div class="ustats">
+      ${stat(all.length, 'Toplam kullanıcı', '')}
+      ${stat(all.filter(u => u.active).length, 'Aktif', 'active')}
+      ${stat(all.filter(u => u.active && (u.role === 'admin' || u.role === 'super')).length, 'Yönetici')}
+      ${stat(all.filter(u => u.active && userStatus(u)[0] === 'İlk giriş bekleniyor').length, 'İlk giriş bekleniyor', 'pending')}
+      ${stat(USERS_META ? recent : '…', 'Son 7 günde giriş yapan')}
+    </div>
+    <div class="panel" style="padding:0;overflow:hidden">
+      <div class="tswrap" style="border:none;border-radius:0;box-shadow:none">
+      <table class="ts list utable"><thead><tr>
+        <th class="who">Kişi</th><th>Rol</th><th>Durum</th><th>Projeler</th><th>Kapasite</th><th>Son giriş</th><th></th>
+      </tr></thead><tbody>
+      ${list.map(u => {
+        const m = metaOf(u.id), [st, sc] = userStatus(u), pr = userProjects(u.id);
+        return `<tr class="urow ${u.active ? '' : 'off'}" data-uedit="${esc(u.id)}">
+          <td class="who"><div class="ucell">${avat(u.id, 1)}<div><b>${esc(u.name)}</b>${u.id === CU().id ? ' <span class="chip lbl">siz</span>' : ''}
+            ${u.system ? ' <span class="chip lbl">sistem</span>' : ''}
+            <span class="usub">@${esc(u.username || '')}${u.email ? ' · ' + esc(u.email) : ''}${u.title ? ' · ' + esc(u.title) : ''}</span></div></div></td>
+          <td>${roleChip(u.role)}</td>
+          <td><span class="chip ${sc}">${st}</span></td>
+          <td title="${esc(pr.map(p => p.name).join(', '))}"><span class="num">${pr.length}</span><span class="usub"> / ${DB.projects.length}</span></td>
+          <td class="num">${capOf(u)} sa/hf</td>
+          <td>${m ? (m.lastLoginAt ? `<span title="${esc(fmtWhen(m.lastLoginAt))}">${ago(m.lastLoginAt)}</span>` : '<span class="usub">hiç girmedi</span>') : '…'}
+            ${m?.sessions ? `<span class="usub"> · ${m.sessions} oturum</span>` : ''}</td>
+          <td style="text-align:right"><button class="btn sm" data-uedit="${esc(u.id)}">Düzenle</button></td>
+        </tr>`; }).join('') || `<tr><td colspan="7"><div class="empty">Aramaya uyan kullanıcı yok.</div></td></tr>`}
+      </tbody></table></div></div>
+    <div class="panel" style="margin-top:14px"><h3>Roller ve yetkiler</h3>
+      <div class="sub">Bir kullanıcının rolünü değiştirmek için satırına tıklayın. Yetkiler sunucuda da denetlenir.</div>
+      <div class="tswrap" style="border:none;box-shadow:none"><table class="ts list perm">
+        <thead><tr><th class="who">Yetki</th>${ROLE_KEYS.filter(r => ROLES[r]).map(r => `<th>${roleChip(r)}</th>`).join('')}</tr></thead>
+        <tbody>${PERMS.map(([l, ...v]) => `<tr><td class="who">${esc(l)}</td>${ROLE_KEYS.map((r, k) => ROLES[r]
+          ? `<td class="pc">${v[k] ? '<span class="yes">✓</span>' : '<span class="no">—</span>'}</td>` : '').join('')}</tr>`).join('')}</tbody>
+      </table></div></div>`;
+}
+
+function wireUsersView() {
+  const q = $('#uq');
+  if (q) q.oninput = () => { UF.q = q.value; $('#view').innerHTML = renderUsers(true); wireUsersView(); };
+  const r = $('#ufRole'); if (r) r.onchange = () => { UF.role = r.value; render(); };
+  const s = $('#ufStatus'); if (s) s.onchange = () => { UF.status = s.value; render(); };
+  const a = $('#uAdd'); if (a) a.onclick = () => userEditor(null);
+  $$('[data-uf]').forEach(b => b.onclick = () => { UF.status = UF.status === b.dataset.uf ? '' : b.dataset.uf; render(); });
+  $$('[data-uedit]').forEach(el => el.onclick = e => { e.stopPropagation(); userEditor(el.dataset.uedit); });
+}
+
+/* ---- kullanıcı kartı: ekle / düzenle ---- */
+function userEditor(id) {
+  const u = id ? user(id) : null;
+  if (id && !u) return toast('Kullanıcı bulunamadı');
+  const isNew = !u, self = u && u.id === CU().id, locked = u && !canManage(u);
+  const m = u ? metaOf(u.id) : null;
+  const color = u?.color || USER_COLORS[DB.users.length % USER_COLORS.length];
+  const roleOpts = ROLE_KEYS.filter(r => ROLES[r] && (r !== 'super' || isSuper()));
+  const curRole = u?.role || 'member';
+  const memberOf = new Set(u ? userProjects(u.id).map(p => p.id) : DB.projects.filter(p => !p.archived).map(p => p.id));
+  const dis = locked ? 'disabled' : '';
+
+  openModal(`<div class="m-h">${u ? avat(u.id, 1) : ''}<b>${isNew ? 'Yeni kullanıcı' : esc(u.name)}</b>
+      ${u ? roleChip(u.role) : ''} ${u ? `<span class="chip ${userStatus(u)[1]}">${userStatus(u)[0]}</span>` : ''}
+      <button class="x" data-close>×</button></div>
+    <div class="m-b ued">
+      <div class="m-l">
+        ${locked ? '<div class="vnote" style="margin-bottom:12px">Süper yönetici hesabını yalnızca süper yönetici değiştirebilir.</div>' : ''}
+        <div class="sec">Profil</div>
+        <div class="form-2">
+          <div class="form-row"><label class="field">Ad soyad *</label><input class="inp" id="ue_n" value="${esc(u?.name || '')}" placeholder="Ayşe Korkmaz" ${dis}></div>
+          <div class="form-row"><label class="field">Kullanıcı adı *</label><input class="inp k" id="ue_u" value="${esc(u?.username || '')}" placeholder="ayse" ${dis} autocapitalize="off" spellcheck="false"></div>
+          <div class="form-row"><label class="field">E-posta</label><input class="inp" id="ue_e" type="email" value="${esc(u?.email || '')}" placeholder="ayse@firma.com" ${dis}></div>
+          <div class="form-row"><label class="field">Unvan / departman</label><input class="inp" id="ue_t" value="${esc(u?.title || '')}" placeholder="Satış Uzmanı" ${dis}></div>
+          <div class="form-row"><label class="field">Baş harfler</label><input class="inp" id="ue_i" maxlength="3" value="${esc(u?.ini || '')}" placeholder="AK" ${dis}></div>
+          <div class="form-row"><label class="field">Haftalık kapasite (saat)</label><input class="inp num" id="ue_c" value="${u ? capOf(u) : 30}" ${dis}></div>
+        </div>
+        <div class="form-row"><label class="field">Renk</label><div class="swatches">
+          ${USER_COLORS.map(c => `<button type="button" class="sw ${c === color ? 'on' : ''}" data-col="${c}" style="background:${c}" ${dis} aria-label="${c}"></button>`).join('')}</div></div>
+
+        <div class="sec">Rol ve yetki</div>
+        ${self ? '<div class="usub" style="margin-bottom:8px">Kendi rolünüzü değiştiremezsiniz.</div>' : ''}
+        <div class="rolecards">
+          ${roleOpts.map(r => `<label class="rolecard ${curRole === r ? 'on' : ''}">
+            <input type="radio" name="ue_r" value="${r}" ${curRole === r ? 'checked' : ''} ${self || locked ? 'disabled' : ''}>
+            <span>${roleChip(r)}<span class="usub">${esc(ROLES[r][1])}</span></span></label>`).join('')}
+        </div>
+
+        <div class="sec">Projeler</div>
+        <div class="usub" style="margin-bottom:8px">Kullanıcı yalnızca üyesi olduğu projeleri görür ve onlarda iş alabilir.</div>
+        <div class="projchecks">
+          ${DB.projects.map(p => `<label class="memchip ${memberOf.has(p.id) ? 'on' : ''}"><input type="checkbox" data-up="${esc(p.id)}" ${memberOf.has(p.id) ? 'checked' : ''} ${dis}>
+            ${esc(p.name)}${p.archived ? ' <em>arşiv</em>' : ''}</label>`).join('') || '<span class="usub">Henüz proje yok.</span>'}
+        </div>
+
+        ${isNew ? `<div class="sec">İlk giriş parolası</div>
+          <div class="pwopts">
+            <label><input type="radio" name="ue_pw" value="gen" checked> <b>Rastgele güçlü parola üret</b> <span class="usub">— önerilen; kaydedince bir kez gösterilir</span></label>
+            <label><input type="radio" name="ue_pw" value="set"> <b>Parolayı ben belirleyeyim</b></label>
+            <input class="inp" id="ue_pwv" placeholder="En az 8 karakter" style="margin:4px 0 6px 24px;max-width:280px;display:none">
+            <label><input type="radio" name="ue_pw" value="def"> <b>Ortak başlangıç parolası</b> <span class="usub">(${esc(DEFAULT_PW || '—')})</span></label>
+            <label style="margin-top:6px"><input type="checkbox" id="ue_mc" checked> İlk girişte kendi parolasını belirlemesini iste</label>
+          </div>` : ''}
+        <div id="ue_err" class="lg-err"></div>
+      </div>
+
+      ${u ? `<div class="m-r">
+        <div class="sec">Hesap</div>
+        <div class="kv">
+          <span class="lb">Kullanıcı adı</span><span class="k">@${esc(u.username || '')}</span>
+          <span class="lb">Son giriş</span><span>${m?.lastLoginAt ? fmtWhen(m.lastLoginAt) : 'hiç girmedi'}</span>
+          <span class="lb">Açık oturum</span><span>${m ? m.sessions : '…'}</span>
+          <span class="lb">Oluşturulma</span><span>${m?.createdAt ? fmtWhen(m.createdAt) : '—'}</span>
+          <span class="lb">Parola</span><span>${(m?.mustChange ?? u.mustChange) ? '<span class="chip cat-inprogress">geçici, değiştirmesi bekleniyor</span>' : '<span class="chip lbl">kullanıcının kendi parolası</span>'}</span>
+        </div>
+        <div class="sec">Parola</div>
+        <div class="usub" style="margin-bottom:8px">Parolalar şifrelenmiş saklanır; mevcut parola kimse tarafından görülemez. Yeni bir parola verebilirsiniz.</div>
+        <div class="ued-actions">
+          <button class="btn" id="ue_gen" ${dis}>🔑 Rastgele yeni parola üret</button>
+          <button class="btn" id="ue_setpw" ${dis}>Parolayı ben belirleyeyim</button>
+          <div id="ue_setbox" style="display:none;gap:6px;flex-direction:column">
+            <input class="inp" id="ue_newpw" type="text" placeholder="Yeni parola (en az 8 karakter)" autocomplete="off">
+            <label class="usub"><input type="checkbox" id="ue_newmc" checked> İlk girişte değiştirmesini iste</label>
+            <button class="btn pri sm" id="ue_setok">Parolayı kaydet</button>
+          </div>
+          <div id="ue_pwres"></div>
+        </div>
+        <div class="sec">Oturum ve erişim</div>
+        <div class="ued-actions">
+          <button class="btn" id="ue_revoke" ${dis}>Tüm açık oturumlarını kapat</button>
+          ${self ? '' : `<button class="btn" id="ue_toggle" ${dis}>${u.active ? '⏸ Hesabı pasifleştir' : '▶ Hesabı aktifleştir'}</button>
+          <button class="btn danger" id="ue_del" ${dis || (u.system && !isSuper() ? 'disabled' : '')}>Kullanıcıyı sil</button>`}
+        </div>
+      </div>` : ''}
+    </div>
+    <div class="m-f"><button class="btn" data-close>Vazgeç</button>
+      ${locked ? '' : `<button class="btn pri" id="ue_ok">${isNew ? 'Kullanıcıyı oluştur' : 'Değişiklikleri kaydet'}</button>`}</div>`);
+
+  let pickColor = color;
+  const err = msg => { $('#ue_err').textContent = msg; };
+  $$('[data-col]').forEach(b => b.onclick = () => { pickColor = b.dataset.col; $$('[data-col]').forEach(x => x.classList.toggle('on', x === b)); });
+  $$('input[name="ue_r"]').forEach(r => r.onchange = () => $$('.rolecard').forEach(c => c.classList.toggle('on', c.contains(r) && r.checked)));
+  $$('[data-up]').forEach(c => c.onchange = () => c.closest('.memchip').classList.toggle('on', c.checked));
+  const nameEl = $('#ue_n'), unEl = $('#ue_u'), iniEl = $('#ue_i');
+  if (isNew) {
+    nameEl.oninput = () => {
+      if (!unEl.dataset.t) unEl.value = makeUsername(nameEl.value, new Set(DB.users.map(x => x.username)));
+      if (!iniEl.dataset.t) iniEl.value = nameEl.value.trim().split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toLocaleUpperCase('tr');
+    };
+    unEl.oninput = () => unEl.dataset.t = '1';
+    iniEl.oninput = () => iniEl.dataset.t = '1';
+    $$('input[name="ue_pw"]').forEach(r => r.onchange = () => { $('#ue_pwv').style.display = $('input[name="ue_pw"]:checked').value === 'set' ? '' : 'none'; });
+  }
+
+  const ok = $('#ue_ok');
+  if (ok) ok.onclick = async () => {
+    const n = nameEl.value.trim(), un = unEl.value.trim().toLowerCase(), em = $('#ue_e').value.trim(), ti = $('#ue_t').value.trim();
+    const ini = (iniEl.value.trim() || n.split(/\s+/).map(w => w[0] || '').join('').slice(0, 2)).toLocaleUpperCase('tr');
+    const cap = parseFloat(String($('#ue_c').value).replace(',', '.'));
+    const role = $('input[name="ue_r"]:checked')?.value || curRole;
+    if (!n) return err('Ad soyad gerekli.');
+    if (!/^[a-z0-9._-]{2,40}$/.test(un)) return err('Kullanıcı adı 2-40 karakter olmalı: küçük harf, rakam, nokta, tire.');
+    if (DB.users.some(x => x.id !== u?.id && x.username?.toLowerCase() === un)) return err('Bu kullanıcı adı başka birinde.');
+    if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return err('E-posta adresi geçersiz.');
+    if (!/^[\p{L}\p{N}]{1,3}$/u.test(ini)) return err('Baş harfler 1-3 harf/rakam olmalı.');
+    if (!(cap >= 0 && cap <= 168)) return err('Haftalık kapasite 0-168 saat arası olmalı.');
+    let pwMode = 'gen', pwVal = '';
+    if (isNew) {
+      pwMode = $('input[name="ue_pw"]:checked').value; pwVal = $('#ue_pwv').value;
+      if (pwMode === 'set' && pwVal.length < 8) return err('Parola en az 8 karakter olmalı.');
+    }
+    const target = u || { id: uid('u'), active: true, mustChange: true };
+    const prev = { ...target };
+    Object.assign(target, { name: n, username: un, ini, color: pickColor, capacity: cap });
+    if (em) target.email = em; else delete target.email;
+    if (ti) target.title = ti; else delete target.title;
+    if (!self) target.role = role;
+    if (isNew) DB.users.push(target);
+    if (!DB.users.some(x => (x.role === 'admin' || x.role === 'super') && x.active)) {
+      Object.assign(target, prev); if (isNew) DB.users.pop(); return err('En az bir aktif yönetici kalmalı.');
+    }
+    /* proje üyelikleri */
+    $$('[data-up]').forEach(c => {
+      const p = DB.projects.find(x => x.id === c.dataset.up); if (!p) return;
+      if (!p.members?.length) p.members = DB.users.filter(x => x.id !== target.id).map(x => x.id);
+      const has = p.members.includes(target.id);
+      if (c.checked && !has) p.members.push(target.id);
+      if (!c.checked && has) p.members = p.members.filter(x => x !== target.id);
+    });
+    ok.disabled = true;
+    save();
+    try { await flushAll(); } catch (e) { }
+    if (SYNC_STATE !== 'ok') { ok.disabled = false; return err('Kaydedilemedi, bağlantıyı kontrol edip tekrar deneyin.'); }
+    if (!isNew) { closeModal(); render(); loadUsersMeta(true); return toast('Kullanıcı güncellendi'); }
+    /* yeni kullanıcı: parola */
+    const mc = $('#ue_mc').checked;
+    let shown = null;
+    try {
+      if (pwMode === 'gen') shown = (await API.post('/api/users/' + target.id + '/password', { generate: true, requireChange: mc })).password;
+      else if (pwMode === 'set') { await API.post('/api/users/' + target.id + '/password', { password: pwVal, requireChange: mc }); shown = pwVal; }
+      else if (!mc) await API.post('/api/users/' + target.id + '/password', { requireChange: false });
+      else shown = DEFAULT_PW;
+    } catch (e) { toast('Kullanıcı oluşturuldu ama parola ayarlanamadı: ' + e.message); }
+    closeModal(); render(); loadUsersMeta(true);
+    if (shown) showCredentials(target, shown, mc);
+    else toast(n + ' eklendi');
+  };
+
+  if (!u) return;
+  const pwBox = (pw, mc) => {
+    $('#ue_pwres').innerHTML = `<div class="pwshow"><div class="usub">Yeni parola — bu pencereyi kapatınca bir daha gösterilmez:</div>
+      <div class="pwline"><code id="ue_pwtxt">${esc(pw)}</code><button class="btn sm" id="ue_copy">Kopyala</button></div>
+      <div class="usub">${mc ? 'Kullanıcı ilk girişte kendi parolasını belirleyecek.' : 'Kullanıcı bu parolayla giriş yapmaya devam edebilir.'} Açık oturumları kapatıldı.</div></div>`;
+    $('#ue_copy').onclick = () => copyText(pw);
+  };
+  const gen = $('#ue_gen');
+  if (gen) gen.onclick = async () => {
+    if (!confirm(`${u.name} için yeni bir parola üretilsin mi? Eski parolası artık çalışmaz.`)) return;
+    gen.disabled = true;
+    try { await flushAll(); const r = await API.post('/api/users/' + u.id + '/password', { generate: true }); u.mustChange = true; SNAP.rec.users?.set(u.id, cj(u)); pwBox(r.password, true); loadUsersMeta(true); }
+    catch (e) { toast('Parola üretilemedi: ' + e.message); }
+    finally { gen.disabled = false; }
+  };
+  const sp = $('#ue_setpw'); if (sp) sp.onclick = () => { $('#ue_setbox').style.display = 'flex'; $('#ue_newpw').focus(); };
+  const so = $('#ue_setok');
+  if (so) so.onclick = async () => {
+    const pw = $('#ue_newpw').value, mc = $('#ue_newmc').checked;
+    if (pw.length < 8) return toast('Parola en az 8 karakter olmalı');
+    try { await flushAll(); await API.post('/api/users/' + u.id + '/password', { password: pw, requireChange: mc });
+      u.mustChange = mc; SNAP.rec.users?.set(u.id, cj(u)); $('#ue_setbox').style.display = 'none'; pwBox(pw, mc); loadUsersMeta(true); }
+    catch (e) { toast('Parola kaydedilemedi: ' + e.message); }
+  };
+  const rv = $('#ue_revoke');
+  if (rv) rv.onclick = async () => {
+    try { const r = await API.post('/api/users/' + u.id + '/sessions/revoke'); toast(r.revoked ? `${r.revoked} oturum kapatıldı` : 'Açık oturum yoktu'); loadUsersMeta(true); }
+    catch (e) { toast(e.message); }
+  };
+  const tg = $('#ue_toggle');
+  if (tg) tg.onclick = async () => {
+    const was = u.active;
+    if (was && !confirm(`${u.name} pasifleştirilsin mi? Giriş yapamaz, açık oturumları kapanır. Verileri silinmez.`)) return;
+    u.active = !was;
+    if (!DB.users.some(x => (x.role === 'admin' || x.role === 'super') && x.active)) { u.active = was; return toast('En az bir aktif yönetici kalmalı'); }
+    save(); await flushAll(); closeModal(); render(); loadUsersMeta(true);
+    toast(u.active ? u.name + ' aktifleştirildi' : u.name + ' pasifleştirildi');
+  };
+  const dl = $('#ue_del');
+  if (dl) dl.onclick = async () => {
+    const n = DB.issues.filter(i => i.assignee === u.id).length;
+    if (!confirm(`${u.name} silinsin mi?\n\n${n ? n + ' işin ataması boşalacak. ' : ''}Süre kayıtları ve yorumları korunur. ` +
+      'Gerekirse Sistem › Çöp kutusu’ndan geri yüklenebilir.\n\nSadece erişimini kesmek istiyorsanız “pasifleştir” daha uygundur.')) return;
+    DB.users = DB.users.filter(x => x.id !== u.id);
+    DB.issues.forEach(i => { if (i.assignee === u.id) i.assignee = null; });
+    DB.projects.forEach(p => { if (p.members?.includes(u.id)) p.members = p.members.filter(x => x !== u.id); });
+    save(); await flushAll(); closeModal(); render(); loadUsersMeta(true); toast(u.name + ' silindi');
+  };
+}
+
+function copyText(t) {
+  const done = () => toast('Kopyalandı');
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(t).then(done, () => fallback());
+  else fallback();
+  function fallback() {
+    const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select();
+    try { document.execCommand('copy'); done(); } catch (e) { toast('Kopyalanamadı, elle seçip kopyalayın'); }
+    a.remove();
+  }
+}
+
+function showCredentials(u, pw, mc) {
+  const url = location.origin;
+  const msg = `ÇevikPano hesabınız açıldı.\nAdres: ${url}\nKullanıcı adı: ${u.username}\nParola: ${pw}` +
+    (mc ? '\nİlk girişte kendi parolanızı belirlemeniz istenecek.' : '');
+  openModal(`<div class="m-h"><b>✅ ${esc(u.name)} oluşturuldu</b><button class="x" data-close>×</button></div>
+    <div style="padding:18px">
+      <p style="margin:0 0 12px;color:var(--ink2)">Giriş bilgilerini kullanıcıya iletin. <b>Parola bu pencereyi kapatınca bir daha gösterilmez.</b></p>
+      <div class="kv" style="margin-bottom:12px">
+        <span class="lb">Adres</span><span class="k">${esc(url)}</span>
+        <span class="lb">Kullanıcı adı</span><span class="k">${esc(u.username)}</span>
+        <span class="lb">Parola</span><span class="pwline"><code>${esc(pw)}</code></span>
+      </div>
+      <textarea class="inp" id="credMsg" rows="5" readonly style="font-size:12.5px">${esc(msg)}</textarea>
+    </div>
+    <div class="m-f"><button class="btn" data-close>Kapat</button><button class="btn pri" id="credCopy">Mesajı kopyala</button></div>`, 'narrow');
+  $('#credCopy').onclick = () => copyText(msg);
+}
+
+/* ---- eski kullanıcı paneli (artık kullanılmıyor; Kullanıcılar ekranına taşındı) ---- */
 function usersPanel() {
   if (!isAdmin()) return `<div class="panel"><div class="empty">Bu ekrana yalnızca yöneticiler erişebilir.</div></div>`;
   return `<div class="panel" style="grid-column:1/-1"><h3>Kullanıcılar ve erişim</h3>
