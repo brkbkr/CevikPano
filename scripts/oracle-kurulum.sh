@@ -12,6 +12,9 @@
 #   Ortak kapı (Caddy, HTTPS) ve her 2 dakikada çalışan otomatik dağıtıcı (pano-deploy).
 # Tekrar çalıştırmak güvenlidir: mevcut ayarlar, parolalar ve veriler korunur.
 set -euo pipefail
+# Not: Tüm betik main() içindedir ve en sonda çağrılır. "curl | bash" ile çalışırken bash betiği
+# satır satır borudan okur; arada stdin okuyan bir komut (docker exec vb.) kalan satırları yutup
+# betiği sessizce bitirebiliyordu. Fonksiyon önce tamamen okunur, sonra çalışır.
 
 REPO="${REPO:-https://github.com/brkbkr/CevikPano.git}"
 GITHUB_REPO="${GITHUB_REPO:-brkbkr/CevikPano}"
@@ -28,6 +31,7 @@ rand() { local s; s="$(head -c 600 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9')";
 envset() { grep -q "^$2=" "$1" 2>/dev/null || printf '%s=%s\n' "$2" "$3" >> "$1"; }
 envget() { grep -m1 "^$2=" "$1" 2>/dev/null | cut -d= -f2-; }
 
+main() {
 [ "$(id -u)" -eq 0 ] || die "sudo ile çalıştırın: curl ... | sudo bash"
 # PANO_SKIP_SYSTEM=1: yalnızca geliştirme/test içindir; paket kurulumu, güvenlik duvarı, systemd ve cron atlanır.
 SKIP_SYS="${PANO_SKIP_SYSTEM:-}"
@@ -138,9 +142,9 @@ up_env() {   # klasör, proje
   local dir="$1" project="$2" i
   ( cd "$dir"
     APP_COMMIT="$(git rev-parse HEAD)" APP_COMMIT_DATE="$(git log -1 --format=%cI)" APP_COMMIT_MSG="$(git log -1 --format=%s)" \
-      docker compose -p "$project" up -d --build --remove-orphans )
+      docker compose -p "$project" up -d --build --remove-orphans </dev/null )
   for i in $(seq 1 80); do
-    (cd "$dir" && docker compose -p "$project" exec -T app wget -qO- http://localhost:3000/healthz >/dev/null 2>&1) && break
+    (cd "$dir" && docker compose -p "$project" exec -T app wget -qO- http://localhost:3000/healthz </dev/null >/dev/null 2>&1) && break
     sleep 3
     [ "$i" -eq 80 ] && { (cd "$dir" && docker compose -p "$project" logs --tail 60 app); die "$project açılmadı (yukarıdaki günlüğe bakın)."; }
   done
@@ -151,14 +155,14 @@ say "6/9 Canlı ortam (ilk seferde birkaç dakika sürer)"
 up_env "$PROD_DIR" cevikpano             # eski tek-parça kurulumdaki kapı (caddy) burada kaldırılır
 
 say "7/9 Ortak kapı (HTTPS)"
-docker compose -p pano-edge --env-file "$ETC/edge.env" -f "$PROD_DIR/deploy/edge.yml" up -d
+docker compose -p pano-edge --env-file "$ETC/edge.env" -f "$PROD_DIR/deploy/edge.yml" up -d </dev/null
 
 say "8/9 Test ortamı"
 up_env "$TEST_DIR" cevikpano-test
 if [ ! -f "$TEST_DIR/.seeded" ] && [ -f "$TEST_DIR/test/fixtures/demo.json" ]; then
   (cd "$TEST_DIR"
    docker compose -p cevikpano-test exec -T app sh -c 'cat > /tmp/demo.json' < test/fixtures/demo.json
-   docker compose -p cevikpano-test exec -T app node -e '
+   docker compose -p cevikpano-test exec -T app node -e </dev/null '
      (async () => {
        const base = "http://localhost:3000", h = { "x-pano": "1", "content-type": "application/json" };
        const r = await fetch(base + "/api/auth/login", { method: "POST", headers: h,
@@ -235,3 +239,6 @@ cat <<EOF
   HTTPS sertifikaları ilk açılışta 1-2 dakikada alınır. Kendi alan adınızı kullanıyorsanız
   DNS'te hem $DOMAIN hem $TEST_DOMAIN sunucunun IP'sini göstermeli.
 EOF
+}
+
+main "$@"
