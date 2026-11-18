@@ -1384,6 +1384,16 @@ button.c-av::after{content:"";position:absolute;inset:-6px}
 .ws-info{display:flex;gap:10px;padding:11px 12px;border-radius:10px;background:var(--ws-info-bg);border:1px solid var(--ws-info-ln);color:var(--ws-info-ink);font-size:12.5px;line-height:1.5;margin-bottom:14px}
 .ws-info svg.i{width:17px;height:17px;margin-top:1px}
 .ws-info .k{font-family:var(--mono);font-size:11.5px;font-weight:600}
+/* Sistem → Posta kutuları (görev 11, E2) */
+.mb-acts{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.mb-tbl select.mb-proj{width:auto;max-width:220px}
+.mb-err{font-size:12px;color:var(--ink2);max-width:260px;overflow-wrap:anywhere}
+.mb-dim{color:var(--ink3)}
+.mb-addr{overflow-wrap:anywhere}
+.chip.mb-bad{background:#FEE2E2;color:#991B1B;border-color:#FCA5A5}
+.mb-rules tr.is-off td{opacity:.6}
+.mb-kvkk{display:flex;gap:8px;font-size:11.5px;color:var(--ink3);margin-top:10px;line-height:1.5}
+.mb-kvkk svg.i{width:15px;height:15px;flex:none;margin-top:1px}
 
 /* boş durumlar */
 .ws-empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:34px 20px 30px;background:var(--surface);border:1px dashed var(--line2);border-radius:14px;max-width:640px;margin:24px auto}
@@ -11819,6 +11829,7 @@ const NK = {
   comment:  n => `<b>${esc(n.actor_name || 'Biri')}</b> yorum yaptı`,
   mention:  n => `<b>${esc(n.actor_name || 'Biri')}</b> senden bahsetti`,
   status:   n => `<b>${esc(n.actor_name || 'Biri')}</b> durumu <b>${esc(n.meta?.status || '')}</b> yaptı`,
+  mail:     n => `Posta kutusu <b>${esc(n.meta?.address || '')}</b> yeniden bağlanmalı`,
 };
 function ago(t) {
   const s = (Date.now() - new Date(t).getTime()) / 1000;
@@ -11842,16 +11853,17 @@ async function openNotifications() {
   try { data = await API.get('/api/notifications'); } catch (e) { el.querySelector('.pop-b').innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
   setUnread(data.unread);
   el.querySelector('.pop-b').innerHTML = data.items.length ? data.items.map(n => `
-    <button class="notif ${n.read_at ? '' : 'unread'}" data-nid="${n.id}" data-iss="${esc(n.issue_id || '')}" data-proj="${esc(n.project_id || '')}">
+    <button class="notif ${n.read_at ? '' : 'unread'}" data-nid="${n.id}" data-kind="${esc(n.kind)}" data-iss="${esc(n.issue_id || '')}" data-proj="${esc(n.project_id || '')}">
       ${n.actor_id && user(n.actor_id) ? avat(n.actor_id) : '<span class="av" style="background:var(--ink3)">•</span>'}
       <span class="nt"><span>${(NK[n.kind] || NK.comment)(n)}</span>
-        ${n.issue_key ? `<span class="ni"><span class="k">${esc(n.issue_key)}</span> ${esc(n.summary || '')}</span>` : '<span class="ni">Silinmiş iş</span>'}
+        ${n.issue_key ? `<span class="ni"><span class="k">${esc(n.issue_key)}</span> ${esc(n.summary || '')}</span>` : n.kind === 'mail' ? '<span class="ni">Sistem → Posta kutuları</span>' : '<span class="ni">Silinmiş iş</span>'}
         ${n.meta?.excerpt ? `<span class="nx">“${esc(n.meta.excerpt)}”</span>` : ''}
         <span class="nw">${ago(n.created_at)}</span></span>
     </button>`).join('') : '<div class="empty">Henüz bildirimin yok. Sana iş atandığında, işlerine yorum yapıldığında ya da @kullanıcıadı ile senden bahsedildiğinde burada görünür.</div>';
   el.querySelectorAll('.notif').forEach(b => b.onclick = async () => {
     API.post('/api/notifications/read', { ids: [b.dataset.nid] }).then(r => setUnread(r.unread)).catch(() => {});
     el.remove();
+    if (b.dataset.kind === 'mail') { if (isAdmin()) { SYS_TAB = 'mail'; DB.ui.view = 'system'; save(); render(); } return; }
     const pid = b.dataset.proj;
     if (pid && pid !== DB.ui.project && DB.projects.some(p => p.id === pid)) { DB.ui.project = pid; save(); startApp(false); }
     if (b.dataset.iss && issue(b.dataset.iss)) openIssue(b.dataset.iss); else toast('Bu iş artık yok');
@@ -11886,7 +11898,7 @@ function wireTopbar() {
 /* ---- Sistem: yedekler, çöp kutusu, etkinlik (yönetici) ---- */
 let SYS_TAB = 'versions';
 function toolbarSystem() {
-  return `<div class="seg">${[['versions', 'Sürümler'], ['backups', 'Yedekler'], ['data', 'Veri aktarımı'], ['trash', 'Çöp kutusu'], ['activity', 'Etkinlik']].map(([k, l]) =>
+  return `<div class="seg">${[['versions', 'Sürümler'], ['backups', 'Yedekler'], ['mail', 'Posta kutuları'], ['data', 'Veri aktarımı'], ['trash', 'Çöp kutusu'], ['activity', 'Etkinlik']].map(([k, l]) =>
     `<button data-systab="${k}" class="${SYS_TAB === k ? 'on' : ''}">${l}</button>`).join('')}</div>
     <div class="spacer"></div>
     ${SYS_TAB === 'backups' ? '<button class="btn pri" id="sysBackup">+ Şimdi yedek al</button>' : ''}`;
@@ -11948,6 +11960,8 @@ async function loadSystem() {
         try { await flushSync(); await API.post(`/api/backups/${b.dataset.restore}/restore`); await reloadState(); toast('Yedek geri yüklendi'); }
         catch (e) { toast('Geri yüklenemedi: ' + e.message); b.disabled = false; }
       });
+    } else if (SYS_TAB === 'mail') {
+      await loadMail(el);
     } else if (SYS_TAB === 'trash') {
       const list = await API.get('/api/trash');
       el.innerHTML = `<h3>Çöp kutusu</h3><div class="sub">Silinen işler, projeler, kullanıcılar ve kayıtlar burada durur.
@@ -11976,6 +11990,166 @@ async function loadSystem() {
           : '<div class="empty">Henüz etkinlik yok.</div>'}`;
     }
   } catch (e) { el.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+
+/* ---- Sistem → Posta kutuları (görev 11, E2; yalnız yönetici) ----
+   Kutular ve kurallar DB'de değil, yalnız /api/mail/* uçlarında (jetonlar hiçbir zaman istemciye gelmez).
+   Metinler esc() ile basılır; yetki ve doğrulama sunucuda. */
+let MAIL = null;
+const MAIL_PROV = { google: 'Gmail', microsoft: 'Outlook' };
+const MAIL_BACK = {
+  state: 'Bağlantı isteği geçersiz ya da süresi doldu. Yeniden deneyin.',
+  izin: 'Posta kutusu için izin verilmedi.',
+  yenileme: 'Sağlayıcı kalıcı erişim vermedi. Hesabın uygulama izinlerini kaldırıp yeniden bağlayın.',
+  adres: 'Posta adresi okunamadı.',
+  oturum: 'Oturumunuz bulunamadı. Giriş yapıp yeniden deneyin.',
+  yetki: 'Posta kutusunu yalnızca yöneticiler bağlayabilir.',
+  yapilandirma: 'Sunucu yapılandırılmamış.',
+  saglayici: 'Sağlayıcıyla bağlantı kurulamadı. Yeniden deneyin.',
+};
+/* OAuth dönüşü: /?posta=bagli#system ya da /?posta=hata&neden=... */
+function mailReturn() {
+  const q = new URLSearchParams(location.search), r = q.get('posta');
+  if (!r) return;
+  try { history.replaceState(null, '', location.pathname + location.hash); } catch (_) { }
+  if (!isAdmin()) return;
+  SYS_TAB = 'mail'; DB.ui.view = 'system';
+  toast(r === 'bagli' ? 'Posta kutusu bağlandı' : 'Posta kutusu bağlanamadı: ' + (MAIL_BACK[q.get('neden')] || 'Bağlantı tamamlanamadı.'));
+}
+const mailWhen = t => (t ? ago(t) : '—');
+const talepProjects = () => DB.projects.filter(p => isTalep(p) && !p.archived);
+function mailRuleCond(r) {
+  const out = [];
+  if (r.accountId) out.push(`<span class="chip lbl">${ic('mail')}${esc(MAIL.accounts.find(a => a.id === r.accountId)?.address || 'Silinmiş kutu')}</span>`);
+  if (r.toMatch) out.push(`<span class="chip pt">Alıcı: ${esc(r.toMatch)}</span>`);
+  if (r.subjectContains) out.push(`<span class="chip pt">Konu: ${esc(r.subjectContains)}</span>`);
+  if (r.fromDomain) out.push(`<span class="chip pt">Gönderen: @${esc(r.fromDomain.replace(/^@/, ''))}</span>`);
+  return out.join(' ') || '<span class="mb-dim">Tüm iletiler</span>';
+}
+function renderMailBody() {
+  const M = MAIL, tps = talepProjects();
+  const btn = (p, label, cls = '') => `<button type="button" class="btn ${cls}" data-mbconnect="${p}" ${M.providers[p] ? '' : 'disabled title="Sunucu yapılandırılmamış"'}>${ic('mail')}${label}</button>`;
+  const accRows = M.accounts.map(a => {
+    const re = a.status === 'reconnect';
+    const st = !a.active ? '<span class="chip lbl">Durduruldu</span>'
+      : re ? '<span class="chip mb-bad">Yeniden bağlanın</span>'
+      : a.backoffUntil && new Date(a.backoffUntil) > new Date() ? '<span class="chip cat-inprogress">Bekliyor</span>'
+      : '<span class="chip cat-done">Bağlı</span>';
+    return `<tr data-mbrow="${esc(a.id)}"><td class="who"><b class="mb-addr">${esc(a.address)}</b></td>
+      <td>${esc(MAIL_PROV[a.provider] || a.provider)}</td>
+      <td><select class="inp mb-proj" data-mbproj="${esc(a.id)}" aria-label="Varsayılan proje: ${esc(a.address)}">
+        <option value="">Seçilmedi</option>${tps.map(p => `<option value="${esc(p.id)}" ${p.id === a.defaultProjectId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}
+        ${a.defaultProjectId && !tps.some(p => p.id === a.defaultProjectId) ? `<option value="${esc(a.defaultProjectId)}" selected>Bulunamayan proje</option>` : ''}</select></td>
+      <td>${mailWhen(a.lastPollAt)}</td><td>${st}</td>
+      <td class="mb-err">${a.lastError ? esc(a.lastError) : '<span class="mb-dim">—</span>'}</td>
+      <td style="white-space:nowrap;text-align:right">
+        ${re ? `<button type="button" class="btn sm pri" data-mbconnect="${esc(a.provider)}" ${M.providers[a.provider] ? '' : 'disabled'}>Yeniden bağlan</button>`
+          : `<button type="button" class="btn sm" data-mbpoll="${esc(a.id)}" ${M.polling ? '' : 'disabled title="Çekme kapalı"'}>Şimdi çek</button>`}
+        <button type="button" class="btn sm danger" data-mbdel="${esc(a.id)}">Bağlantıyı kes</button></td></tr>`;
+  }).join('');
+  const rules = M.rules.map((r, k) => `<tr data-mbrule="${esc(r.id)}" class="${r.active ? '' : 'is-off'}">
+      <td class="who num">${k + 1}</td><td>${mailRuleCond(r)}</td>
+      <td>${esc(DB.projects.find(p => p.id === r.projectId)?.name || 'Bulunamayan proje')}</td>
+      <td>${r.assigneeId ? esc(user(r.assigneeId)?.name || '—') : '<span class="mb-dim">Atanmamış</span>'}</td>
+      <td>${r.active ? '<span class="chip cat-done">Etkin</span>' : '<span class="chip lbl">Kapalı</span>'}</td>
+      <td style="white-space:nowrap;text-align:right">
+        <button type="button" class="btn sm" data-mbmv="${k}" data-dir="-1" ${k === 0 ? 'disabled' : ''} aria-label="Yukarı">↑</button>
+        <button type="button" class="btn sm" data-mbmv="${k}" data-dir="1" ${k === M.rules.length - 1 ? 'disabled' : ''} aria-label="Aşağı">↓</button>
+        <button type="button" class="btn sm" data-mbedit="${k}">Düzenle</button>
+        <button type="button" class="btn sm danger" data-mbrdel="${k}">Sil</button></td></tr>`).join('');
+  return `<h3>Posta kutuları</h3>
+    <div class="sub">Bağlı kutunun gelen kutusuna düşen e-postalar talep olarak açılır; yanıtlar işin yorumlarına eklenir.
+      Gönderen bir carinin yetkili kişisiyse <b>Talep eden</b> otomatik seçilir, değilse iş <b>Talep eden bekleniyor</b> etiketiyle havuza düşer.</div>
+    ${!M.configured ? `<div class="ws-info mb-nocfg" role="status">${ic('info')}<span><b>Sunucu yapılandırılmamış.</b> Posta bağlantısı için sunucuya Google ya da Microsoft
+      uygulama bilgileri ve şifreleme anahtarı (MAIL_TOKEN_KEY) eklenmeli. Adımlar: <span class="k">docs/POSTA-KURULUM.md</span></span></div>`
+      : !M.polling ? `<div class="ws-info" role="status">${ic('info')}<span>Bu sunucuda e-posta çekme kapalı (<span class="k">MAIL_ENABLED</span>). Kutular bağlanabilir ama yeni ileti alınmaz.</span></div>` : ''}
+    <div class="mb-acts">${btn('google', 'Gmail bağla', 'pri')}${btn('microsoft', 'Outlook bağla')}</div>
+    ${M.accounts.length ? `<div class="tswrap" style="border:none"><table class="ts list mb-tbl" aria-label="Posta kutuları"><thead><tr><th class="who">Adres</th><th>Sağlayıcı</th>
+      <th>Varsayılan proje</th><th>Son çekme</th><th>Durum</th><th>Son hata</th><th></th></tr></thead><tbody>${accRows}</tbody></table></div>`
+      : `<div class="empty">Bağlı posta kutusu yok.</div>`}
+    <div class="mb-kvkk">${ic('info')}<span>Aydınlatma: yalnız bağlantıdan sonra gelen kutusuna düşen iletiler okunur; ham ileti ve ekler saklanmaz, yalnız konu,
+      gönderen ve düz metin gövde işe yazılır. Bağlantıyı kesince erişim anahtarları silinir.</span></div>
+    <h3 style="margin-top:22px">Yönlendirme kuralları</h3>
+    <div class="sub">Kurallar sırayla denenir; ilk eşleşen kural işin projesini ve atananını belirler. Hiçbiri eşleşmezse kutunun varsayılan projesi kullanılır.</div>
+    ${M.rules.length ? `<div class="tswrap" style="border:none"><table class="ts list mb-rules" aria-label="Yönlendirme kuralları"><thead><tr><th class="who">Sıra</th><th>Koşullar</th>
+      <th>Hedef proje</th><th>Atanan</th><th>Durum</th><th></th></tr></thead><tbody>${rules}</tbody></table></div>` : '<div class="empty">Kural yok. Tüm iletiler varsayılan projeye düşer.</div>'}
+    <button type="button" class="btn" id="mbAddRule">+ Kural ekle</button>`;
+}
+async function saveMailRules(list) {
+  try { MAIL.rules = await API.post('/api/mail/rules', { rules: list }); toast('Kurallar kaydedildi'); }
+  catch (e) { toast(e.message); }
+  loadSystem();
+}
+function mailRuleForm(k) {
+  const r = k == null ? null : MAIL.rules[k];
+  const projs = DB.projects.filter(p => !p.archived);
+  const asg = pid => `<option value="">Atanmamış</option>${memsOf(DB.projects.find(p => p.id === pid)).filter(u => u.active !== false && !u.system)
+    .map(u => `<option value="${esc(u.id)}" ${r?.assigneeId === u.id ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}`;
+  const pid0 = r?.projectId || projs[0]?.id || '';
+  openModal(`<div class="m-h"><b id="mrTitle">${r ? 'Kuralı düzenle' : 'Yönlendirme kuralı'}</b><button class="x" data-close aria-label="Kapat">×</button></div>
+    <div style="padding:16px 18px">
+      <div class="form-row"><label class="field" for="mr_acc">Posta kutusu</label><select class="inp" id="mr_acc">
+        <option value="">Tüm kutular</option>${MAIL.accounts.map(a => `<option value="${esc(a.id)}" ${r?.accountId === a.id ? 'selected' : ''}>${esc(a.address)}</option>`).join('')}</select></div>
+      <div class="form-row"><label class="field" for="mr_to">Alıcı adresi içerir</label><input class="inp" id="mr_to" maxlength="200" value="${esc(r?.toMatch || '')}" placeholder="destek@"></div>
+      <div class="form-row"><label class="field" for="mr_sub">Konu içerir</label><input class="inp" id="mr_sub" maxlength="200" value="${esc(r?.subjectContains || '')}" placeholder="fatura"></div>
+      <div class="form-row"><label class="field" for="mr_dom">Gönderen alan adı</label><input class="inp" id="mr_dom" maxlength="200" value="${esc(r?.fromDomain || '')}" placeholder="ornek.com"></div>
+      <div class="form-2">
+        <div class="form-row"><label class="field" for="mr_proj">Hedef proje</label><select class="inp" id="mr_proj">
+          ${projs.map(p => `<option value="${esc(p.id)}" ${p.id === pid0 ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>
+        <div class="form-row"><label class="field" for="mr_asg">Atanan</label><select class="inp" id="mr_asg">${asg(pid0)}</select></div>
+      </div>
+      <label style="display:flex;gap:6px;align-items:center;font-size:12.5px"><input type="checkbox" id="mr_on" ${r?.active === false ? '' : 'checked'}> Kural etkin</label>
+      <div class="id-err" id="mr_e" role="alert"></div>
+    </div>
+    <div class="m-f"><button class="btn" data-close>Vazgeç</button><button class="btn pri" id="mr_ok">Kaydet</button></div>`, 'narrow');
+  $('#mr_proj').onchange = e => { $('#mr_asg').innerHTML = asg(e.target.value); };
+  $('#mr_ok').onclick = () => {
+    if (!$('#mr_proj').value) { $('#mr_e').textContent = 'Hedef proje gerekli.'; return; }
+    const o = { id: r?.id, accountId: $('#mr_acc').value || null, toMatch: $('#mr_to').value.trim(), subjectContains: $('#mr_sub').value.trim(),
+      fromDomain: $('#mr_dom').value.trim().replace(/^@/, ''), projectId: $('#mr_proj').value, assigneeId: $('#mr_asg').value || null, active: $('#mr_on').checked };
+    const list = MAIL.rules.map(x => ({ ...x }));
+    if (r) list[k] = o; else list.push(o);
+    closeModal(); saveMailRules(list);
+  };
+}
+async function loadMail(el) {
+  MAIL = await API.get('/api/mail/status');
+  el.innerHTML = renderMailBody();
+  el.querySelectorAll('[data-mbconnect]').forEach(b => b.onclick = async () => {
+    b.disabled = true;
+    try { await flushSync(); } catch (_) { }
+    location.href = '/api/mail/oauth/' + encodeURIComponent(b.dataset.mbconnect) + '/start';
+  });
+  el.querySelectorAll('[data-mbproj]').forEach(s => s.onchange = async () => {
+    try { await API.post('/api/mail/accounts/' + encodeURIComponent(s.dataset.mbproj), { defaultProjectId: s.value || null }); toast('Varsayılan proje kaydedildi'); }
+    catch (e) { toast(e.message); loadSystem(); }
+  });
+  el.querySelectorAll('[data-mbpoll]').forEach(b => b.onclick = async () => {
+    b.disabled = true;
+    try { const r = await API.post('/api/mail/accounts/' + encodeURIComponent(b.dataset.mbpoll) + '/poll'); const x = r.result || {};
+      toast(x.error ? 'Çekilemedi; yeniden denenecek' : x.reconnect ? 'Yeniden bağlanın' : `${x.issues || 0} yeni iş, ${x.comments || 0} yanıt`); await poll(); }
+    catch (e) { toast(e.message); }
+    loadSystem();
+  });
+  el.querySelectorAll('[data-mbdel]').forEach(b => b.onclick = async () => {
+    const a = MAIL.accounts.find(x => x.id === b.dataset.mbdel);
+    if (!confirm(`${a?.address || 'Bu kutu'} bağlantısı kesilsin mi? Erişim anahtarları silinir ve bu kutuya özel kurallar kaldırılır. Açılmış işler kalır.`)) return;
+    b.disabled = true;
+    try { await API.post('/api/mail/accounts/' + encodeURIComponent(b.dataset.mbdel) + '/delete'); toast('Bağlantı kesildi'); }
+    catch (e) { toast(e.message); }
+    loadSystem();
+  });
+  el.querySelectorAll('[data-mbmv]').forEach(b => b.onclick = () => {
+    const k = +b.dataset.mbmv, j = k + +b.dataset.dir, list = MAIL.rules.map(x => ({ ...x }));
+    if (j < 0 || j >= list.length) return;
+    [list[k], list[j]] = [list[j], list[k]]; saveMailRules(list);
+  });
+  el.querySelectorAll('[data-mbedit]').forEach(b => b.onclick = () => mailRuleForm(+b.dataset.mbedit));
+  el.querySelectorAll('[data-mbrdel]').forEach(b => b.onclick = () => {
+    if (!confirm('Kural silinsin mi?')) return;
+    saveMailRules(MAIL.rules.filter((_, i) => i !== +b.dataset.mbrdel));
+  });
+  const add = el.querySelector('#mbAddRule'); if (add) add.onclick = () => mailRuleForm(null);
 }
 
 function forcedPasswordScreen() {
@@ -12028,6 +12202,7 @@ async function enterApp(useHash, fromLogin) {
   document.body.classList.remove('locked');
   if (fromLogin) DB.ui.view = 'home';
   if (useHash && hashView()) DB.ui.view = hashView();
+  mailReturn();
   startApp(false);
   save();
   renderFileBar();
