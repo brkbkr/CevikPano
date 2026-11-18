@@ -69,6 +69,8 @@ jobs:
         run: node test/e2e/gezinme.cjs
       - name: İş detayı, yeni iş ve alt pencereler testi
         run: node test/e2e/kart-detay.cjs
+      - name: İş geçmişi testi (tam geçmiş)
+        run: node test/e2e/gecmis.cjs
       - name: Sunucu günlüğü
         if: failure()
         run: cat server.log
