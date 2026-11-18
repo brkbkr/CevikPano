@@ -33,7 +33,8 @@ let F = 0; const ok = (n, c, x = '') => { if (!c) F++; console.log((c ? 'PASS ' 
   const Z = await mk('zeynep'); await login(Z, 'zeynep', pw);
   ok('new user forced to set password', await Z.isVisible('#fp_a'));
   await Z.fill('#fp_a', 'ZeynepYeni12'); await Z.fill('#fp_b', 'ZeynepYeni12'); await Z.click('#fpForm button[type=submit]'); await sleep(2000);
-  ok('new user sees only member projects', await Z.evaluate(() => [...document.querySelectorAll('#projSel option')].length) === 1);
+  /* sol menü ağacı (dilim A2): görünen projeler yalnız üyesi olduğu proje */
+  ok('new user sees only member projects', await Z.evaluate(() => document.querySelectorAll('#wsTree [data-proj]').length) === 1);
   ok('member sees no data tools', await Z.evaluate(() => {
     const foot = document.querySelector('.rail-foot');
     const visible = foot && getComputedStyle(foot).display !== 'none';

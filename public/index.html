@@ -1973,7 +1973,7 @@ button.cu-prj:hover{background:var(--surface2)}
   /* sol menü ☰ ile açılan çekmece olur */
   .rail{display:flex;position:fixed;z-index:70;top:0;bottom:0;left:0;width:min(300px,86vw);box-shadow:var(--shadow-lg);
     transform:translateX(-102%);visibility:hidden;transition:transform .2s ease,visibility .2s}
-  body.nav-open .rail{transform:none;visibility:visible}
+  body.nav-open .rail{transform:none;visibility:visible;transition:transform .2s ease,visibility 0s}
   .rail .nv-item,.rail .nv-ws,.rail .nv-proj,.rail .nv-sech{min-height:44px}
   .rail .nv-ib{width:44px;height:44px}
   .rail .nv-ib::before{display:none}
