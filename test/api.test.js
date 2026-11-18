@@ -1609,4 +1609,50 @@ describe('proje türü ve kolonlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
     assert.deepEqual([r1.status, r2.status].sort(), [200, 409]);
     assert.equal((await cols('pk1')).filter(s => s.cat === 'done').length, 1);
   });
+  test('gruplama: yeni çalışma alanı + o alanda proje ve yeni cari + ona bağlı proje tek gönderimde (proje dizide önce gelse de)', async () => {
+    ok(await M.sync([P('pk_wsp', { workspaceId: 'ws_k1', members: ['u_k_m'] }),
+      { c: 'workspaces', id: 'ws_k1', op: 'put', data: { name: 'Kolon alanı', color: '#3E7BC4' } }]));
+    assert.equal((await row('projects', 'pk_wsp')).workspaceId, 'ws_k1');
+    assert.ok(await row('workspaces', 'ws_k1'));
+    ok(await A.sync([P('pk_cup', { customerId: 'c_k1' }),
+      { c: 'customers', id: 'c_k1', op: 'put', data: { name: 'Kolon Carisi', kind: 'customer' } }]));
+    assert.equal((await row('projects', 'pk_cup')).customerId, 'c_k1');
+    /* silmeler gönderim sırasıyla: önce proje, sonra alanı */
+    ok(await A.sync([D('projects', 'pk_wsp'), D('workspaces', 'ws_k1')]));
+    assert.equal(await row('workspaces', 'ws_k1'), undefined);
+  });
+
+  test('kilitlenme yok: ters sıralı eşzamanlı kolon gönderimleri 500 vermez', async () => {
+    ok(await A.sync([P('pk_dl1', {}), ...flow('pk_dl1'), P('pk_dl2', {}), ...flow('pk_dl2')]));
+    const A2 = client(); await A2.login('admin', 'test-admin-pw');
+    for (let k = 0; k < 5; k++) {
+      const rs = await Promise.all([
+        A.sync([S('pk_dl1_b', 'pk_dl1', 'Ara ' + k, 'inprogress', 1), S('pk_dl2_b', 'pk_dl2', 'Ara ' + k, 'inprogress', 1)]),
+        A2.sync([S('pk_dl2_b', 'pk_dl2', 'Orta ' + k, 'inprogress', 1), S('pk_dl1_b', 'pk_dl1', 'Orta ' + k, 'inprogress', 1)])]);
+      for (const r of rs) { assert.equal(r.status, 200, JSON.stringify(r.json)); assert.deepEqual(r.json.rejected, []); }
+    }
+  });
+
+  test('işin kolonu işin projesine ait olmalı: başka projenin kolonu "Kolon bulunamadı"', async () => {
+    assert.deepEqual(reasons(await M.sync([I('i_k9', 'pk1', 'pk_bos_a')])), ['Kolon bulunamadı']);
+    assert.deepEqual(reasons(await M.sync([I('i_k10', 'pk1', 'pk_bos_a')])), ['Kolon bulunamadı']);
+    assert.equal((await row('issues', 'i_k9')).statusId, 'pk1_a');
+  });
+
+  test('üye listesi: üye olmayan değiştiremez (403); üye ve yönetici değiştirir; boş listeye kendini ekleyebilir; yeni projede serbest', async () => {
+    const pk1 = await row('projects', 'pk1');
+    assert.deepEqual(reasons(await N.sync([P('pk1', { ...pk1, members: [...pk1.members, 'u_k_n'] })])),
+      ['Proje üyelerini yalnızca yönetici ya da proje üyesi değiştirebilir']);
+    assert.deepEqual((await row('projects', 'pk1')).members, ['u_admin', 'u_k_m']);
+    ok(await N.sync([P('pk1', { ...pk1, name: 'pk1 yeni ad' })]));                // üye listesine dokunmayan düzenleme serbest
+    ok(await M.sync([P('pk1', { ...pk1, members: ['u_admin', 'u_k_m', 'u_k_n'] })]));
+    ok(await N.sync([P('pk1', { ...pk1, members: ['u_admin', 'u_k_m'] })]));      // artık üye: değiştirebilir
+    ok(await A.sync([P('pk1', { ...pk1, members: ['u_admin', 'u_k_m'] })]));
+    const bos = await row('projects', 'pk_bos');
+    ok(await N.sync([P('pk_bos', { ...bos, members: ['u_k_n'] })]));               // liste boştu: kendini ekler
+    assert.deepEqual(reasons(await M.sync([P('pk_bos', { ...bos, members: [] })])),
+      ['Proje üyelerini yalnızca yönetici ya da proje üyesi değiştirebilir']);
+    ok(await N.sync([P('pk_bos', { ...bos, members: [] })]));
+    ok(await N.sync([P('pk_yeni_n', { members: ['u_admin'] })]));                  // yeni proje: serbest
+  });
 });

@@ -116,21 +116,44 @@ export const logChange = (c, collection, id, op, uid, batch) =>
 export async function applyChanges(pool, me, changes) {
   if (!Array.isArray(changes)) throw new HttpError(400, 'changes dizi olmalı');
   if (changes.length > 5000) throw new HttpError(413, 'Tek seferde en fazla 5000 değişiklik gönderilebilir');
+  /* Kararlı gruplama: kullanıcılar → çalışma alanı/cari kayıtları → proje kayıtları → diğerleri (silmeler
+     dahil, gönderim sırasıyla) → en sonda kolon silmeleri. Yeni alan/cari ve ona bağlı yeni proje, yeni
+     projenin kolonları dizide önce gelse de doğru sırayla yazılır; silinen kolonun işleri aynı gönderimde
+     taşındıysa silme onlardan sonra denetlenir. */
+  const rank = ch => (ch?.c === 'users' ? 0
+    : ['workspaces', 'customers'].includes(ch?.c) && ch?.op === 'put' ? 1
+    : ch?.c === 'projects' && ch?.op === 'put' ? 2
+    : ch?.c === 'statuses' && ch?.op === 'del' ? 4 : 3);
+  const ordered = changes.map((ch, i) => [rank(ch), i, ch]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  /* Kilitlenme (40P01) ya da serileştirme hatası (40001): işlem bir kez yeniden denenir. */
+  for (let attempt = 0; ; attempt++) {
+    try { return await applyOnce(pool, me, ordered); }
+    catch (e) {
+      if (!['40P01', '40001'].includes(e?.code)) throw e;
+      if (attempt >= 1) throw new HttpError(409, 'Sunucu meşgul, yeniden deneyin');
+    }
+  }
+}
+
+async function applyOnce(pool, me, ordered) {
   const rejected = [], adjusted = [];
   let applied = 0;
   const canEdit = me.role !== 'viewer';
   const batch = randomUUID();
   const ctx = { me, batch, adjusted, touchedIssues: new Set(), cols: new Map(), colNamed: new Set() };
   const meAdmin = isAdminRole(me.role);
-  /* Kararlı gruplama: kullanıcılar → proje kayıtları → diğerleri → en sonda kolon silmeleri.
-     Yeni projenin kolonları dizide önce gelse de proje önce yazılır; silinen kolonun işleri aynı
-     gönderimde taşındıysa silme onlardan sonra denetlenir. */
-  const rank = ch => (ch?.c === 'users' ? 0 : ch?.c === 'projects' && ch?.op === 'put' ? 1
-    : ch?.c === 'statuses' && ch?.op === 'del' ? 3 : 2);
-  const ordered = changes.map((ch, i) => [rank(ch), i, ch]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
   const rejIdx = new Map();                         // ret listesi gönderim sırasında döner
 
   await tx(pool, async c => {
+    /* Kolon kilitleri tek seferde ve sıralı: ters sıralı eşzamanlı iki gönderim kilitlenmesin. */
+    if (canEdit) {
+      const st = ordered.map(x => x[2]).filter(ch => ch?.c === 'statuses' && typeof ch.id === 'string' && validId(ch.id)
+        && ['put', 'del'].includes(ch.op));
+      const pids = st.map(ch => ch.op === 'put' ? ch.data?.projectId : null);
+      if (st.length) pids.push(...(await c.query('SELECT DISTINCT project_id FROM statuses WHERE id = ANY($1)',
+        [st.map(ch => ch.id)])).rows.map(r => r.project_id));
+      await lockColumns(c, ctx, pids);
+    }
     for (const [, i, ch] of ordered) {
       const reject = reason => { const r = { c: ch?.c, id: ch?.id, reason }; rejIdx.set(r, i); rejected.push(r); };
       if (!ch || typeof ch.c !== 'string' || typeof ch.id !== 'string'
@@ -271,8 +294,8 @@ async function applyRecord(c, ctx, ch) {
   /* Kolonu değişen iş var olan bir kolona gider. FOR SHARE: kolon aynı anda silinirse biri bekler
      (silme, işi gördükten sonra "Önce içindeki işleri taşıyın" der). */
   if (ch.c === 'issues' && data.statusId != null && data.statusId !== '' && data.statusId !== cur?.statusId) {
-    const ok = typeof data.statusId === 'string'
-      && (await c.query('SELECT 1 FROM statuses WHERE id=$1 FOR SHARE', [data.statusId])).rowCount > 0;
+    const ok = typeof data.statusId === 'string'     // kolon işin projesine ait olmalı
+      && (await c.query('SELECT 1 FROM statuses WHERE id=$1 AND project_id=$2 FOR SHARE', [data.statusId, data.projectId])).rowCount > 0;
     if (!ok) throw new HttpError(400, 'Kolon bulunamadı');
   }
   if (ch.c === 'issues' && await ensureIssueKey(c, ctx, data, cur)) adjusted = true;
@@ -281,6 +304,9 @@ async function applyRecord(c, ctx, ch) {
   if (ch.c === 'projects') await checkProjectWorkspace(c, data, cur);
   if (ch.c === 'projects') await checkProjectCustomer(c, data, cur);
   if (ch.c === 'projects' && cur) await checkProjectType(c, me, ch.id, data, cur);
+  /* Üye listesini değiştiren yönetici olmayan kişi zaten üye olmalı (ya da liste boş olmalı). Yeni projede serbest. */
+  if (ch.c === 'projects' && cur && !same(cur.members ?? [], data.members ?? []))
+    await canConfigure(c, me, ch.id, 'Proje üyelerini yalnızca yönetici ya da proje üyesi değiştirebilir');
   if (ch.c === 'sprints') await checkSprintStart(c, data, cur);
   if (ch.c === 'statuses') {
     if (cur) await canConfigure(c, me, cur.projectId);
