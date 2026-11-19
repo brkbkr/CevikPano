@@ -10366,6 +10366,9 @@ function wsProjCard(p, arch) {
   const open = all.filter(i => stat(i.statusId).cat !== 'done').length;
   const hours = DB.worklogs.filter(w => issue(w.issueId)?.projectId === p.id).reduce((a, w) => a + (+w.hours || 0), 0);
   const cur = p.id === DB.ui.project, pid = esc(p.id);
+  /* Üye çipleri: üyeli alanda yalnız alanın üyeleri (alan dışı kişi projeye eklenmez); sayı işaretli çiplerle aynı. */
+  const w = wsById(wsOf(p));
+  const people = w && !wsLegacy(w) ? wsMembersOf(w) : DB.users.filter(u => u.active && !u.system);
   const items = [
     canEditCols(p) && !arch ? `<button type="button" class="ws-mi" role="menuitem" data-ptypedlg="${pid}">${ic('swap')}<span class="two">Türü değiştir…<span class="why">Şu an ${TYPE_LABEL[projType(p)]}</span></span></button>` : '',
     canDesign(p) ? `<button type="button" class="ws-mi" role="menuitem" data-movproj="${pid}">${ic('move')}Çalışma alanını değiştir…</button>` : '',
@@ -10380,8 +10383,8 @@ function wsProjCard(p, arch) {
       ${items ? wsPopMenu(`${p.name}: işlemler`, 'Proje işlemleri', items) : ''}</div>
     <div class="ws-pstats"><span>${ic('issues')}<b>${all.length}</b> iş</span><span>${ic('circle')}<b>${open}</b> açık</span><span>${ic('hour')}<b>${efFmtSafe(hours)}</b> efor</span></div>
     ${cuProjRow(p)}
-    <div><div class="ws-plbl">Üyeler (${memsOf(p).length})</div>
-      <div class="ws-mems">${DB.users.filter(u => u.active).map(u => {
+    <div><div class="ws-plbl">Üyeler (${people.filter(u => isMember(p, u.id)).length})</div>
+      <div class="ws-mems">${people.map(u => {
         const on = isMember(p, u.id);
         return `<button class="memchip ${on ? 'on' : ''}" data-mem="${pid}" data-memu="${esc(u.id)}" aria-pressed="${on}" ${canDesign(p) ? '' : 'disabled'}>
           ${avat(u.id)}<span>${esc(u.name)}</span>${on ? '<em>✓</em>' : '<em>+</em>'}</button>`;
