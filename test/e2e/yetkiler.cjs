@@ -155,6 +155,34 @@ const P1 = 'p_pm' + R, KEY = 'PM' + R.toUpperCase();
   await Ym.click(`[data-permcards="proj"] [data-pr="viewer"][data-pk="comment.write"]`); await sleep(300); await flush(Ym);
   ok('mobile: toggling a card cell saves', (await srvProj(A, P1))?.perms?.viewer?.['comment.write'] === true);
 
+  /* ---- 7) proje silme: proje Yöneticisi arayüzden siler (proje + işler sunucudan gider); Üye'de düğme yok, gönderim süzülür ---- */
+  const P2 = 'p_pmd' + R, P2N = 'Silinecek ' + R;
+  r = await A.evaluate(async ([P2, P2N, KEY, Y, M]) => (await API.post('/api/sync', { changes: [
+    { c: 'projects', id: P2, op: 'put', data: { name: P2N, key: KEY + 'D', code: KEY + 'D', counter: 1, workspaceId: 'ws1', type: 'board', roles: { [Y]: 'admin', [M]: 'member' } } },
+    { c: 'statuses', id: P2 + '_s0', op: 'put', data: { projectId: P2, name: 'Yapılacak', cat: 'todo', wip: 0, ord: 0 } },
+    { c: 'issues', id: P2 + '_i1', op: 'put', data: { projectId: P2, key: KEY + 'D-1', summary: 'Silinecek iş', statusId: P2 + '_s0', type: 'task' } },
+  ] })), [P2, P2N, KEY, Y, M]);
+  ok('delete setup accepted', r.rejected.length === 0, JSON.stringify(r.rejected));
+  await Mp.evaluate(() => reloadState()); await sleep(300);
+  await Mp.evaluate(() => openWsPage('ws1')); await sleep(400);
+  ok('member: no "Projeyi sil" for project where role is Üye', await Mp.evaluate(pid => !!document.querySelector(`[data-wsproj="${pid}"]`) && !document.querySelector(`[data-delproj="${pid}"]`), P2));
+  /* Üye'nin istemcisi proje silmesini göndermez (sunucu da reddeder) */
+  await Mp.evaluate(pid => { DB.projects = DB.projects.filter(p => p.id !== pid); save(); }, P2); await flush(Mp);
+  ok('member: client does not send project delete', !!(await srvProj(A, P2)));
+  await Mp.evaluate(() => reloadState()); await sleep(300);
+  await Yp.evaluate(() => reloadState()); await sleep(300);
+  await Yp.evaluate(() => openWsPage('ws1')); await sleep(400);
+  ok('project admin: "Projeyi sil" shown', await Yp.evaluate(pid => !!document.querySelector(`[data-delproj="${pid}"]`), P2));
+  await Yp.evaluate(pid => document.querySelector(`[data-delproj="${pid}"]`).click(), P2); await sleep(300);
+  ok('project admin: confirmation dialog asks for project name', await Yp.evaluate(() => !!document.querySelector('#dp_c') && !!document.querySelector('#dp_ok')));
+  await Yp.click('#dp_ok'); await sleep(200);
+  ok('confirmation: wrong name does not delete', await Yp.evaluate(pid => /eşleşmiyor/.test(document.querySelector('#dp_err')?.textContent || '') && DB.projects.some(p => p.id === pid), P2));
+  await Yp.fill('#dp_c', P2N); await Yp.click('#dp_ok'); await sleep(300); await flush(Yp); await sleep(300);
+  const del = await A.evaluate(async pid => { const d = (await API.get('/api/state')).data;
+    return { p: d.projects.some(x => x.id === pid), i: d.issues.some(x => x.projectId === pid), s: d.statuses.some(x => x.projectId === pid) }; }, P2);
+  ok('project admin: project and its records deleted on server', !del.p && !del.i && !del.s, JSON.stringify(del));
+  ok('project admin: no sync error after delete', await Yp.evaluate(() => SYNC_STATE === 'ok'));
+
   ok('no page errors', errs.length === 0, errs.join(' | '));
   await b.close();
   console.log(FAILS ? `\n${FAILS} FAIL` : '\nALL PASS');

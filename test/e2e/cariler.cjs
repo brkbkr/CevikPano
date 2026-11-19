@@ -301,6 +301,10 @@ const ID = { B: 'cu_b' + RUN, C: 'cu_c' + RUN, D: 'cu_d' + RUN, X: 'cu_x' + RUN 
   ok('viewer: 11-digit tax no masked from server, not shown on card, never in client data', vRaw === '*********' + TC_X.slice(-2) && vm.tx === '—' && !vm.leak && vm.ro, JSON.stringify({ vm, vRaw }));
   await Mb.evaluate(() => reloadState()); await Mb.evaluate(id => openCustomer(id), ID.X); await sleep(200);
   ok('member: old 11-digit value not shown on read-only card', await Mb.evaluate(t => document.getElementById('cu_tx')?.textContent === '—' && !document.querySelector('#scrim .modal').textContent.includes(t), TC_X));
+  /* KVKK: üyeye de 11 haneli değer maskeli gelir (yalnız sistem yöneticisine tam) */
+  const mRaw = await Mb.evaluate(id => DB.customers.find(c => c.id === id)?.taxNo, ID.X);
+  ok('member: 11-digit tax no masked from server, never in client data', mRaw === '*********' + TC_X.slice(-2)
+    && await Mb.evaluate(t => !JSON.stringify(DB.customers).includes(t), TC_X), mRaw);
   await Mb.evaluate(() => closeModal());
   await Vb.evaluate(() => closeModal());
   const vPut = await Vb.evaluate(async id => (await API.post('/api/sync', { changes: [{ c: 'customers', id, op: 'put', data: { name: 'İzleyici', kind: 'customer', active: true } }] })).rejected, ID.B);

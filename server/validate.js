@@ -52,7 +52,7 @@ const MAILTO_BAD = /[?&"<>\s]/;
 const cuEmail = (v, old, live) => optEmail(v) && (!live || v == null || v === '' || v === old || !MAILTO_BAD.test(v));
 export const CUSTOMER_KINDS = ['customer', 'supplier', 'both'];
 /* Vergi no: yeni ya da değişen değer 10 haneli VKN (canlı yazma). Eski 11 haneli kayıt (T.C. kimlik no) silinmez:
-   değişmeden kaydedilebilir, içe aktarma/geri yükleme de kabul eder; izleyiciye maskeli gider (store.js maskCustomer). */
+   değişmeden kaydedilebilir, içe aktarma/geri yükleme de kabul eder; sistem yöneticisi dışındakilere maskeli gider (store.js maskCustomer). */
 const TAX_NO_RE = /^\d{10,11}$/;
 const VKN_RE = /^\d{10}$/;
 export const TAX_NO_MSG = 'Vergi numarası 10 haneli olmalı';

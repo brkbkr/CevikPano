@@ -3400,6 +3400,9 @@ function diffSnap(a, b) {
   return out.sort((x, y) => rank(x) - rank(y));
 }
 
+/* Anlık görüntüdeki kaydın nesnesi (yoksa null). */
+const snapRec = (snap, c, id) => { const j = snap?.rec?.[c]?.get(id); return j === undefined ? null : JSON.parse(j); };
+
 function setSync(st) {
   SYNC_STATE = st;
   DIRTY = st !== 'ok';
@@ -3443,7 +3446,9 @@ async function flushSync() {
     else if (typeof isAdmin === 'function' && !isAdmin())
       /* Kolonlar (statuses) ve projeye özel alanlar süzülmez: alan yöneticisi de değiştirir, yetkiyi sunucu denetler (#12, 22b). */
       ch = ch.filter(x => !['rules', '_settings', 'customers'].includes(x.c) && !(x.c === 'fields' && !(x.data?.projectId || x.base?.projectId))
-        && !(['projects', 'workspaces'].includes(x.c) && x.op === 'del')
+        && !(x.c === 'workspaces' && x.op === 'del')
+        /* Proje silme (yetki-v2): proje Yöneticisi (sahip, alan ve sistem yöneticisi dahil); silinmeden önceki kayda göre. */
+        && !(x.c === 'projects' && x.op === 'del' && !(typeof isProjAdmin === 'function' && isProjAdmin(snapRec(SNAP, 'projects', x.id))))
         && !(x.c === 'users' && x.id !== ME.id));
     if (!ch.length) { SNAP = now; setSync('ok'); return; }
     setSync('saving');

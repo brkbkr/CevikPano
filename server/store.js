@@ -67,16 +67,26 @@ export async function readState(pool, me) {
     const data = scopeData(await readAll(c), me);
     const pr = (await c.query('SELECT data FROM user_prefs WHERE user_id=$1', [me.id])).rows[0];
     for (const k of PREF_KEYS) if (pr?.data?.[k] !== undefined && pr.data[k] !== null) data[k] = pr.data[k];
-    if (me.role === 'viewer' && Array.isArray(data.customers)) data.customers = data.customers.map(maskCustomer);
+    if (maskTaxFor(me) && Array.isArray(data.customers)) data.customers = data.customers.map(maskCustomer);
     return { seq, data };
   });
 }
 
-/* İzleyiciye 11 haneli vergi numarası (T.C. kimlik no) maskeli gider; yalnız son 2 hane görünür: *********01.
-   10 haneli vergi numarası (tüzel kişi) maskelenmez. Yedek / dışa aktarma maskesizdir (yalnız yönetici). */
+/* KVKK: 11 haneli vergi numarası (T.C. kimlik no) yalnız sistem yöneticisine tam gider; diğer herkese (üye, alan
+   yöneticisi, izleyici) maskeli, yalnız son 2 hane görünür: *********01. 10 haneli vergi numarası (tüzel kişi)
+   kişisel veri değildir, maskelenmez. Yedek / dışa aktarma maskesizdir (yalnız yönetici). Maskeli değer geri
+   yazılırsa gerçek değer korunur (applyOne → keepMaskedTaxNo). */
+export const maskTaxFor = me => !!me && !isAdminRole(me.role);
+const maskTax = t => '*'.repeat(9) + t.slice(-2);
 export function maskCustomer(d) {
   if (!d || typeof d.taxNo !== 'string' || !/^\d{11}$/.test(d.taxNo)) return d;
-  return { ...d, taxNo: '*'.repeat(9) + d.taxNo.slice(-2) };
+  return { ...d, taxNo: maskTax(d.taxNo) };
+}
+/* Gelen vergi no güncel 11 haneli değerin maskesiyse (maskeli almış bir istemcinin geri yazması) gerçek değer kalır. */
+function keepMaskedTaxNo(data, cur) {
+  if (typeof cur?.taxNo !== 'string' || !/^\d{11}$/.test(cur.taxNo) || data.taxNo !== maskTax(cur.taxNo)) return false;
+  data.taxNo = cur.taxNo;
+  return true;
 }
 
 /* ---- son okunan sıra numarasından beri değişenler ---- */
@@ -99,7 +109,7 @@ export async function readChanges(pool, since, me) {
     if (r.op === 'put') {
       const d = await readOne(pool, r.collection, r.record_id);
       if (d === undefined) it.op = 'del';
-      else it.data = r.collection === 'customers' && me?.role === 'viewer' ? maskCustomer(d) : d;
+      else it.data = r.collection === 'customers' && maskTaxFor(me) ? maskCustomer(d) : d;
     }
     items.push(it);
   }
@@ -365,6 +375,7 @@ async function applyRecord(c, ctx, ch) {
   /* Sprint planı (başlatmadaki anlık görüntü) bir kez yazılır: alanı göndermeyen (eski) istemci onu silemez. */
   if (ch.c === 'sprints' && cur?.plan != null && data.plan === undefined) { data.plan = cur.plan; adjusted = true; }
   if ((ch.c === 'projects' || ch.c === 'workspaces') && normalizeArchived(data)) adjusted = true;
+  if (ch.c === 'customers' && keepMaskedTaxNo(data, cur)) adjusted = true;
   if (ch.c === 'customers' && normalizeCustomer(data)) adjusted = true;
   if (ch.c === 'workspaces' && enforceCreatedBy(data, cur, me)) adjusted = true;
   if (ch.c === 'workspaces' && enforceOwner(data, cur, me)) adjusted = true;
