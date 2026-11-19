@@ -3106,3 +3106,86 @@ describe('okuma süzmesi', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     assert.ok(!ids((await C.U.state()).json.data, 'issues').includes('i_ob1'));
   });
 });
+
+/* Genel test/güvenlik turu düzeltmeleri: atama alan rolüne bağlı, bildirim süzmesi, alanlar arası proje taşıma,
+   aktif sprintten çıkış, `_` ile başlayan koleksiyonlar, bağlantının iki ucu. */
+describe('genel tur düzeltmeleri', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  const ok = r => { assert.equal(r.status, 200, JSON.stringify(r.json)); assert.deepEqual(r.json.rejected, []); return r; };
+  const rej = (r, reason) => { assert.equal(r.status, 200, JSON.stringify(r.json)); assert.deepEqual(r.json.rejected.map(x => x.reason), [reason]); };
+  const put = (c, id, data, base) => ({ c, id, op: 'put', data, ...(base ? { base } : {}) });
+  const row = async (table, id) => (await pool.query(`SELECT data FROM ${table} WHERE id=$1`, [id])).rows[0]?.data;
+  let N = 0;
+  const iss = (id, pid, extra = {}) => put('issues', id, { projectId: pid, key: `${pid.toUpperCase()}-${++N}`, summary: `iş ${id}`, statusId: `${pid}_s0`, ...extra });
+  const seq = async () => Number((await pool.query('SELECT coalesce(max(seq),0) AS s FROM changes')).rows[0].s);
+  const AS = 'Atanan kişinin bu çalışma alanında Üye ya da Yönetici rolü yok';
+  const MV = 'Projeyi başka alana yalnızca iki alanın da yöneticisi taşıyabilir';
+  const NO = 'Bu çalışma alanına erişiminiz yok';
+  const C = {};
+  const newUser = async (id, username, role = 'member') => {
+    ok(await C.A.sync([put('users', id, { username, name: username, role, active: true })]));
+    const k = client(); await k.login(username, 'Start12345');
+    assert.equal((await k.req('POST', '/api/auth/password', { newPassword: 'GenelTur123' })).status, 200);
+    return k;
+  };
+
+  before(async () => {
+    C.A = client(); await C.A.login('admin', 'test-admin-pw');
+    C.Y = await newUser('u_gy', 'gtyon');     // ws_g1 ve ws_g2'de Yönetici, ws_g3'te Üye
+    C.M = await newUser('u_gm', 'gtuye');     // ws_g1'de Üye, ws_g2'de İzleyici
+    C.V = await newUser('u_gv', 'gtizci');    // ws_g1'de İzleyici
+    C.X = await newUser('u_gx', 'gtdis');     // hiçbir üyeli alanda yok
+    ok(await C.A.sync([
+      put('workspaces', 'ws_g1', { name: 'GT 1', members: [{ userId: 'u_gy', role: 'admin' }, { userId: 'u_gm', role: 'member' }, { userId: 'u_gv', role: 'viewer' }] }),
+      put('workspaces', 'ws_g2', { name: 'GT 2', members: [{ userId: 'u_gy', role: 'admin' }, { userId: 'u_gm', role: 'viewer' }] }),
+      put('workspaces', 'ws_g3', { name: 'GT 3', members: [{ userId: 'u_gy', role: 'member' }] }),
+      ...['pg1', 'pg2', 'pg3', 'pgl'].flatMap((id, n) => [
+        put('projects', id, { name: `GT proje ${id}`, key: id.toUpperCase(), counter: 0, workspaceId: ['ws_g1', 'ws_g2', 'ws_g3', 'ws1'][n], members: n < 3 ? ['u_admin'] : undefined }),
+        put('statuses', `${id}_s0`, { projectId: id, name: 'Yapılacak', cat: 'todo', ord: 0 }),
+        put('statuses', `${id}_s1`, { projectId: id, name: 'Bitti', cat: 'done', ord: 1 })]),
+      iss('i_g1', 'pg1'), iss('i_g2', 'pg2'), iss('i_g3', 'pg3'), iss('i_gl', 'pgl'),
+    ]));
+  });
+
+  test('atama: üyeli alanda yalnız Yönetici/Üye rolü olan kişiye; alan dışı ve izleyici 400; eski alanda bugünkü kural', async () => {
+    let i = await row('issues', 'i_g1');
+    rej(await C.Y.sync([put('issues', 'i_g1', { ...i, assignee: 'u_gx' }, i)]), AS);
+    rej(await C.Y.sync([put('issues', 'i_g1', { ...i, assignee: 'u_gv' }, i)]), AS);
+    rej(await C.M.sync([iss('i_g1b', 'pg1', { assignee: 'u_gx' })]), AS);
+    ok(await C.Y.sync([put('issues', 'i_g1', { ...i, assignee: 'u_gm' }, i)]));
+    ok(await C.M.sync([iss('i_g1c', 'pg1', { assignee: 'u_gy' })]));
+    /* Sistem yöneticisi her alanda Yönetici sayılır. */
+    i = await row('issues', 'i_g1c');
+    ok(await C.Y.sync([put('issues', 'i_g1c', { ...i, assignee: 'u_admin' }, i)]));
+    /* Eski (üyesiz) alan: alanda olmayan genel Üye atanabilir. */
+    const l = await row('issues', 'i_gl');
+    ok(await C.X.sync([put('issues', 'i_gl', { ...l, assignee: 'u_gm' }, l)]));
+    /* Başka alana taşınınca orada Üye/Yönetici rolü olmayan atanan boşalır (sunucu düzeltir). */
+    i = await row('issues', 'i_g1');
+    const r = ok(await C.Y.sync([put('issues', 'i_g1', { ...i, projectId: 'pg2', statusId: 'pg2_s0' }, i)]));
+    assert.deepEqual(r.json.adjusted, [{ c: 'issues', id: 'i_g1' }]);
+    const moved = await row('issues', 'i_g1');
+    assert.equal(moved.projectId, 'pg2'); assert.equal(moved.assignee, null);
+    ok(await C.Y.sync([put('issues', 'i_g1', { ...moved, projectId: 'pg1', statusId: 'pg1_s0' }, moved)]));
+  });
+
+  test('bildirim: erişimi olmayan işin anahtarı, başlığı, projesi ve yorum özeti boş döner', async () => {
+    const i = await row('issues', 'i_g1');
+    ok(await C.Y.sync([put('issues', 'i_g1', { ...i, assignee: 'u_gm', summary: 'GİZLİ başlık' }, i)]));
+    ok(await C.Y.sync([put('comments', 'c_g1', { issueId: 'i_g1', userId: 'u_gy', body: 'GİZLİ yorum' })]));
+    const list = async k => (await k.req('GET', '/api/notifications')).json.items.filter(n => n.issue_id === 'i_g1');
+    let n = await list(C.M);
+    assert.ok(n.some(x => x.kind === 'assigned' && x.issue_key && x.summary === 'GİZLİ başlık'), JSON.stringify(n));
+    assert.ok(n.some(x => x.kind === 'comment' && x.meta.excerpt === 'GİZLİ yorum'));
+    const w = await row('workspaces', 'ws_g1');
+    ok(await C.A.sync([put('workspaces', 'ws_g1', { ...w, members: w.members.filter(m => m.userId !== 'u_gm') }, w)]));
+    n = await list(C.M);
+    assert.ok(n.length >= 2);
+    assert.ok(!JSON.stringify(n).includes('GİZLİ'), JSON.stringify(n));
+    assert.ok(n.every(x => x.issue_key === '' && x.summary === '' && x.project_id === null));
+    /* Geri eklenince yine görünür. */
+    const w2 = await row('workspaces', 'ws_g1');
+    ok(await C.A.sync([put('workspaces', 'ws_g1', { ...w2, members: [...w2.members, { userId: 'u_gm', role: 'member' }] }, w2)]));
+    assert.ok((await list(C.M)).some(x => x.summary === 'GİZLİ başlık'));
+  });
+
+});

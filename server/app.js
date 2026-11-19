@@ -94,7 +94,7 @@ export function createApp(pool) {
   });
 
   app.get('/api/notifications', requireUser, async (req, res) => {
-    res.json({ items: await listNotifications(pool, req.user.id), unread: await unreadCount(pool, req.user.id) });
+    res.json({ items: await listNotifications(pool, req.user), unread: await unreadCount(pool, req.user.id) });
   });
   app.post('/api/notifications/read', requireUser, async (req, res) => {
     await markRead(pool, req.user.id, req.body?.ids === 'all' ? 'all' : req.body?.ids);

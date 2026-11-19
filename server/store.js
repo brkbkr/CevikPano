@@ -350,11 +350,16 @@ async function applyRecord(c, ctx, ch) {
   if (ch.c === 'comments' && (!cur || data.issueId !== cur.issueId)
       && !(await c.query('SELECT 1 FROM issues WHERE id=$1 FOR SHARE', [data.issueId])).rowCount)
     throw new HttpError(400, 'Yorumun işi bulunamadı');
-  /* Atanan değiştiyse var olan, aktif bir kullanıcı olmalı. */
+  /* Atanan değiştiyse var olan, aktif bir kullanıcı olmalı; üyeli alanda ayrıca alanda Yönetici/Üye rolü (erişimi
+     olmayana iş atanmaz, istemcideki memsOf ile aynı). İş başka alana taşınınca orada rolü olmayan atanan boşalır. */
   if (ch.c === 'issues' && data.assignee != null && data.assignee !== '' && data.assignee !== cur?.assignee) {
-    const ok = typeof data.assignee === 'string'
-      && (await c.query('SELECT 1 FROM users WHERE id=$1 AND active', [data.assignee])).rowCount > 0;
-    if (!ok) throw new HttpError(400, 'Atanan kullanıcı bulunamadı ya da pasif');
+    const u = typeof data.assignee === 'string'
+      ? (await c.query('SELECT id, role FROM users WHERE id=$1 AND active', [data.assignee])).rows[0] : undefined;
+    if (!u) throw new HttpError(400, 'Atanan kullanıcı bulunamadı ya da pasif');
+    if (!(await assignable(c, u, data.projectId))) throw new HttpError(400, ASSIGNEE_NO_ACCESS);
+  } else if (ch.c === 'issues' && cur && typeof data.assignee === 'string' && data.assignee && data.projectId !== cur.projectId) {
+    const u = (await c.query('SELECT id, role FROM users WHERE id=$1', [data.assignee])).rows[0];
+    if (u && !(await assignable(c, u, data.projectId))) { data.assignee = null; adjusted = true; }
   }
   /* Yalnız projesi değişen iş eski projenin kolonunda kalmaz: kolonu yeni projede yoksa yeni projenin ilk
      "yapılacak" kolonuna (yoksa ilk kolonuna) taşınır — istemcideki moveIssueTo ile aynı. */
@@ -718,6 +723,18 @@ const projById = async (c, pid) => typeof pid === 'string' && pid
   ? (await c.query('SELECT data FROM projects WHERE id=$1', [pid])).rows[0]?.data : undefined;
 const issueProj = async (c, iid) => typeof iid === 'string' && iid
   ? (await c.query('SELECT project_id FROM issues WHERE id=$1', [iid])).rows[0]?.project_id : undefined;
+/* Atanabilir kişi: üye listesi tanımsız (eski) alanda herkes (bugünkü davranış); üyeli alanda rolü Yönetici ya da Üye. */
+const ASSIGNEE_NO_ACCESS = 'Atanan kişinin bu çalışma alanında Üye ya da Yönetici rolü yok';
+async function assignable(c, u, pid) {
+  const ws = await wsOfProjectData(c, await projById(c, pid));
+  return wsLegacy(ws) || atLeast(wsRole(u, ws), 'member');
+}
+/* Bildirim listesi için (notify.js): kişinin görebildiği projeler; sistem yöneticisinde null (hepsi). */
+export async function visibleProjectIds(db, me) {
+  if (!me || isAdminRole(me.role)) return null;
+  return buildScope(me, (await db.query('SELECT data FROM workspaces')).rows.map(r => r.data),
+    (await db.query('SELECT data FROM projects')).rows.map(r => r.data)).proj;
+}
 const NO_ACCESS = 'Bu çalışma alanına erişiminiz yok';
 const READ_ONLY = 'Bu çalışma alanında yalnızca görüntüleme yetkiniz var';
 const DESIGN_ONLY = 'Bu değişiklik için alan yöneticisi yetkisi gerekli';
