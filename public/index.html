@@ -4710,7 +4710,7 @@ function velocity() {
       const x = 10 + k * bw, ch = (d.c / max) * (H - 40), dh = (d.d / max) * (H - 40);
       return `<rect x="${x + 6}" y="${H - 26 - ch}" width="${bw * .36}" height="${ch}" fill="#C7CBD1" rx="2"/>
         <rect x="${x + 6 + bw * .40}" y="${H - 26 - dh}" width="${bw * .36}" height="${dh}" fill="var(--accent)" rx="2"/>
-        <text x="${x + bw / 2}" y="${H - 12}" text-anchor="middle" font-size="9" font-family="var(--mono)" fill="var(--ink3)">${esc(d.s.name.replace(/^\S+\s/, ''))}</text>
+        <text x="${x + bw / 2}" y="${H - 12}" text-anchor="middle" font-size="9" font-family="var(--mono)" fill="var(--ink3)">${esc(String(d.s.name || "").replace(/^\S+\s/, ''))}</text>
         <text x="${x + bw / 2}" y="${H - 32 - Math.max(ch, dh)}" text-anchor="middle" font-size="9.5" font-family="var(--mono)" fill="var(--ink2)">${d.d}/${d.c}</text>`;
     }).join('')}</svg>
     <div style="display:flex;gap:14px;font-size:11px;color:var(--ink3);margin-top:4px">
@@ -4772,7 +4772,7 @@ function sprintPerfPanel() {
       return `<rect x="${x + 6}" y="${H - 26 - ph}" width="${bw * .36}" height="${ph}" fill="var(--line2)" rx="2"><title>Planlanan ${f.plan}</title></rect>
         ${ah ? `<rect x="${x + 6}" y="${H - 26 - ph - ah}" width="${bw * .36}" height="${ah}" fill="var(--over)" opacity=".7" rx="2"><title>Eklenen ${f.added}</title></rect>` : ''}
         <rect x="${x + 6 + bw * .40}" y="${H - 26 - dh}" width="${bw * .36}" height="${dh}" fill="var(--accent)" rx="2"><title>Tamamlanan ${f.done}</title></rect>
-        <text x="${x + bw / 2}" y="${H - 12}" text-anchor="middle" font-size="9" font-family="var(--mono)" fill="var(--ink3)">${esc(s.name.replace(/^\S+\s/, ''))}</text>
+        <text x="${x + bw / 2}" y="${H - 12}" text-anchor="middle" font-size="9" font-family="var(--mono)" fill="var(--ink3)">${esc(String(s.name || "").replace(/^\S+\s/, ''))}</text>
         <text x="${x + bw / 2}" y="${H - 32 - Math.max(ph + ah, dh)}" text-anchor="middle" font-size="9.5" font-family="var(--mono)" fill="var(--ink2)">${f.done}/${f.plan + f.added}</text>`;
     }).join('')}</svg>
     <div style="display:flex;gap:14px;font-size:11px;color:var(--ink3);margin-top:4px;flex-wrap:wrap">
@@ -10659,7 +10659,7 @@ function cuCsvPaint() {
       <span class="cuc-chip" data-s="skip">${ic('pause')}<b data-cucn="skip">${cnt.skip}</b> atlanacak</span>
       <span class="cuc-chip" data-s="error">${ic('alert')}<b data-cucn="error">${cnt.error}</b> hatalı</span>
       <span class="spacer"></span>${cnt.error ? `<button type="button" class="cu-tog" id="cuc_erronly" aria-pressed="${S.errOnly}"><span class="cu-sw" aria-hidden="true"></span>Yalnız hatalılar</button>` : ''}</div>
-    ${tckn ? `<div class="ws-info" id="cuc_kvkk">${ic('lock')}<span>Dosyada 11 haneli T.C. kimlik numarası var: kişisel veridir; tam hâlini yalnız yöneticiler görür, izleyicilere maskeli gider.</span></div>` : ''}
+    ${tckn ? `<div class="ws-info" id="cuc_kvkk">${ic('lock')}<span>Dosyada 11 haneli T.C. kimlik numarası var: kişisel veridir. İzleyici rolündekilere maskeli gider; diğer kullanıcılar tam numarayı görür.</span></div>` : ''}
     ${cnt.error ? '<p class="cuc-note">Hatalı satırlar aktarılmaz; dosyayı düzeltip yeniden yükleyebilirsiniz.</p>' : ''}
     <div class="cu-wrap cuc-scroll"><table class="cu-tbl cuc-tbl" aria-label="Önizleme"><thead><tr><th style="width:62px">Satır</th><th style="width:138px">Sonuç</th><th>Unvan</th>
       <th style="width:112px">Tür</th><th style="width:118px">Vergi no</th><th>E-posta</th><th>Neden</th></tr></thead>
