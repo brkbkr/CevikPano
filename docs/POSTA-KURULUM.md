@@ -43,7 +43,7 @@ Kullandığımız adresler:
    - `openid`
    - `.../auth/userinfo.email` (e-posta adresinizi görme)
    - `https://www.googleapis.com/auth/gmail.readonly` (e-postaları okuma)
-   - `https://www.googleapis.com/auth/gmail.send` (e-posta gönderme; ileride karttan yanıt için)
+   - `https://www.googleapis.com/auth/gmail.send` (e-posta gönderme; karttan **E-postayla yanıtla** için gerekli)
 5. **Test kullanıcıları** adımında, bağlanacak her posta adresini ekleyin (en fazla 100 adres).
 6. Kaydedin.
 
@@ -158,6 +158,19 @@ cd /opt/cevikpano-test && sudo docker compose -p cevikpano-test up -d
    ve kişiye yönlendirin.
 5. Bağlantıdan **sonra** gelen e-postalar birkaç dakika içinde iş olarak görünür (önceki e-postalar alınmaz).
 
+### 3.5 Karttan e-postayla yanıt
+E-postadan oluşan bir işin detayında, yorum kutusunun altında **E-postayla yanıtla** düğmesi görünür (yalnız işe
+**Üye** ya da **Yönetici** rolüyle erişenlere; posta açık ve iletinin geldiği kutu bağlıyken).
+- Alıcı her zaman işi açan e-postanın göndericisidir (talep eden); konu `Re: <özgün konu> [ANAHTAR]` olur ve yanıt özgün
+  e-postanın konuşmasına (aynı zincire) eklenir. Alıcıyı ya da konuyu ekrandan değiştirmek mümkün değildir.
+- Yanıt düz metindir (en fazla 10.000 karakter); işte "✉ E-postayla yanıtlandı" yorumu ve geçmiş kaydı olarak görünür.
+  Talep eden bu yanıta cevap verirse cevap aynı işe yorum olarak düşer.
+- Kişi başına dakikada en fazla 10 yanıt gönderilebilir.
+- **Gönderme izni:** Gmail'de `gmail.send`, Outlook'ta `Mail.Send` izni gerekir (1.3 ve 2.3). Kutu bu izinler
+  eklenmeden önce bağlandıysa yanıt gönderirken **"Posta kutusunu yeniden bağlayın"** uyarısı çıkar: izni sağlayıcıda
+  ekleyin, sonra **Sistem → Posta kutuları**'nda ilgili kutu için **Gmail bağla / Outlook bağla** düğmesine yeniden basıp
+  izinleri onaylayın (kutu, kuralları ve geçmiş iletileri korunarak yenilenir).
+
 ## Sık karşılaşılan durumlar
 
 | Ekranda görünen | Ne yapmalı |
@@ -166,11 +179,13 @@ cd /opt/cevikpano-test && sudo docker compose -p cevikpano-test up -d
 | Yeniden bağlanın | Google test modunda 7 gün doldu, izin geri alındı ya da Microsoft sırrının süresi bitti. **Yeniden bağlan** düğmesine basın; Microsoft'ta sır bittiyse önce yeni sır oluşturup sunucuya ekleyin. |
 | redirect_uri_mismatch / yönlendirme URI'si uyuşmuyor | 1.4 ve 2.1'deki adresler birebir aynı değil (https, sonda `/callback`, `test.` öneki). |
 | Çekme kapalı (MAIL_ENABLED) | O ortamın `.env` dosyasında `MAIL_ENABLED=true` değil. |
+| Posta kutusunu yeniden bağlayın (yanıt gönderirken) | Kutunun gönderme izni yok (`gmail.send` / `Mail.Send`) ya da bağlantı süresi doldu. 3.5'teki adımlarla yeniden bağlayın. |
 | Sağlayıcı istek sınırı (429) | Sağlayıcı geçici olarak yavaşlattı; ÇevikPano bekleyip kendisi yeniden dener. |
 
 ## Gizlilik (KVKK)
 - Yalnızca bağlantıdan sonra **gelen kutusuna** düşen e-postalar okunur; istenmeyen (spam) klasörü okunmaz.
 - E-postanın kendisi ve ekleri saklanmaz; yalnızca konu, gönderen ve düz metin gövde işe yazılır.
 - Otomatik yanıtlar, toplu e-postalar ve kutunun kendi gönderdikleri yok sayılır.
+- Karttan gönderilen yanıtın metni işte yorum olarak saklanır; ham e-posta saklanmaz.
 - **Bağlantıyı kes** ile erişim bilgileri silinir (Google'da izin de geri alınır). Microsoft hesabında uygulama iznini
   ayrıca <https://account.microsoft.com/privacy/app-access> adresinden kaldırabilirsiniz.

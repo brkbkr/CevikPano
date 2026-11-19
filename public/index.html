@@ -2345,6 +2345,11 @@ button.cu-prj:hover{background:var(--surface2)}
 .id-boxf .id-hint{flex:1;margin:0}
 .id-cnew .id-boxf{display:none}
 .id-cnew.open .id-boxf{display:flex}
+.id-cnew.hasmail .id-boxf{display:flex}
+.id-mailto{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;padding:7px 12px;border-bottom:1px solid var(--line);background:var(--surface2);font-size:12.5px;color:var(--ink2)}
+.id-mailto svg{width:15px;height:15px;flex:none}
+.id-mailto .sub{color:var(--meta);flex-basis:100%;padding-left:23px;overflow-wrap:anywhere}
+.id-boxf .btn svg{width:14px;height:14px}
 .id-hint{font-size:11.5px;color:var(--meta);margin-top:6px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 .kbd{font-family:var(--mono);font-size:10.5px;color:var(--ink2);border:1px solid var(--line2);border-radius:5px;padding:0 5px;line-height:17px;background:var(--surface)}
 .id-stalebox{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:8px 0 0;padding:8px 10px;border-radius:9px;font-size:12.5px;
@@ -4798,7 +4803,40 @@ let ID_DERR = null;               // reddedilen tarih: { f, v, msg }
 let ID_SUB_AS = null;             // satır içi alt iş için seçilen atanan
 let ID_SUBNEW = null;             // yeni eklenen alt iş (1,5 sn vurgu)
 let ID_MORE = 0;                  // etkinlikte "Daha fazla göster" sayısı
-const ID_DRAFT = { cmt: '', open: false };
+const ID_DRAFT = { cmt: '', open: false, mail: false };
+/* Kart içinden e-postayla yanıt (madde 21): işin kaynağı bir e-postaysa sunucuya sorulur (alıcı/konu sunucuda belirlenir).
+   MAILREPLY[issueId]: undefined (sorulmadı) | 'bekle' | { available, to, subject } */
+const MAILREPLY = {};
+function mailReplyOf(i) {
+  if (!i || i.source?.kind !== 'email' || !canEdit()) return null;
+  const v = MAILREPLY[i.id];
+  if (v === undefined) {
+    MAILREPLY[i.id] = 'bekle';
+    API.get('/api/mail/reply/' + encodeURIComponent(i.id))
+      .then(r => { MAILREPLY[i.id] = r && typeof r === 'object' ? r : { available: false }; })
+      .catch(() => { MAILREPLY[i.id] = { available: false }; })
+      .then(() => { if (OPEN_ISSUE === i.id && MAILREPLY[i.id].available) refreshIssue(['act']); });
+    return null;
+  }
+  return v && v !== 'bekle' && v.available ? v : null;
+}
+let MAIL_SENDING = false;
+async function idMailSend() {
+  const i = curIssue(), el = $('#newCmt'), mr = mailReplyOf(i);
+  if (!i || !el || !mr || MAIL_SENDING) return;
+  const v = el.value.trim(); if (!v) return el.focus();
+  MAIL_SENDING = true; const b = $('#sendMail'); if (b) b.disabled = true;
+  try {
+    const r = await API.post('/api/mail/reply/' + encodeURIComponent(i.id), { body: v });
+    ID_DRAFT.cmt = ''; ID_DRAFT.open = false; ID_DRAFT.mail = false;
+    toast('E-postayla yanıtlandı: ' + (r?.to || mr.to));
+    await poll();
+    if (OPEN_ISSUE === i.id) refreshIssue(['act']);
+  } catch (e) {
+    toast(e.message || 'E-posta gönderilemedi');
+    if (e.status === 409) { MAILREPLY[i.id] = { available: false }; ID_DRAFT.mail = false; if (OPEN_ISSUE === i.id) refreshIssue(['act']); }
+  } finally { MAIL_SENDING = false; const b2 = $('#sendMail'); if (b2) b2.disabled = false; }
+}
 const ID_PARTS = { head: 'idHead', title: 'idT', desc: 'idD', subs: 'idS', links: 'idL', act: 'idA', props: 'idSide' };
 const ID_FEEDS = [['all', 'Tümü'], ['cmt', 'Yorumlar'], ['hist', 'Geçmiş'], ['work', 'Süre']];
 const curIssue = () => issue(OPEN_ISSUE);
@@ -5015,7 +5053,8 @@ function openIssue(id) {
   const i = issue(id); if (!i) return;
   if (OPEN_ISSUE === id && $('#scrim.on .modal.id-dlg')) return refreshIssue(['all']);
   closeQuick(false); closeSub();
-  ID_ED = null; ID_DERR = null; ID_SUB_AS = null; ID_MORE = 0; ID_DRAFT.cmt = ''; ID_DRAFT.open = false; ID_CEDIT = null;
+  ID_ED = null; ID_DERR = null; ID_SUB_AS = null; ID_MORE = 0; ID_DRAFT.cmt = ''; ID_DRAFT.open = false; ID_DRAFT.mail = false; ID_CEDIT = null;
+  delete MAILREPLY[id];
   const s = $('#scrim');
   s.innerHTML = `<div class="modal id-dlg id-trap" role="dialog" aria-modal="true" aria-labelledby="idTitle" tabindex="-1">
     <div class="id-head" id="idHead"></div>
@@ -5146,6 +5185,7 @@ function histRow(h) {
   if (F === 'Etiket' && (k === 'add' || k === 'remove')) return line(k === 'add' ? 'Etiket ekledi' : 'Etiket kaldırdı', k === 'add' ? tv : fv);
   if (F === 'Bağlantı' && (k === 'add' || k === 'remove')) return line(k === 'add' ? 'Bağlantı ekledi' : 'Bağlantı kaldırdı', k === 'add' ? tv : fv);
   if (F === 'Yorum' && k) return line(k === 'add' ? 'Yorum ekledi' : k === 'edit' ? 'Yorumu düzenledi' : 'Yorumu sildi', k === 'del' ? fv : tv);
+  if (F === 'E-posta' && k === 'reply') return line('✉ E-postayla yanıtlandı', tv);
   if (F === 'Alt iş' && (k === 'add' || k === 'done')) return line(k === 'add' ? 'Alt iş ekledi' : 'Alt işi tamamladı', tv);
   if (F === 'Süre kaydı' && k === 'add') { const m = /^(.*) \(([^()]*)\)$/.exec(String(h.to ?? ''));
     const v = m ? `<strong class="num">${esc(m[1])}</strong> süre kaydetti (${esc(m[2])})` : `<strong class="num">${tv}</strong> süre kaydetti`;
@@ -5173,10 +5213,11 @@ function histVal(field, v) {
 let ID_CEDIT = null;
 function issueActivity(i) {
   const ed = canEdit(), f = ID_FEEDS.some(x => x[0] === DB.ui.idFeed) ? DB.ui.idFeed : 'all';
+  const mr = ed ? mailReplyOf(i) : null, mm = !!(mr && ID_DRAFT.mail);
   const cm = DB.comments.filter(c => c.issueId === i.id), wl = DB.worklogs.filter(w => w.issueId === i.id);
   const hs = DB.history.map((h, o) => ({ k: 'h', at: Number(h.at) || 0, o, x: h })).filter(it => it.x.issueId === i.id);
   /* "Tümü"nde yorum/süre ekleme satırı gizli: kaydın kendisi zaten akışta (Geçmiş süzgecinde görünür). */
-  const dup = h => h.kind === 'add' && (h.field === 'Yorum' || h.field === 'Süre kaydı');
+  const dup = h => (h.kind === 'add' && (h.field === 'Yorum' || h.field === 'Süre kaydı')) || (h.kind === 'reply' && h.field === 'E-posta');
   const hsAll = hs.filter(it => !dup(it.x));
   const n = { all: cm.length + hsAll.length + wl.length, cmt: cm.length, hist: hs.length, work: wl.length };
   const wAt = w => w.at || new Date((day10(w.date) || TODAY) + 'T' + (/^\d\d:\d\d$/.test(w.time || '') ? w.time : '12:00')).getTime();
@@ -5213,10 +5254,13 @@ function issueActivity(i) {
   };
   return `<section class="id-sec" aria-labelledby="idActH"><div class="id-sh"><h3 id="idActH">${ic('clock')}Etkinlik</h3><span class="id-sort">En yeni üstte</span></div>
     <div class="id-feedf" role="group" aria-label="Etkinlik süzgeci">${ID_FEEDS.map(([k, l]) => `<button type="button" data-feed="${k}" aria-pressed="${f === k}">${l} <span class="num">${n[k]}</span></button>`).join('')}</div>
-    ${ed && f !== 'hist' && f !== 'work' ? `<div class="id-cnew${ID_DRAFT.open || ID_DRAFT.cmt ? ' open' : ''}">${avat(CU()?.id)}<div class="id-box">
-      <textarea class="inp" id="newCmt" rows="${ID_DRAFT.open || ID_DRAFT.cmt ? 3 : 1}" placeholder="Yorum ekle…" aria-label="Yorum ekle">${esc(ID_DRAFT.cmt)}</textarea>
+    ${ed && f !== 'hist' && f !== 'work' ? `<div class="id-cnew${ID_DRAFT.open || ID_DRAFT.cmt || mm ? ' open' : ''}${mm ? ' mail' : ''}${mr ? ' hasmail' : ''}">${avat(CU()?.id)}<div class="id-box">
+      ${mm ? `<div class="id-mailto" id="mailTo">${ic('mail')}<span>Alıcı: <b>${esc(mr.to)}</b></span><span class="sub">Konu: ${esc(mr.subject)}</span></div>` : ''}
+      <textarea class="inp" id="newCmt" rows="${ID_DRAFT.open || ID_DRAFT.cmt || mm ? 3 : 1}" placeholder="${mm ? 'E-posta yanıtı (düz metin)…' : 'Yorum ekle…'}" aria-label="${mm ? 'E-posta yanıtı' : 'Yorum ekle'}" maxlength="${mm ? 10000 : 20000}">${esc(ID_DRAFT.cmt)}</textarea>
       <div class="id-boxf"><span class="id-hint"><span class="kbd">Ctrl</span>+<span class="kbd">Enter</span> gönderir</span>
-        <button type="button" class="btn sm" id="cmtNo">Vazgeç</button><button type="button" class="btn sm pri" id="addCmt">Gönder</button></div></div></div>` : ''}
+        ${mr && !mm ? `<button type="button" class="btn sm" id="mailCmt" title="Talep edene e-postayla yanıt gönder">${ic('mail')}E-postayla yanıtla</button>` : ''}
+        <button type="button" class="btn sm" id="cmtNo">Vazgeç</button>${mm ? `<button type="button" class="btn sm pri" id="sendMail">${ic('mail')}E-postayla gönder</button>`
+          : `<button type="button" class="btn sm pri" id="addCmt">Gönder</button>`}</div></div></div>` : ''}
     <div class="id-feed">${shown.map(row).join('') || '<div class="id-empty">Henüz kayıt yok</div>'}</div>
     ${items.length > lim ? `<button type="button" class="id-more" id="idMoreFeed">${ic('down')}Daha fazla göster · ${items.length - lim} eski kayıt</button>` : ''}</section>`;
 }
@@ -5488,7 +5532,9 @@ function idClick(e) {
   if ((b = hit('[data-csave]'))) return idCmtSave(b.dataset.csave);
   if ((b = hit('[data-cdel]'))) return deleteComment(b.dataset.cdel);
   if (hit('#addCmt')) return idCmtAdd();
-  if (hit('#cmtNo')) { ID_DRAFT.cmt = ''; ID_DRAFT.open = false; return refreshIssue(['act']); }
+  if (hit('#sendMail')) return idMailSend();
+  if (hit('#mailCmt')) { ID_DRAFT.mail = true; ID_DRAFT.open = true; refreshIssue(['act']); $('#newCmt')?.focus(); return; }
+  if (hit('#cmtNo')) { ID_DRAFT.cmt = ''; ID_DRAFT.open = false; ID_DRAFT.mail = false; return refreshIssue(['act']); }
   if (hit('#newCmt') && !ID_DRAFT.open) { ID_DRAFT.open = true; const el = $('#newCmt'); el.rows = 3; el.closest('.id-cnew')?.classList.add('open'); }
 }
 function idCmtAdd() {
@@ -5523,8 +5569,8 @@ function idKey(e) {
     return;
   }
   if (t.id === 'newCmt') {
-    if (ctrlEnter) { e.preventDefault(); idCmtAdd(); }
-    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); ID_DRAFT.open = false; if (!t.value) { refreshIssue(['act']); } t.blur(); $('#scrim .modal.id-dlg')?.focus({ preventScroll: true }); }
+    if (ctrlEnter) { e.preventDefault(); ID_DRAFT.mail && $('#sendMail') ? idMailSend() : idCmtAdd(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); ID_DRAFT.open = false; ID_DRAFT.mail = false; if (!t.value) { refreshIssue(['act']); } t.blur(); $('#scrim .modal.id-dlg')?.focus({ preventScroll: true }); }
     return;
   }
   if (t.id?.startsWith('ce_')) {

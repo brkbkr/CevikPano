@@ -81,7 +81,7 @@ jobs:
         run: node test/e2e/talep.cjs
       - name: Müşteri atamaları cariden testi (iş carisi, birleştirme, raporlar)
         run: node test/e2e/musteri-cari.cjs
-      - name: Posta kutuları testi (yapılandırılmamış ve bağlı kutu listesi)
+      - name: Posta kutuları testi (yapılandırılmamış ve bağlı kutu listesi, kart içinden e-postayla yanıt)
         run: node test/e2e/posta.cjs
       - name: Pano iyileştirmeleri testi (hızlı kart ekleme, alt işler panoda, sprint yetkisi ve süresi)
         run: node test/e2e/pano-iyilestirme.cjs
