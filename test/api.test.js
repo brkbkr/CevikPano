@@ -3803,3 +3803,136 @@ describe('düşük bulgular (güvenlik raporu)', { skip: !URL && 'TEST_DATABASE_
     assert.equal((await row('issues', 'i_dk4')).key, undefined);
   });
 });
+
+/* ---------------- parametrik proje alanları (hazır alanlar, yetki, doğrulama) ----------------
+   Projeye özel alan: sistem yöneticisi ve alan yöneticisi; genel alan ve üye listesiz (eski) alan: yalnız sistem yöneticisi.
+   Hazır alan (bind) projede bir kez; bind/kapsam/proje sonradan değişmez; anahtar çakışması 409. */
+describe('parametrik proje alanları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  const reasons = r => r.json.rejected.map(x => x.reason);
+  const ok = r => { assert.equal(r.status, 200, JSON.stringify(r.json)); assert.deepEqual(r.json.rejected, []); return r; };
+  const rej = (r, msg) => { assert.equal(r.status, 200); assert.equal(r.json.applied, 0, JSON.stringify(r.json));
+    const got = reasons(r); assert.equal(got.length, 1, JSON.stringify(got)); if (msg instanceof RegExp) assert.match(got[0], msg); else assert.equal(got[0], msg); };
+  const row = async (table, id) => (await pool.query(`SELECT data FROM ${table} WHERE id=$1`, [id])).rows[0]?.data;
+  const put = (c, id, data, base) => ({ c, id, op: 'put', data, ...(base ? { base } : {}) });
+  const ADM = 'Bu değişiklik için yönetici yetkisi gerekli';
+  const C = {};
+  const newUser = async (id, username, role) => {
+    ok(await C.A.sync([put('users', id, { username, name: username, role, active: true })]));
+    const k = client(); await k.login(username, 'Start12345');
+    assert.equal((await k.req('POST', '/api/auth/password', { newPassword: 'AlanYeni123456' })).status, 200);
+    return k;
+  };
+  const fat = (pid, extra = {}) => ({ projectId: pid, bind: 'billable', key: 'fatura', name: 'Faturalama', type: 'select',
+    options: ['Faturalanacak', 'Faturalanmayacak'], def: 'Faturalanacak', hidden: true, ...extra });
+  const btype = (pid, extra = {}) => ({ projectId: pid, bind: 'billType', key: 'faturaturu', name: 'Fatura türü', type: 'select',
+    options: ['Kişi/Saat', 'Adam/Ay'], def: 'Kişi/Saat', hidden: true, ...extra });
+
+  before(async () => {
+    C.A = client(); await C.A.login('admin', 'test-admin-pw');
+    C.Y = await newUser('u_pay', 'payon', 'member');     // alan Yöneticisi
+    C.M = await newUser('u_pam', 'pauye', 'member');     // alan Üyesi
+    C.V = await newUser('u_pav', 'paizci', 'member');    // alan İzleyicisi
+    ok(await C.A.sync([
+      put('workspaces', 'ws_pa', { name: 'Param alanı', members: [{ userId: 'u_pay', role: 'admin' }, { userId: 'u_pam', role: 'member' }, { userId: 'u_pav', role: 'viewer' }] }),
+      put('workspaces', 'ws_pa2', { name: 'Param alanı 2', members: [{ userId: 'u_pam', role: 'member' }] }),
+      put('projects', 'ppa', { name: 'Param', key: 'PPA', counter: 0, workspaceId: 'ws_pa' }),
+      put('projects', 'ppa2', { name: 'Param 2', key: 'PPB', counter: 0, workspaceId: 'ws_pa2' }),
+      put('projects', 'ppl', { name: 'Eski param', key: 'PPL', counter: 0, workspaceId: 'ws1' }),
+      put('statuses', 'ppa_s0', { projectId: 'ppa', name: 'Yapılacak', cat: 'todo', ord: 0 }),
+      put('statuses', 'ppa_s1', { projectId: 'ppa', name: 'Bitti', cat: 'done', ord: 1 }),
+      put('issues', 'i_pa1', { projectId: 'ppa', key: 'PPA-1', summary: 'iş', statusId: 'ppa_s0', billable: 'Faturalanmayacak', billType: 'Adam/Ay' })]));
+  });
+
+  test('alan yöneticisi proje alanı ve hazır alan ekler; genel alan, başka alan, eski alan 403; üye ve izleyici ekleyemez', async () => {
+    ok(await C.Y.sync([put('fields', 'f_pa1', { projectId: 'ppa', key: 'ortam', name: 'Ortam', type: 'select', options: ['Test', 'Canlı'], onCard: true })]));
+    ok(await C.Y.sync([put('fields', 'cf_billType_ppa', btype('ppa', { options: ['Kişi/Saat', 'Adam/Ay', 'Sabit fiyat'], onCard: true }))]));
+    assert.deepEqual((await row('fields', 'cf_billType_ppa')).options, ['Kişi/Saat', 'Adam/Ay', 'Sabit fiyat']);
+    rej(await C.Y.sync([put('fields', 'f_pag', { key: 'genel_pa', name: 'Genel', type: 'text' })]), ADM);
+    rej(await C.Y.sync([put('fields', 'f_pa2', { projectId: 'ppa2', key: 'x2', name: 'X', type: 'text' })]), ADM);
+    rej(await C.Y.sync([put('fields', 'f_pal', { projectId: 'ppl', key: 'xl', name: 'X', type: 'text' })]), ADM);
+    rej(await C.M.sync([put('fields', 'f_pam', { projectId: 'ppa', key: 'xm', name: 'X', type: 'text' })]), ADM);
+    rej(await C.M.sync([put('fields', 'cf_billable_ppa', fat('ppa', { archived: true }))]), ADM);
+    rej(await C.V.sync([put('fields', 'f_pav', { projectId: 'ppa', key: 'xv', name: 'X', type: 'text' })]), ADM);
+    /* Üye var olan alanı değiştiremez, silemez. */
+    const f = await row('fields', 'f_pa1');
+    rej(await C.M.sync([put('fields', 'f_pa1', { ...f, name: 'Üye' }, f)]), ADM);
+    rej(await C.M.sync([{ c: 'fields', id: 'f_pa1', op: 'del' }]), ADM);
+    /* Sistem yöneticisi genel alan ve eski alanda proje alanı ekler. */
+    ok(await C.A.sync([put('fields', 'f_pag', { key: 'genel_pa', name: 'Genel', type: 'text' }), put('fields', 'f_pal', { projectId: 'ppl', key: 'xl', name: 'X', type: 'text' })]));
+  });
+
+  test('hazır alan kapatılır: işlerdeki değerler değişmez; yeniden açılır; üye işte değer girer (boş da olur)', async () => {
+    ok(await C.Y.sync([put('fields', 'cf_billable_ppa', fat('ppa', { archived: true }))]));
+    const i0 = await row('issues', 'i_pa1');
+    assert.equal(i0.billable, 'Faturalanmayacak'); assert.equal(i0.billType, 'Adam/Ay');
+    const f = await row('fields', 'cf_billable_ppa');
+    ok(await C.Y.sync([put('fields', 'cf_billable_ppa', { ...f, archived: false }, f)]));
+    assert.equal((await row('fields', 'cf_billable_ppa')).archived, false);
+    ok(await C.M.sync([put('issues', 'i_pa1', { ...i0, billType: 'Sabit fiyat', billable: '', cf: { f_pa1: 'Canlı' } }, i0)]));
+    const i1 = await row('issues', 'i_pa1');
+    assert.equal(i1.billType, 'Sabit fiyat'); assert.equal(i1.billable, ''); assert.equal(i1.cf.f_pa1, 'Canlı');
+    /* İzleyici değer giremez. */
+    rej(await C.V.sync([put('issues', 'i_pa1', { ...i1, billType: 'Adam/Ay' }, i1)]), 'Bu çalışma alanında yalnızca görüntüleme yetkiniz var');
+  });
+
+  test('hazır alan projede bir kez (409); bind, kapsam ve proje sonradan değişmez; anahtar çakışması 409', async () => {
+    rej(await C.Y.sync([put('fields', 'f_dup_bt', btype('ppa'))]), 'Bu projede bu hazır alan zaten var');
+    /* Yedek kısıt: denetimi atlayan doğrudan yazma da reddedilir (008 indeksi). */
+    await assert.rejects(pool.query(`INSERT INTO fields (id, data) VALUES ('f_dup_db', $1::jsonb)`, [JSON.stringify({ id: 'f_dup_db', ...btype('ppa') })]),
+      e => e.constraint === 'fields_project_bind_uq');
+    const f = await row('fields', 'f_pa1');
+    rej(await C.Y.sync([put('fields', 'f_pa1', { ...f, bind: 'billType' }, f)]), /sonradan değiştirilemez|anahtarı ve türü/);
+    rej(await C.A.sync([put('fields', 'f_pa1', { ...f, projectId: 'ppa2' }, f)]), 'Alanın hazır alan bağı, kapsamı ve projesi sonradan değiştirilemez');
+    rej(await C.A.sync([put('fields', 'f_pa1', { ...f, projectId: null }, f)]), 'Alanın hazır alan bağı, kapsamı ve projesi sonradan değiştirilemez');
+    const b = await row('fields', 'cf_billType_ppa');
+    rej(await C.Y.sync([put('fields', 'cf_billType_ppa', { ...b, bind: null }, b)]), 'Alanın hazır alan bağı, kapsamı ve projesi sonradan değiştirilemez');
+    rej(await C.Y.sync([put('fields', 'f_pa3', { projectId: 'ppa', key: 'x3', name: 'X', type: 'text', scope: 'worklog' })]), 'Geçersiz alan kapsamı');
+    /* Anahtar: aynı projede ve genel alanla çakışamaz; başka projede aynı anahtar serbest. */
+    rej(await C.Y.sync([put('fields', 'f_pa4', { projectId: 'ppa', key: 'ortam', name: 'Ortam 2', type: 'text' })]), 'Bu anahtarla bir alan zaten var');
+    rej(await C.Y.sync([put('fields', 'f_pa5', { projectId: 'ppa', key: 'genel_pa', name: 'G', type: 'text' })]), 'Bu anahtarla bir alan zaten var');
+    rej(await C.A.sync([put('fields', 'f_pag2', { key: 'ortam', name: 'Genel ortam', type: 'text' })]), 'Bu anahtarla bir alan zaten var');
+    ok(await C.A.sync([put('fields', 'f_pa6', { projectId: 'ppa2', key: 'ortam', name: 'Ortam', type: 'select', options: ['A'] })]));
+    /* 005'in gizlediği eski alan (hidden, bind yok) anahtarı tutmaz. */
+    await pool.query(`INSERT INTO fields (id, data) VALUES ('f_pa_old', '{"id":"f_pa_old","key":"eskimus","name":"Müşteri","type":"select","archived":true,"hidden":true}'::jsonb)`);
+    ok(await C.Y.sync([put('fields', 'f_pa7', { projectId: 'ppa', key: 'eskimus', name: 'Müşteri 2', type: 'text' })]));
+  });
+
+  test('doğrulama: tür, anahtar, seçenek sayısı, Faturalama seçenekleri, hazır alan anahtarı; iş cf ve faturalama değerleri', async () => {
+    const base = { projectId: 'ppa', name: 'V', type: 'text' };
+    rej(await C.Y.sync([put('fields', 'f_v1', { ...base, key: 'v1', type: 'html' })]), 'Geçersiz alan türü');
+    rej(await C.Y.sync([put('fields', 'f_v2', { ...base, key: 'Kötü Anahtar' })]), /Alan anahtarı/);
+    rej(await C.Y.sync([put('fields', 'f_v3', { ...base, key: 'v3', name: '' })]), /Alan adı gerekli/);
+    rej(await C.Y.sync([put('fields', 'f_v4', { ...base, key: 'v4', type: 'select', options: Array.from({ length: 101 }, (_, k) => 'o' + k) })]), /Seçenekler/);
+    rej(await C.Y.sync([put('fields', 'f_v5', { ...base, key: 'v5', type: 'select', options: ['A', 'A'] })]), /Seçenekler/);
+    rej(await C.Y.sync([put('fields', 'f_v6', { ...base, key: 'v6', onCard: 'evet' })]), 'Alan işaretleri true ya da false olmalı');
+    const f = await row('fields', 'cf_billable_ppa');
+    rej(await C.Y.sync([put('fields', 'cf_billable_ppa', { ...f, options: ['Faturalanacak', 'Faturalanmayacak', 'Belki'] }, f)]), 'Faturalama seçenekleri değiştirilemez');
+    rej(await C.A.sync([put('fields', 'cf_billable_ppa2', fat('ppa2', { key: 'fat2' }))]), 'Hazır alanın anahtarı ve türü değiştirilemez');
+    rej(await C.A.sync([put('fields', 'cf_x_ppa2', fat('ppa2', { bind: 'html' }))]), 'Geçersiz hazır alan');
+    rej(await C.A.sync([put('fields', 'cf_billable_g', fat(null))]), 'Hazır alan bir projeye bağlı olmalı');
+    /* Ad ve "kartta göster" değişir. */
+    ok(await C.Y.sync([put('fields', 'cf_billable_ppa', { ...f, name: 'Fatura durumu', onCard: true }, f)]));
+    const i = await row('issues', 'i_pa1');
+    rej(await C.M.sync([put('issues', 'i_pa1', { ...i, cf: { a: { b: 1 } } }, i)]), /Özel alan değerleri geçersiz/);
+    rej(await C.M.sync([put('issues', 'i_pa1', { ...i, cf: Object.fromEntries(Array.from({ length: 201 }, (_, k) => ['k' + k, 1])) }, i)]), /Özel alan değerleri geçersiz/);
+    rej(await C.M.sync([put('issues', 'i_pa1', { ...i, billType: 'x'.repeat(101) }, i)]), 'Fatura türü değeri en fazla 100 karakter');
+    /* Seçenek listesinde olmayan değer serbest (eski değerler korunur). */
+    ok(await C.M.sync([put('issues', 'i_pa1', { ...i, billable: 'Faturalanabilir' }, i)]));
+  });
+
+  test('eski biçim: bind/kapsam taşımayan alan ve geçersiz eski değerli iş değişmeden kaydedilir; 008 tekrar çalışır', async () => {
+    /* Eski veride büyük harfli anahtar ve uzun ad: değişmeyen özellik denetlenmez. */
+    await pool.query(`INSERT INTO fields (id, data) VALUES ('f_legacy', $1::jsonb)`, [JSON.stringify({ id: 'f_legacy', key: 'Eski Anahtar', name: 'x'.repeat(80), type: 'select', projectId: 'ppa', options: ['A'] })]);
+    const f = await row('fields', 'f_legacy');
+    ok(await C.Y.sync([put('fields', 'f_legacy', { ...f, onList: true }, f)]));
+    await pool.query(`INSERT INTO issues (id, data) VALUES ('i_pa_old', $1::jsonb)`, [JSON.stringify({ id: 'i_pa_old', projectId: 'ppa', key: 'PPA-9', summary: 'eski', statusId: 'ppa_s0', cf: { a: { b: 1 } } })]);
+    const i = await row('issues', 'i_pa_old');
+    ok(await C.M.sync([put('issues', 'i_pa_old', { ...i, summary: 'eski 2' }, i)]));
+    const nF = (await pool.query('SELECT count(*)::int n FROM fields')).rows[0].n;
+    const { readFile } = await import('node:fs/promises');
+    const sql = await readFile(new globalThis.URL('../server/migrations/008_alan_ayarlari.sql', import.meta.url), 'utf8');
+    await pool.query(sql); await pool.query(sql);
+    assert.equal((await pool.query('SELECT count(*)::int n FROM fields')).rows[0].n, nF);
+    assert.deepEqual((await row('fields', 'f_legacy')).options, ['A']);
+  });
+});

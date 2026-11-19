@@ -955,6 +955,12 @@ svg.i{width:14px;height:14px;flex-shrink:0;fill:none;stroke:currentColor;stroke-
 .c-tag{font-size:10.5px;font-weight:550;color:var(--ink2);background:var(--surface3);border-radius:6px;padding:2px 7px;
   display:inline-flex;align-items:center;gap:5px;max-width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .c-tag i{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0}
+/* proje alanı rozetleri (Kartta göster) */
+.c-fb{font-size:10.5px;font-weight:600;color:var(--ink2);background:var(--surface2);border:1px solid var(--line);border-radius:6px;padding:1px 6px;
+  display:inline-flex;align-items:center;gap:4px;max-width:100%;min-width:0;white-space:nowrap}
+.c-fb > span{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.c-fb svg.i{width:11px;height:11px;flex-shrink:0}
+.c-fb.risk{color:var(--risk);background:var(--risk-bg);border-color:var(--risk-line)}
 
 .c-meta{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--meta);flex-wrap:wrap;row-gap:4px;min-height:24px;white-space:nowrap}
 .c-sep{width:3px;height:3px;border-radius:50%;background:var(--line2);flex-shrink:0}
@@ -2928,6 +2934,81 @@ button.id-pv:hover{background:var(--surface);border-color:var(--line)}
 .wsr-row{display:flex;align-items:center;gap:8px}
 .wsr-row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wsr-row select{width:auto;min-width:170px}
+
+/* ---- Parametrik proje alanları: Proje ayarları → Alanlar (pf-) ve genel rapor şablonları (docs/tasarim/parametrik-alanlar) ---- */
+.pf-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+.pf-grid.has-form{grid-template-columns:minmax(0,1fr) 360px}
+.pf-col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.pf-blk{border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.pf-bh{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);min-height:52px}
+.pf-bh h3{margin:0;font-size:13px}
+.pf-bh .sub{font-size:12px;color:var(--meta)}
+.pf-bh .sp{flex:1}
+.pf-bh > svg.i{width:16px;height:16px;color:var(--meta)}
+.pf-row{display:grid;grid-template-columns:36px minmax(0,1fr) auto auto 44px 36px;gap:10px;align-items:center;padding:10px 12px;border-top:1px solid var(--line)}
+.pf-bh + .pf-row{border-top:0}
+.pf-row.off{background:var(--surface2)}
+.pf-row.sel{box-shadow:inset 3px 0 0 var(--accent);background:var(--accent-soft)}
+.pf-ic{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;background:var(--surface3);color:var(--ink2)}
+.pf-ic svg.i{width:18px;height:18px}
+.pf-row.on .pf-ic{background:var(--accent-soft);color:var(--accent-d)}
+.pf-nm{min-width:0}
+.pf-nm b{font-size:13.5px;display:flex;align-items:center;gap:8px;min-width:0}
+.pf-nm b .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pf-nm .d{font-size:12px;color:var(--ink2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pf-row .key,.pf-form .key{font-family:var(--mono);font-size:11px;font-weight:650;color:var(--ink2);background:var(--surface3);border-radius:6px;padding:2px 7px;white-space:nowrap}
+.pf-st{font-size:11.5px;font-weight:650;display:inline-flex;align-items:center;gap:4px;color:var(--meta)}
+.pf-st svg.i{width:13px;height:13px}
+.pf-row.on .pf-st{color:var(--done)}
+.pf-card{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 8px;border:1px solid transparent;border-radius:9px;background:none;font-size:12px;color:var(--ink2)}
+button.pf-card:hover{background:var(--surface2);border-color:var(--line)}
+.pf-card[aria-pressed="true"]{color:var(--accent-d)}
+.pf-card svg.i{width:15px;height:15px}
+.pf-sw{display:inline-grid;place-items:center;width:44px;height:36px;border:0;background:none;padding:0;border-radius:9px}
+.pf-sw .cu-sw{width:40px;height:24px}
+.pf-sw .cu-sw::after{top:3px;left:3px;width:18px;height:18px}
+.pf-sw[aria-checked="true"] .cu-sw::after{left:19px}
+.pf-empty{padding:18px 12px;text-align:center;color:var(--ink2);font-size:12.5px}
+.pf-blk .ro,.pf-form .ro{font-size:11px;color:var(--meta);display:inline-flex;align-items:center;gap:4px}
+.pf-blk .ro svg.i{width:12px;height:12px}
+.pf-info{margin:0}
+.pf-form{border:1px solid var(--line);border-radius:12px;background:var(--surface);box-shadow:var(--shadow);min-width:0}
+.pf-form .fbody{padding:12px;display:flex;flex-direction:column;gap:12px}
+.pf-form .fld label,.pf-form .fld .lbl{display:block;font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:5px}
+.pf-form .hint{font-size:11.5px;color:var(--meta);margin-top:4px}
+.pf-form .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pf-form .inp.mono{font-family:var(--mono)}
+.pf-types{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.pf-types button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 2px;min-height:56px;border:1px solid var(--line2);border-radius:9px;background:var(--surface);font-size:11.5px;color:var(--ink2)}
+.pf-types button svg.i{width:18px;height:18px}
+.pf-types button[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-d);font-weight:650;box-shadow:var(--ring)}
+.pf-types button:disabled{cursor:default}
+.pf-opts{display:flex;flex-direction:column;gap:6px}
+.pf-opt{display:flex;align-items:center;gap:6px}
+.pf-opt .grip{color:var(--meta);display:grid}
+.pf-opt .inp{height:34px}
+.pf-opt .def{font-size:11px;color:var(--accent-d);font-weight:650;white-space:nowrap;display:inline-flex;gap:3px;align-items:center}
+.pf-oadd{align-self:flex-start}
+.pf-fixed{display:flex;gap:6px;flex-wrap:wrap}
+.pf-form .swl{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink);min-height:36px;border:0;background:none;padding:0;text-align:left}
+.pf-form .swl .cu-sw{width:36px;height:20px}
+.pf-form .swl .cu-sw::after{width:16px;height:16px}
+.pf-form .swl[aria-checked="true"] .cu-sw::after{left:18px}
+.pf-form .ffoot{display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:10px 12px;border-top:1px solid var(--line)}
+.pf-form .ffoot .spacer{flex:1}
+@media (max-width:900px){
+  .pf-grid.has-form{grid-template-columns:minmax(0,1fr)}
+  .pf-form{order:-1}
+}
+@media (max-width:640px){
+  .pf-row{grid-template-columns:36px minmax(0,1fr) 44px 36px;row-gap:4px;column-gap:8px}
+  .pf-row .pf-st{display:none}
+  .pf-row .pf-card{grid-column:2 / 5;grid-row:2;min-height:28px;justify-self:start;padding:0}
+  .pf-row .pf-sw{grid-column:3;grid-row:1}
+  .pf-row .pf-ed{grid-column:4;grid-row:1}
+  .pf-form .two{grid-template-columns:1fr}
+  .pf-bh .btn span.t{display:none}
+}
 </style>
 </head>
 <body>
@@ -3788,6 +3869,14 @@ const priOpts = cur => LVLS.map(p => `<option value="${p}" ${lvl(cur) === p ? 's
 /* Satır içi çizgi ikonlar (docs/tasarim/kart). */
 const SVG = {
   zap: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+  /* parametrik proje alanları */
+  receipt: '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8M12 17.5v-11"/>',
+  sliders: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+  list: '<path d="M3 6h.01M3 12h.01M3 18h.01M8 6h13M8 12h13M8 18h13"/>',
+  hash: '<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/>',
+  ftext: '<path d="M4 7V4h16v3M9 20h6M12 4v16"/>',
+  chkbox: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="m9 12 2 2 4-4"/>',
+  globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/>',
   /* proje türü ve kolonlar (#12) */
   board: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 7v7M12 7v4M16 7v9"/>',
   sprint: '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
@@ -4075,6 +4164,7 @@ function card(i) {
     <p class="sum">${esc(i.summary)}</p>
     ${tags.length ? `<div class="c-tags">${tags.slice(0, 2).map(t => `<span class="c-tag"><i style="background:${tagColor(t)}"></i>${esc(t)}</span>`).join('')}${
       tags.length > 2 ? `<span class="c-tag" title="${esc(tags.slice(2).join(', '))}">+${tags.length - 2}</span>` : ''}</div>` : ''}
+    ${(bd => bd.length ? `<div class="c-tags c-cf">${bd.map(x => `<span class="c-fb${x.risk ? ' risk' : ''}" title="${esc(x.title)}">${ic(x.ic)}<span>${esc(x.t)}</span></span>`).join('')}</div>` : '')(cardBadges(i))}
     <div class="c-meta">${meta.join('<span class="c-sep"></span>')}${cardEst(i)}</div>
     <div class="c-foot">
       ${tIcon(i.type)}<span class="k c-key">${esc(i.key)}</span>
@@ -5002,7 +5092,7 @@ function createIssue(pr, f, prefix = pr.key) {
     summary: '', description: '', statusId: statsOf(pr.id)[0]?.id, assignee: null, reporter: CU().id, priority: 3,
     points: null, estimate: est, remainingEst: est, spent: 0, labels: [], cf: {}, sprintId: null, epicId: null,
     parentId: null, start: '', due: '', created: Date.now(), updatedAt: Date.now(),
-    billable: BILLABLE[0], billType: BILLTYPE[0], rank: Math.max(0, ...DB.issues.map(x => x.rank || 0)) + 100,
+    ...billDefaults(pr.id), rank: Math.max(0, ...DB.issues.map(x => x.rank || 0)) + 100,
   }, f);
   if (f.remainingEst == null) it.remainingEst = it.estimate;
   DB.issues.push(it);
@@ -5373,24 +5463,44 @@ function issueActivity(i) {
     ${items.length > lim ? `<button type="button" class="id-more" id="idMoreFeed">${ic('down')}Daha fazla göster · ${items.length - lim} eski kayıt</button>` : ''}</section>`;
 }
 /* Yeni iş formu: Cari (varsayılan projenin carisi; listede yalnız etkin cariler). Boş = projenin carisi geçerli. */
-function niCariField(pr, keep) {
+function niCariField(pr, keep, label = 'Cari') {
   const act = cuList().filter(cuActive).sort(cuSort);
   if (!act.length) return '';
   const pc = cuById(pr?.customerId);
   const cur = keep && keep.customerId !== undefined ? keep.customerId : (pc && cuActive(pc) ? pc.id : '');
-  return `<div><div class="id-fl"><label for="f_cu">Cari</label></div><select class="inp" id="f_cu">
+  return `<div><div class="id-fl"><label for="f_cu">${esc(label)}</label></div><select class="inp" id="f_cu">
     <option value="">${pc ? `Projeden: ${esc(pc.name)}` : `— ${CU_NONE} —`}</option>
     ${act.map(x => `<option value="${esc(x.id)}" ${x.id === cur ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>`;
 }
 /* İş detayı: Cari satırı (görev 11b). İşe bağlı cari yoksa projenin carisi "projeden" ekiyle gösterilir. */
-function idCariRow(i, row, pb) {
+function idCariRow(i, row, pb, label = 'Cari') {
   if (!i.customerId && !cuList().length) return '';
   const own = cuById(i.customerId), pc = cuById(DB.projects.find(p => p.id === i.projectId)?.customerId);
   const c = own || (i.customerId ? null : pc);
   const html = i.customerId && !own ? '<span class="t muted">(Bulunamayan cari)</span>'
     : c ? `${ic('building')}<span class="t">${esc(c.name)}</span>${own ? (cuActive(own) ? '' : ' <small>pasif</small>') : ' <small>projeden</small>'}`
     : `<span class="t muted">${CU_NONE}</span>`;
-  return row('Cari', pb('customerId', 'cari', html, 'Cari: ' + (c ? c.name : CU_NONE)));
+  return row(esc(label), pb('customerId', 'cari', html, label + ': ' + (c ? c.name : CU_NONE)));
+}
+/* İş detayı: "Faturalama" grubu yalnız projede açık hazır alanları gösterir; hepsi kapalıysa grup yok.
+   Boş değer "—" (Faturalama boşsa raporda Faturalanacak sayılır); seçenekten çıkarılan değer "(eski değer)". */
+function idBillGroup(i, row, pb, grp) {
+  const pid = i.projectId, parts = [];
+  if (bindOn(pid, 'customerId')) parts.push(idCariRow(i, row, pb, bindField(pid, 'customerId').name));
+  for (const [b, kind] of [['billable', 'bill'], ['billType', 'btype']]) {
+    if (!bindOn(pid, b)) continue;
+    const f = bindField(pid, b), v = i[b] || '';
+    const html = !v ? `<span class="t muted">—</span>${b === 'billable' ? ' <small>(raporda Faturalanacak)</small>' : ''}`
+      : `<span class="t">${esc(v)}</span>${f.options.includes(v) ? '' : ' <small>(eski değer)</small>'}`;
+    parts.push(row(`<span title="${esc(f.key)}">${esc(f.name)}</span>`, pb(b, kind, html, `${f.name}: ${v || '—'}`)));
+  }
+  return parts.length ? grp('briefcase', 'Faturalama', parts.join('')) : '';
+}
+/* Hazır alan seçim menüsü: "— Boş bırak", seçenekler; listede olmayan güncel değer "(eski değer)" ekiyle. */
+function bindMenuList(i, b) {
+  const f = bindField(i.projectId, b), cur = i[b] || '';
+  const opts = f.options.slice(); if (cur && !opts.includes(cur)) opts.push(cur);
+  return pmOpt('', cur, '', '— Boş bırak') + opts.map(x => pmOpt(x, cur, '', esc(x), f.options.includes(x) ? '' : 'eski değer')).join('');
 }
 function issueProps(i) {
   const ed = canEdit(), pr = projOfI(i), st = statsOf(i.projectId), s = stat(i.statusId), k = st.findIndex(x => x.id === i.statusId), nx = nextStatus(i);
@@ -5429,8 +5539,7 @@ function issueProps(i) {
       ${row('Tahmin', pt('estimate', `<span class="num">${fmtDur(i.estimate)}</span>`, 'Tahmin') + idSaved('estimate'))}
       ${row('Kalan', pt('remainingEst', `<span class="num">${fmtDur(rem)}</span>`, 'Kalan tahmin', canRemaining() ? '' : 'Kalan tahmini yalnızca yönetici değiştirebilir') + idSaved('remainingEst'))}
       ${row('Harcanan', `<span class="id-pv ro"><span class="num">${fmtDur(i.spent)}</span> <small>${DB.worklogs.filter(w => w.issueId === i.id).length} kayıt</small></span>`)}`)
-    + grp('briefcase', 'Faturalama', idCariRow(i, row, pb) + row('Faturalama', pb('billable', 'bill', `<span class="t">${esc(billOf(i))}</span>`, 'Faturalama: ' + billOf(i)))
-      + row('Fatura türü', pb('billType', 'btype', `<span class="t">${esc(btypeOf(i))}</span>`, 'Fatura türü: ' + btypeOf(i))))
+    + idBillGroup(i, row, pb, grp)
     + (fs.length ? grp('filter', 'Özel alanlar', fs.map(f => row(`<span title="${esc(f.key)}">${esc(f.name)}</span>`,
         ed ? cfInput(f, i.cf?.[f.id]) : `<span class="id-pv ro">${esc(cfShow(f, i.cf?.[f.id]))}</span>`)).join('')) : '')
     + grp('tag', 'Etiketler', `<div class="id-tags">${(i.labels || []).map(l => `<span class="id-tag"><i style="background:${safeColor(tagColor(l))}"></i>${esc(l)}
@@ -5526,8 +5635,8 @@ function propMenu(kind, btn) {
     epic: () => ({ title: 'Epik', list: () => pmOpt('', i.epicId || '', ic('x'), 'Yok')
       + DB.issues.filter(e => e.type === 'epic' && e.projectId === i.projectId && e.id !== i.id).map(e => pmOpt(e.id, i.epicId, ic('layers'), esc(e.summary), esc(e.key))).join(''),
       pick: v => after(idSet(i, 'epicId', v)) }),
-    bill: () => ({ title: 'Faturalama', list: () => BILLABLE.map(x => pmOpt(x, billOf(i), '', esc(x))).join(''), pick: v => after(idSet(i, 'billable', v)) }),
-    btype: () => ({ title: 'Fatura türü', list: () => BILLTYPE.map(x => pmOpt(x, btypeOf(i), '', esc(x))).join(''), pick: v => after(idSet(i, 'billType', v)) }),
+    bill: () => ({ title: bindField(i.projectId, 'billable').name, list: () => bindMenuList(i, 'billable'), pick: v => after(idSet(i, 'billable', v)) }),
+    btype: () => ({ title: bindField(i.projectId, 'billType').name, list: () => bindMenuList(i, 'billType'), pick: v => after(idSet(i, 'billType', v)) }),
     cari: () => ({ title: 'Cari', search: cuList().filter(cuActive).length > 8, list: q => cuPickList(i.customerId || '', DB.projects.find(p => p.id === i.projectId), q),
       pick: v => after(idSet(i, 'customerId', v)) }),
     more: () => ({ title: 'Diğer işlemler', right: true, list: () => `<button type="button" class="qm-opt" role="menuitem" data-qv="copy">${ic('copy')}<span class="qm-l">Anahtarı kopyala</span></button>
@@ -5723,7 +5832,8 @@ function subInlineAdd(p) {
   const pr = projOfI(p); if (!pr) return;
   const it = createIssue(pr, { type: 'sub', summary: v, statusId: statsOf(p.projectId)[0]?.id, assignee: ID_SUB_AS || null,
     priority: lvl(p.priority), estimate: parseDur($('#subEst')?.value || ''), sprintId: p.sprintId || null, epicId: p.epicId || null,
-    parentId: p.id, billable: p.billable || BILLABLE[0], billType: p.billType || BILLTYPE[0] }, pr.code || pr.key);
+    parentId: p.id, ...(p.billable && bindOn(pr.id, 'billable') ? { billable: p.billable } : {}),
+    ...(p.billType && bindOn(pr.id, 'billType') ? { billType: p.billType } : {}) }, pr.code || pr.key);
   save(); RERENDER = true;
   ID_SUBNEW = it.id; setTimeout(() => { if (ID_SUBNEW === it.id) { ID_SUBNEW = null; document.querySelector(`.id-srow[data-sid="${CSS.escape(it.id)}"]`)?.classList.remove('new'); } }, 1500);
   refreshIssue(['subs', 'act', 'props']);
@@ -5759,7 +5869,12 @@ function newIssueForm(preset = {}, keep) {
   const rm = reqMode(pr);
   let NI_REQ = keep?.requester || null;
   const fs = fieldsFor();
-  const moreN = ['Durum', 'Faturalama', 'Fatura türü', fs.length ? `${fs.length} özel alan` : '', 'Etiketler'].filter(Boolean).join(', ');
+  /* Hazır alanlar projeden: kapalı alan formda yok; açık alan varsayılanıyla gelir, "—" seçilebilir (zorunlu değil). */
+  const nb = ['billable', 'billType'].filter(b => bindOn(pr.id, b)).map(b => bindField(pr.id, b));
+  const nbSel = f => `<div><div class="id-fl"><label for="${f.bind === 'billable' ? 'f_bill' : 'f_btype'}">${esc(f.name)}</label></div>
+    <select class="inp" id="${f.bind === 'billable' ? 'f_bill' : 'f_btype'}"><option value="">—</option>${f.options.map(x =>
+      `<option value="${esc(x)}" ${x === f.def ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></div>`;
+  const moreN = ['Durum', ...nb.map(f => f.name), fs.length ? `${fs.length} özel alan` : '', 'Etiketler'].filter(Boolean).join(', ');
   openModal(`
     <div class="id-mh"><span class="id-mic">${ic('plus')}</span>
       <div class="tx"><b id="niTitle">Yeni iş</b><div class="sub"><span class="k">${esc(pr.key)}</span> ${esc(pr.name)}</div></div>
@@ -5781,7 +5896,7 @@ function newIssueForm(preset = {}, keep) {
       <div class="id-g2">
         <div><div class="id-fl"><span>Atanan <span class="opt">(isteğe bağlı)</span></span><button type="button" class="id-link" id="f_me">${ic('userplus')}Bana ata</button></div>
           <button type="button" class="id-pick" id="f_asBtn" data-nias aria-haspopup="menu"></button><input type="hidden" id="f_as" value=""></div>
-        ${niCariField(pr, keep)}
+        ${bindOn(pr.id, 'customerId') ? niCariField(pr, keep, bindField(pr.id, 'customerId').name) : ''}
         ${AGILE() ? `<div><div class="id-fl"><label for="f_sp">Sprint</label></div><select class="inp" id="f_sp"><option value="">Backlog</option>
           ${sprintsOf().filter(s => s.state !== 'closed').map(s => `<option value="${esc(s.id)}" ${sp === s.id ? 'selected' : ''}>${esc(s.name)}${s.state === 'active' ? ' · aktif' : ''}</option>`).join('')}</select></div>` : ''}
         <div><div class="id-fl">Başlangıç</div>${dateField({ id: 'f_start', label: 'Başlangıç', clear: false })}</div>
@@ -5795,9 +5910,8 @@ function newIssueForm(preset = {}, keep) {
       <button type="button" class="id-morebtn" id="f_moreBtn" aria-expanded="false" aria-controls="f_more">${ic('chevr')}<b>Daha fazla alan</b><span>${esc(moreN)}</span></button>
       <div id="f_more" hidden><div class="id-g2">
         <div><div class="id-fl"><label for="f_st">Durum</label></div><select class="inp" id="f_st">${stats().map(s => `<option value="${esc(s.id)}" ${preset.statusId === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div>
-        <div><div class="id-fl"><label for="f_bill">Faturalama</label></div><select class="inp" id="f_bill">${BILLABLE.map(x => `<option>${x}</option>`).join('')}</select></div>
-        <div><div class="id-fl"><label for="f_btype">Fatura türü</label></div><select class="inp" id="f_btype">${BILLTYPE.map(x => `<option>${x}</option>`).join('')}</select></div>
-        ${fs.map(f => `<div><div class="id-fl">${esc(f.name)}</div>${cfInput(f, '')}</div>`).join('')}
+        ${nb.map(nbSel).join('')}
+        ${fs.map(f => `<div><div class="id-fl">${esc(f.name)}</div>${cfInput(f, f.def ?? '')}</div>`).join('')}
       </div>
       <div class="id-fl"><label for="f_lbl">Etiketler (virgülle)</label></div><input class="inp" id="f_lbl" placeholder="api, acil"></div>
     </div>
@@ -5857,7 +5971,8 @@ function newIssueForm(preset = {}, keep) {
       type: $('#f_type').value, summary: s, description: $('#f_desc').value.trim(), statusId: $('#f_st').value || stats()[0]?.id,
       assignee: NI_AS || null, priority: pri, points: $('#f_pts')?.value ? parseFloat($('#f_pts').value.replace(',', '.')) : null,
       estimate: est, remainingEst: est, sprintId: $('#f_sp')?.value || null, epicId: $('#f_ep')?.value || null, parentId: preset.parentId || null,
-      start: $('#f_start').value || '', due: $('#f_due').value || '', cf, billable: $('#f_bill').value, billType: $('#f_btype').value,
+      start: $('#f_start').value || '', due: $('#f_due').value || '', cf,
+      ...($('#f_bill') ? { billable: $('#f_bill').value } : {}), ...($('#f_btype') ? { billType: $('#f_btype').value } : {}),
       ...($('#f_cu')?.value ? { customerId: $('#f_cu').value } : {}),
       labels: $('#f_lbl').value.split(',').map(x => x.trim()).filter(Boolean),
       ...(rm ? { requester: NI_REQ || null } : {}),
@@ -6928,8 +7043,8 @@ function renderSearch() {
         <td class="k" style="font-size:11px;${planState(i) === 'late' ? 'color:var(--risk)' : 'color:var(--ink3)'}">
           ${i.start || i.due ? `${i.start ? fmtD(i.start) : '—'}→${i.due ? fmtD(i.due) : '—'}` : '—'}</td>
         ${anyAgile() ? `<td style="font-size:11.5px">${i.sprintId ? esc(sprint(i.sprintId).name) : '—'}</td>` : ''}
-        <td style="font-size:11px"><span class="chip ${billOf(i) === 'Faturalanmayacak' ? 'lbl' : 'cat-done'}">${esc(billOf(i))}</span><br>
-          <span style="color:var(--ink3)">${esc(btypeOf(i))}</span></td>
+        <td style="font-size:11px">${bindOn(i.projectId, 'billable') ? `<span class="chip ${billOf(i) === 'Faturalanmayacak' ? 'lbl' : 'cat-done'}">${esc(billOf(i))}</span>` : '—'}<br>
+          <span style="color:var(--ink3)">${bindOn(i.projectId, 'billType') ? esc(i.billType || '—') : '—'}</span></td>
         ${cols.map(c => `<td style="font-size:11.5px">${esc(cfShow(c, i.cf?.[c.id]))}</td>`).join('')}
       </tr>`; }).join('') || `<tr><td colspan="15"><div class="empty">Sonuç yok</div></td></tr>`}</tbody>
       <tfoot><tr><td></td><td class="who">${rows.length} sonuç</td>
@@ -6974,8 +7089,10 @@ function cfInput(f, v) {
   }
 }
 /* Arşivlenmiş/gizli alanlar (ör. 005 geçişiyle cariye taşınan eski "Müşteri" alanı) hiçbir yerde gösterilmez;
-   tanımı ve işlerdeki değerleri silinmez (eski sürüm açılırsa görür). */
-const liveField = f => !!f && f.archived !== true && f.hidden !== true;
+   tanımı ve işlerdeki değerleri silinmez (eski sürüm açılırsa görür).
+   `hidden` iki anlamda: bind'siz kayıtta 005 gizlemesi; hazır alan (bind) kaydında yalnız eski sürümden gizleme.
+   Hazır alanlar burada YOK (değerleri cf'de değil): bindOn/bindField ile okunur. Kapatılan (archived) alan görünmez. */
+const liveField = f => !!f && !f.bind && f.archived !== true && f.hidden !== true;
 const liveFields = () => (DB.fields || []).filter(liveField);
 const fieldsFor = () => liveFields().filter(f => !f.projectId || f.projectId === DB.ui.project);
 
@@ -7036,14 +7153,14 @@ function runRules(i, trigger, ctx = {}) {
    5) YÖNETİM GÖRÜNÜMÜ
    ============================================================ */
 function toolbarAdmin() {
-  const tabs = [['workflow', 'İş akışı'], ['types', 'İş tipleri'], ['fields', 'Özel alanlar'], ['rules', 'Otomasyon'], ['people', 'Modüller & genel']]
-    .filter(([v]) => isAdmin() || v === 'workflow');
+  const tabs = [['workflow', 'İş akışı'], ['types', 'İş tipleri'], ['fields', 'Alanlar'], ['rules', 'Otomasyon'], ['people', 'Modüller & genel']]
+    .filter(([v]) => isAdmin() || v === 'workflow' || (v === 'fields' && canFields(P())));
   return `<div class="seg" id="adminTabs">${tabs.map(([v, l]) =>
     `<button data-a="${v}" class="${adminTab() === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
 }
-/* Genel ayarlar (iş tipleri, özel alanlar, otomasyon, modüller, varsayılan akış) sunucuda yalnız sistem yöneticisinde
-   (ADMIN_ONLY, _settings); alan yöneticisi yalnız projeye özel İş akışı sekmesini görür. */
-const adminTab = () => isAdmin() ? (DB.ui.adminTab || 'workflow') : 'workflow';
+/* Genel ayarlar (iş tipleri, genel alanlar, otomasyon, modüller, varsayılan akış) sunucuda yalnız sistem yöneticisinde
+   (ADMIN_ONLY, _settings); alan yöneticisi projeye özel İş akışı ve Alanlar sekmelerini görür (canFields). */
+const adminTab = () => isAdmin() ? (DB.ui.adminTab || 'workflow') : (DB.ui.adminTab === 'fields' && canFields(P()) ? 'fields' : 'workflow');
 
 function renderAdmin() {
   const tab = adminTab();
@@ -7095,22 +7212,7 @@ function renderAdmin() {
 
   if (tab === 'types') return renderTypes();
 
-  if (tab === 'fields') {
-    const fs = fieldsFor();
-    return `<div class="panel"><h3>Özel alanlar</h3>
-      <div class="sub">Buraya eklediğin her alan; iş detayında, oluşturma formunda, arama sorgularında ve otomasyon kurallarında anında kullanılabilir olur.</div>
-      ${fs.map(f => `<div class="row" style="border:1px solid var(--line);border-radius:6px;margin-bottom:6px;cursor:default">
-        <span class="chip pt">${esc(f.key)}</span>
-        <span class="sum">${esc(f.name)}</span>
-        <span class="chip lbl">${({ text: 'Metin', number: 'Sayı', select: 'Liste', date: 'Tarih', user: 'Kişi', checkbox: 'Onay' })[f.type]}</span>
-        ${f.options?.length ? `<span class="k" style="color:var(--ink3)">${f.options.length} seçenek</span>` : ''}
-        <label style="font-size:11.5px;color:var(--ink2);display:flex;align-items:center;gap:4px">
-          <input type="checkbox" data-onlist="${f.id}" ${f.onList ? 'checked' : ''}> listede göster</label>
-        <button class="btn sm" data-editfield="${f.id}">Düzenle</button>
-        <button class="btn sm danger" data-delfield="${f.id}">Sil</button>
-      </div>`).join('') || '<div class="empty">Henüz özel alan yok</div>'}
-      <button class="btn" id="addField">+ Alan ekle</button></div>`;
-  }
+  if (tab === 'fields') return renderFieldsTab();
 
   if (tab === 'rules') {
     const rs = DB.rules.filter(r => r.projectId === DB.ui.project);
@@ -7187,7 +7289,7 @@ function wireSearch() {
 function wireAdmin() {
   const at = $('#adminTabs');
   if (at) at.onclick = e => { const b = e.target.closest('[data-a]');
-    if (b) { DB.ui.adminTab = b.dataset.a; save(); render(); } };
+    if (b) { DB.ui.adminTab = b.dataset.a; PF = null; save(); render(); } };
 
   $$('[data-st]').forEach(el => el.onchange = () => {
     const s = stat(el.dataset.st), p = el.dataset.p;
@@ -7237,18 +7339,7 @@ function wireAdmin() {
   }
 
   wireTypes();
-  const af = $('#addField'); if (af) af.onclick = () => fieldForm();
-  $$('[data-editfield]').forEach(b => b.onclick = () => fieldForm(b.dataset.editfield));
-  $$('[data-delfield]').forEach(b => b.onclick = () => {
-    if (!confirm('Alan ve tüm değerleri silinsin mi?')) return;
-    const id = b.dataset.delfield;
-    DB.fields = DB.fields.filter(f => f.id !== id);
-    DB.issues.forEach(i => { if (i.cf) delete i.cf[id]; });
-    save(); render();
-  });
-  $$('[data-onlist]').forEach(c => c.onchange = () => {
-    DB.fields.find(f => f.id === c.dataset.onlist).onList = c.checked; save(); render();
-  });
+  wireFieldsTab();
 
   const ar = $('#addRule'); if (ar) ar.onclick = () => ruleForm();
   $$('[data-editrule]').forEach(b => b.onclick = () => ruleForm(b.dataset.editrule));
@@ -7308,45 +7399,202 @@ function applyFlow(pid, rows) {
   }
 }
 
-/* ---- özel alan formu ---- */
-function fieldForm(id) {
-  const f = id ? DB.fields.find(x => x.id === id) : null;
-  openModal(`<div class="m-h"><b>${f ? 'Alanı düzenle' : 'Özel alan ekle'}</b><button class="x" data-close>×</button></div>
-    <div style="padding:16px 18px">
-      <div class="form-2">
-        <div class="form-row"><label class="field">Görünen ad</label><input class="inp" id="fd_n" value="${f ? esc(f.name) : ''}" placeholder="Müşteri"></div>
-        <div class="form-row"><label class="field">Sorgu anahtarı</label><input class="inp" id="fd_k" value="${f ? esc(f.key) : ''}" placeholder="musteri" style="font-family:var(--mono)"></div>
-      </div>
-      <div class="form-2">
-        <div class="form-row"><label class="field">Tip</label><select class="inp" id="fd_t">
-          ${[['text', 'Metin'], ['number', 'Sayı'], ['select', 'Liste'], ['date', 'Tarih'], ['user', 'Kişi'], ['checkbox', 'Onay kutusu']]
-            .map(([v, l]) => `<option value="${v}" ${f?.type === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-        <div class="form-row"><label class="field">Kapsam</label><select class="inp" id="fd_p">
-          <option value="">Tüm projeler</option>
-          ${DB.projects.map(p => `<option value="${p.id}" ${f?.projectId === p.id ? 'selected' : ''}>${p.key}</option>`).join('')}</select></div>
-      </div>
-      <div class="form-row" id="fd_ow" style="display:${f?.type === 'select' ? 'block' : 'none'}">
-        <label class="field">Seçenekler (virgülle)</label>
-        <input class="inp" id="fd_o" value="${f?.options?.join(', ') || ''}" placeholder="Düşük, Orta, Yüksek"></div>
-      <label style="display:flex;align-items:center;gap:6px;font-size:12.5px">
-        <input type="checkbox" id="fd_l" ${f?.onList ? 'checked' : ''}> Arama sonuçları tablosunda sütun olarak göster</label>
+/* ---- Proje ayarları → Alanlar (parametrik proje alanları; docs/tasarim/parametrik-alanlar) ----
+   Hazır alanlar (Faturalama, Fatura türü, Cari) aç/kapat + Kartta göster + düzenle; bu projenin alanları; tüm projelerde
+   geçerli alanlar (yalnız sistem yöneticisi düzenler). Düzenleme sağdaki panelde; taslak PF.d'de tutulur (yoklamayla
+   yeniden çizimde yazılan kaybolmaz). Yetki sunucuda (store.js checkScope, validate.js RULES.fields). */
+let PF = null;   // { id: alan kimliği | 'b:<bind>' | '' (yeni), d: taslak }
+const PF_TYPES = [['select', 'Seçim', 'list'], ['number', 'Sayı', 'hash'], ['checkbox', 'Evet/Hayır', 'chkbox'], ['text', 'Metin', 'ftext'], ['date', 'Tarih', 'cal'], ['user', 'Kişi', 'users']];
+const PF_TL = { ...Object.fromEntries(PF_TYPES.map(([v, l]) => [v, l])), cari: 'Cari kaydı' };
+const PF_TI = { ...Object.fromEntries(PF_TYPES.map(([v, , i]) => [v, i])), cari: 'building' };
+const PF_KEY_RE = /^[a-z0-9_]{1,30}$/;
+/* Serbest alanlar (hazır alan ve 005'in gizlediği eski alan hariç): pid null → tüm projelerde geçerli. */
+const pfFree = pid => (DB.fields || []).filter(f => f && !f.bind && f.hidden !== true && (pid === null ? !f.projectId : f.projectId === pid));
+/* Anahtar tekilliği (sunucudaki checkFieldKey ile aynı): proje alanı aynı proje + genel alanlarla, genel alan hepsiyle. */
+const fieldKeyTaken = (key, pid, id) => (DB.fields || []).some(x => x && x.id !== id && x.key === key && !(x.hidden === true && !x.bind)
+  && (pid == null || !x.projectId || x.projectId === pid));
+const pfSlug = s => String(s || '').toLocaleLowerCase('tr').replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ç/g, 'c')
+  .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 30);
+function pfDesc(f) {
+  if (f.bind === 'customerId') {
+    const pc = cuById(DB.projects.find(p => p.id === f.projectId)?.customerId);
+    return 'Cari kaydı · işte boşsa projenin carisi' + (pc ? ': ' + pc.name : '');
+  }
+  const parts = [PF_TL[f.type] || f.type];
+  if (f.type === 'select' && f.options?.length) parts.push(f.options.join(', '));
+  if (f.def != null && f.def !== '' && ['select', 'number', 'text', 'checkbox'].includes(f.type)) parts.push('varsayılan: ' + cfShow(f, f.def));
+  else if (!f.bind) parts.push(f.projectId ? 'boş bırakılabilir' : 'tüm projeler');
+  return parts.join(' · ');
+}
+function pfRow(f, id, on, edit) {
+  return `<div class="pf-row ${on ? 'on' : 'off'} ${PF && PF.id === id ? 'sel' : ''}" data-pfrow="${esc(id)}">
+    <span class="pf-ic">${ic(f.icon || PF_TI[f.type] || 'sliders')}</span>
+    <div class="pf-nm"><b><span class="n">${esc(f.name)}</span> <span class="key">${esc(f.key)}</span></b><div class="d" title="${esc(pfDesc(f))}">${esc(pfDesc(f))}</div></div>
+    <span class="pf-st">${on ? ic('check') + 'Açık' : ic('hidden') + 'Kapalı'}</span>
+    ${edit ? `<button type="button" class="pf-card" data-pfcard="${esc(id)}" aria-pressed="${!!f.onCard}" aria-label="${esc(f.name)}: kartta göster">${ic(f.onCard ? 'eye' : 'hidden')}<span>Kartta${f.onCard ? '' : ' değil'}</span></button>
+    <button type="button" class="pf-sw" role="switch" data-pfsw="${esc(id)}" aria-checked="${on}" aria-label="${esc(f.name)} alanını aç/kapat"><span class="cu-sw" aria-hidden="true"></span></button>
+    <button type="button" class="iconbtn pf-ed" data-pfedit="${esc(id)}" aria-label="${esc(f.name)}: düzenle">${ic('pencil')}</button>`
+    : `<span class="pf-card ro">${f.onCard ? ic('eye') + '<span>Kartta</span>' : ''}</span><span></span><span></span>`}</div>`;
+}
+function renderFieldsTab() {
+  const pr = P();
+  if (!pr) return '<div class="empty">Önce bir proje seçin</div>';
+  const can = canFields(pr), sys = isAdmin();
+  if (PF && PF.id && !PF.id.startsWith('b:') && !DB.fields.some(f => f.id === PF.id)) PF = null;   // alan başka yerden silindi
+  const own = pfFree(pr.id), glob = pfFree(null);
+  const pre = BINDS.map(b => pfRow(bindField(pr.id, b), 'b:' + b, bindOn(pr.id, b), can)).join('');
+  const blk = (icn, t, sub, right, body) => `<section class="pf-blk"><div class="pf-bh">${ic(icn)}<h3>${t}</h3>${sub ? `<span class="sub">${sub}</span>` : ''}<span class="sp"></span>${right}</div>${body}</section>`;
+  const left = blk('receipt', 'Hazır alanlar', 'Faturalama ve cari için', '', pre)
+    + blk('sliders', 'Bu projenin alanları', `${own.length} alan`, can ? `<button type="button" class="btn pri" id="addField">${ic('plus')}<span class="t">Alan ekle</span></button>` : '',
+      own.map(f => pfRow(f, f.id, f.archived !== true, can)).join('')
+      || '<div class="pf-empty">Bu projede alan yok. Hazır alanlardan birini açın ya da yeni alan ekleyin.</div>')
+    + (sys || glob.length ? blk('globe', 'Tüm projelerde geçerli alanlar', '', `<span class="ro">${ic('lock')}Yalnız sistem yöneticisi düzenler</span>`,
+      glob.map(f => pfRow(f, f.id, f.archived !== true, sys)).join('') || '<div class="pf-empty">Tüm projelerde geçerli alan yok.</div>') : '')
+    + `<div class="ws-info pf-info">${ic('info')}<span>Hiçbir alan zorunlu değildir. Kapatılan alan bu projenin kartında, detayında ve formlarında görünmez. İşlerdeki değerler silinmez; alanı yeniden açınca geri gelir.</span></div>`;
+  return `<div class="pf-grid ${PF ? 'has-form' : ''}" id="pfTab"><div class="pf-col">${left}</div>${PF && can ? pfPanel(pr) : ''}</div>`;
+}
+function pfPanel(pr) {
+  const d = PF.d, isB = !!d.bind, f = PF.id && !isB ? DB.fields.find(x => x.id === PF.id) : null;
+  const glob = f ? !f.projectId : d.scope === 'g';
+  const title = PF.id ? d.name || 'Alan' : 'Yeni alan';
+  const types = (isB ? (d.type === 'cari' ? [['cari', 'Cari kaydı', 'building']] : PF_TYPES.filter(t => t[0] === d.type)) : PF_TYPES)
+    .map(([v, l, i]) => `<button type="button" role="radio" data-pftype="${v}" aria-checked="${d.type === v}" ${isB ? 'disabled' : ''}>${ic(i)}${l}</button>`).join('');
+  const optEdit = d.type === 'select' && d.bind !== 'billable';
+  const opts = d.bind === 'billable' ? `<div class="fld"><span class="lbl">Seçenekler</span><div class="pf-fixed">${BILLABLE.map(x => `<span class="chip">${esc(x)}</span>`).join('')}</div>
+      <div class="hint">Faturalama seçenekleri sabittir. Boş bırakılan iş raporda "Faturalanacak" sayılır.</div></div>`
+    : optEdit ? `<div class="fld"><span class="lbl">Seçenekler</span><div class="pf-opts">${d.options.map((o, k) => `<div class="pf-opt"><span class="grip">${ic('grip')}</span>
+      <input class="inp" data-pfo="${k}" value="${esc(o)}" maxlength="100" aria-label="Seçenek ${k + 1}">${o && o === d.def ? `<span class="def">${ic('check')}Varsayılan</span>` : ''}
+      <button type="button" class="iconbtn sm" data-pfox="${k}" aria-label="Seçeneği sil: ${esc(o)}">${ic('x')}</button></div>`).join('')}
+      <button type="button" class="btn ghost pf-oadd" data-pfoadd>${ic('plus')}Seçenek ekle</button></div>
+      <div class="hint">Silinen seçeneği taşıyan işlerde değer kalır, "(eski değer)" olarak görünür.</div></div>` : '';
+  const defSel = d.type === 'select' ? `<select class="inp" id="pf_def" data-pfd="def"><option value="">— (boş)</option>${(d.bind === 'billable' ? BILLABLE : d.options.filter(Boolean)).map(o =>
+      `<option value="${esc(o)}" ${o === d.def ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`
+    : d.type === 'checkbox' ? `<select class="inp" id="pf_def" data-pfd="def"><option value="">— (boş)</option><option value="true" ${d.def === true || d.def === 'true' ? 'selected' : ''}>Evet</option>
+      <option value="false" ${d.def === false || d.def === 'false' ? 'selected' : ''}>Hayır</option></select>`
+    : d.type === 'number' || d.type === 'text' ? `<input class="inp" id="pf_def" data-pfd="def" value="${esc(d.def ?? '')}" maxlength="100" ${d.type === 'number' ? 'inputmode="decimal"' : ''} placeholder="—">` : '';
+  const sw = (k, l, extra = '') => `<button type="button" class="swl" role="switch" data-pfsw2="${k}" aria-checked="${!!d[k]}"><span class="cu-sw" aria-hidden="true"></span>${l}${extra}</button>`;
+  return `<aside class="pf-form" id="pfForm" aria-label="Alan düzenle"><div class="pf-bh">${ic('pencil')}<h3>${esc(title)}</h3>
+      <span class="chip">${isB ? 'Hazır alan' : glob ? 'Tüm projeler' : 'Proje alanı'}</span><span class="sp"></span>
+      <button type="button" class="iconbtn" data-pfclose aria-label="Kapat">${ic('x')}</button></div>
+    <div class="fbody">
+      <div class="two"><div class="fld"><label for="pf_n">Görünen ad</label><input class="inp" id="pf_n" data-pfd="name" maxlength="60" value="${esc(d.name)}" autocomplete="off"></div>
+        <div class="fld"><label for="pf_k">Anahtar</label><input class="inp mono" id="pf_k" data-pfd="key" maxlength="30" value="${esc(d.key)}" ${isB ? 'disabled' : ''} autocomplete="off"></div></div>
+      <div class="fld"><span class="lbl">Tür</span><div class="pf-types" role="radiogroup" aria-label="Tür">${types}</div>
+        <div class="hint">${isB ? 'Hazır alanın türü değişmez.' : 'Hiçbir alan zorunlu değildir; boş bırakılabilir.'}</div></div>
+      ${!isB && isAdmin() && !PF.id ? `<div class="fld"><label for="pf_sc">Kapsam</label><select class="inp" id="pf_sc" data-pfd="scope">
+        <option value="p" ${d.scope !== 'g' ? 'selected' : ''}>Bu proje (${esc(pr.key)})</option><option value="g" ${d.scope === 'g' ? 'selected' : ''}>Tüm projeler</option></select></div>`
+        : !isB ? `<div class="hint">${glob ? 'Kapsam: tüm projeler' : `Kapsam: bu proje (${esc(pr.key)})`}. Kapsam sonradan değişmez.</div>` : ''}
+      ${opts}
+      ${defSel ? `<div class="fld"><label for="pf_def">Varsayılan değer</label>${defSel}<div class="hint">Yeni işte önceden seçili gelir; kullanıcı boş bırakabilir.</div></div>` : ''}
+      ${sw('onCard', 'Kartta göster', ' <span class="ro">(en çok 3 rozet)</span>')}
+      ${isB ? '' : sw('onList', 'Listede sütun olarak göster')}
     </div>
-    <div class="m-f"><button class="btn" data-close>Vazgeç</button><button class="btn pri" id="fd_ok">Kaydet</button></div>`, 'narrow');
-  $('#fd_t').onchange = e => $('#fd_ow').style.display = e.target.value === 'select' ? 'block' : 'none';
-  $('#fd_n').oninput = e => { if (!f && !$('#fd_k').dataset.touched)
-    $('#fd_k').value = e.target.value.toLowerCase().replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ç/g, 'c')
-      .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/[^a-z0-9]/g, ''); };
-  $('#fd_k').oninput = e => e.target.dataset.touched = '1';
-  $('#fd_ok').onclick = () => {
-    const o = { name: $('#fd_n').value.trim(), key: $('#fd_k').value.trim().toLowerCase(),
-      type: $('#fd_t').value, projectId: $('#fd_p').value || null, onList: $('#fd_l').checked,
-      options: $('#fd_o').value.split(',').map(s => s.trim()).filter(Boolean) };
-    if (!o.name || !o.key) return toast('Ad ve anahtar gerekli');
-    if (QF[o.key]) return toast(`"${o.key}" yerleşik bir alan adı, başka bir anahtar seçin`);
-    if (DB.fields.some(x => x.key === o.key && x.id !== id)) return toast('Bu anahtar kullanılıyor');
-    if (f) Object.assign(f, o); else DB.fields.push(Object.assign({ id: uid('cf') }, o));
-    closeModal(); save(); render();
-  };
+    <div class="ffoot">${f ? `<button type="button" class="btn danger" data-pfdel>${ic('trash')}Sil</button><span class="spacer"></span>` : ''}
+      <button type="button" class="btn" data-pfclose>Vazgeç</button><button type="button" class="btn pri" id="pf_ok">${ic('check')}Kaydet</button></div></aside>`;
+}
+/* Paneli açar: alan kimliği, 'b:<bind>' (hazır alan) ya da boş (yeni alan). */
+function fieldForm(id) {
+  const pr = P(); if (!pr || !canFields(pr)) return;
+  if (id && id.startsWith('b:')) {
+    const f = bindField(pr.id, id.slice(2));
+    PF = { id, d: { bind: f.bind, name: f.name, key: f.key, type: f.type, options: f.options.slice(), def: f.def ?? '', onCard: !!f.onCard } };
+  } else if (id) {
+    const f = DB.fields.find(x => x.id === id); if (!f) return;
+    PF = { id, d: { name: f.name, key: f.key, type: f.type, scope: f.projectId ? 'p' : 'g', options: (f.options || []).slice(), def: f.def ?? '',
+      onCard: !!f.onCard, onList: !!f.onList, keyTouched: true } };
+  } else PF = { id: '', d: { name: '', key: '', type: 'select', scope: 'p', options: [''], def: '', onCard: false, onList: false, keyTouched: false } };
+  DB.ui.adminTab = 'fields'; render();
+  setTimeout(() => { $('#pf_n')?.focus(); $('#pfForm')?.scrollIntoView({ block: 'nearest' }); }, 30);
+}
+function pfSave() {
+  const pr = P(), d = PF?.d; if (!pr || !d || !canFields(pr)) return;
+  const isB = !!d.bind, name = String(d.name || '').trim();
+  if (!name || name.length > 60) return toast('Alan adı gerekli (en fazla 60 karakter)', { warn: true });
+  let options = [];
+  if (d.type === 'select' && d.bind !== 'billable') {
+    options = d.options.map(x => String(x).trim()).filter(Boolean);
+    if (!options.length) return toast('En az bir seçenek gerekli', { warn: true });
+    if (new Set(options).size !== options.length) return toast('Seçenekler tekil olmalı', { warn: true });
+    if (options.length > 100 || options.some(x => x.length > 100)) return toast('En fazla 100 seçenek (her biri en fazla 100 karakter)', { warn: true });
+  }
+  let def = d.def;
+  if (d.type === 'select') def = (d.bind === 'billable' ? BILLABLE : options).includes(def) ? def : '';
+  else if (d.type === 'checkbox') def = def === true || def === 'true' ? true : def === false || def === 'false' ? false : '';
+  else if (d.type === 'number') { const n = parseFloat(String(def ?? '').replace(',', '.')); def = Number.isFinite(n) ? n : ''; }
+  else if (d.type === 'text') def = String(def ?? '').trim().slice(0, 100);
+  else def = '';
+  if (isB) {
+    bindSave(pr.id, d.bind, { name, onCard: !!d.onCard, def, ...(d.bind === 'billType' ? { options } : {}) });
+  } else {
+    const key = String(d.key || '').trim().toLowerCase();
+    if (!PF_KEY_RE.test(key)) return toast('Anahtar yalnız küçük harf, rakam ve _ içerebilir (en fazla 30)', { warn: true });
+    if (QF[key]) return toast(`"${key}" yerleşik bir alan adı, başka bir anahtar seçin`, { warn: true });
+    const f = PF.id ? DB.fields.find(x => x.id === PF.id) : null;
+    const pid = f ? (f.projectId || null) : (isAdmin() && d.scope === 'g' ? null : pr.id);
+    if (fieldKeyTaken(key, pid, f?.id)) return toast('Bu anahtarla bir alan zaten var', { warn: true });
+    const o = { name, key, type: d.type, options, onCard: !!d.onCard, onList: !!d.onList };
+    if (def !== '') o.def = def;
+    if (f) { if (def === '') delete f.def; Object.assign(f, o); }
+    else DB.fields.push({ id: uid('cf'), projectId: pid, ...o });
+  }
+  PF = null; save(); render(); toast(name + ' kaydedildi');
+}
+function pfToggle(id, k) {
+  const pr = P(); if (!pr) return;
+  let nm, on;
+  if (id.startsWith('b:')) {
+    const b = id.slice(2); if (!BINDS.includes(b) || !canFields(pr)) return;
+    const f = bindField(pr.id, b); nm = f.name;
+    if (k === 'archived') { bindSave(pr.id, b, { archived: f.on }); on = !f.on; } else bindSave(pr.id, b, { onCard: !f.onCard });
+  } else {
+    const f = DB.fields.find(x => x.id === id); if (!f || (f.projectId ? !canFields(pr) : !isAdmin())) return;
+    nm = f.name;
+    if (k === 'archived') { f.archived = f.archived !== true; on = !f.archived; } else f.onCard = !f.onCard;
+  }
+  save(); render();
+  if (k === 'archived') toast(on ? `${nm} açıldı` : `${nm} kapatıldı. İşlerdeki değerler silinmez.`);
+  $(`[data-${k === 'archived' ? 'pfsw' : 'pfcard'}="${CSS.escape(id)}"]`)?.focus();
+}
+function wireFieldsTab() {
+  const tab = $('#pfTab'); if (!tab) return;
+  const af = $('#addField'); if (af) af.onclick = () => fieldForm();
+  $$('[data-pfedit]').forEach(b => b.onclick = () => fieldForm(b.dataset.pfedit));
+  $$('[data-pfsw]').forEach(b => b.onclick = () => pfToggle(b.dataset.pfsw, 'archived'));
+  $$('[data-pfcard]').forEach(b => b.onclick = () => pfToggle(b.dataset.pfcard, 'onCard'));
+  const fm = $('#pfForm'); if (!fm || !PF) return;
+  const d = PF.d;
+  fm.addEventListener('input', e => {
+    const t = e.target;
+    if (t.dataset.pfd) {
+      d[t.dataset.pfd] = t.value;
+      if (t.dataset.pfd === 'key') d.keyTouched = true;
+      if (t.dataset.pfd === 'name' && !PF.id && !d.keyTouched) { d.key = pfSlug(t.value); $('#pf_k').value = d.key; }
+    }
+    if (t.dataset.pfo != null) { d.options[+t.dataset.pfo] = t.value; pfDefRefresh(); }
+  });
+  /* Varsayılan listesi yerinde tazelenir (yeniden çizim, ardından gelen Kaydet tıklamasını yutmasın). */
+  const pfDefRefresh = () => { const s = $('#pf_def'); if (!s || d.type !== 'select' || d.bind === 'billable') return;
+    const list = [...new Set(d.options.map(x => String(x).trim()).filter(Boolean))];
+    if (!list.includes(d.def)) d.def = '';
+    s.innerHTML = '<option value="">— (boş)</option>' + list.map(o => `<option value="${esc(o)}" ${o === d.def ? 'selected' : ''}>${esc(o)}</option>`).join(''); };
+  fm.addEventListener('change', e => { const t = e.target; if (t.dataset.pfd) d[t.dataset.pfd] = t.value; });
+  fm.addEventListener('click', e => {
+    const q = s => e.target.closest(s); let b;
+    if ((b = q('[data-pftype]')) && !b.disabled) { d.type = b.dataset.pftype; if (d.type === 'select' && !d.options.length) d.options = ['']; d.def = ''; render(); return $(`[data-pftype="${d.type}"]`)?.focus(); }
+    if ((b = q('[data-pfox]'))) { const k = +b.dataset.pfox; if (d.options[k] === d.def) d.def = ''; d.options.splice(k, 1); render(); return; }
+    if (q('[data-pfoadd]')) { if (d.options.length >= 100) return toast('En fazla 100 seçenek', { warn: true }); d.options.push(''); render(); return $$('[data-pfo]').pop()?.focus(); }
+    if ((b = q('[data-pfsw2]'))) { const k = b.dataset.pfsw2; d[k] = !d[k]; b.setAttribute('aria-checked', String(d[k])); return; }
+    if (q('[data-pfclose]')) { const id = PF.id; PF = null; render(); return id && $(`[data-pfedit="${CSS.escape(id)}"]`)?.focus(); }
+    if (q('#pf_ok')) return pfSave();
+    if (q('[data-pfdel]')) {
+      const f = DB.fields.find(x => x.id === PF.id); if (!f) return;
+      if (!confirm(`"${f.name}" alanı ve işlerdeki tüm değerleri silinsin mi? Değerleri korumak için alanı kapatabilirsiniz.`)) return;
+      DB.fields = DB.fields.filter(x => x.id !== f.id);
+      DB.issues.forEach(i => { if (i.cf) delete i.cf[f.id]; });
+      PF = null; save(); render(); toast(f.name + ' silindi');
+    }
+  });
+  fm.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); PF = null; render(); } });
 }
 
 /* ---- otomasyon kuralı formu ---- */
@@ -7595,6 +7843,14 @@ function capacityPanel() {
    3) TOPLU DÜZENLEME
    ============================================================ */
 let SEL = new Set();
+/* Toplu düzenleme: hazır alan yalnız seçili işlerin tüm projelerinde açıksa; seçenekler projelerin birleşimi. */
+function bulkBind(b, id) {
+  const pids = [...new Set([...SEL].map(issue).filter(Boolean).map(i => i.projectId))];
+  if (!pids.length || !pids.every(pid => bindOn(pid, b))) return '';
+  const opts = [...new Set(pids.flatMap(pid => bindField(pid, b).options))];
+  return `<select class="inp" id="${id}" style="width:auto"><option value="">${esc(bindField(pids[0], b).name)}…</option>
+      ${opts.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join('')}</select>`;
+}
 function bulkBar() {
   if (!SEL.size || !canEdit()) return '';
   return `<div class="panel" style="position:sticky;top:0;z-index:5;margin-bottom:10px;padding:10px 14px;
@@ -7608,10 +7864,7 @@ function bulkBar() {
       ${sprintsOf().map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>` : ''}
     <select class="inp" id="bk_pr" style="width:auto"><option value="">Öncelik…</option>
       ${LVLS.map(p => `<option value="${p}">${PRI[p][1]}</option>`).join('')}</select>
-    <select class="inp" id="bk_bill" style="width:auto"><option value="">Faturalama…</option>
-      ${BILLABLE.map(x => `<option>${x}</option>`).join('')}</select>
-    <select class="inp" id="bk_bt" style="width:auto"><option value="">Fatura türü…</option>
-      ${BILLTYPE.map(x => `<option>${x}</option>`).join('')}</select>
+    ${bulkBind('billable', 'bk_bill')}${bulkBind('billType', 'bk_bt')}
     <input class="inp" type="date" id="bk_st2" title="Başlangıç" style="width:auto">
     <input class="inp" type="date" id="bk_du" title="Bitiş" style="width:auto">
     <input class="inp" id="bk_lb" placeholder="Etiket ekle" style="width:130px">
@@ -7642,8 +7895,8 @@ function wireBulk() {
       if ($('#bk_st2').value) histSet(i, 'start', $('#bk_st2').value);
       if ($('#bk_du').value) histSet(i, 'due', $('#bk_du').value);
       if (i.start && i.due && i.start > i.due) histSet(i, 'due', i.start);
-      if ($('#bk_bill').value) histSet(i, 'billable', $('#bk_bill').value);
-      if ($('#bk_bt').value) histSet(i, 'billType', $('#bk_bt').value);
+      if ($('#bk_bill')?.value) histSet(i, 'billable', $('#bk_bill').value);
+      if ($('#bk_bt')?.value) histSet(i, 'billType', $('#bk_bt').value);
       if (lb) labelAdd(i, lb);
       n++;
     });
@@ -11691,14 +11944,85 @@ function statusEditor(rows, host, onChange) {
 
 const BILLABLE = ['Faturalanacak', 'Faturalanmayacak'];
 const BILLTYPE = ['Kişi/Saat', 'Adam/Ay'];
-const billOf = i => i?.billable || BILLABLE[0];
+/* Raporlarda faturalama: yalnız "Faturalanmayacak" faturasızdır; boş, bilinmeyen eski değer ve alanı kapalı proje
+   "Faturalanacak" sayılır (eski ensureBilling sonucuyla aynı: toplamlar değişmez). */
+const billOf = i => i?.billable === BILLABLE[1] ? BILLABLE[1] : BILLABLE[0];
 const btypeOf = i => i?.billType || BILLTYPE[0];
 
+/* ---- Parametrik proje alanları: hazır alanlar (Faturalama, Fatura türü, Cari) ----
+   Değer işin yerleşik özelliğinde durur (bind: billable | billType | customerId); eski kod, sorgu ve e-posta aynen çalışır.
+   "Kayıt yoksa açık": projede bind kaydı yoksa alan açıktır ve şablon varsayılanlarıyla davranır; kapatmak archived:true
+   kaydı yazmaktır (değerler silinmez). Kimlik deterministik (cf_<bind>_<proje>): iki yönetici aynı anda açarsa birleşir.
+   Kayıtlar hidden:true taşır: eski sürümün liveField'ı bunları göstermez (boş, mükerrer özel alan görünmesin).
+   Sunucu: validate.js RULES.fields (anahtar/tür sabit, Faturalama seçenekleri sabit), 008 tekil indeksi. */
+const FIELD_PRESETS = {
+  billable:   { key: 'fatura', name: 'Faturalama', type: 'select', options: BILLABLE, def: BILLABLE[0], preset: 'faturalama', icon: 'receipt' },
+  billType:   { key: 'faturaturu', name: 'Fatura türü', type: 'select', options: BILLTYPE, def: BILLTYPE[0], preset: 'faturaturu', icon: 'tag' },
+  customerId: { key: 'cari', name: 'Cari', type: 'cari', options: [], preset: 'cari', icon: 'building' },
+};
+const BINDS = Object.keys(FIELD_PRESETS);
+const bindId = (b, pid) => `cf_${b}_${pid}`.slice(0, 200);
+const bindRec = (pid, b) => (DB.fields || []).find(f => f && f.bind === b && f.projectId === pid);
+const bindOn = (pid, b) => bindRec(pid, b)?.archived !== true;
+/* Etkin tanım: kayıt + şablon. Faturalama seçenekleri sabit; Fatura türü seçenekleri projeye göre. */
+function bindField(pid, b) {
+  const P0 = FIELD_PRESETS[b], r = bindRec(pid, b);
+  const o = { ...P0, ...(r || {}), id: r?.id || bindId(b, pid), projectId: pid, bind: b, icon: P0.icon };
+  o.options = b === 'billable' ? BILLABLE.slice() : b === 'customerId' ? []
+    : (Array.isArray(r?.options) && r.options.length ? r.options.slice() : P0.options.slice());
+  o.on = r?.archived !== true; o.rec = !!r;
+  return o;
+}
+function bindSave(pid, b, patch) {
+  let r = bindRec(pid, b);
+  if (!r) {
+    const P0 = FIELD_PRESETS[b];
+    r = { id: bindId(b, pid), projectId: pid, bind: b, key: P0.key, name: P0.name, type: P0.type, options: P0.options.slice(),
+      ...(P0.def != null ? { def: P0.def } : {}), preset: P0.preset, onCard: false, archived: false };
+    DB.fields.push(r);
+  }
+  Object.assign(r, patch, { hidden: true });
+  return r;
+}
+/* Yeni işin önerilen değerleri (zorunluluk değil): açık hazır alanların varsayılanı; kapalı alana değer yazılmaz. */
+function billDefaults(pid) {
+  const o = {};
+  for (const b of ['billable', 'billType']) {
+    if (!bindOn(pid, b)) continue;
+    const d = bindField(pid, b).def;
+    if (d != null && d !== '') o[b] = d;
+  }
+  return o;
+}
+/* Proje alanlarını yönetebilen: sistem yöneticisi ya da projenin (üye listeli) alanının yöneticisi.
+   Sunucuda store.js → checkScope (eski üyesiz alanda yalnız sistem yöneticisi). */
+const canFields = p => isAdmin() || (!!p && !wsLegacy(wsById(wsOf(p))) && wsRole(CU(), wsById(wsOf(p))) === 'admin');
+
+/* Pano kartı rozetleri: "Kartta göster" işaretli açık alanların dolu değerleri, en çok 3. Faturalama yalnız
+   "Faturalanmayacak" iken (gürültü olmasın). Hepsi esc() ile basılır. */
+const CARD_BADGES = 3;
+function cardBadges(i) {
+  const pid = i.projectId, out = [];
+  for (const b of BINDS) {
+    const f = bindRec(pid, b);
+    if (!f || f.archived === true || f.onCard !== true) continue;
+    const nm = f.name || FIELD_PRESETS[b].name;
+    if (b === 'billable') { if (i.billable === BILLABLE[1]) out.push({ ic: 'receipt', t: i.billable, title: `${nm}: ${i.billable}`, risk: true }); }
+    else if (b === 'billType') { if (i.billType) out.push({ ic: 'tag', t: `${nm}: ${i.billType}`, title: `${nm}: ${i.billType}` }); }
+    else { const c = cuById(customerIdOf(i)); if (c) out.push({ ic: 'building', t: c.name, title: `${nm}: ${c.name}` }); }
+  }
+  for (const f of liveFields()) {
+    if (f.onCard !== true || (f.projectId && f.projectId !== pid)) continue;
+    const v = i.cf?.[f.id];
+    if (v == null || v === '' || (f.type === 'checkbox' && !v)) continue;
+    const s = cfShow(f, v);
+    out.push({ ic: 'sliders', t: `${f.name}: ${s}`, title: `${f.name}: ${s}` });
+  }
+  return out.slice(0, CARD_BADGES);
+}
+
 function ensureBilling() {
-  DB.issues.forEach(i => {
-    if (!BILLABLE.includes(i.billable)) i.billable = BILLABLE[0];
-    i.billType ||= BILLTYPE[0];
-  });
+  /* İşlere değer YAZILMAZ (parametrik alanlar): boş faturalama raporda Faturalanacak sayılır (billOf). */
   if (DB.ui.qa && !BILLABLE.includes(DB.ui.qa.billable)) DB.ui.qa.billable = BILLABLE[0];
   DB.ui.qa ||= { type: null, assignee: SESSION || '', priority: 3, billable: BILLABLE[0],
     billType: BILLTYPE[0], estimate: '', start: '', due: '', dur: '', cf: {} };

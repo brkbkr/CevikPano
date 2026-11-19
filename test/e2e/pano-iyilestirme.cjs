@@ -194,7 +194,7 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
   await go(A, 'admin');
   const w0 = await A.evaluate(() => document.querySelector('#ptSprintW')?.value);
   ok('sprint length setting default 1 week', w0 === '1', w0);
-  /* alan Yöneticisi (genel rolü Üye): sprint düğmeleri var; proje ayarlarında yalnız projeye özel İş akışı sekmesi + sprint süresi */
+  /* alan Yöneticisi (genel rolü Üye): sprint düğmeleri var; proje ayarlarında yalnız projeye özel İş akışı ve Alanlar sekmeleri + sprint süresi */
   const Y = await fresh('wsadmin', YU, 'PiYon123456');
   await go(Y, 'backlog');
   const yv = await Y.evaluate(pid => ({ start: !!document.querySelector(`[data-start="${pid}_sp"]`), nw: !!document.querySelector('#newSprint'), canMan: canManageProject(P()), sys: isAdmin() }), PID);
@@ -202,7 +202,7 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
   await go(Y, 'admin');
   const ya = await Y.evaluate(() => ({ tabs: [...document.querySelectorAll('#adminTabs [data-a]')].map(b => b.dataset.a), w: !!document.querySelector('#ptSprintW'),
     def: !!document.querySelector('#defFlow,#saveDefFlow'), cols: !!document.querySelector('#ptColsSet') }));
-  ok('workspace admin: project settings show only project-specific workflow tab (no general settings)', JSON.stringify(ya.tabs) === '["workflow"]' && ya.w && !ya.def && ya.cols, JSON.stringify(ya));
+  ok('workspace admin: project settings show only project-specific tabs: İş akışı + Alanlar (no general settings)', JSON.stringify(ya.tabs) === '["workflow","fields"]' && ya.w && !ya.def && ya.cols, JSON.stringify(ya));
   await Y.selectOption('#ptSprintW', '3'); await sleep(1500);
   ok('workspace admin: sprint length saved on server', await Y.evaluate(async pid => (await API.get('/api/state')).data.projects.find(p => p.id === pid)?.sprintWeeks === 3, PID));
   await A.reload(); await sleep(1500); await go(A, 'admin');
