@@ -399,6 +399,41 @@ t('güvenlik: puan sonlu sayı 0–1000, epik rengi hex, etiketler metin dizisi'
   assert.equal(ok.json.applied, 4, JSON.stringify(ok.json.rejected));
 });
 
+t('hızlı kart v2: başlangıç/bitiş geçerli gün ve sıralı, tahmin sonlu ve en fazla 10000 saat; eski kayıt dokunulmadıkça gevşek', async () => {
+  const a = client(); await a.login('admin', 'test-admin-pw');
+  const bad = [
+    iss('i_hk_b1', 340, { start: '2026-11-21', due: '2026-11-19' }),        // bitiş başlangıçtan önce
+    iss('i_hk_b2', 341, { start: '2026-02-30' }),                           // takvimde yok
+    iss('i_hk_b3', 342, { due: '2026-13-01' }),
+    iss('i_hk_b4', 343, { due: '2026-11-19T00:00:00Z' }),                  // yeni yazmada tam gün biçimi
+    iss('i_hk_b5', 344, { estimate: 10001 }),
+    iss('i_hk_b6', 345, { estimate: -1 }),
+    iss('i_hk_b7', 346, { estimate: '4' }),
+  ];
+  const r = await a.sync(bad);
+  assert.equal(r.json.applied, 0, JSON.stringify(r.json));
+  assert.equal(r.json.rejected.length, bad.length, JSON.stringify(r.json.rejected));
+  assert.ok(r.json.rejected.find(x => x.id === 'i_hk_b1').reason.includes('Bitiş, başlangıçtan önce olamaz'));
+  assert.ok(/Tahmin en fazla 10000 saat/.test(r.json.rejected.find(x => x.id === 'i_hk_b5').reason));
+  const good = await a.sync([
+    iss('i_hk_g1', 347, { start: '2026-11-19', due: '2026-11-21', estimate: 1.5, remainingEst: 1.5 }),
+    iss('i_hk_g2', 348, { start: '2026-11-19', due: '2026-11-19', points: 3 }),
+    iss('i_hk_g3', 349, { start: '', due: '', estimate: 10000 }),
+  ]);
+  assert.equal(good.json.applied, 3, JSON.stringify(good.json.rejected));
+  /* Sonradan bitişi başlangıcın önüne çekmek de reddedilir. */
+  const mv = await a.sync([iss('i_hk_g1', 347, { start: '2026-11-19', due: '2026-11-18', estimate: 1.5 })]);
+  assert.equal(mv.json.applied, 0, JSON.stringify(mv.json));
+  /* Eski kayıt (sıra dışı tarih, gevşek biçim, büyük tahmin) başka alanı düzenlenince reddedilmez. */
+  const old = { id: 'i_hk_old', projectId: 'p1', key: 'GEN-350', summary: 'eski', statusId: 'p1_s0',
+    start: '2026-11-25T00:00:00', due: '2026-11-20', estimate: 20000 };
+  await pool.query(`INSERT INTO issues (id, data) VALUES ($1, $2::jsonb)`, [old.id, JSON.stringify(old)]);
+  try {
+    const ed = await a.sync([{ c: 'issues', id: old.id, op: 'put', data: { ...old, summary: 'eski 2' } }]);
+    assert.equal(ed.json.applied, 1, JSON.stringify(ed.json.rejected));
+  } finally { await pool.query(`DELETE FROM issues WHERE id = $1`, [old.id]); }
+});
+
 t('güvenlik: cfg.types doğrulanır (renk hex, kısa harf/ad, güvenli kimlik)', async () => {
   const a = client(); await a.login('admin', 'test-admin-pw');
   const cur = (await a.state()).json.data.cfg || {};
