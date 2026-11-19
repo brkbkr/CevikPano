@@ -1559,24 +1559,41 @@ describe('cariler', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     ok(await A.sync([del('customers', 'c_m')]));
   });
 
-  test('izleyiciye 11 haneli vergi no (T.C. kimlik no) maskeli; üye/yönetici tam görür; 10 hane maskesiz', async () => {
+  test('KVKK: 11 haneli vergi no (T.C. kimlik no) yalnız sistem yöneticisine tam; üye, alan yöneticisi, izleyiciye maskeli; 10 hane herkese tam', async () => {
+    const W = await newUser('u_cuw', 'cualan', 'member');                    // alan yöneticisi (genel rolü Üye)
+    ok(await A.sync([{ c: 'workspaces', id: 'ws_cuw', op: 'put', data: { name: 'Cari alanı', admins: ['u_cuw'] } }]));
     const s0 = (await A.state()).json.seq;
     await legacy('c_tc', firm('Şahıs Deneme', { taxNo: '12345678901' }));
     ok(await A.sync([cu('c_vk', firm('Tüzel Deneme', { taxNo: '4444444444' }))]));
     const pick = (list, id) => list.find(x => x.id === id).taxNo;
-    const vs = (await V.state()).json.data.customers, us = (await U.state()).json.data.customers, as = (await A.state()).json.data.customers;
-    assert.equal(pick(vs, 'c_tc'), '*********01'); assert.equal(pick(vs, 'c_vk'), '4444444444');
-    assert.equal(pick(us, 'c_tc'), '12345678901'); assert.equal(pick(as, 'c_tc'), '12345678901');
     const items = async k => (await k.req('GET', `/api/changes?since=${s0}`)).json.items.filter(i => i.c === 'customers').map(i => i.data);
-    const vc = await items(V), uc = await items(U);
-    assert.equal(pick(vc, 'c_tc'), '*********01'); assert.equal(pick(vc, 'c_vk'), '4444444444');
-    assert.equal(pick(uc, 'c_tc'), '12345678901');
-    assert.ok(!JSON.stringify((await V.state()).json).includes('12345678901'));
-    assert.ok(!JSON.stringify((await V.state()).json).includes('123*'));      // ilk haneler de görünmez
-    /* dışa aktarma (yönetici) maskesiz; izleyici dışa aktaramaz */
+    for (const [who, k] of [['izleyici', V], ['üye', U], ['alan yöneticisi', W]]) {
+      const st = (await k.state()).json;
+      assert.equal(pick(st.data.customers, 'c_tc'), '*********01', who); assert.equal(pick(st.data.customers, 'c_vk'), '4444444444', who);
+      const ch = await items(k);
+      assert.equal(pick(ch, 'c_tc'), '*********01', who); assert.equal(pick(ch, 'c_vk'), '4444444444', who);
+      assert.ok(!JSON.stringify(st).includes('12345678901'), who);
+      assert.ok(!JSON.stringify(st).includes('123*'), who);                  // ilk haneler de görünmez
+      assert.ok(!JSON.stringify(await items(k)).includes('12345678901'), who);
+    }
+    assert.equal(pick((await A.state()).json.data.customers, 'c_tc'), '12345678901');
+    assert.equal(pick(await items(A), 'c_tc'), '12345678901');
+    /* dışa aktarma (yönetici) maskesiz; diğerleri dışa aktaramaz */
     assert.equal(pick((await A.req('GET', '/api/export')).json.customers, 'c_tc'), '12345678901');
-    assert.equal((await V.req('GET', '/api/export')).status, 403);
+    for (const k of [V, U, W]) assert.equal((await k.req('GET', '/api/export')).status, 403);
     assert.equal((await row('customers', 'c_tc')).tax_no, '12345678901');   // veritabanında tam değer
+    /* Maskeli değer geri yazılırsa (maskeli almış istemci) gerçek değer bozulmaz: base'li ve base'siz. */
+    const full = (await row('customers', 'c_tc')).data, masked = { ...full, taxNo: '*********01' };
+    ok(await A.sync([cu('c_tc', { ...masked, notes: 'not 1' }, masked)]));
+    ok(await A.sync([cu('c_tc', { ...masked, notes: 'not 2' })]));
+    let d = await row('customers', 'c_tc');
+    assert.equal(d.tax_no, '12345678901'); assert.equal(d.data.taxNo, '12345678901'); assert.equal(d.data.notes, 'not 2');
+    /* Başka bir carinin maskesi (son 2 hane farklı) geçersiz vergi no olarak reddedilir; değer yine bozulmaz. */
+    assert.equal(reasons(await A.sync([cu('c_tc', { ...full, taxNo: '*********99' })])).length, 1);
+    /* Üye / alan yöneticisi cari yazamaz (maskeli geri yazma dahil). */
+    for (const k of [U, W]) assert.equal(reasons(await k.sync([cu('c_tc', { ...masked, notes: 'üye' }, masked)])).length, 1);
+    d = await row('customers', 'c_tc');
+    assert.equal(d.tax_no, '12345678901'); assert.equal(d.data.notes, 'not 2');
   });
 
   test('veritabanı hatasında günlüğe yalnız kod/ileti/kısıt yazılır (detail yok)', async () => {
@@ -5011,6 +5028,29 @@ describe('yetki ve silme güvenliği (O-1, D-1, D-2, D-3, çevrim içi)', { skip
     assert.ok(r.json.applied >= 1);
     assert.deepEqual(await children('p_yg1'), none);
     assert.equal(await row('projects', 'p_yg1'), undefined);
+  });
+
+  test('proje silme (istemci gönderimi): proje Yöneticisi (sahip/alan/sistem değil) siler, Üye silemez', async () => {
+    await seedProject('p_yg9');
+    const P = await newUser('u_yg_pa', 'ygpyon'), M = await newUser('u_yg_pm', 'ygpuye');
+    await addRoles(C.A, 'p_yg9', { u_yg_pa: 'admin', u_yg_pm: 'member' });
+    /* deleteProject'in gönderdiği kayıtlar (istemci, rolden bağımsız aynı kümeyi hazırlar). */
+    const batch = async (k, pid) => {
+      const d = (await k.state()).json.data, iids = new Set(d.issues.filter(i => i.projectId === pid).map(i => i.id));
+      return [...d.worklogs.filter(w => iids.has(w.issueId)).map(w => del('worklogs', w.id)),
+        ...d.comments.filter(w => iids.has(w.issueId)).map(w => del('comments', w.id)),
+        ...[...iids].map(id => del('issues', id)),
+        ...d.statuses.filter(x => x.projectId === pid).map(x => del('statuses', x.id)),
+        ...d.sprints.filter(x => x.projectId === pid).map(x => del('sprints', x.id)),
+        ...d.fields.filter(x => x.projectId === pid).map(x => del('fields', x.id)),
+        del('projects', pid)];
+    };
+    const rm = await M.sync([del('projects', 'p_yg9')]);
+    assert.deepEqual(reasons(rm), ['Projeyi yalnızca proje yöneticisi silebilir']);
+    assert.ok(await row('projects', 'p_yg9'));
+    ok(await P.sync(await batch(P, 'p_yg9')));
+    assert.equal(await row('projects', 'p_yg9'), undefined);
+    assert.deepEqual(await children('p_yg9'), none);
   });
 
   test('O-1: ham API ile yalnız proje silinse de bağlı kayıtlar çöpe gider; kimlik yeniden açılamaz; çöpten geri yükleme hepsini getirir', async () => {
