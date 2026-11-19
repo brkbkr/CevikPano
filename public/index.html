@@ -9158,22 +9158,22 @@ const UF = { q: '', role: '', status: '' };
 const ROLE_KEYS = ['super', 'admin', 'member', 'viewer'];
 const USER_COLORS = ['#4F46E5', '#1F6F5C', '#6B4FBB', '#C0392B', '#B45309', '#3E7BC4', '#2B7A78', '#8E44AD', '#0F766E', '#BE185D'];
 /* [yetki, süper, yönetici, üye, izleyici] */
+/* Genel rol (yetki-v2): projedeki yetki proje rolüne göre (Yetkiler sekmesi; sistem varsayılanı Sistem ekranında). */
 const PERMS = [
-  ['Atandığı projeleri ve işleri görme', 1, 1, 1, 1],
-  ['İş oluşturma, düzenleme, yorum yazma', 1, 1, 1, 0],
-  ['Kendi süre kaydını girme', 1, 1, 1, 0],
+  ['Eklendiği projeleri görme (projedeki yetki proje rolüne göre)', 1, 1, 1, 1],
+  ['Tüm projeleri görme ve yönetme', 1, 1, 0, 0],
+  ['Yöneticisi olmayan alanda (Genel) proje açma', 1, 1, 1, 0],
+  ['Çalışma alanı açma, modüller, iş tipleri, genel alanlar, otomasyon', 1, 1, 0, 0],
+  ['Varsayılan rol yetkileri (Sistem ekranı)', 1, 1, 0, 0],
   ['Başkası adına süre kaydı girme / silme', 1, 1, 0, 0],
-  ['Proje oluşturma, düzenleme, arşivleme', 1, 1, 1, 0],
-  ['Proje silme', 1, 1, 0, 0],
-  ['İş akışı, iş tipleri, özel alanlar, otomasyon', 1, 1, 0, 0],
   ['Kullanıcı ekleme, rol ve parola yönetimi', 1, 1, 0, 0],
   ['Yedekler, çöp kutusu, içe aktarma, etkinlik', 1, 1, 0, 0],
-  ['Arşivlenmiş ve üyesi olmadığı projeleri görme', 1, 0, 0, 0],
+  ['Arşivlenmiş projeleri görme', 1, 0, 0, 0],
   ['Süper yöneticileri yönetme', 1, 0, 0, 0],
 ];
 
 const metaOf = id => USERS_META?.find(m => m.id === id) || null;
-const userProjects = id => DB.projects.filter(p => !p.members?.length || p.members.includes(id));
+const userProjects = id => DB.projects.filter(p => { const u = user(id); return !!u && projRole(u, p) !== null; });
 const userStatus = u => !u.active ? ['Pasif', 'lbl']
   : (metaOf(u.id)?.mustChange ?? u.mustChange) ? ['İlk giriş bekleniyor', 'cat-inprogress'] : ['Aktif', 'cat-done'];
 const roleChip = r => `<span class="chip role-${esc(r)}">${esc(ROLES[r]?.[0] || r)}</span>`;
@@ -9276,9 +9276,10 @@ function userEditor(id) {
   const roleOpts = ROLE_KEYS.filter(r => ROLES[r] && (r !== 'super' || isSuper()));
   const curRole = u?.role || 'member';
   const dis = locked ? 'disabled' : '';
-  /* Alan + rol (22b): '' erişim yok, '__all' üyesiz (herkese açık) alanda genel role göre. */
-  const wsCur = w => { if (wsLegacy(w)) return '__all'; if (u && wsOwner(w) === u.id) return '__own'; return (u && w.members.find(m => m.userId === u.id)?.role) || ''; };
+  /* yetki-v2: alan yöneticiliği (onay kutusu; sahip kilitli) ve proje rolleri (— / Yönetici / Üye / İzleyici; proje sahibi kilitli). */
   const wsRows = wsAll().filter(w => !w.archived).sort(wsSort);
+  const projCur = p => !u ? '' : p.ownerId === u.id ? '__own' : (projRoleMap(p)[u.id] || '');
+  const projRows = w => DB.projects.filter(p => wsOf(p) === w.id && !p.archived).sort((a, b) => String(a.name).localeCompare(String(b.name), 'tr'));
 
   openModal(`<div class="m-h">${u ? avat(u.id, 1) : ''}<b>${isNew ? 'Yeni kullanıcı' : esc(u.name)}</b>
       ${u ? roleChip(u.role) : ''} ${u ? `<span class="chip ${userStatus(u)[1]}">${userStatus(u)[0]}</span>` : ''}
@@ -9306,16 +9307,27 @@ function userEditor(id) {
             <span>${roleChip(r)}<span class="usub">${esc(ROLES[r][1])}</span></span></label>`).join('')}
         </div>
 
-        <div class="sec">Çalışma alanları</div>
-        <div class="usub" style="margin-bottom:8px">Kişi yalnızca üyesi olduğu çalışma alanlarını ve projelerini görür. Yönetici: projelerin tasarımını yönetir · Üye: iş açar, süre kaydeder · İzleyici: yalnız görür. Sistem yöneticisi her alanda Yöneticidir.</div>
+        <div class="sec">Alan yöneticiliği ve projeler</div>
+        <div class="usub" id="ue_sysnote" style="margin-bottom:8px;${curRole === 'admin' || curRole === 'super' ? '' : 'display:none'}">Sistem yöneticisi tüm projeleri görür ve yönetir.</div>
+        <div class="usub" style="margin-bottom:8px">Kişi yalnızca eklendiği projeleri görür (alan yöneticisi o alanın tüm projelerini). Projedeki rol: Yönetici · Üye · İzleyici; rollerin yapabildikleri projenin Yetkiler sekmesinde.</div>
         <div class="wsr-rows" id="ue_ws">
-          ${wsRows.map(w => { const c = wsCur(w), nm = esc(w.name);
-            return `<div class="wsr-row">${wsBadge(w, 'sm')}<span class="nm">${nm}</span>
-              <select class="inp" data-uws="${esc(w.id)}" data-cur="${c}" aria-label="${nm}: rol" ${dis || (c === '__own' ? 'disabled' : '')}>
-                ${c === '__own' ? '<option value="__own" selected>Sahip · Yönetici</option>' : ''}
-                ${c === '__all' ? '<option value="__all" selected>Herkese açık (genel role göre)</option>' : ''}
-                <option value="" ${c === '' ? 'selected' : ''}>Erişim yok</option>
-                ${['admin', 'member', 'viewer'].map(k => `<option value="${k}" ${c === k ? 'selected' : ''}>${WS_ROLE_LBL[k]}</option>`).join('')}</select></div>`; }).join('') || '<span class="usub">Henüz çalışma alanı yok.</span>'}
+          ${wsRows.map(w => { const nm = esc(w.name), own = !!u && wsOwner(w) === u.id, on = own || (!!u && wsAdminIds(w).includes(u.id));
+            return `<label class="wsr-row">${wsBadge(w, 'sm')}<span class="nm">${nm}</span>
+              <input type="checkbox" data-uwsa="${esc(w.id)}" data-cur="${on ? 1 : 0}" ${on ? 'checked' : ''} ${dis || (own ? 'disabled' : '')} aria-label="${nm}: alan yöneticisi">
+              <span class="usub">${own ? 'Sahip · alan yöneticisi' : 'Alan yöneticisi'}</span></label>`; }).join('') || '<span class="usub">Henüz çalışma alanı yok.</span>'}
+        </div>
+        <input class="inp" id="ue_pq" placeholder="Proje ara…" style="margin:10px 0 6px;max-width:280px" aria-label="Projelerde ara" ${dis}>
+        <div class="wsr-rows" id="ue_pr">
+          ${wsRows.filter(w => projRows(w).length).map(w => `<div class="ue-pg" data-upg="${esc(w.id)}"><div class="wsr-row">${wsBadge(w, 'sm')}<b class="nm">${esc(w.name)}</b>
+              <select class="inp sm" data-uwsall="${esc(w.id)}" aria-label="${esc(w.name)}: tüm projelere rol uygula" ${dis}><option value="__">Bu alandaki tüm projelere…</option>
+                <option value="">—</option>${['admin', 'member', 'viewer'].map(k => `<option value="${k}">${PROJ_ROLE_LBL[k]}</option>`).join('')}</select></div>
+            ${projRows(w).map(p => { const c = projCur(p), nm = esc(p.name);
+              return `<div class="wsr-row" data-uprow="${esc(p.id)}" data-q="${esc(String(p.name + ' ' + (p.key || '')).toLocaleLowerCase('tr'))}"><span class="ws-key">${esc(p.key || '')}</span><span class="nm">${nm}</span>
+                <select class="inp" data-uproj="${esc(p.id)}" data-cur="${c}" aria-label="${nm}: proje rolü" ${dis || (c === '__own' ? 'disabled' : '')}>
+                  ${c === '__own' ? '<option value="__own" selected>Sahip · Yönetici</option>' : ''}
+                  <option value="" ${c === '' ? 'selected' : ''}>—</option>
+                  ${['admin', 'member', 'viewer'].map(k => `<option value="${k}" ${c === k ? 'selected' : ''}>${PROJ_ROLE_LBL[k]}</option>`).join('')}</select></div>`; }).join('')}</div>`).join('')
+            || '<span class="usub">Henüz proje yok.</span>'}
         </div>
 
         ${isNew ? `<div class="sec">İlk giriş parolası</div>
@@ -9364,7 +9376,13 @@ function userEditor(id) {
   let pickColor = color;
   const err = msg => { $('#ue_err').textContent = msg; };
   $$('[data-col]').forEach(b => b.onclick = () => { pickColor = b.dataset.col; $$('[data-col]').forEach(x => x.classList.toggle('on', x === b)); });
-  $$('input[name="ue_r"]').forEach(r => r.onchange = () => $$('.rolecard').forEach(c => c.classList.toggle('on', c.contains(r) && r.checked)));
+  $$('input[name="ue_r"]').forEach(r => r.onchange = () => { $$('.rolecard').forEach(c => c.classList.toggle('on', c.contains(r) && r.checked));
+    const sys = ['admin', 'super'].includes($('input[name="ue_r"]:checked')?.value); $('#ue_sysnote').style.display = sys ? '' : 'none'; });
+  const pq = $('#ue_pq');
+  if (pq) pq.oninput = () => { const k = pq.value.trim().toLocaleLowerCase('tr');
+    $$('[data-uprow]').forEach(r => { r.style.display = !k || r.dataset.q.includes(k) ? '' : 'none'; }); };
+  $$('[data-uwsall]').forEach(sel => sel.onchange = () => { if (sel.value === '__') return;
+    $$(`[data-upg="${sel.dataset.uwsall}"] [data-uproj]`).forEach(x => { if (!x.disabled) x.value = sel.value; }); sel.value = '__'; });
   const nameEl = $('#ue_n'), unEl = $('#ue_u'), iniEl = $('#ue_i');
   if (isNew) {
     nameEl.oninput = () => {
@@ -9403,20 +9421,21 @@ function userEditor(id) {
     if (!DB.users.some(x => (x.role === 'admin' || x.role === 'super') && x.active)) {
       Object.assign(target, prev); if (isNew) DB.users.pop(); return err('En az bir aktif yönetici kalmalı.');
     }
-    /* alan üyelikleri (22b): değişen satırlar. Herkese açık alan ilk kez kişiye rol verilince, var olan kişiler
-       genel rolleriyle listeye alınır (kimsenin erişimi kopmasın). */
-    $$('[data-uws]').forEach(sel => {
-      const w = (DB.workspaces || []).find(x => x.id === sel.dataset.uws), v = sel.value;
-      if (!w || v === sel.dataset.cur || v === '__all' || v === '__own') return;
-      let list = wsLegacy(w) ? wsSeed().filter(m => m.userId !== target.id) : w.members.slice();
-      list = list.filter(m => m.userId !== target.id);
-      if (v) list.push({ userId: target.id, role: v });
-      const o = wsOwner(w);
-      if (o && !list.some(m => m.userId === o)) list.unshift({ userId: o, role: 'admin' });
-      w.members = list;
+    /* yetki-v2: değişen alan yöneticilikleri ve proje rolleri (yeni kişi kendiliğinden hiçbir projeye eklenmez). */
+    $$('[data-uwsa]').forEach(cb => {
+      const w = (DB.workspaces || []).find(x => x.id === cb.dataset.uwsa);
+      if (!w || cb.disabled || String(+cb.checked) === cb.dataset.cur) return;
+      const o = wsOwner(w), list = wsAdminIds(w).filter(x => x !== o && x !== target.id);
+      w.admins = cb.checked ? [...list, target.id] : list;
     });
-    /* Yeni kişi: üye listesi dolu eski projelere (herkese açık alanlarda) eskisi gibi eklenir. */
-    if (isNew) DB.projects.forEach(p => { if (!p.archived && p.members?.length && wsLegacy(wsById(wsOf(p))) && !p.members.includes(target.id)) p.members.push(target.id); });
+    $$('[data-uproj]').forEach(sel => {
+      const p = DB.projects.find(x => x.id === sel.dataset.uproj), v = sel.value;
+      if (!p || sel.disabled || v === sel.dataset.cur || v === '__own') return;
+      const map = projRoleMap(p);
+      if (v) map[target.id] = v; else delete map[target.id];
+      if (p.ownerId) map[p.ownerId] = 'admin';
+      p.roles = map; p.members = [...new Set([...(p.members || []).filter(x => Object.hasOwn(map, x)), ...Object.keys(map)])];
+    });
     ok.disabled = true;
     save();
     try { await flushAll(); } catch (e) { }
@@ -10602,65 +10621,59 @@ function wsEmptyView() {
 }
 
 
-/* ============================ ALAN ÜYELERİ VE ALAN SAYFASI (22b) ============================
-   Alan penceresinde "Üyeler": kişi ara + ekle, her kişiye rol. Sahip kaldırılamaz ve hep Yönetici; sahibi yalnız
-   sistem yöneticisi seçer/devreder. Eski (üye listesi tanımsız) alanda liste kişilerin genel rolleriyle önerilir;
-   üye bölümüne dokunulmadıkça kayda yazılmaz (alan herkese açık kalır). Yetki sunucuda (store.js). */
-const wsPeople = () => DB.users.filter(u => u.active && !u.system);
-const wsSeed = () => wsPeople().filter(u => u.role !== 'admin' && u.role !== 'super')
-  .map(u => ({ userId: u.id, role: u.role === 'viewer' ? 'viewer' : 'member' }));
-const WSF = { mem: new Map(), owner: null, dirty: false, legacy: false, w: null };
+/* ============================ ALAN YÖNETİCİLERİ VE ALAN SAYFASI (yetki-v2) ============================
+   Alan penceresinde "Alan yöneticileri": sahip (kilitli) + kişi ara/ekle/çıkar (rol seçici yok). Alan yöneticileri alandaki tüm
+   projeleri görür, yönetir ve yeni proje açar; diğer kişiler yalnız eklendikleri projeleri görür (projenin Yetkiler sekmesi).
+   Sahibi yalnız sistem yöneticisi seçer/devreder. Eski üye listesi (members) gösterilmez ve yazılmaz. Yetki sunucuda (store.js). */
+const wsPeople = () => DB.users.filter(u => u.active && realUser(u));
+const WSF = { adm: new Set(), owner: null, dirty: false, w: null };
 function wsMembersFld(w) {
-  WSF.w = w; WSF.dirty = false; WSF.legacy = !!w && wsLegacy(w);
+  WSF.w = w; WSF.dirty = false;
   WSF.owner = w ? wsOwner(w) : SESSION;
-  WSF.mem = new Map((w ? (WSF.legacy ? wsSeed() : w.members) : []).filter(x => x && x.userId).map(x => [x.userId, x.role]));
-  const own = isAdmin() ? `<div class="ws-fld"><label for="wsf_o">Sahip <span class="opt">alan Yöneticisi; yalnız sistem yöneticisi değiştirir</span></label>
-      <select class="inp" id="wsf_o">${DB.users.filter(u => u.active && (!u.system || u.id === WSF.owner)).map(u => `<option value="${esc(u.id)}" ${u.id === WSF.owner ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select></div>` : '';
-  return `${own}<div class="ws-fld" id="wsf_mf"><label for="wsf_q">Üyeler <span class="opt" id="wsf_mc"></span></label>
-      <input class="inp" id="wsf_q" placeholder="Kişi ara ve ekle…" autocomplete="off" aria-controls="wsf_res">
+  WSF.adm = new Set((w ? wsAdminIds(w) : []).filter(id => id !== WSF.owner));
+  const own = isAdmin() ? `<div class="ws-fld"><label for="wsf_o">Sahip <span class="opt">alan yöneticisi; yalnız sistem yöneticisi değiştirir</span></label>
+      <select class="inp" id="wsf_o">${DB.users.filter(u => u.active && (realUser(u) || u.id === WSF.owner)).map(u => `<option value="${esc(u.id)}" ${u.id === WSF.owner ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select></div>` : '';
+  return `${own}<div class="ws-fld" id="wsf_mf"><label for="wsf_q">Alan yöneticileri <span class="opt" id="wsf_mc"></span></label>
+      <div class="wsm-note" id="wsf_info">Alan yöneticileri bu alandaki tüm projeleri görür, yönetir ve yeni proje açar. Diğer kişiler yalnız eklendikleri projeleri görür; bunu projenin Yetkiler sekmesinden ayarlayın.</div>
+      <input class="inp" id="wsf_q" placeholder="Kişi ara ve yönetici ekle…" autocomplete="off" aria-controls="wsf_res">
       <div class="wsm-res" id="wsf_res" role="listbox" aria-label="Eklenecek kişiler"></div>
-      ${WSF.legacy ? '<div class="wsm-note" id="wsf_leg">Bu alan şu an herkese açık (genel role göre). Listeyi değiştirip kaydedersen yalnız listedekiler erişir.</div>' : ''}
-      <ul class="wsm-list" id="wsf_ml" aria-label="Alan üyeleri"></ul></div>`;
+      <ul class="wsm-list" id="wsf_ml" aria-label="Alan yöneticileri"></ul></div>`;
 }
 WSF.paint = () => {
   const ml = $('#wsf_ml'); if (!ml) return;
-  const owner = WSF.owner, rows = [...WSF.mem.entries()].filter(([id]) => id !== owner);
+  const owner = WSF.owner, rows = [...WSF.adm].filter(id => id !== owner && user(id));
   const ou = user(owner);
-  ml.innerHTML = (ou ? `<li data-wsfm="${esc(owner)}">${avat(owner)}<span class="nm">${esc(ou.name)}</span><span class="ws-role own" data-r="admin">Sahip · Yönetici</span></li>` : '')
-    + rows.map(([id, r]) => { const u = user(id); return `<li data-wsfm="${esc(id)}">${avat(id)}<span class="nm">${esc(u?.name || id)}</span>
-      <select class="inp sm" data-wsfr="${esc(id)}" aria-label="${esc(u?.name || id)}: rol">${['admin', 'member', 'viewer'].map(k =>
-        `<option value="${k}" ${r === k ? 'selected' : ''}>${WS_ROLE_LBL[k]}</option>`).join('')}</select>
-      <button type="button" class="iconbtn bare" data-wsfdel="${esc(id)}" aria-label="${esc(u?.name || id)}: alandan çıkar" title="Çıkar">${ic('x')}</button></li>`; }).join('');
+  ml.innerHTML = (ou ? `<li data-wsfm="${esc(owner)}">${avat(owner)}<span class="nm">${esc(ou.name)}</span><span class="ws-role own" data-r="admin">Sahip · Alan yöneticisi</span></li>` : '')
+    + rows.map(id => { const u = user(id); return `<li data-wsfm="${esc(id)}">${avat(id)}<span class="nm">${esc(u.name)}</span><span class="ws-role" data-r="admin">Alan yöneticisi</span>
+      <button type="button" class="iconbtn bare" data-wsfdel="${esc(id)}" aria-label="${esc(u.name)}: yöneticilikten çıkar" title="Çıkar">${ic('x')}</button></li>`; }).join('');
   $('#wsf_mc').textContent = `${rows.length + (ou ? 1 : 0)} kişi`;
-  $$('[data-wsfr]', ml).forEach(sel => sel.onchange = () => { WSF.mem.set(sel.dataset.wsfr, sel.value); WSF.dirty = true; });
-  $$('[data-wsfdel]', ml).forEach(b => b.onclick = () => { WSF.mem.delete(b.dataset.wsfdel); WSF.dirty = true; WSF.paint(); WSF.find(); $('#wsf_q')?.focus(); });
+  $$('[data-wsfdel]', ml).forEach(b => b.onclick = () => { WSF.adm.delete(b.dataset.wsfdel); WSF.dirty = true; WSF.paint(); WSF.find(); $('#wsf_q')?.focus(); });
 };
 WSF.find = () => {
   const q = $('#wsf_q'), res = $('#wsf_res'); if (!q || !res) return;
   const k = qmKey(q.value).trim();
   if (!k) { res.innerHTML = ''; return; }
-  const hit = wsPeople().filter(u => u.id !== WSF.owner && !WSF.mem.has(u.id)
+  const hit = wsPeople().filter(u => u.id !== WSF.owner && !WSF.adm.has(u.id)
     && [u.name, u.username, u.email].some(t => t && qmKey(t).includes(k))).slice(0, 8);
   res.innerHTML = hit.map(u => `<button type="button" role="option" data-wsfadd="${esc(u.id)}">${avat(u.id)}<span>${esc(u.name)}</span>
     <span class="usub">@${esc(u.username || '')}</span></button>`).join('') || '<div class="wsm-note">Eşleşen kişi yok</div>';
-  $$('[data-wsfadd]', res).forEach(b => b.onclick = () => { WSF.mem.set(b.dataset.wsfadd, 'member'); WSF.dirty = true; q.value = ''; res.innerHTML = ''; WSF.paint(); q.focus(); });
+  $$('[data-wsfadd]', res).forEach(b => b.onclick = () => { WSF.adm.add(b.dataset.wsfadd); WSF.dirty = true; q.value = ''; res.innerHTML = ''; WSF.paint(); q.focus(); });
 };
 WSF.wire = () => {
   const q = $('#wsf_q'); if (!q) return;
   q.oninput = WSF.find;
   q.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('#wsf_res [data-wsfadd]')?.click(); } };
   const o = $('#wsf_o');
-  if (o) o.onchange = () => { const prev = WSF.owner; WSF.owner = o.value; WSF.mem.delete(o.value); if (prev && !WSF.mem.has(prev)) WSF.mem.set(prev, 'admin'); WSF.dirty = true; WSF.paint(); };
+  if (o) o.onchange = () => { const prev = WSF.owner; WSF.owner = o.value; WSF.adm.delete(o.value); if (prev) WSF.adm.add(prev); WSF.dirty = true; WSF.paint(); };
   WSF.paint();
 };
-/* Kayda yaz: yeni alanda her zaman; var olanda üye bölümü değiştiyse. Sahip listede ilk ve Yönetici. */
+/* Kayda yaz: yeni alanda her zaman; var olanda yönetici bölümü değiştiyse. Sahip listede tutulmaz (her zaman yönetici). */
 WSF.apply = w => {
   const isNew = !WSF.w;
   if (!isNew && !WSF.dirty) return;
   if (isAdmin() && WSF.owner) w.ownerId = WSF.owner;
   const owner = isAdmin() ? WSF.owner : wsOwner(w);
-  w.members = [...(owner ? [{ userId: owner, role: 'admin' }] : []),
-    ...[...WSF.mem.entries()].filter(([id]) => id !== owner).map(([userId, role]) => ({ userId, role }))];
+  w.admins = [...WSF.adm].filter(id => id !== owner);
 };
 
 /* Alan sayfası: sol menüde alan adına tıklayınca. Projeler (Projeler ekranı kartları), "+ Proje", üyeler, düzenle/arşivle. */
@@ -13570,10 +13583,48 @@ function wireTopbar() {
   document.addEventListener('focusout', () => { if (RERENDER) setTimeout(tryRerender, 50); });
 }
 
+/* ---- Sistem → Varsayılan yetkiler (yetki-v2; yalnız sistem yöneticisi, sunucuda _settings ADMIN_ONLY) ----
+   DB.perms = { v: 1, member: {...}, viewer: {...} }: yalnız fabrika ayarından (PERM_DEFAULT) farklı hücreler. Kendi değeri
+   olmayan tüm projelerde hemen geçerli. */
+const PERM_ROLE_CARDS = [['admin', 'shield', 'Projede her şeyi yapar; kişileri ve yetkileri yönetir, projeyi silebilir.'],
+  ['member', 'pencil', 'İş açar, düzenler, yorum ve süre girer.'], ['viewer', 'eye', 'Projeyi ve işleri görür, değiştirmez.']];
+function renderSysPerms() {
+  const own = DB.projects.filter(p => isPlainObj(p.perms) && PERM_ROLES.some(r => isPlainObj(p.perms[r]) && Object.keys(p.perms[r]).length));
+  const eff = sysPerms(), nChg = PERM_ROLES.reduce((n, r) => n + PERM_KEYS.filter(k => eff[r][k] !== PERM_DEFAULT[r][k]).length, 0);
+  const yes = (r, k) => r === 'admin' || eff[r][k];
+  return `<div class="pm" data-syspermstab>
+    <div class="pm-sh"><h3>${ic('shield')} Varsayılan yetkiler</h3><span class="sub">Yeni ve kendi ayarı olmayan tüm projeler bu tabloyu kullanır. Proje yöneticisi kendi projesinde değiştirebilir.</span></div>
+    <div class="pm-mem" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0">${PERM_ROLE_CARDS.map(([r, i, d]) => `<div style="padding:12px 14px;border-right:1px solid var(--line)">
+      <b>${ic(i)} ${PROJ_ROLE_LBL[r]}</b><div class="pd" style="font-size:12.5px;color:var(--ink2);margin:4px 0 6px">${esc(d)}</div>
+      <div style="font-size:12px;color:var(--ink2)">${PERM_KEYS.filter(k => yes(r, k)).map(k => esc(PERM_LABEL[k])).join(' · ') || 'Yalnız görür'}</div></div>`).join('')}</div>
+    <section class="pm-sec">
+      <div class="pm-sh"><h3>Rol yetkileri</h3><span class="sub">Kendi ayarı olan projeler: <button type="button" class="pm-rev" id="sysPermOwn" aria-expanded="false">${own.length} proje</button></span>
+        ${nChg ? `<span class="pm-chip chg" data-syschg="${nChg}">${nChg} hücre fabrika ayarından farklı</span>` : ''}<span class="sp"></span>
+        <button type="button" class="btn" id="sysPermReset" ${nChg ? '' : 'disabled'}>${ic('undo')}Fabrika ayarına dön</button></div>
+      <ul class="wsp-mems" id="sysPermList" hidden>${own.map(p => `<li>${esc(p.key || '')} · ${esc(p.name)} <button type="button" class="pm-rev" data-sysgo="${esc(p.id)}">Yetkiler</button></li>`).join('') || '<li class="usub">Yok</li>'}</ul>
+      ${permTable('sys')}
+    </section></div>`;
+}
+function setSysPerm(r, k, v) {
+  const perms = isPlainObj(DB.perms) ? JSON.parse(JSON.stringify(DB.perms)) : {};
+  perms.v = 1; perms[r] = isPlainObj(perms[r]) ? perms[r] : {};
+  if (v === PERM_DEFAULT[r][k]) delete perms[r][k]; else perms[r][k] = v;
+  DB.perms = perms; save(); render();
+}
+function wireSysPerms(el) {
+  $$('[data-perm="sys"]', el).forEach(x => x.onchange = () => setSysPerm(x.dataset.pr, x.dataset.pk, x.checked));
+  const rs = $('#sysPermReset', el);
+  if (rs) rs.onclick = () => { if (!confirm('Varsayılan rol yetkileri fabrika ayarına dönsün mü? Kendi ayarı olmayan tüm projeler etkilenir.')) return;
+    DB.perms = { v: 1, member: {}, viewer: {} }; save(); render(); toast('Varsayılan yetkiler fabrika ayarına döndü'); };
+  const ob = $('#sysPermOwn', el), ol = $('#sysPermList', el);
+  if (ob) ob.onclick = () => { ol.hidden = !ol.hidden; ob.setAttribute('aria-expanded', String(!ol.hidden)); };
+  $$('[data-sysgo]', el).forEach(b => b.onclick = () => openProjPerms(b.dataset.sysgo));
+}
+
 /* ---- Sistem: yedekler, çöp kutusu, etkinlik (yönetici) ---- */
 let SYS_TAB = 'versions';
 function toolbarSystem() {
-  return `<div class="seg">${[['versions', 'Sürümler'], ['backups', 'Yedekler'], ['mail', 'Posta kutuları'], ['data', 'Veri aktarımı'], ['trash', 'Çöp kutusu'], ['activity', 'Etkinlik']].map(([k, l]) =>
+  return `<div class="seg">${[['versions', 'Sürümler'], ['perms', 'Varsayılan yetkiler'], ['backups', 'Yedekler'], ['mail', 'Posta kutuları'], ['data', 'Veri aktarımı'], ['trash', 'Çöp kutusu'], ['activity', 'Etkinlik']].map(([k, l]) =>
     `<button data-systab="${k}" class="${SYS_TAB === k ? 'on' : ''}">${l}</button>`).join('')}</div>
     <div class="spacer"></div>
     ${SYS_TAB === 'backups' ? '<button class="btn pri" id="sysBackup">+ Şimdi yedek al</button>' : ''}`;
@@ -13635,6 +13686,8 @@ async function loadSystem() {
         try { await flushSync(); await API.post(`/api/backups/${b.dataset.restore}/restore`); await reloadState(); toast('Yedek geri yüklendi'); }
         catch (e) { toast('Geri yüklenemedi: ' + e.message); b.disabled = false; }
       });
+    } else if (SYS_TAB === 'perms') {
+      el.innerHTML = renderSysPerms(); wireSysPerms(el);
     } else if (SYS_TAB === 'mail') {
       await loadMail(el);
     } else if (SYS_TAB === 'trash') {
