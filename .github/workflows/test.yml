@@ -16,8 +16,8 @@ jobs:
         options: >-
           --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm test
@@ -40,8 +40,8 @@ jobs:
       DEFAULT_USER_PASSWORD: Baslangic123
       PORT: "3100"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - name: Playwright
@@ -81,14 +81,28 @@ jobs:
         run: node test/e2e/talep.cjs
       - name: Müşteri atamaları cariden testi (iş carisi, birleştirme, raporlar)
         run: node test/e2e/musteri-cari.cjs
-      - name: Posta kutuları testi (yapılandırılmamış ve bağlı kutu listesi)
+      - name: Posta kutuları testi (yapılandırılmamış ve bağlı kutu listesi, kart içinden e-postayla yanıt)
         run: node test/e2e/posta.cjs
       - name: Pano iyileştirmeleri testi (hızlı kart ekleme, alt işler panoda, sprint yetkisi ve süresi)
         run: node test/e2e/pano-iyilestirme.cjs
+      - name: Çalışma alanı üyelikleri ve rolleri testi (alan sayfası, menü, yetkiler)
+        run: node test/e2e/alan-rolleri.cjs
+      - name: Okuma süzmesi testi (erişimi olmayan alanın verisi gelmez, üyelikte canlı yenileme)
+        run: node test/e2e/okuma-suzme.cjs
+      - name: Küçük düzeltmeler testi (sunucu meşgulde yeniden gönderim, komut paleti, cari e-postası ve mailto kodlama, cari özeti)
+        run: node test/e2e/kucuk-duzeltmeler.cjs
+      - name: Genel tur düzeltmeleri testi (alan üyelerine atama, üye çipleri, alandan çıkarılınca açık pencere, taşıma menüsü)
+        run: node test/e2e/genel-tur.cjs
+      - name: Sprint performansı ve komut paleti testi (plan anlık görüntüsü, planlanan / gerçekleşen, palet girişleri)
+        run: node test/e2e/sprint-performans.cjs
+      - name: Cariler CSV testi (içe aktarma önizlemesi, ; , sekme, BOM / ANSI, tekillik, güncelle / atla, dışa aktarma formül kaçışı)
+        run: node test/e2e/cari-csv.cjs
+      - name: Varsayılan menü testi (yönetici herkes için kenar çubuğu, kişisel düzen, yetkiye bağlı öğeler, yoklama)
+        run: node test/e2e/varsayilan-menu.cjs
       - name: Sunucu günlüğü
         if: failure()
         run: cat server.log
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: ekran-goruntuleri

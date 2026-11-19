@@ -14,27 +14,42 @@ let F = 0; const ok = (n, c, x = '') => { if (!c) F++; console.log((c ? 'PASS ' 
   ok('users view opens', (await A.textContent('#title')).includes('Kullanıcılar'));
   const rows = await A.$$eval('tr.urow', r => r.length); ok('lists users', rows >= 5, String(rows));
   await A.screenshot({ path: SS + 'list.png' });
+  /* Alan + rol seçimi (22b): üyeli iki alan; kişi yalnız birine Üye olarak eklenir. */
+  await A.evaluate(() => {
+    const me = SESSION;
+    DB.workspaces.push({ id: 'ws_ku1', name: 'KU Alan 1', color: '#2563EB', description: '', archived: false, members: [{ userId: me, role: 'admin' }] },
+      { id: 'ws_ku2', name: 'KU Alan 2', color: '#047857', description: '', archived: false, members: [{ userId: me, role: 'admin' }] });
+    DB.projects.push({ id: 'p_ku1', key: 'KUA', code: 'KUA', name: 'KU Proje 1', workspaceId: 'ws_ku1', lead: me, counter: 0, members: [], archived: false },
+      { id: 'p_ku2', key: 'KUB', code: 'KUB', name: 'KU Proje 2', workspaceId: 'ws_ku2', lead: me, counter: 0, members: [], archived: false });
+    save();
+  });
+  await A.evaluate(() => flushAll()); await sleep(800);
   // yeni kullanıcı
   await A.click('#uAdd'); await sleep(400);
   await A.fill('#ue_n', 'Zeynep Kaya'); await A.fill('#ue_e', 'zeynep@firma.com'); await A.fill('#ue_t', 'Proje Yöneticisi');
   ok('username auto', (await A.inputValue('#ue_u')) === 'zeynep');
   await A.check('input[name="ue_r"][value="member"]');
-  const pids = await A.$$eval('[data-up]', e => e.map(x => x.dataset.up));
-  await A.uncheck(`[data-up="${pids[1]}"]`);
+  ok('user form: workspace + role selects instead of project checkboxes', await A.evaluate(() => !document.querySelector('[data-up]')
+    && document.querySelector('[data-uws="ws_ku1"]') && document.querySelector('[data-uws="ws1"]')?.value === '__all'
+    && [...document.querySelector('[data-uws="ws_ku1"]').options].map(o => o.value).join() === ',admin,member,viewer'));
+  await A.selectOption('[data-uws="ws_ku1"]', 'member');
   await A.screenshot({ path: SS + 'new.png' });
   await A.click('#ue_ok'); await sleep(2500);
   const pw = await A.evaluate(() => document.querySelector('.pwline code')?.textContent);
   ok('generated password shown once', pw && pw.length >= 12, pw);
   await A.screenshot({ path: SS + 'cred.png' });
   await A.click('[data-close]'); await sleep(300);
-  const z = await A.evaluate(() => { const u = DB.users.find(x => x.username === 'zeynep'); return u && { email: u.email, title: u.title, role: u.role, inP1: DB.projects[0].members.includes(u.id), inP2: DB.projects[1].members.includes(u.id) }; });
-  ok('user saved with profile & memberships', z && z.email === 'zeynep@firma.com' && z.role === 'member' && z.inP1 && !z.inP2, JSON.stringify(z));
+  const z = await A.evaluate(async () => { const u = DB.users.find(x => x.username === 'zeynep');
+    const srv = (await API.get('/api/state')).data.workspaces, m = id => srv.find(w => w.id === id)?.members?.find(x => x.userId === u.id)?.role || null;
+    return u && { email: u.email, title: u.title, role: u.role, ws1: m('ws_ku1'), ws2: m('ws_ku2'), gen: srv.find(w => w.id === 'ws1')?.members?.length || 0 }; });
+  ok('user saved with profile & workspace roles', z && z.email === 'zeynep@firma.com' && z.role === 'member' && z.ws1 === 'member' && !z.ws2 && z.gen === 0, JSON.stringify(z));
   // yeni kullanıcı girişi
   const Z = await mk('zeynep'); await login(Z, 'zeynep', pw);
   ok('new user forced to set password', await Z.isVisible('#fp_a'));
   await Z.fill('#fp_a', 'ZeynepYeni12'); await Z.fill('#fp_b', 'ZeynepYeni12'); await Z.click('#fpForm button[type=submit]'); await sleep(2000);
   /* sol menü ağacı (dilim A2): görünen projeler yalnız üyesi olduğu proje */
-  ok('new user sees only member projects', await Z.evaluate(() => document.querySelectorAll('#wsTree [data-proj]').length) === 1);
+  const zv = await Z.evaluate(() => ({ ws: visibleWs().map(w => w.id), pr: selectableProjects().map(p => p.id) }));
+  ok('new user sees only member workspaces/projects', zv.ws.includes('ws_ku1') && !zv.ws.includes('ws_ku2') && zv.pr.includes('p_ku1') && !zv.pr.includes('p_ku2'), JSON.stringify(zv));
   ok('member sees no data tools', await Z.evaluate(() => {
     const foot = document.querySelector('.rail-foot');
     const visible = foot && getComputedStyle(foot).display !== 'none';
@@ -70,6 +85,12 @@ let F = 0; const ok = (n, c, x = '') => { if (!c) F++; console.log((c ? 'PASS ' 
   await A.click(`tr.urow[data-uedit="u_admin"]`); await sleep(500);
   ok('self role locked, no delete', await A.evaluate(() => [...document.querySelectorAll('input[name="ue_r"]')].every(r => r.disabled) && !document.getElementById('ue_del')));
   await A.click('[data-close]');
+  /* temizlik: deneme alanları ve projeleri */
+  await A.evaluate(() => { DB.projects = DB.projects.filter(p => !['p_ku1', 'p_ku2'].includes(p.id)); save(); });
+  await A.evaluate(() => flushAll()); await sleep(500);
+  await A.evaluate(() => { DB.workspaces = DB.workspaces.filter(w => !['ws_ku1', 'ws_ku2'].includes(w.id)); save(); });
+  await A.evaluate(() => flushAll()); await sleep(500);
+  ok('cleanup: test workspaces removed on server', await A.evaluate(async () => !(await API.get('/api/state')).data.workspaces.some(w => w.id.startsWith('ws_ku'))));
   // mobil
   const M = await mk('mobile', { width: 390, height: 844 }); await login(M, 'admin', 'admin12345');
   await M.evaluate(() => { location.hash = 'users'; }); await sleep(1500);

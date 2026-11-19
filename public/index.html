@@ -1044,6 +1044,13 @@ button.c-av::after{content:"";position:absolute;inset:-6px}
 .as-goal svg.i{width:14px;height:14px;flex-shrink:0;color:var(--accent)}
 .as-prog{flex:1 1 240px;max-width:380px;display:flex;flex-direction:column;gap:6px}
 .as-pl{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--ink2)} .as-pl b{color:var(--ink)}
+.as-plan{font-size:11.5px;color:var(--ink3)} .as-plan b{color:var(--ink2)}
+.spf-tbl{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px;margin-top:10px}
+.spf-tbl th{font-family:var(--mono);font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;color:var(--ink3);text-align:right;padding:4px 4px;border-bottom:1px solid var(--line)}
+.spf-tbl td{text-align:right;padding:6px 4px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.spf-tbl th:first-child,.spf-tbl td:first-child{text-align:left;overflow-wrap:anywhere;width:32%}
+.spf-tbl small{display:block;color:var(--ink3);font-size:10.5px}
+.spf-na{display:inline-block;white-space:nowrap;margin-left:6px;font-size:10.5px;font-weight:600;padding:0 6px;border-radius:999px;border:1px dashed var(--line2);color:var(--ink3)}
 .as-empty{max-width:460px;margin:48px auto;text-align:center;padding:32px 24px;border:1px dashed var(--line2);border-radius:16px;background:var(--surface)}
 .as-eic{display:inline-grid;place-items:center;width:56px;height:56px;border-radius:16px;background:var(--accent-soft);color:var(--accent)}
 .as-eic svg.i{width:26px;height:26px}
@@ -1588,6 +1595,27 @@ button.c-av::after{content:"";position:absolute;inset:-6px}
 /* pencere */
 .modal.cu-m{max-width:780px;display:flex;flex-direction:column}
 .modal.cu-m.narrow{max-width:500px}
+.modal.cu-m.cu-csv{max-width:980px}
+.cuc-h{margin:0 0 8px;font-size:12px;font-weight:700;color:var(--ink2)}
+.cuc-map{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px 10px;margin-bottom:14px}
+.cuc-map label{display:flex;flex-direction:column;gap:4px;min-width:0;font-size:11.5px;font-weight:600;color:var(--meta)}
+.cuc-map label > span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cuc-opts{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;font-size:12px}
+.cuc-opts .lb{font-weight:600;color:var(--ink2)} .cuc-opts .opt{color:var(--meta)}
+.cuc-sum{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px} .cuc-sum .spacer{flex:1}
+.cuc-chip,.cuc-st{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px 0 8px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);font-size:12px;font-weight:600;color:var(--ink2);white-space:nowrap}
+.cuc-st{height:22px;font-size:11.5px}
+.cuc-chip svg.i,.cuc-st svg.i{width:13px;height:13px}
+.cuc-chip b{font-family:var(--mono)}
+.cuc-chip[data-s="add"],.cuc-st[data-s="add"],.cuc-chip[data-s="update"],.cuc-st[data-s="update"]{background:var(--done-bg);border-color:var(--done-line);color:var(--done)}
+.cuc-chip[data-s="error"],.cuc-st[data-s="error"]{background:var(--risk-bg);border-color:var(--risk-line);color:var(--risk)}
+.cuc-scroll{max-height:44vh;overflow:auto}
+.cuc-tbl td{padding:7px 10px;font-size:12.5px} .cuc-tbl th{padding:8px 10px;position:sticky;top:0;z-index:1}
+.cuc-tbl td.cuc-tx{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cuc-tbl tr[data-act="error"] td{background:var(--risk-bg)}
+.cuc-tbl td.cuc-why{color:var(--meta);overflow-wrap:anywhere}
+.cuc-tbl tr[data-act="error"] td.cuc-why{color:var(--risk);font-weight:600}
+.cuc-note{margin:0 0 10px;font-size:12px;color:var(--meta)}
 .cu-m .cu-h{gap:12px;padding:14px 12px 14px 18px}
 .cu-m .cu-h .tx{flex:1;min-width:0}
 .cu-m .cu-h b{display:block;font-size:15px;font-weight:700;letter-spacing:-.01em;overflow-wrap:anywhere}
@@ -2345,6 +2373,11 @@ button.cu-prj:hover{background:var(--surface2)}
 .id-boxf .id-hint{flex:1;margin:0}
 .id-cnew .id-boxf{display:none}
 .id-cnew.open .id-boxf{display:flex}
+.id-cnew.hasmail .id-boxf{display:flex}
+.id-mailto{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;padding:7px 12px;border-bottom:1px solid var(--line);background:var(--surface2);font-size:12.5px;color:var(--ink2)}
+.id-mailto svg{width:15px;height:15px;flex:none}
+.id-mailto .sub{color:var(--meta);flex-basis:100%;padding-left:23px;overflow-wrap:anywhere}
+.id-boxf .btn svg{width:14px;height:14px}
 .id-hint{font-size:11.5px;color:var(--meta);margin-top:6px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 .kbd{font-family:var(--mono);font-size:10.5px;color:var(--ink2);border:1px solid var(--line2);border-radius:5px;padding:0 5px;line-height:17px;background:var(--surface)}
 .id-stalebox{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:8px 0 0;padding:8px 10px;border-radius:9px;font-size:12.5px;
@@ -2872,6 +2905,29 @@ button.id-pv:hover{background:var(--surface);border-color:var(--line)}
   .gr-tab{flex:1;justify-content:center;height:44px;padding:0 6px}
   .gr-c:disabled{min-height:48px}
 }
+/* Alan rolleri ve alan sayfası (22b) */
+.ws-role{font-size:11px;font-weight:650;padding:2px 8px;border-radius:999px;background:var(--surface3);color:var(--ink2);white-space:nowrap}
+.ws-role[data-r="admin"]{background:var(--accent-soft);color:var(--accent-d)}
+.ws-role[data-r="viewer"]{background:var(--surface2);color:var(--meta)}
+.ws-role.own{background:#FEF3C7;color:#92400E}
+.wsp-mems{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px}
+.wsp-mems li{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--surface)}
+.wsp-mems li .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.wsp-sec{display:flex;align-items:center;gap:8px;margin:22px 2px 10px}
+.wsp-sec h3{margin:0;font-size:14px}
+.wsm-res{display:flex;flex-direction:column;gap:2px;margin-top:4px;max-height:180px;overflow:auto}
+.wsm-res:empty{display:none}
+.wsm-res button{display:flex;align-items:center;gap:8px;text-align:left;background:none;border:1px solid transparent;border-radius:6px;padding:5px 8px;cursor:pointer;font:inherit}
+.wsm-res button:hover,.wsm-res button:focus-visible{background:var(--accent-soft)}
+.wsm-list{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;max-height:240px;overflow:auto}
+.wsm-list li{display:flex;align-items:center;gap:8px;padding:4px 6px;border:1px solid var(--line);border-radius:6px}
+.wsm-list li .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.wsm-list select{width:auto}
+.wsm-note{font-size:12px;color:var(--meta);margin-top:4px}
+.wsr-rows{display:flex;flex-direction:column;gap:6px}
+.wsr-row{display:flex;align-items:center;gap:8px}
+.wsr-row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wsr-row select{width:auto;min-width:170px}
 </style>
 </head>
 <body>
@@ -3009,7 +3065,7 @@ function setSync(st) {
   if (typeof renderFileBar === 'function') renderFileBar();
 }
 
-let syncT = null, syncing = null, syncAgain = false, retryT = null;
+let syncT = null, syncing = null, syncAgain = false, retryT = null, BUSY_N = 0;
 /* Silmede 8 sn "Geri al" (HOLD): bekletilen kayıtların SNAP'teki değeri korunur, böylece süre dolana
    kadar sunucuya hiçbir şey gitmez; süre dolunca normal fark gönderimiyle silinir. */
 const HOLDS = [];
@@ -3042,10 +3098,11 @@ async function flushSync() {
   syncing = (async () => {
     const now = holdMask(snapOf(DB));
     let ch = diffSnap(SNAP, now);
-    if (typeof canEdit === 'function' && !canEdit()) ch = ch.filter(x => x.c === '_prefs');
+    if (typeof canEditAny === 'function' && !canEditAny()) ch = ch.filter(x => x.c === '_prefs');
     else if (typeof isAdmin === 'function' && !isAdmin())
-      /* Kolonlar (statuses) süzülmez: projenin üyesi olan Üye de değiştirir, yetkiyi sunucu denetler (#12). */
-      ch = ch.filter(x => !['fields', 'rules', '_settings', 'customers'].includes(x.c) && !(['projects', 'workspaces'].includes(x.c) && x.op === 'del')
+      /* Kolonlar (statuses) ve projeye özel alanlar süzülmez: alan yöneticisi de değiştirir, yetkiyi sunucu denetler (#12, 22b). */
+      ch = ch.filter(x => !['rules', '_settings', 'customers'].includes(x.c) && !(x.c === 'fields' && !(x.data?.projectId || x.base?.projectId))
+        && !(['projects', 'workspaces'].includes(x.c) && x.op === 'del')
         && !(x.c === 'users' && x.id !== ME.id));
     if (!ch.length) { SNAP = now; setSync('ok'); return; }
     setSync('saving');
@@ -3056,7 +3113,7 @@ async function flushSync() {
         rejected.push(...(r.rejected || []));
         adjusted.push(...(r.adjusted || []));
       }
-      SNAP = now; SYNC_AT = Date.now(); setSync('ok');
+      SNAP = now; SYNC_AT = Date.now(); BUSY_N = 0; setSync('ok');
       /* Sunucu bir kaydı birleştirdi ya da iş numarasını değiştirdi: güncel hâli hemen al. */
       if (adjusted.length) setTimeout(poll, 30);
       if (rejected.length) {
@@ -3069,6 +3126,13 @@ async function flushSync() {
       }
     } catch (e) {
       if (e.status === 401) return sessionLost();
+      /* Sunucu meşgul (kilitlenme, sunucudaki yeniden deneme de olmadı): yerel değişiklik atılmaz (SNAP aynı
+         kalır), kısa ve giderek uzayan beklemeyle aynı fark yeniden gönderilir. */
+      if (e.status === 409 && /^Sunucu meşgul/.test(e.message || '')) {
+        BUSY_N++; setSync('pending');
+        retryT = setTimeout(flushSync, Math.min(8000, 500 * 2 ** Math.min(BUSY_N - 1, 4)) + Math.floor(Math.random() * 300));
+        return;
+      }
       if (e.status === 409 || e.status === 400 || e.status === 403) {
         toast(e.message); SNAP = now; setSync('ok'); await reloadState();
         if (typeof colsRefresh === 'function') colsRefresh(e.message);
@@ -3097,7 +3161,7 @@ async function poll() {
   try {
     const r = await API.get('/api/changes?since=' + SEQ + '&view=' + encodeURIComponent(DB?.ui?.view || '')
       + '&issue=' + encodeURIComponent(OPEN_ISSUE || ''));
-    if (r.reload) { SEQ = r.seq || SEQ; toast('Veri yönetici tarafından yenilendi'); return reloadState(); }
+    if (r.reload) { SEQ = r.seq || SEQ; toast(r.access ? 'Erişim yetkileriniz güncellendi' : 'Veri yönetici tarafından yenilendi'); return reloadState(); }
     if (r.items?.length) applyRemote(r.items);
     SEQ = Math.max(SEQ, r.seq || 0);
     setUnread(r.unread || 0);
@@ -3152,8 +3216,30 @@ function tryRerender() {
 }
 
 async function reloadState() {
-  try { holdClear(); DB = await load(); ensureSchema(); ensureAccounts(); startApp(false); }
+  try {
+    const open = OPEN_ISSUE, prevProj = DB?.ui?.project, typed = modalTyped();
+    holdClear(); DB = await load(); ensureSchema(); ensureAccounts();
+    dropLostModal(open, prevProj, typed);
+    startApp(false);
+  }
   catch (e) { if (e.status === 401) sessionLost(); }
+}
+/* Açık pencerede kaydedilmemiş yazı var mı (değeri ilk hâlinden farklı metin alanı ya da açık düzenleme). */
+function modalTyped() {
+  const boxes = [...document.querySelectorAll('#scrim.on, #scrim2.on')];
+  if (!boxes.length) return false;
+  if (ID_ED || ID_CEDIT) return true;
+  return boxes.some(b => [...b.querySelectorAll('textarea, input')].some(e => !['checkbox', 'radio', 'button', 'submit', 'hidden'].includes(e.type)
+    && e.value !== e.defaultValue) || [...b.querySelectorAll('[contenteditable="true"]')].some(e => e.textContent.trim()));
+}
+/* Erişim değişince (18): artık görünmeyen işin ya da (iş açık değilken) seçili projenin açık penceresi kapanır;
+   veri ekranda kalmaz. Sunucu zaten yazmayı reddeder; yazılmış metin varsa kullanıcı uyarılır. */
+function dropLostModal(openId, prevProj, typed) {
+  if (!document.getElementById('scrim')?.classList.contains('on')) return;
+  const lost = openId ? !issue(openId) : !!prevProj && !DB.projects.some(p => p.id === prevProj);
+  if (!lost) return;
+  closeSub(); closeModal();
+  toast(typed ? 'Bu kayda erişiminiz kalmadı; yazdığınız metin kaydedilmedi' : 'Bu kayda erişiminiz kalmadı');
 }
 
 let LOST = null;
@@ -4294,9 +4380,9 @@ function wireBacklogAdd() {
 }
 
 /* ---- sprint yaşam döngüsü (Jira ile aynı kurallar) ----
-   Başlatma/tamamlama yalnız proje yöneticisinde (canManageProject); asıl kural sunucuda (store.js checkSprintState).
+   Başlatma/tamamlama yalnız alan yöneticisinde (canManageProject); asıl kural sunucuda (store.js checkSprintState).
    Sprint süresi projede (projects.data.sprintWeeks, 1–8 hafta, varsayılan 1). */
-const SPRINT_FORBIDDEN = 'Sprinti yalnızca proje yöneticisi başlatıp bitirebilir';
+const SPRINT_FORBIDDEN = 'Sprinti yalnızca alan yöneticisi başlatıp bitirebilir';
 const sprintWeeks = p => { const w = p?.sprintWeeks; return Number.isInteger(w) && w >= 1 && w <= 8 ? w : 1; };
 const sprintEnd = (start, p) => iso(addD(start + 'T12:00', sprintWeeks(p) * 7 - 1));
 /* Yeni sprintin önerilen tarihleri: önceki sprintin bitişinin ertesi günü (yoksa bu pazartesi) + süre. */
@@ -4349,6 +4435,10 @@ function startSprint(id) {
   $('#doStart').onclick = () => {
     if (activeSprint()) { closeModal(); return toast('Zaten aktif bir sprint var. Önce onu tamamlayın.'); }
     s.state = 'active'; s.start = start; s.end = end;
+    /* Planlanan kapsamın anlık görüntüsü (sprint performansı); sunucu yalnız başlatırken yazdırır, sonra değişmez. */
+    const it = sprintStats(id).items;
+    if (!s.plan) s.plan = { count: it.length, points: it.reduce((a, i) => a + (i.points || 0), 0), est: it.reduce((a, i) => a + (i.estimate || 0), 0),
+      ids: it.map(i => i.id), at: Date.now() };
     closeModal(); save(); render(); toast(s.name + ' başlatıldı');
   };
   setTimeout(() => $('#doStart')?.focus(), 40);
@@ -4404,7 +4494,7 @@ function renderSprint() {
       <span class="as-eic">${ic('sprint')}</span>
       <h3>Aktif sprint yok</h3>
       <p>Bir sprint başladığında işleri burada kolonlarıyla, ilerlemesi ve kalan günüyle görürsünüz.</p>
-      ${man ? `<a class="btn pri" id="asPlan" href="#backlog">${ic('backlog')}Sprint planla</a>` : '<p class="sub">Sprinti proje yöneticisi başlatır.</p>'}</div>`;
+      ${man ? `<a class="btn pri" id="asPlan" href="#backlog">${ic('backlog')}Sprint planla</a>` : '<p class="sub">Sprinti alan yöneticisi başlatır.</p>'}</div>`;
   const st = sprintStats(s.id);
   const left = s.end ? Math.round((hmDay(s.end) - hmDay(TODAY)) / 864e5) : null;
   const pct = st.n ? st.done / st.n * 100 : 0, hp = st.est ? st.estDone / st.est * 100 : 0;
@@ -4419,6 +4509,7 @@ function renderSprint() {
         <div class="as-pl"><span>İşler <b class="num">${st.done}/${st.n}</b></span><span>Saat <b class="num">${fmtDur(st.estDone)} / ${fmtDur(st.est)}</b></span></div>
         ${spBar(pct, 'done', 'Tamamlanan iş oranı')}
         ${st.est ? spBar(hp, 'hrs', 'Tamamlanan tahmin oranı') : ''}
+        ${spPlanLine(s)}
       </div>
       ${man ? `<button type="button" class="btn" data-spcomplete="${esc(s.id)}">${ic('checkc')}Sprinti tamamla</button>` : ''}
     </section>
@@ -4619,12 +4710,81 @@ function velocity() {
       const x = 10 + k * bw, ch = (d.c / max) * (H - 40), dh = (d.d / max) * (H - 40);
       return `<rect x="${x + 6}" y="${H - 26 - ch}" width="${bw * .36}" height="${ch}" fill="#C7CBD1" rx="2"/>
         <rect x="${x + 6 + bw * .40}" y="${H - 26 - dh}" width="${bw * .36}" height="${dh}" fill="var(--accent)" rx="2"/>
-        <text x="${x + bw / 2}" y="${H - 12}" text-anchor="middle" font-size="9" font-family="var(--mono)" fill="var(--ink3)">${esc(d.s.name.replace(/^\S+\s/, ''))}</text>
+        <text x="${x + bw / 2}" y="${H - 12}" text-anchor="middle" font-size="9" font-family="var(--mono)" fill="var(--ink3)">${esc(String(d.s.name || "").replace(/^\S+\s/, ''))}</text>
         <text x="${x + bw / 2}" y="${H - 32 - Math.max(ch, dh)}" text-anchor="middle" font-size="9.5" font-family="var(--mono)" fill="var(--ink2)">${d.d}/${d.c}</text>`;
     }).join('')}</svg>
     <div style="display:flex;gap:14px;font-size:11px;color:var(--ink3);margin-top:4px">
       <span>▬ <span style="color:var(--ink2)">Taahhüt</span></span>
       <span style="color:var(--accent)">▬ <span style="color:var(--ink2)">Tamamlanan</span></span></div>`;
+}
+
+/* ============================ SPRINT PERFORMANSI ============================
+   Planlanan: başlatmadaki anlık görüntü (`s.plan`). Yoksa (eski sprint) "Sprint" geçmiş kayıtlarından tahmin:
+   başlangıç anında sprintte olan işler (geçmiş sprint adıyla tutulur; ad değiştiyse eksik kalabilir).
+   Eklenen: başlangıçtan sonra giren; tamamlanan: sprintte kalıp biten; taşınan: sprintten çıkan. */
+function sprintPerf(s) {
+  const pts = id => issue(id)?.points || 0;
+  const hist = DB.history.filter(h => h.field === 'Sprint' && (h.from === s.name || h.to === s.name));
+  const t0 = s.plan?.at || (s.start ? hmDay(s.start).getTime() - 12 * 36e5 : 0);
+  const cur = DB.issues.filter(i => i.sprintId === s.id && i.type !== 'epic');
+  const inNow = new Set(cur.map(i => i.id));
+  const hOf = id => hist.filter(h => h.issueId === id).sort((a, b) => a.at - b.at);
+  let planIds;
+  if (s.plan) planIds = new Set(s.plan.ids);
+  else {
+    planIds = new Set();
+    for (const id of new Set([...inNow, ...hist.map(h => h.issueId)])) {
+      const hs = hOf(id), before = hs.filter(h => h.at <= t0).pop();
+      if (before ? before.to === s.name : hs.length ? hs[0].from === s.name : inNow.has(id)) planIds.add(id);
+    }
+  }
+  const added = [...new Set([...inNow, ...hist.filter(h => h.to === s.name && h.at > t0).map(h => h.issueId)])].filter(id => !planIds.has(id));
+  const done = cur.filter(isDone).map(i => i.id);
+  const moved = [...planIds, ...added].filter(id => issue(id) && !inNow.has(id));
+  const scope = planIds.size + added.length;
+  return { has: !!s.plan,
+    plan: s.plan ? s.plan.count : planIds.size, planPts: s.plan ? s.plan.points : [...planIds].reduce((a, id) => a + pts(id), 0),
+    added: added.length, addedPts: added.reduce((a, id) => a + pts(id), 0),
+    done: done.length, donePts: done.reduce((a, id) => a + pts(id), 0), planDone: done.filter(id => planIds.has(id)).length,
+    moved: moved.length, rate: scope ? Math.round(done.length / scope * 100) : 0 };
+}
+/* Aktif sprint başlığı: planlanan vs şu ana kadar biten (canlı). */
+function spPlanLine(s) {
+  const f = sprintPerf(s);
+  return `<div class="as-pl as-plan" data-spplan>${f.has
+    ? `<span>Planlanan <b class="num">${f.plan} iş · ${f.planPts} puan</b>${f.added ? ` · +${f.added} eklendi` : ''}</span><span>Biten <b class="num">${f.planDone}/${f.plan}</b> planlanan</span>`
+    : `<span>Plan verisi yok</span><span>Biten <b class="num">${f.done}</b> iş</span>`}</div>`;
+}
+function sprintPerfPanel() {
+  const act = activeSprint();
+  const rows = sprintsOf().filter(s => s.state === 'closed').slice(-6).map(s => ({ s, f: sprintPerf(s) }));
+  const live = act ? (() => { const f = sprintPerf(act); return `<div class="stat" data-spflive>
+      <div><b>${f.has ? f.plan : '—'}</b><span>planlanan iş</span></div>
+      <div><b>${f.has ? f.planDone : f.done}</b><span>${f.has ? 'planlanandan biten' : 'biten iş'}</span></div>
+      <div><b>+${f.added}</b><span>sonradan eklenen</span></div>
+      <div><b>%${f.rate}</b><span>şu ana kadar</span></div></div>
+      <div class="sub">${esc(act.name)} · aktif${f.has ? '' : ' · plan verisi yok'}</div>`; })() : '';
+  if (!rows.length) return live + '<div class="empty">Henüz kapanmış sprint yok</div>';
+  const max = Math.max(...rows.map(r => Math.max(r.f.plan + r.f.added, r.f.done)), 1), W = 460, H = 170, bw = (W - 20) / rows.length;
+  const chart = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Sprint performansı: planlanan ve tamamlanan iş">
+    ${rows.map(({ s, f }, k) => {
+      const x = 10 + k * bw, ph = (f.plan / max) * (H - 40), ah = (f.added / max) * (H - 40), dh = (f.done / max) * (H - 40);
+      return `<rect x="${x + 6}" y="${H - 26 - ph}" width="${bw * .36}" height="${ph}" fill="var(--line2)" rx="2"><title>Planlanan ${f.plan}</title></rect>
+        ${ah ? `<rect x="${x + 6}" y="${H - 26 - ph - ah}" width="${bw * .36}" height="${ah}" fill="var(--over)" opacity=".7" rx="2"><title>Eklenen ${f.added}</title></rect>` : ''}
+        <rect x="${x + 6 + bw * .40}" y="${H - 26 - dh}" width="${bw * .36}" height="${dh}" fill="var(--accent)" rx="2"><title>Tamamlanan ${f.done}</title></rect>
+        <text x="${x + bw / 2}" y="${H - 12}" text-anchor="middle" font-size="9" font-family="var(--mono)" fill="var(--ink3)">${esc(String(s.name || "").replace(/^\S+\s/, ''))}</text>
+        <text x="${x + bw / 2}" y="${H - 32 - Math.max(ph + ah, dh)}" text-anchor="middle" font-size="9.5" font-family="var(--mono)" fill="var(--ink2)">${f.done}/${f.plan + f.added}</text>`;
+    }).join('')}</svg>
+    <div style="display:flex;gap:14px;font-size:11px;color:var(--ink3);margin-top:4px;flex-wrap:wrap">
+      <span style="color:var(--line2)">▬ <span style="color:var(--ink2)">Planlanan</span></span>
+      <span style="color:var(--over)">▬ <span style="color:var(--ink2)">Sonradan eklenen</span></span>
+      <span style="color:var(--accent)">▬ <span style="color:var(--ink2)">Tamamlanan</span></span></div>`;
+  const tbl = `<table class="spf-tbl" aria-label="Kapanmış sprintler: planlanan ve gerçekleşen"><thead><tr><th scope="col">Sprint</th><th scope="col" title="Başlangıçta planlanan">Plan</th>
+      <th scope="col" title="Sonradan eklenen">Eklenen</th><th scope="col" title="Tamamlanan">Biten</th><th scope="col" title="Sprintten taşınan">Taşınan</th><th scope="col" title="Tamamlanma oranı">Oran</th></tr></thead><tbody>
+    ${rows.slice().reverse().map(({ s, f }) => `<tr data-spf="${esc(s.id)}"><td>${esc(s.name)}${f.has ? '' : '<span class="spf-na" title="Sprint başlatılırken plan kaydedilmemiş; geçmişten tahmin edildi">plan verisi yok</span>'}</td>
+      <td>${f.has ? '' : '~'}${f.plan}<small>${f.planPts} puan</small></td><td>${f.added}<small>${f.addedPts} puan</small></td>
+      <td>${f.done}<small>${f.donePts} puan</small></td><td>${f.moved}</td><td><b>%${f.rate}</b></td></tr>`).join('')}</tbody></table>`;
+  return live + chart + tbl;
 }
 
 function renderReports() {
@@ -4658,6 +4818,11 @@ function renderReports() {
     <section class="panel">
       <h3>Sprint hızı</h3><div class="sub">Taahhüt edilen ve tamamlanan puan</div>
       ${velocity()}
+    </section>
+
+    <section class="panel" id="spPerf">
+      <h3>Sprint performansı</h3><div class="sub">Planlanan ve gerçekleşen · son 6 kapanmış sprint · oran = tamamlanan / (planlanan + eklenen)</div>
+      ${sprintPerfPanel()}
     </section>` : ''}
 
     <section class="panel">
@@ -4745,7 +4910,40 @@ let ID_DERR = null;               // reddedilen tarih: { f, v, msg }
 let ID_SUB_AS = null;             // satır içi alt iş için seçilen atanan
 let ID_SUBNEW = null;             // yeni eklenen alt iş (1,5 sn vurgu)
 let ID_MORE = 0;                  // etkinlikte "Daha fazla göster" sayısı
-const ID_DRAFT = { cmt: '', open: false };
+const ID_DRAFT = { cmt: '', open: false, mail: false };
+/* Kart içinden e-postayla yanıt (madde 21): işin kaynağı bir e-postaysa sunucuya sorulur (alıcı/konu sunucuda belirlenir).
+   MAILREPLY[issueId]: undefined (sorulmadı) | 'bekle' | { available, to, subject } */
+const MAILREPLY = {};
+function mailReplyOf(i) {
+  if (!i || i.source?.kind !== 'email' || !canEdit()) return null;
+  const v = MAILREPLY[i.id];
+  if (v === undefined) {
+    MAILREPLY[i.id] = 'bekle';
+    API.get('/api/mail/reply/' + encodeURIComponent(i.id))
+      .then(r => { MAILREPLY[i.id] = r && typeof r === 'object' ? r : { available: false }; })
+      .catch(() => { MAILREPLY[i.id] = { available: false }; })
+      .then(() => { if (OPEN_ISSUE === i.id && MAILREPLY[i.id].available) refreshIssue(['act']); });
+    return null;
+  }
+  return v && v !== 'bekle' && v.available ? v : null;
+}
+let MAIL_SENDING = false;
+async function idMailSend() {
+  const i = curIssue(), el = $('#newCmt'), mr = mailReplyOf(i);
+  if (!i || !el || !mr || MAIL_SENDING) return;
+  const v = el.value.trim(); if (!v) return el.focus();
+  MAIL_SENDING = true; const b = $('#sendMail'); if (b) b.disabled = true;
+  try {
+    const r = await API.post('/api/mail/reply/' + encodeURIComponent(i.id), { body: v });
+    ID_DRAFT.cmt = ''; ID_DRAFT.open = false; ID_DRAFT.mail = false;
+    toast('E-postayla yanıtlandı: ' + (r?.to || mr.to));
+    await poll();
+    if (OPEN_ISSUE === i.id) refreshIssue(['act']);
+  } catch (e) {
+    toast(e.message || 'E-posta gönderilemedi');
+    if (e.status === 409) { MAILREPLY[i.id] = { available: false }; ID_DRAFT.mail = false; if (OPEN_ISSUE === i.id) refreshIssue(['act']); }
+  } finally { MAIL_SENDING = false; const b2 = $('#sendMail'); if (b2) b2.disabled = false; }
+}
 const ID_PARTS = { head: 'idHead', title: 'idT', desc: 'idD', subs: 'idS', links: 'idL', act: 'idA', props: 'idSide' };
 const ID_FEEDS = [['all', 'Tümü'], ['cmt', 'Yorumlar'], ['hist', 'Geçmiş'], ['work', 'Süre']];
 const curIssue = () => issue(OPEN_ISSUE);
@@ -4960,9 +5158,11 @@ const holdBefore = recs => recs.map(([c, x]) => [c, JSON.parse(JSON.stringify(x)
 /* ---- açılış ve yenileme ---- */
 function openIssue(id) {
   const i = issue(id); if (!i) return;
+  noteRecentIssue(id);
   if (OPEN_ISSUE === id && $('#scrim.on .modal.id-dlg')) return refreshIssue(['all']);
   closeQuick(false); closeSub();
-  ID_ED = null; ID_DERR = null; ID_SUB_AS = null; ID_MORE = 0; ID_DRAFT.cmt = ''; ID_DRAFT.open = false; ID_CEDIT = null;
+  ID_ED = null; ID_DERR = null; ID_SUB_AS = null; ID_MORE = 0; ID_DRAFT.cmt = ''; ID_DRAFT.open = false; ID_DRAFT.mail = false; ID_CEDIT = null;
+  delete MAILREPLY[id];
   const s = $('#scrim');
   s.innerHTML = `<div class="modal id-dlg id-trap" role="dialog" aria-modal="true" aria-labelledby="idTitle" tabindex="-1">
     <div class="id-head" id="idHead"></div>
@@ -5093,6 +5293,7 @@ function histRow(h) {
   if (F === 'Etiket' && (k === 'add' || k === 'remove')) return line(k === 'add' ? 'Etiket ekledi' : 'Etiket kaldırdı', k === 'add' ? tv : fv);
   if (F === 'Bağlantı' && (k === 'add' || k === 'remove')) return line(k === 'add' ? 'Bağlantı ekledi' : 'Bağlantı kaldırdı', k === 'add' ? tv : fv);
   if (F === 'Yorum' && k) return line(k === 'add' ? 'Yorum ekledi' : k === 'edit' ? 'Yorumu düzenledi' : 'Yorumu sildi', k === 'del' ? fv : tv);
+  if (F === 'E-posta' && k === 'reply') return line('✉ E-postayla yanıtlandı', tv);
   if (F === 'Alt iş' && (k === 'add' || k === 'done')) return line(k === 'add' ? 'Alt iş ekledi' : 'Alt işi tamamladı', tv);
   if (F === 'Süre kaydı' && k === 'add') { const m = /^(.*) \(([^()]*)\)$/.exec(String(h.to ?? ''));
     const v = m ? `<strong class="num">${esc(m[1])}</strong> süre kaydetti (${esc(m[2])})` : `<strong class="num">${tv}</strong> süre kaydetti`;
@@ -5120,10 +5321,11 @@ function histVal(field, v) {
 let ID_CEDIT = null;
 function issueActivity(i) {
   const ed = canEdit(), f = ID_FEEDS.some(x => x[0] === DB.ui.idFeed) ? DB.ui.idFeed : 'all';
+  const mr = ed ? mailReplyOf(i) : null, mm = !!(mr && ID_DRAFT.mail);
   const cm = DB.comments.filter(c => c.issueId === i.id), wl = DB.worklogs.filter(w => w.issueId === i.id);
   const hs = DB.history.map((h, o) => ({ k: 'h', at: Number(h.at) || 0, o, x: h })).filter(it => it.x.issueId === i.id);
   /* "Tümü"nde yorum/süre ekleme satırı gizli: kaydın kendisi zaten akışta (Geçmiş süzgecinde görünür). */
-  const dup = h => h.kind === 'add' && (h.field === 'Yorum' || h.field === 'Süre kaydı');
+  const dup = h => (h.kind === 'add' && (h.field === 'Yorum' || h.field === 'Süre kaydı')) || (h.kind === 'reply' && h.field === 'E-posta');
   const hsAll = hs.filter(it => !dup(it.x));
   const n = { all: cm.length + hsAll.length + wl.length, cmt: cm.length, hist: hs.length, work: wl.length };
   const wAt = w => w.at || new Date((day10(w.date) || TODAY) + 'T' + (/^\d\d:\d\d$/.test(w.time || '') ? w.time : '12:00')).getTime();
@@ -5160,10 +5362,13 @@ function issueActivity(i) {
   };
   return `<section class="id-sec" aria-labelledby="idActH"><div class="id-sh"><h3 id="idActH">${ic('clock')}Etkinlik</h3><span class="id-sort">En yeni üstte</span></div>
     <div class="id-feedf" role="group" aria-label="Etkinlik süzgeci">${ID_FEEDS.map(([k, l]) => `<button type="button" data-feed="${k}" aria-pressed="${f === k}">${l} <span class="num">${n[k]}</span></button>`).join('')}</div>
-    ${ed && f !== 'hist' && f !== 'work' ? `<div class="id-cnew${ID_DRAFT.open || ID_DRAFT.cmt ? ' open' : ''}">${avat(CU()?.id)}<div class="id-box">
-      <textarea class="inp" id="newCmt" rows="${ID_DRAFT.open || ID_DRAFT.cmt ? 3 : 1}" placeholder="Yorum ekle…" aria-label="Yorum ekle">${esc(ID_DRAFT.cmt)}</textarea>
+    ${ed && f !== 'hist' && f !== 'work' ? `<div class="id-cnew${ID_DRAFT.open || ID_DRAFT.cmt || mm ? ' open' : ''}${mm ? ' mail' : ''}${mr ? ' hasmail' : ''}">${avat(CU()?.id)}<div class="id-box">
+      ${mm ? `<div class="id-mailto" id="mailTo">${ic('mail')}<span>Alıcı: <b>${esc(mr.to)}</b></span><span class="sub">Konu: ${esc(mr.subject)}</span></div>` : ''}
+      <textarea class="inp" id="newCmt" rows="${ID_DRAFT.open || ID_DRAFT.cmt || mm ? 3 : 1}" placeholder="${mm ? 'E-posta yanıtı (düz metin)…' : 'Yorum ekle…'}" aria-label="${mm ? 'E-posta yanıtı' : 'Yorum ekle'}" maxlength="${mm ? 10000 : 20000}">${esc(ID_DRAFT.cmt)}</textarea>
       <div class="id-boxf"><span class="id-hint"><span class="kbd">Ctrl</span>+<span class="kbd">Enter</span> gönderir</span>
-        <button type="button" class="btn sm" id="cmtNo">Vazgeç</button><button type="button" class="btn sm pri" id="addCmt">Gönder</button></div></div></div>` : ''}
+        ${mr && !mm ? `<button type="button" class="btn sm" id="mailCmt" title="Talep edene e-postayla yanıt gönder">${ic('mail')}E-postayla yanıtla</button>` : ''}
+        <button type="button" class="btn sm" id="cmtNo">Vazgeç</button>${mm ? `<button type="button" class="btn sm pri" id="sendMail">${ic('mail')}E-postayla gönder</button>`
+          : `<button type="button" class="btn sm pri" id="addCmt">Gönder</button>`}</div></div></div>` : ''}
     <div class="id-feed">${shown.map(row).join('') || '<div class="id-empty">Henüz kayıt yok</div>'}</div>
     ${items.length > lim ? `<button type="button" class="id-more" id="idMoreFeed">${ic('down')}Daha fazla göster · ${items.length - lim} eski kayıt</button>` : ''}</section>`;
 }
@@ -5435,7 +5640,9 @@ function idClick(e) {
   if ((b = hit('[data-csave]'))) return idCmtSave(b.dataset.csave);
   if ((b = hit('[data-cdel]'))) return deleteComment(b.dataset.cdel);
   if (hit('#addCmt')) return idCmtAdd();
-  if (hit('#cmtNo')) { ID_DRAFT.cmt = ''; ID_DRAFT.open = false; return refreshIssue(['act']); }
+  if (hit('#sendMail')) return idMailSend();
+  if (hit('#mailCmt')) { ID_DRAFT.mail = true; ID_DRAFT.open = true; refreshIssue(['act']); $('#newCmt')?.focus(); return; }
+  if (hit('#cmtNo')) { ID_DRAFT.cmt = ''; ID_DRAFT.open = false; ID_DRAFT.mail = false; return refreshIssue(['act']); }
   if (hit('#newCmt') && !ID_DRAFT.open) { ID_DRAFT.open = true; const el = $('#newCmt'); el.rows = 3; el.closest('.id-cnew')?.classList.add('open'); }
 }
 function idCmtAdd() {
@@ -5470,8 +5677,8 @@ function idKey(e) {
     return;
   }
   if (t.id === 'newCmt') {
-    if (ctrlEnter) { e.preventDefault(); idCmtAdd(); }
-    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); ID_DRAFT.open = false; if (!t.value) { refreshIssue(['act']); } t.blur(); $('#scrim .modal.id-dlg')?.focus({ preventScroll: true }); }
+    if (ctrlEnter) { e.preventDefault(); ID_DRAFT.mail && $('#sendMail') ? idMailSend() : idCmtAdd(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); ID_DRAFT.open = false; ID_DRAFT.mail = false; if (!t.value) { refreshIssue(['act']); } t.blur(); $('#scrim .modal.id-dlg')?.focus({ preventScroll: true }); }
     return;
   }
   if (t.id?.startsWith('ce_')) {
@@ -5672,7 +5879,7 @@ function sprintForm(id) {
   const pr = P();
   if (!pr) return toast('Önce bir proje seçin');
   const s = id ? sprint(id) : null;
-  if (!s && !canManageProject(pr)) return toast('Sprinti yalnızca proje yöneticisi oluşturabilir');
+  if (!s && !canManageProject(pr)) return toast('Sprinti yalnızca alan yöneticisi oluşturabilir');
   const def = s ? { start: s.start || '', end: s.end || '' } : sprintRange(pr);
   const bl = issuesOf().filter(i => !i.sprintId && i.type !== 'epic' && !isDone(i));
   const scope = s ? sprintStats(s.id) : { n: 0, est: 0 };
@@ -5695,7 +5902,7 @@ function sprintForm(id) {
       </div>
       ${s ? '' : `<div class="id-hint sp-note">${ic('backlog')}Oluşturduktan sonra backlog'dan işleri sprinte sürükleyin.</div>`}
     </div>
-    <div class="m-f">${s ? `<button type="button" class="btn danger" data-delsprint="${esc(s.id)}">Sil</button>` : ''}
+    <div class="m-f">${s && (s.state !== 'active' || canManageProject(pr)) ? `<button type="button" class="btn danger" data-delsprint="${esc(s.id)}">Sil</button>` : ''}
       <span class="spacer"></span><button type="button" class="btn" data-close>Vazgeç</button>
       <button type="button" class="btn pri" id="doSprint">${ic(s ? 'check' : 'plus')}${s ? 'Kaydet' : 'Sprint oluştur'}</button></div>`, 'id-m narrow sp-m id-trap');
   spDlg('spFormT');
@@ -5780,7 +5987,7 @@ function reqList(cur, required, pr) {
       `${esc(p.name)} — ${esc(custShort(c))}`, esc(p.email || p.title || '')));
     const out = rows.join('') || '<div class="qm-empty">Eşleşen kişi yok</div>';
     return (required ? '' : pmOpt('', cur, `<span class="c-av none">${ic('x')}</span>`, 'Yok') + '<hr>') + out
-      + (canEdit() ? `<hr><button type="button" class="qm-opt" role="menuitem" data-qv="__add">${ic('userplus')}<span class="qm-l">Yeni kişi ekle</span></button>` : '');
+      + (isAdmin() ? `<hr><button type="button" class="qm-opt" role="menuitem" data-qv="__add">${ic('userplus')}<span class="qm-l">Yeni kişi ekle</span></button>` : '');
   };
 }
 /* Seçici: tek kapı (yeni iş, iş detayı, e-postadan talep). */
@@ -5798,7 +6005,7 @@ function reqStoreCustomer(d) {
 }
 /* Hızlı kişi ekle (yönetici + üye): ad zorunlu, e-posta, telefon. */
 function quickContact(pre = {}, cb) {
-  if (!canEdit()) return;
+  if (!isAdmin()) return toast('Kişi eklemeyi yalnızca yönetici yapabilir');
   const cs = (DB.customers || []).filter(c => c && c.active !== false).sort((a, b) => custShort(a).localeCompare(custShort(b), 'tr'));
   if (!cs.length) return toast('Etkin cari yok. Yöneticinize cari ekletin.', { warn: true });
   const m = openSub(`<div class="id-mh"><span class="id-mic">${ic('userplus')}</span>
@@ -5823,7 +6030,7 @@ function quickContact(pre = {}, cb) {
   $('#qc_ok').onclick = async () => {
     const name = $('#qc_n').value.trim(), email = $('#qc_e').value.trim(), phone = $('#qc_p').value.trim(), cid = $('#qc_cu').value;
     if (!name) { err('Ad gerekli.'); return $('#qc_n').focus(); }
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { err('E-posta adresi geçersiz.'); return $('#qc_e').focus(); }
+    if (email && !CU_EMAIL.test(email)) { err('E-posta adresi geçersiz.'); return $('#qc_e').focus(); }
     const b = $('#qc_ok'); b.disabled = true;
     try {
       const r = await API.post(`/api/customers/${encodeURIComponent(cid)}/contacts`, { name, email, phone });
@@ -5844,7 +6051,7 @@ function reqDetail(i, ed, rm, row, pb) {
   let h = rm === 'req' && !x ? `<div class="id-reqwarn" role="note">${ic('alert')}<span>Bu talepte talep eden yok.${ed ? ' Bir kişi seçin.' : ''}</span></div>` : '';
   h += row('Kişi', pb('requester', 'req', lab, 'Talep eden: ' + (reqName(i.requester) || 'Seçilmedi')));
   if (x) h += row('Cari', `<span class="id-pv ro" data-reqcust>${x.c ? esc(custShort(x.c)) : '<span class="muted">Silinmiş cari</span>'}</span>`);
-  if (x?.p?.email) h += row('E-posta', `<span class="id-pv ro"><a href="mailto:${esc(x.p.email)}">${esc(x.p.email)}</a></span>`);
+  if (x?.p?.email) h += row('E-posta', `<span class="id-pv ro"><a href="mailto:${esc(encodeURIComponent(x.p.email))}">${esc(x.p.email)}</a></span>`);
   if (x?.p?.phone) h += row('Telefon', `<span class="id-pv ro">${esc(x.p.phone)}</span>`);
   return h;
 }
@@ -5885,8 +6092,8 @@ function emailTalep(pid) {
     const f = parseFrom($('#et_from').value), hit = reqByEmail(f.email), out = $('#et_match');
     if (hit) { setReq(hit, true); out.innerHTML = `${ic('check')}Eşleşti: <b>${esc(reqName(hit))}</b>`; return; }
     if (auto) setReq(null);
-    out.innerHTML = f.email && !REQ ? `${ic('alert')}Bu adresle kayıtlı kişi yok. Listeden seçin ya da
-      <button type="button" class="id-link" id="et_add">${ic('userplus')}kişi olarak ekleyin</button>` : '';
+    out.innerHTML = f.email && !REQ ? (isAdmin() ? `${ic('alert')}Bu adresle kayıtlı kişi yok. Listeden seçin ya da
+      <button type="button" class="id-link" id="et_add">${ic('userplus')}kişi olarak ekleyin</button>` : `${ic('alert')}Bu adresle kayıtlı kişi yok. Listeden seçin ya da yöneticinize kişi ekletin.`) : '';
     const a = $('#et_add'); if (a) a.onclick = () => quickContact({ customerId: pr.customerId, name: f.name, email: f.email }, r => { setReq(r); match(); });
   };
   setReq(null);
@@ -6004,6 +6211,7 @@ document.addEventListener('change', e => {
 const VIEWS = {
   home:      { s: 'global', t: 'Benim işlerim',     c: 'Genel bakış',       r: renderHome,      tb: toolbarHome },
   projects:  { s: 'global', t: 'Projeler',          c: 'Yönetim',           r: renderProjects,  tb: toolbarProjects },
+  workspace: { s: 'global', t: 'Çalışma alanı',     c: 'Çalışma alanları',  r: renderWsPage,    tb: () => '' },
   customers: { s: 'global', t: 'Cariler',           c: 'Yönetim',           r: renderCustomers, tb: () => '' },
   greports:  { s: 'global', t: 'Genel raporlar',    c: 'Tüm projeler',      r: renderGr,        tb: () => '' },
   pool:      { s: 'global', t: 'Talep havuzu',      c: 'Genel bakış',       r: renderPool,      tb: () => '' },
@@ -6032,11 +6240,15 @@ function viewAllowed(v) {
   if (v === 'roadmap') return MOD('epic');
   if (v === 'sprint') return AGILE();                             // Pano türündeki projede sekme yok
   if (v === 'pool') return poolProjects().length > 0;            // talep projesi yoksa havuz yok (görev 12)
-  if (v === 'admin' || v === 'users' || v === 'system') return isAdmin();
+  if (v === 'users' || v === 'system' || v === 'customers') return isAdmin();
+  if (v === 'admin') return isAdmin() || (!!P() && wsRole(CU(), wsOf(P())) === 'admin');   // proje ayarları: alan yöneticisi (22b)
+  if (v === 'workspace') return !!wsById(DB.ui.workspace) && !!wsRole(CU(), DB.ui.workspace);
   return true;
 }
 
 function render() {
+  /* Eski #projects adresi: sistem yöneticisinde tüm alanlar; diğerlerinde seçili alanın sayfası (22b). */
+  if (DB.ui.view === 'projects' && !isAdmin()) { ensureSel(); DB.ui.view = 'workspace'; }
   if (VIEWS[DB.ui.view] && !viewAllowed(DB.ui.view)) DB.ui.view = 'board';
   const v = VIEWS[DB.ui.view] || VIEWS.board;
   if (location.hash.slice(1) !== viewHash(DB.ui.view)) try { history.replaceState(null, '', '#' + viewHash(DB.ui.view)); } catch (_) { }
@@ -6824,13 +7036,17 @@ function runRules(i, trigger, ctx = {}) {
    5) YÖNETİM GÖRÜNÜMÜ
    ============================================================ */
 function toolbarAdmin() {
-  const tabs = [['workflow', 'İş akışı'], ['types', 'İş tipleri'], ['fields', 'Özel alanlar'], ['rules', 'Otomasyon'], ['people', 'Modüller & genel']];
+  const tabs = [['workflow', 'İş akışı'], ['types', 'İş tipleri'], ['fields', 'Özel alanlar'], ['rules', 'Otomasyon'], ['people', 'Modüller & genel']]
+    .filter(([v]) => isAdmin() || v === 'workflow');
   return `<div class="seg" id="adminTabs">${tabs.map(([v, l]) =>
-    `<button data-a="${v}" class="${(DB.ui.adminTab || 'workflow') === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+    `<button data-a="${v}" class="${adminTab() === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
 }
+/* Genel ayarlar (iş tipleri, özel alanlar, otomasyon, modüller, varsayılan akış) sunucuda yalnız sistem yöneticisinde
+   (ADMIN_ONLY, _settings); alan yöneticisi yalnız projeye özel İş akışı sekmesini görür. */
+const adminTab = () => isAdmin() ? (DB.ui.adminTab || 'workflow') : 'workflow';
 
 function renderAdmin() {
-  const tab = DB.ui.adminTab || 'workflow';
+  const tab = adminTab();
   if (tab === 'workflow') {
     const ss = stats(), pr = P(), nDone = ss.filter(s => s.cat === 'done').length;
     /* Proje türü ve kolonlar (#12): tür burada da görünür, değişiklik aynı pencereyle. */
@@ -6871,9 +7087,9 @@ function renderAdmin() {
       <div style="font-size:11.5px;color:var(--ink3);margin-top:8px">
         Şablon uygulamak mevcut durumları yeniden adlandırır; fazla durumlar silinir, eksikler eklenir.
         İşler en yakın sıradaki duruma taşınır.</div>
-      <div class="sec">Yeni projelerin varsayılan akışı</div>
+      ${isAdmin() ? `<div class="sec">Yeni projelerin varsayılan akışı</div>
       <div id="defFlow"></div>
-      <button class="btn sm" id="saveDefFlow" style="margin-top:6px">Varsayılanı kaydet</button>
+      <button class="btn sm" id="saveDefFlow" style="margin-top:6px">Varsayılanı kaydet</button>` : ''}
     </div>`;
   }
 
@@ -7063,7 +7279,9 @@ function wireAdmin() {
   const au = $('#addUser'); if (au) au.onclick = () => newUserForm();
   wireUsers();
   $$('[data-projname]').forEach(el => el.onchange = () => {
-    DB.projects.find(p => p.id === el.dataset.projname).name = el.value; save(); boot(); });
+    const p = DB.projects.find(x => x.id === el.dataset.projname); if (!p) return;
+    if (!canDesign(p)) { el.value = p.name; return toast('Projeyi yalnızca alan yöneticisi değiştirebilir'); }
+    p.name = el.value; save(); boot(); });
 
   const ch = $('#cfgH'); if (ch) { const apply = () => {
     H_PER_DAY = Math.max(1, parseFloat($('#cfgH').value) || 8);
@@ -7442,24 +7660,54 @@ const SHORTCUTS = [
   ['g sonra h/b/l/t/e/p/a/j', 'Benim işlerim · pano · backlog · çizelge · efor · rapor · arama · projeler'],
   ['w', 'Süre kaydet'], ['?', 'Bu liste'], ['Esc', 'Kapat'],
 ];
+/* Ekrana git kısayolları (viewAllowed ile süzülür; yetki sunucuda). Aynı ekranın genel "Git" girişi tekrarlanmaz. */
+function paletteJumps() {
+  const go = (v, after) => () => { DB.ui.view = v; save(); render(); if (after) setTimeout(after, 60); };
+  const j = [];
+  if (P() && viewAllowed('sprint')) {
+    j.push({ t: 'Git', n: 'Aktif sprinte git', v: 'sprint', run: go('sprint') });
+    j.push({ t: 'Git', n: 'Sprint raporu', run: go('reports', () => document.getElementById('spPerf')?.scrollIntoView({ block: 'start' })) });
+  }
+  j.push({ t: 'Git', n: 'Benim işlerim', v: 'home', run: go('home') });
+  j.push({ t: 'Git', n: 'Genel raporlar', v: 'greports', run: go('greports') });
+  if (viewAllowed('pool')) j.push({ t: 'Git', n: 'Talep havuzu', v: 'pool', run: go('pool') });
+  if (isAdmin()) {
+    if (viewAllowed('customers')) j.push({ t: 'Git', n: 'Cariler', v: 'customers', run: go('customers') });
+    if (viewAllowed('users')) j.push({ t: 'Git', n: 'Kullanıcılar', v: 'users', run: go('users') });
+    if (viewAllowed('system')) j.push({ t: 'Git', n: 'Posta kutuları', run: () => { SYS_TAB = 'mail'; go('system')(); } });
+  }
+  return j;
+}
+/* Son açılan 5 iş (kişisel; ui → user_prefs, sonraki gönderimle gider). */
+function noteRecentIssue(id) {
+  const r = Array.isArray(DB.ui.recentIss) ? DB.ui.recentIss : [];
+  if (r[0] !== id) DB.ui.recentIss = [id, ...r.filter(x => x !== id && typeof x === 'string')].slice(0, 5);
+}
 function palette() {
+  const jumps = paletteJumps(), jv = new Set(jumps.map(x => x.v).filter(Boolean));
+  const vis = i => i && (MOD('epic') || i.type !== 'epic');
+  const recent = (Array.isArray(DB.ui.recentIss) ? DB.ui.recentIss : []).map(issue).filter(vis).slice(0, 5);
   const items = [
-    ...Object.entries(VIEWS).filter(([v]) => viewAllowed(v)).map(([v, o]) => ({ t: 'Git', n: viewTitle(v), run: () => { DB.ui.view = v; save(); render(); } })),
+    ...recent.map(i => ({ t: 'Son', n: `${i.key} ${i.summary}`, run: () => openIssue(i.id) })),
+    ...jumps,
+    ...Object.entries(VIEWS).filter(([v]) => viewAllowed(v) && v !== 'workspace' && !jv.has(v)).map(([v, o]) => ({ t: 'Git', n: viewTitle(v), run: () => { DB.ui.view = v; save(); render(); } })),
     { t: 'Eylem', n: 'Yeni iş oluştur', run: () => newIssueForm() },
     { t: 'Eylem', n: 'Süre kaydet', run: () => logWorkForm() },
-    { t: 'Eylem', n: 'Yeni proje oluştur', run: () => newProjectForm() },
+    /* Yeni proje: alana proje açabilen (canNewProj: alan yöneticisi / sistem yöneticisi; eski alanda Üye) — sunucu kuralıyla aynı. */
+    ...(canNewProjAny() ? [{ t: 'Eylem', n: 'Yeni proje oluştur', run: () => newProjectForm() }] : []),
     { t: 'Eylem', n: 'Sprint oluştur', run: () => sprintForm() },
     { t: 'Eylem', n: 'Özel alan ekle', run: () => fieldForm() },
     { t: 'Eylem', n: 'Otomasyon kuralı ekle', run: () => ruleForm() },
     { t: 'Eylem', n: 'Şimdi kaydet', run: () => flushSync().then(() => toast('Kaydedildi')) },
     ...(isAdmin() ? [
-      { t: 'Yönetim', n: 'Kullanıcılar', run: () => { location.hash = 'users'; } },
       { t: 'Yönetim', n: 'Sistem: yedekler ve veri', run: () => { location.hash = 'system'; } },
       { t: 'Yönetim', n: 'Veriyi dışa aktar (yedek indir)', run: () => $('#btnExport').click() },
     ] : []),
-    ...(canEdit() ? [{ t: 'Eylem', n: 'Yeni çalışma alanı', run: () => wsForm() }] : []),
+    ...(isAdmin() ? [{ t: 'Eylem', n: 'Yeni çalışma alanı', run: () => wsForm() }] : []),
     ...visibleWs().map(w => ({ t: 'Alan', n: w.name, run: () => pickWs(w.id) })),
     ...selectableProjects().map(p => ({ t: 'Proje', n: `${p.key} — ${p.name}`, run: () => { DB.ui.project = p.id; save(); boot(); } })),
+    ...selectableProjects().map(p => ({ t: 'Pano', n: `${p.name} panosu`, run: () => {
+      DB.ui.project = p.id; DB.ui.view = 'board'; save(); try { history.replaceState(null, '', '#board'); } catch (_) { } boot(); } })),
     ...DB.issues.filter(i => MOD('epic') || i.type !== 'epic').map(i => ({ t: i.key, n: i.summary, run: () => openIssue(i.id) })),
   ];
   openModal(`<div class="m-h" style="padding:8px 12px">
@@ -7818,7 +8066,7 @@ function grPeriod() {
   return { from: m + '-01', to: iso(last), label: monthName(m), month: m, file: m };
 }
 /* Görünüm kapsamındaki projeler (arşivliler dahil: geçmiş dönem etiketle görünür). */
-const grScope = () => isSuper() ? DB.projects.slice() : userProjects(CU()?.id);
+const grScope = () => isSuper() ? DB.projects.slice() : userProjects(CU()?.id).filter(projVisible);
 const GR_NONE = '__none', GR_UNK = '__unk';
 const GR_FKEYS = ['ws', 'proj', 'cu', 'user', 'type', 'bill'];
 
@@ -8181,7 +8429,14 @@ const ROLES = {
 const CU = () => user(SESSION) || DB.users[0];
 const role = () => CU()?.role || 'admin';
 const isAdmin = () => role() === 'admin' || role() === 'super';
-const canEdit = () => role() !== 'viewer';
+/* Yazma yetkisi bağlama göre (22b): verilen proje, yoksa açık işin projesi, yoksa seçili proje; proje yoksa genel rol.
+   Etkin rol wsRole/projectRole ile (sunucudaki store.js wsRole ile aynı kural). */
+const canEdit = (p) => {
+  const pr = p !== undefined ? p : ((typeof OPEN_ISSUE !== 'undefined' && OPEN_ISSUE && issue(OPEN_ISSUE)) ? projOfI(issue(OPEN_ISSUE)) : P());
+  return pr ? wsAtLeast(projectRole(CU(), pr), 'member') : role() !== 'viewer';
+};
+/* Herhangi bir alanda yazabiliyor mu (gönderim süzgeci). */
+const canEditAny = () => role() !== 'viewer' || wsAll().some(w => wsAtLeast(wsRole(CU(), w), 'member'));
 
 /* Basit tuzlu özet. Kriptografik güvenlik iddiası yoktur —
    parolanın düz metin durmasını engeller, o kadar. */
@@ -8426,8 +8681,10 @@ function userEditor(id) {
   const color = u?.color || USER_COLORS[DB.users.length % USER_COLORS.length];
   const roleOpts = ROLE_KEYS.filter(r => ROLES[r] && (r !== 'super' || isSuper()));
   const curRole = u?.role || 'member';
-  const memberOf = new Set(u ? userProjects(u.id).map(p => p.id) : DB.projects.filter(p => !p.archived).map(p => p.id));
   const dis = locked ? 'disabled' : '';
+  /* Alan + rol (22b): '' erişim yok, '__all' üyesiz (herkese açık) alanda genel role göre. */
+  const wsCur = w => { if (wsLegacy(w)) return '__all'; if (u && wsOwner(w) === u.id) return '__own'; return (u && w.members.find(m => m.userId === u.id)?.role) || ''; };
+  const wsRows = wsAll().filter(w => !w.archived).sort(wsSort);
 
   openModal(`<div class="m-h">${u ? avat(u.id, 1) : ''}<b>${isNew ? 'Yeni kullanıcı' : esc(u.name)}</b>
       ${u ? roleChip(u.role) : ''} ${u ? `<span class="chip ${userStatus(u)[1]}">${userStatus(u)[0]}</span>` : ''}
@@ -8455,11 +8712,16 @@ function userEditor(id) {
             <span>${roleChip(r)}<span class="usub">${esc(ROLES[r][1])}</span></span></label>`).join('')}
         </div>
 
-        <div class="sec">Projeler</div>
-        <div class="usub" style="margin-bottom:8px">Kullanıcı yalnızca üyesi olduğu projeleri görür ve onlarda iş alabilir.</div>
-        <div class="projchecks">
-          ${DB.projects.map(p => `<label class="memchip ${memberOf.has(p.id) ? 'on' : ''}"><input type="checkbox" data-up="${esc(p.id)}" ${memberOf.has(p.id) ? 'checked' : ''} ${dis}>
-            ${esc(p.name)}${p.archived ? ' <em>arşiv</em>' : ''}</label>`).join('') || '<span class="usub">Henüz proje yok.</span>'}
+        <div class="sec">Çalışma alanları</div>
+        <div class="usub" style="margin-bottom:8px">Kişi yalnızca üyesi olduğu çalışma alanlarını ve projelerini görür. Yönetici: projelerin tasarımını yönetir · Üye: iş açar, süre kaydeder · İzleyici: yalnız görür. Sistem yöneticisi her alanda Yöneticidir.</div>
+        <div class="wsr-rows" id="ue_ws">
+          ${wsRows.map(w => { const c = wsCur(w), nm = esc(w.name);
+            return `<div class="wsr-row">${wsBadge(w, 'sm')}<span class="nm">${nm}</span>
+              <select class="inp" data-uws="${esc(w.id)}" data-cur="${c}" aria-label="${nm}: rol" ${dis || (c === '__own' ? 'disabled' : '')}>
+                ${c === '__own' ? '<option value="__own" selected>Sahip · Yönetici</option>' : ''}
+                ${c === '__all' ? '<option value="__all" selected>Herkese açık (genel role göre)</option>' : ''}
+                <option value="" ${c === '' ? 'selected' : ''}>Erişim yok</option>
+                ${['admin', 'member', 'viewer'].map(k => `<option value="${k}" ${c === k ? 'selected' : ''}>${WS_ROLE_LBL[k]}</option>`).join('')}</select></div>`; }).join('') || '<span class="usub">Henüz çalışma alanı yok.</span>'}
         </div>
 
         ${isNew ? `<div class="sec">İlk giriş parolası</div>
@@ -8509,7 +8771,6 @@ function userEditor(id) {
   const err = msg => { $('#ue_err').textContent = msg; };
   $$('[data-col]').forEach(b => b.onclick = () => { pickColor = b.dataset.col; $$('[data-col]').forEach(x => x.classList.toggle('on', x === b)); });
   $$('input[name="ue_r"]').forEach(r => r.onchange = () => $$('.rolecard').forEach(c => c.classList.toggle('on', c.contains(r) && r.checked)));
-  $$('[data-up]').forEach(c => c.onchange = () => c.closest('.memchip').classList.toggle('on', c.checked));
   const nameEl = $('#ue_n'), unEl = $('#ue_u'), iniEl = $('#ue_i');
   if (isNew) {
     nameEl.oninput = () => {
@@ -8548,14 +8809,20 @@ function userEditor(id) {
     if (!DB.users.some(x => (x.role === 'admin' || x.role === 'super') && x.active)) {
       Object.assign(target, prev); if (isNew) DB.users.pop(); return err('En az bir aktif yönetici kalmalı.');
     }
-    /* proje üyelikleri */
-    $$('[data-up]').forEach(c => {
-      const p = DB.projects.find(x => x.id === c.dataset.up); if (!p) return;
-      if (!p.members?.length) p.members = DB.users.filter(x => x.id !== target.id).map(x => x.id);
-      const has = p.members.includes(target.id);
-      if (c.checked && !has) p.members.push(target.id);
-      if (!c.checked && has) p.members = p.members.filter(x => x !== target.id);
+    /* alan üyelikleri (22b): değişen satırlar. Herkese açık alan ilk kez kişiye rol verilince, var olan kişiler
+       genel rolleriyle listeye alınır (kimsenin erişimi kopmasın). */
+    $$('[data-uws]').forEach(sel => {
+      const w = (DB.workspaces || []).find(x => x.id === sel.dataset.uws), v = sel.value;
+      if (!w || v === sel.dataset.cur || v === '__all' || v === '__own') return;
+      let list = wsLegacy(w) ? wsSeed().filter(m => m.userId !== target.id) : w.members.slice();
+      list = list.filter(m => m.userId !== target.id);
+      if (v) list.push({ userId: target.id, role: v });
+      const o = wsOwner(w);
+      if (o && !list.some(m => m.userId === o)) list.unshift({ userId: o, role: 'admin' });
+      w.members = list;
     });
+    /* Yeni kişi: üye listesi dolu eski projelere (herkese açık alanlarda) eskisi gibi eklenir. */
+    if (isNew) DB.projects.forEach(p => { if (!p.archived && p.members?.length && wsLegacy(wsById(wsOf(p))) && !p.members.includes(target.id)) p.members.push(target.id); });
     ok.disabled = true;
     save();
     try { await flushAll(); } catch (e) { }
@@ -8768,9 +9035,16 @@ function wireUsers() {
    Bölüm 10: BENİM İŞLERİM • PROJELER • ÜYELİK
    ============================================================ */
 
-/* Projeye üye olan aktif kişiler. Üyelik tanımsızsa herkes üyedir. */
-const memsOf = p => (p?.members?.length ? DB.users.filter(u => p.members.includes(u.id)) : DB.users)
-  .filter(u => u.active && !u.system);
+/* Projenin atanabilir (aktif) kişileri. Üyeli alanda alanın Yönetici/Üye rolündeki kişileri (sahip dahil, izleyici
+   hariç; proje üye listesi değil — sunucudaki store.js assignable ile aynı). Eski (üyesiz) alanda projenin üye listesi;
+   liste tanımsızsa herkes. */
+const wsMembersOf = w => DB.users.filter(u => u.active && !u.system
+  && (wsOwner(w) === u.id || w.members.some(m => m && m.userId === u.id)));
+const memsOf = p => {
+  const w = p ? wsById(wsOf(p)) : null;
+  if (w && !wsLegacy(w)) return wsMembersOf(w).filter(u => wsAtLeast(wsRole(u, w), 'member'));
+  return (p?.members?.length ? DB.users.filter(u => p.members.includes(u.id)) : DB.users).filter(u => u.active && !u.system);
+};
 const projUsers = () => memsOf(P());
 const isMember = (p, id = SESSION) => (id === SESSION && isSuper()) || !p?.members?.length || p.members.includes(id);
 
@@ -9032,9 +9306,47 @@ const wsOf = p => { const id = p?.workspaceId; return id && (DB.workspaces || []
 /* Sunucudaki ad kıyasıyla aynı: kırp, boşlukları teke indir, Türkçe küçük harf. */
 const wsKey = s => String(s ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr');
 const wsArchived = id => wsById(id)?.archived === true;
-const wsMine = w => !!w && ((w.createdBy != null && w.createdBy === SESSION) || WS_MINE.has(w.id));
-/* Ad/renk/açıklama ve arşiv: alanı açan ya da yönetici (Genel'in açanı yok: yalnız yönetici). */
-const canManageWs = w => !!w && canEdit() && (isAdmin() || wsMine(w));
+const wsMine = w => !!w && ((wsOwner(w) != null && wsOwner(w) === SESSION) || WS_MINE.has(w.id));
+
+/* ---- Alan üyelikleri ve rolleri (22b) ----
+   data.members = [{ userId, role: 'admin'|'member'|'viewer' }], data.ownerId (yoksa createdBy) = sahip.
+   Etkin rol TEK yerde: wsRole (sunucudaki store.js wsRole ile aynı). Sistem yöneticisi ve sahip 'admin'; üye listesi
+   boş/tanımsız (eski) alanda genel rol; listede olmayan null (erişim yok). Proje rolü = alanındaki rol. */
+const WS_ROLE_LBL = { admin: 'Yönetici', member: 'Üye', viewer: 'İzleyici' };
+const WS_ROLE_DSC = { admin: 'Projelerin kolon, tür, ayar ve üyelerini yönetir', member: 'İş açar, düzenler, kendi süresini kaydeder', viewer: 'Yalnız görür' };
+const WS_RANK = { viewer: 1, member: 2, admin: 3 };
+const wsOwner = w => w?.ownerId ?? w?.createdBy ?? null;
+const wsLegacy = w => !Array.isArray(w?.members) || w.members.length === 0;
+function wsRole(u, ws) {
+  if (!u) return null;
+  if (u.role === 'admin' || u.role === 'super') return 'admin';
+  const w = ws && typeof ws === 'object' ? ws : wsById(ws);
+  const o = wsOwner(w);
+  if (o && o === u.id) return 'admin';
+  if (wsLegacy(w)) return u.role === 'viewer' ? 'viewer' : 'member';
+  const r = w.members.find(x => x && x.userId === u.id)?.role;
+  return WS_RANK[r] ? r : null;
+}
+const projectRole = (u, p) => wsRole(u, wsOf(p));
+const wsAtLeast = (r, need) => (WS_RANK[r] || 0) >= WS_RANK[need];
+/* Proje tasarımı (kolon, tür, proje ayarı/üyeleri): alan yöneticisi; eski alanda bugünkü kural (projenin üyesi olan Üye). */
+function canDesign(p) {
+  if (!p) return false;
+  const w = wsById(wsOf(p)), r = wsRole(CU(), w);
+  return r === 'admin' || (wsLegacy(w) && r === 'member' && isMember(p));
+}
+/* Alana yeni proje: alan yöneticisi; eski alanda Üye de. */
+const canNewProj = wsId => { const w = wsById(wsId), r = wsRole(CU(), w); return !!w && !w.archived && (r === 'admin' || (wsLegacy(w) && r === 'member')); };
+const canNewProjAny = () => wsAll().some(w => canNewProj(w.id));
+/* Proje görünürlüğü: alanda rolü olmalı; eski alanda ayrıca projenin üye listesi (bugünkü davranış). Üyeli alanda
+   erişimi alan üyeliği belirler (proje üye listesi ekip listesi olarak kalır). */
+const projVisible = p => { const w = wsById(wsOf(p)); return !!wsRole(CU(), w) && (!wsLegacy(w) || isMember(p)); };
+/* Projeyi alanlar arası taşıma: kaynak ve hedef alanın ikisinde de alan yöneticisi; eski (üyesiz) alan işin içindeyse
+   yalnız sistem yöneticisi. Sunucuda store.js → checkProjectMove. */
+const canMoveBetween = (a, b) => isAdmin() || [a, b].every(id => { const w = wsById(id); return !!w && !wsLegacy(w) && wsRole(CU(), w) === 'admin'; });
+const canMoveProj = p => !!p && canDesign(p) && canMoveBetween(wsOf(p), wsOf(p));
+/* Ad/renk/açıklama, üyeler ve arşiv: alan yöneticisi (sahip dahil) ya da sistem yöneticisi. */
+const canManageWs = w => !!w && wsRole(CU(), w) === 'admin';
 const wsSort = (a, b) => (a.id === WS_DEFAULT ? -1 : 0) - (b.id === WS_DEFAULT ? -1 : 0)
   || String(a.name || '').localeCompare(String(b.name || ''), 'tr');
 const wsInitial = n => ([...String(n ?? '').trim()][0] || '?').toLocaleUpperCase('tr');
@@ -9050,8 +9362,8 @@ const wsBadge = (w, cls = '') => `<span class="ws-badge ${cls}" style="--ws-c:${
    ve kendi açtıklarını. Genel önce, sonra ada göre. */
 function visibleWs(archived = false) {
   const admin = isAdmin();
-  return wsAll().filter(w => (w.archived === true) === archived && (admin || wsMine(w)
-    || DB.projects.some(p => wsOf(p) === w.id && !p.archived && isMember(p)))).sort(wsSort);
+  return wsAll().filter(w => (w.archived === true) === archived && (admin || (wsRole(CU(), w) && (!wsLegacy(w) || wsMine(w)
+    || DB.projects.some(p => wsOf(p) === w.id && !p.archived && isMember(p)))))).sort(wsSort);
 }
 /* Seçicilerde görünen projeler: görebildiği ve alanı arşivli olmayanlar (ws verilirse yalnız o alanınkiler). */
 const selectableProjects = (ws = '') => DB.projects.filter(p => canSeeProject(p) && !wsArchived(wsOf(p)) && (!ws || wsOf(p) === ws));
@@ -9062,7 +9374,7 @@ function ensureSel() {
   if (!DB) return;
   DB.ui ||= {};
   const p = P();
-  if (p && !wsArchived(wsOf(p)) && (isAdmin() || isMember(p))) { DB.ui.workspace = wsOf(p); return; }
+  if (p && !wsArchived(wsOf(p)) && (isAdmin() || projVisible(p))) { DB.ui.workspace = wsOf(p); return; }
   const vis = visibleWs();
   if (!vis.some(w => w.id === DB.ui.workspace))
     DB.ui.workspace = (vis.find(w => wsFirstProj(w.id)) || vis[0])?.id || null;
@@ -9088,7 +9400,6 @@ const NAV_ITEMS = {
   home:      { t: 'Benim işlerim',     ic: 'home',     v: 'home', fixed: true },
   recent:    { t: 'Son kullanılanlar', ic: 'recent' },
   ws:        { t: 'Çalışma alanları',  ic: 'layers',   fixed: true },
-  projects:  { t: 'Projeler',          ic: 'folder',   v: 'projects' },
   customers: { t: 'Cariler',           ic: 'building', v: 'customers' },
   reports:   { t: 'Raporlar',          ic: 'reports',  v: 'greports' },
   pool:      { t: 'Talep havuzu',      ic: 'inbox',    v: 'pool' },
@@ -9096,11 +9407,18 @@ const NAV_ITEMS = {
   system:    { t: 'Sistem',            ic: 'system',   v: 'system' },
 };
 /* Sırası değişebilen / gizlenebilen öğeler (varsayılan sıra). Benim işlerim 1., Çalışma alanları 3. sırada sabit. */
-const NAV_MOVABLE = ['recent', 'projects', 'customers', 'reports', 'pool', 'users', 'system'];
+const NAV_MOVABLE = ['recent', 'customers', 'reports', 'pool', 'users', 'system'];
 const navAvail = k => !NAV_ITEMS[k].v || viewAllowed(NAV_ITEMS[k].v);
-/* Kayıtlı tercih → geçerli sıra + gizliler (bilinmeyen kimlik atılır; sonradan eklenen öğe görünür olarak sona). */
-function navCfg() {
-  const n = DB.ui.nav && typeof DB.ui.nav === 'object' ? DB.ui.nav : {};
+/* Yöneticinin herkes için varsayılanı (settings.navDefault = { items: [{ id, visible }] }; yazma yetkisi ve biçim sunucuda)
+   → { order, hidden }. Yoksa kod içi varsayılan (NAV_MOVABLE, hepsi görünür). */
+function navDefaultCfg() {
+  const it = DB.navDefault && Array.isArray(DB.navDefault.items) ? DB.navDefault.items.filter(x => x && NAV_MOVABLE.includes(x.id)) : [];
+  return { order: it.map(x => x.id), hidden: it.filter(x => x.visible === false).map(x => x.id) };
+}
+/* Kayıtlı tercih → geçerli sıra + gizliler (bilinmeyen kimlik atılır; sonradan eklenen öğe görünür olarak sona).
+   Kişisel düzeni (DB.ui.nav) olmayan kullanıcı yöneticinin varsayılanını görür; yetkisiz öğe her durumda süzülür. */
+function navCfg(useDefault) {
+  const n = !useDefault && DB.ui.nav && typeof DB.ui.nav === 'object' ? DB.ui.nav : navDefaultCfg();
   const ord = (Array.isArray(n.order) ? n.order : []).filter((k, i, a) => NAV_MOVABLE.includes(k) && a.indexOf(k) === i);
   NAV_MOVABLE.forEach(k => { if (!ord.includes(k)) ord.push(k); });
   const hidden = (Array.isArray(n.hidden) ? n.hidden : []).filter(k => NAV_MOVABLE.includes(k) && navAvail(k));
@@ -9113,7 +9431,8 @@ function navSave(order, hidden) {
   const old = DB.ui.nav && Array.isArray(DB.ui.nav.hidden) ? DB.ui.nav.hidden : [];
   const h = NAV_MOVABLE.filter(k => hidden.includes(k) || (old.includes(k) && !navAvail(k)));
   const ord = order.filter(k => NAV_MOVABLE.includes(k));
-  if (ord.join() === NAV_MOVABLE.filter(navAvail).join() && !h.length) delete DB.ui.nav;
+  const d = navCfg(true);
+  if (ord.join() === d.order.join() && h.join() === NAV_MOVABLE.filter(k => d.hidden.includes(k)).join()) delete DB.ui.nav;
   else DB.ui.nav = { order: ord, hidden: h };
 }
 /* Son kullanılan proje / alan: render'da güncellenir (save çağırmadan; sonraki gönderimle gider). */
@@ -9157,7 +9476,7 @@ function navWs(w) {
   let body = '';
   if (open) {
     const r = wsProjRows(w.id);
-    body = r.rows.length ? r.rows.map(navProj).join('') + (r.more ? `<li><a href="#projects" class="nv-proj all" data-wsall="${id}">${ic('grid')}<span class="tx">Tüm projeler (${r.n})</span></a></li>` : '')
+    body = r.rows.length ? r.rows.map(navProj).join('') + (r.more ? `<li><a href="#workspace" class="nv-proj all" data-wsall="${id}">${ic('grid')}<span class="tx">Tüm projeler (${r.n})</span></a></li>` : '')
       : '<li class="nv-empty">Henüz proje yok</li>';
   }
   return `<li><button type="button" class="nv-ws" data-wstog="${id}" aria-expanded="${open}" aria-controls="nvp-${id}" ${w.id === DB.ui.workspace ? 'aria-current="true"' : ''}>${wsBadge(w)}<span class="tx">${esc(w.name)}</span>${ic('down').replace('class="i"', 'class="i chev"')}</button>
@@ -9168,7 +9487,7 @@ const RAIL = { key: '', other: false };
    Toplam en çok 4 alan varsa hepsi doğrudan görünür. */
 function navTree() {
   const vis = visibleWs();
-  if (!vis.length) return `<ul class="nv-tree" id="wsTree" aria-labelledby="nvSec"><li class="nv-empty nv-nows">Henüz çalışma alanı yok</li>${canEdit()
+  if (!vis.length) return `<ul class="nv-tree" id="wsTree" aria-labelledby="nvSec"><li class="nv-empty nv-nows">Henüz çalışma alanı yok</li>${isAdmin()
     ? `<li><button type="button" class="nv-item nv-add" data-wsnew>${ic('plus')}<span class="tx">Yeni çalışma alanı</span></button></li>` : ''}</ul>`;
   const rec = (Array.isArray(DB.ui.recentWs) ? DB.ui.recentWs : []).filter(id => id !== DB.ui.workspace);
   const top = new Set([DB.ui.workspace, ...rec].filter(id => vis.some(w => w.id === id)).slice(0, 4));
@@ -9197,7 +9516,7 @@ function renderRail() {
   const { order, hidden } = navCfg();
   const first = order[0] && !hidden.includes(order[0]) ? [order[0]] : [], rest = order.slice(1).filter(k => !hidden.includes(k));
   const html = `<nav class="nav nv-list" aria-label="Ana menü">${navItem('home')}${first.map(navItem).join('')}</nav>
-    <div class="nv-sech"><span class="l" id="nvSec">${ic('layers')}Çalışma alanları</span>${canEdit()
+    <div class="nv-sech"><span class="l" id="nvSec">${ic('layers')}Çalışma alanları</span>${isAdmin()
       ? `<button type="button" class="nv-ib" data-wsnew aria-label="Yeni çalışma alanı" title="Yeni çalışma alanı">${ic('plus')}</button>` : ''}
       <button type="button" class="nv-ib" data-navws aria-label="Çalışma alanı seçenekleri" title="Çalışma alanı seçenekleri" aria-haspopup="menu" aria-expanded="false">${ic('more')}</button></div>
     ${navTree()}
@@ -9268,7 +9587,11 @@ function navClick(e) {
   const t = e.target; if (!(t instanceof Element)) return;
   const b = t.closest('[data-wstog],[data-wsother],[data-navrecent],[data-navws],[data-navmore],[data-navcz],[data-wsall]'); if (!b) return;
   const d = b.dataset;
-  if ('wstog' in d) { wsOpenSet(d.wstog, !wsIsOpen(d.wstog)); save(); return renderRail(); }
+  /* Alan adı: alan sayfasını açar (ağaçta da açılır); zaten o alanın sayfasındaysa ağacı aç/kapa (22b). */
+  if ('wstog' in d) {
+    if (DB.ui.view === 'workspace' && DB.ui.workspace === d.wstog) { wsOpenSet(d.wstog, !wsIsOpen(d.wstog)); save(); return renderRail(); }
+    return openWsPage(d.wstog);
+  }
   if ('wsother' in d) { RAIL.other = !RAIL.other; return renderRail(); }
   if ('navrecent' in d) return b.closest('#navPop') ? undefined : navPopOpen(b, 'recent');
   if ('navws' in d) return navPopOpen(b, 'ws');
@@ -9276,6 +9599,7 @@ function navClick(e) {
   if ('navcz' in d) { navDrawer(false); return navCustomize(); }
   if ('wsall' in d) {
     e.preventDefault(); navDrawer(false);
+    if (!isAdmin()) return openWsPage(d.wsall);
     DB.ui.view = 'projects'; save(); render();
     const g = document.querySelector(`[data-wsgrp="${CSS.escape(d.wsall)}"]`);
     if (g) { g.tabIndex = -1; g.scrollIntoView({ block: 'start' }); g.focus({ preventScroll: true }); }
@@ -9302,7 +9626,11 @@ function navCustomize() {
     <div class="nv-czb"><p>Seçili öğeler kenar çubuğunda her zaman görünür; seçmediklerin <b>"Daha fazla"</b> menüsünde. Değişiklikler yalnız seni etkiler.</p>
       <div class="nv-cz-h">Kenar çubuğu öğeleri <span id="cz_n"></span></div>
       <ul class="nv-cz" id="cz_l" aria-label="Kenar çubuğu öğeleri"></ul>
-      <div class="ws-sr" id="cz_live" role="status" aria-live="polite"></div></div>
+      <div class="ws-sr" id="cz_live" role="status" aria-live="polite"></div>
+      ${isAdmin() ? `<div class="nv-cz-h">Herkes için varsayılan</div>
+      <p>Kendi düzenini kaydetmemiş kullanıcılar bu düzeni görür. Yetkisi olmayan öğeler yine gösterilmez.${DB.navDefault ? '' : ' Şu an kod içi varsayılan kullanılıyor.'}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn sm" id="cz_setdef">Bu düzeni herkes için varsayılan yap</button>
+      ${DB.navDefault ? '<button type="button" class="btn sm ghost" id="cz_clrdef">Varsayılanı sıfırla</button>' : ''}</div>` : ''}</div>
     <div class="m-f"><button type="button" class="btn ghost" id="cz_reset">${ic('reset')}Varsayılana dön</button><span class="spacer"></span>
       <button type="button" class="btn" data-close>Vazgeç</button><button type="button" class="btn pri" id="cz_ok">Değişiklikleri kaydet</button></div>`, 'narrow nv-dlg');
   wsDialog('cz_t');
@@ -9316,10 +9644,24 @@ function navCustomize() {
       czPopClose(); return czMove(k, mv.dataset.czmv === 'top' ? 0 : i + (mv.dataset.czmv === 'up' ? -1 : 1), `[data-czmore="${k}"]`); }
     const mo = t.closest('[data-czmore]'); if (mo) return czPop(mo);
     if (t.closest('#cz_reset')) {
-      CZ.order = NAV_MOVABLE.filter(navAvail); CZ.hidden = new Set(); czDraw('#cz_reset');
-      $('#cz_live').textContent = 'Varsayılan sıra yüklendi; kalıcı olması için kaydet'; return;
+      const d = navCfg(true);
+      CZ.order = [...d.order]; CZ.hidden = new Set(d.hidden); CZ.def = true; czDraw('#cz_reset');
+      $('#cz_live').textContent = 'Varsayılan düzen yüklendi; kalıcı olması için kaydet'; return;
     }
-    if (t.closest('#cz_ok')) { navSave(CZ.order, [...CZ.hidden]); CZ = null; closeModal(); save(); render(); toast('Kenar çubuğu kaydedildi'); }
+    if (t.closest('#cz_ok')) {
+      if (CZ.def) delete DB.ui.nav; else navSave(CZ.order, [...CZ.hidden]);
+      CZ = null; closeModal(); save(); render(); toast('Kenar çubuğu kaydedildi'); return;
+    }
+    if (t.closest('#cz_setdef')) {
+      /* Taslak sırası; yöneticide de koşula bağlı gizli öğe (ör. talep projesi yoksa Talep havuzu) eski görünürlüğüyle sona.
+         Yöneticinin kişisel düzeni de varsayılana bağlanır. */
+      const dh = navDefaultCfg().hidden, rest = NAV_MOVABLE.filter(k => !CZ.order.includes(k));
+      DB.navDefault = { items: [...CZ.order.map(k => ({ id: k, visible: !CZ.hidden.has(k) })), ...rest.map(k => ({ id: k, visible: !dh.includes(k) }))] };
+      delete DB.ui.nav; CZ = null; closeModal(); save(); render(); toast('Varsayılan menü herkes için kaydedildi'); return;
+    }
+    if (t.closest('#cz_clrdef')) {
+      delete DB.navDefault; CZ = null; closeModal(); save(); render(); toast('Varsayılan menü sıfırlandı'); return;
+    }
   });
   box.addEventListener('keydown', e => {
     if (!CZ) return;
@@ -9360,13 +9702,13 @@ function czDraw(focus) {
 }
 function czToggle(k) {
   if (!NAV_MOVABLE.includes(k)) return;
-  CZ.hidden.has(k) ? CZ.hidden.delete(k) : CZ.hidden.add(k);
+  CZ.hidden.has(k) ? CZ.hidden.delete(k) : CZ.hidden.add(k); CZ.def = false;
   czDraw(`[data-czchk="${k}"]`);
 }
 function czMove(k, to, focus) {
   const o = CZ.order, i = o.indexOf(k); to = Math.max(0, Math.min(o.length - 1, to));
   if (i < 0 || to === i) return;
-  o.splice(i, 1); o.splice(to, 0, k);
+  o.splice(i, 1); o.splice(to, 0, k); CZ.def = false;
   czDraw(focus || `[data-czgrip="${k}"]`);
   $('#cz_live').textContent = `${NAV_ITEMS[k].t} ${navFull(o).indexOf(k) + 1}. sıraya taşındı`;
 }
@@ -9454,10 +9796,10 @@ const wsDialog = (labelId) => { const m = $('#scrim .modal'); if (!m) return;
 
 /* Yeni çalışma alanı / düzenleme penceresi. Ad: zorunlu, ≤60, etkin alanlar arasında tekil (tr). */
 function wsForm(id) {
-  if (!canEdit()) return toast('İzleyiciler çalışma alanı oluşturamaz');
   const w = id ? (DB.workspaces || []).find(x => x.id === id) : null;
   if (id && !w) return toast('Çalışma alanı bulunamadı');
-  if (w && !canManageWs(w)) return toast('Bu çalışma alanını yalnızca açan kişi ya da yönetici değiştirebilir');
+  if (!w && !isAdmin()) return toast('Çalışma alanını yalnızca yönetici açabilir');
+  if (w && !canManageWs(w)) return toast('Bu çalışma alanını yalnızca alan yöneticisi değiştirebilir');
   let color = w ? safeColor(w.color) : WS_COLORS[1][0];
   const tab0 = WS_COLORS.some(([c]) => c === color) ? color : WS_COLORS[0][0];
   openModal(`<div class="m-h"><b id="wsf_t">${w ? 'Çalışma alanını düzenle' : 'Yeni çalışma alanı'}</b><button class="x" data-close aria-label="Kapat">×</button></div>
@@ -9473,6 +9815,7 @@ function wsForm(id) {
         <div class="ws-cname" id="wsf_cn"></div></div>
       <div class="ws-fld"><label for="wsf_d">Açıklama <span class="opt" id="wsf_dc">isteğe bağlı · 0/500</span></label>
         <textarea class="inp" id="wsf_d" rows="2" maxlength="500" placeholder="Bu alanda hangi projeler duracak?">${esc(w?.description || '')}</textarea></div>
+      ${wsMembersFld(w)}
     </div>
     <div class="m-f"><button class="btn" data-close>Vazgeç</button><button class="btn pri" id="wsf_ok">${w ? 'Kaydet' : 'Oluştur'}</button></div>`, 'narrow ws-dlg');
   wsDialog('wsf_t');
@@ -9516,22 +9859,26 @@ function wsForm(id) {
     const name = inp.value.trim().replace(/\s+/g, ' '), description = desc.value.trim();
     if (w) {
       Object.assign(w, { name, color, description });
+      WSF.apply(w);
       closeModal(); save(); render(); return toast(`${name} kaydedildi`);
     }
     const nid = uid('ws'); WS_MINE.add(nid);
-    (DB.workspaces ||= []).push({ id: nid, name, color, description, archived: false });
+    const nw = { id: nid, name, color, description, archived: false };
+    WSF.apply(nw);
+    (DB.workspaces ||= []).push(nw);
     DB.ui.workspace = nid; DB.ui.project = null; DB.board.q = '';
     closeModal(); save(); render(); toast(`${name} oluşturuldu`);
   };
   inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); submit(); } };
   $('#wsf_ok').onclick = submit;
   paint();
+  WSF.wire();
 }
 
 function wsSetArchived(id, on) {
   const w = (DB.workspaces || []).find(x => x.id === id);
   if (!w) return toast('Çalışma alanı bulunamadı');
-  if (!canManageWs(w)) return toast('Bu çalışma alanını yalnızca açan kişi ya da yönetici değiştirebilir');
+  if (!canManageWs(w)) return toast('Bu çalışma alanını yalnızca alan yöneticisi değiştirebilir');
   if (on) {
     if (id === WS_DEFAULT) return toast('Genel çalışma alanı arşivlenemez');
     if (!wsAll().some(x => x.id !== id && !x.archived)) return toast('Son etkin çalışma alanı arşivlenemez');
@@ -9558,9 +9905,9 @@ function wsDelete(id) {
 /* "Çalışma alanını değiştir": yalnız projenin workspaceId'si değişir; anahtarlar, sprintler, üyeler, süreler aynı. */
 function moveProjectForm(pid) {
   const p = DB.projects.find(x => x.id === pid); if (!p) return;
-  if (!canEdit()) return toast('İzleyiciler projeyi taşıyamaz');
+  if (!canMoveProj(p)) return toast('Projeyi yalnızca alan yöneticisi taşıyabilir');
   const from = wsOf(p);
-  const act = visibleWs(), arch = visibleWs(true);
+  const act = visibleWs().filter(w => w.id === from || (canNewProj(w.id) && canMoveBetween(from, w.id))), arch = visibleWs(true);
   if (!act.some(w => w.id === from) && !arch.some(w => w.id === from) && wsById(from)) (wsArchived(from) ? arch : act).push(wsById(from));
   let to = from;
   const opt = (w, dis) => { const n = DB.projects.filter(x => wsOf(x) === w.id && !x.archived).length;
@@ -9611,17 +9958,113 @@ function wsEmptyView() {
   const wsHasAny = ws && DB.projects.some(p => wsOf(p) === ws.id && !p.archived);
   if (!selectableProjects().length && (!ws || wsHasAny))
     return `<div class="ws-empty" data-wsempty="b"><span class="ws-empty-ic">${ic(edit ? 'users' : 'eye')}</span>
-      <h3>Henüz bir projeye eklenmedin</h3>${edit
-        ? `<p>Kendi çalışma alanını açıp ilk projeni oluşturabilirsin. Ekibin bir projesindeysen yöneticin seni üye olarak ekleyebilir.</p>
+      <h3>Henüz bir projeye eklenmedin</h3>${isAdmin()
+        ? `<p>Bir çalışma alanı açıp ilk projeyi oluşturabilirsin.</p>
            <div class="acts"><button type="button" class="btn pri" data-wsnew>${ic('layers')}Çalışma alanı oluştur</button></div>`
-        : '<p>Yöneticinden seni bir projeye eklemesini iste. Eklendiğinde projeler burada ve sol menüde görünür.</p>'}</div>`;
+        : '<p data-wsask>Çalışma alanını yalnızca yönetici açabilir. Yöneticine başvur: seni bir çalışma alanına eklediğinde projeler burada ve sol menüde görünür.</p>'}</div>`;
   return `<div class="ws-empty" data-wsempty="a"><span class="ctx">${wsBadge(ws, 'sm')}${esc(ws?.name || '')}</span><span class="ws-empty-ic">${ic('folderplus')}</span>
-    <h3>Bu çalışma alanında henüz proje yok</h3>${edit
+    <h3>Bu çalışma alanında henüz proje yok</h3>${ws && canNewProj(ws.id)
       ? `<p>İlk projeyi ekleyince pano, backlog ve raporlar burada açılır. Başka bir alana sol menüden geçebilirsin.</p>
          <div class="acts"><button type="button" class="btn pri" data-wsnewproj="${esc(ws?.id || '')}">${ic('plus')}Yeni proje</button></div>`
       : '<p>Bir yönetici bu alana proje eklediğinde burada görünecek.</p>'}</div>`;
 }
 
+
+/* ============================ ALAN ÜYELERİ VE ALAN SAYFASI (22b) ============================
+   Alan penceresinde "Üyeler": kişi ara + ekle, her kişiye rol. Sahip kaldırılamaz ve hep Yönetici; sahibi yalnız
+   sistem yöneticisi seçer/devreder. Eski (üye listesi tanımsız) alanda liste kişilerin genel rolleriyle önerilir;
+   üye bölümüne dokunulmadıkça kayda yazılmaz (alan herkese açık kalır). Yetki sunucuda (store.js). */
+const wsPeople = () => DB.users.filter(u => u.active && !u.system);
+const wsSeed = () => wsPeople().filter(u => u.role !== 'admin' && u.role !== 'super')
+  .map(u => ({ userId: u.id, role: u.role === 'viewer' ? 'viewer' : 'member' }));
+const WSF = { mem: new Map(), owner: null, dirty: false, legacy: false, w: null };
+function wsMembersFld(w) {
+  WSF.w = w; WSF.dirty = false; WSF.legacy = !!w && wsLegacy(w);
+  WSF.owner = w ? wsOwner(w) : SESSION;
+  WSF.mem = new Map((w ? (WSF.legacy ? wsSeed() : w.members) : []).filter(x => x && x.userId).map(x => [x.userId, x.role]));
+  const own = isAdmin() ? `<div class="ws-fld"><label for="wsf_o">Sahip <span class="opt">alan Yöneticisi; yalnız sistem yöneticisi değiştirir</span></label>
+      <select class="inp" id="wsf_o">${DB.users.filter(u => u.active && (!u.system || u.id === WSF.owner)).map(u => `<option value="${esc(u.id)}" ${u.id === WSF.owner ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select></div>` : '';
+  return `${own}<div class="ws-fld" id="wsf_mf"><label for="wsf_q">Üyeler <span class="opt" id="wsf_mc"></span></label>
+      <input class="inp" id="wsf_q" placeholder="Kişi ara ve ekle…" autocomplete="off" aria-controls="wsf_res">
+      <div class="wsm-res" id="wsf_res" role="listbox" aria-label="Eklenecek kişiler"></div>
+      ${WSF.legacy ? '<div class="wsm-note" id="wsf_leg">Bu alan şu an herkese açık (genel role göre). Listeyi değiştirip kaydedersen yalnız listedekiler erişir.</div>' : ''}
+      <ul class="wsm-list" id="wsf_ml" aria-label="Alan üyeleri"></ul></div>`;
+}
+WSF.paint = () => {
+  const ml = $('#wsf_ml'); if (!ml) return;
+  const owner = WSF.owner, rows = [...WSF.mem.entries()].filter(([id]) => id !== owner);
+  const ou = user(owner);
+  ml.innerHTML = (ou ? `<li data-wsfm="${esc(owner)}">${avat(owner)}<span class="nm">${esc(ou.name)}</span><span class="ws-role own" data-r="admin">Sahip · Yönetici</span></li>` : '')
+    + rows.map(([id, r]) => { const u = user(id); return `<li data-wsfm="${esc(id)}">${avat(id)}<span class="nm">${esc(u?.name || id)}</span>
+      <select class="inp sm" data-wsfr="${esc(id)}" aria-label="${esc(u?.name || id)}: rol">${['admin', 'member', 'viewer'].map(k =>
+        `<option value="${k}" ${r === k ? 'selected' : ''}>${WS_ROLE_LBL[k]}</option>`).join('')}</select>
+      <button type="button" class="iconbtn bare" data-wsfdel="${esc(id)}" aria-label="${esc(u?.name || id)}: alandan çıkar" title="Çıkar">${ic('x')}</button></li>`; }).join('');
+  $('#wsf_mc').textContent = `${rows.length + (ou ? 1 : 0)} kişi`;
+  $$('[data-wsfr]', ml).forEach(sel => sel.onchange = () => { WSF.mem.set(sel.dataset.wsfr, sel.value); WSF.dirty = true; });
+  $$('[data-wsfdel]', ml).forEach(b => b.onclick = () => { WSF.mem.delete(b.dataset.wsfdel); WSF.dirty = true; WSF.paint(); WSF.find(); $('#wsf_q')?.focus(); });
+};
+WSF.find = () => {
+  const q = $('#wsf_q'), res = $('#wsf_res'); if (!q || !res) return;
+  const k = qmKey(q.value).trim();
+  if (!k) { res.innerHTML = ''; return; }
+  const hit = wsPeople().filter(u => u.id !== WSF.owner && !WSF.mem.has(u.id)
+    && [u.name, u.username, u.email].some(t => t && qmKey(t).includes(k))).slice(0, 8);
+  res.innerHTML = hit.map(u => `<button type="button" role="option" data-wsfadd="${esc(u.id)}">${avat(u.id)}<span>${esc(u.name)}</span>
+    <span class="usub">@${esc(u.username || '')}</span></button>`).join('') || '<div class="wsm-note">Eşleşen kişi yok</div>';
+  $$('[data-wsfadd]', res).forEach(b => b.onclick = () => { WSF.mem.set(b.dataset.wsfadd, 'member'); WSF.dirty = true; q.value = ''; res.innerHTML = ''; WSF.paint(); q.focus(); });
+};
+WSF.wire = () => {
+  const q = $('#wsf_q'); if (!q) return;
+  q.oninput = WSF.find;
+  q.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('#wsf_res [data-wsfadd]')?.click(); } };
+  const o = $('#wsf_o');
+  if (o) o.onchange = () => { const prev = WSF.owner; WSF.owner = o.value; WSF.mem.delete(o.value); if (prev && !WSF.mem.has(prev)) WSF.mem.set(prev, 'admin'); WSF.dirty = true; WSF.paint(); };
+  WSF.paint();
+};
+/* Kayda yaz: yeni alanda her zaman; var olanda üye bölümü değiştiyse. Sahip listede ilk ve Yönetici. */
+WSF.apply = w => {
+  const isNew = !WSF.w;
+  if (!isNew && !WSF.dirty) return;
+  if (isAdmin() && WSF.owner) w.ownerId = WSF.owner;
+  const owner = isAdmin() ? WSF.owner : wsOwner(w);
+  w.members = [...(owner ? [{ userId: owner, role: 'admin' }] : []),
+    ...[...WSF.mem.entries()].filter(([id]) => id !== owner).map(([userId, role]) => ({ userId, role }))];
+};
+
+/* Alan sayfası: sol menüde alan adına tıklayınca. Projeler (Projeler ekranı kartları), "+ Proje", üyeler, düzenle/arşivle. */
+function openWsPage(id) {
+  const w = wsById(id); if (!w) return;
+  navDrawer(false);
+  if (DB.ui.workspace !== id || !P() || wsOf(P()) !== id) { DB.ui.workspace = id; DB.ui.project = wsFirstProj(id)?.id || null; DB.board.q = ''; }
+  wsOpenSet(id, true);
+  DB.ui.view = 'workspace'; save(); render();
+}
+function renderWsPage() {
+  const w = wsById(DB.ui.workspace), r = w ? wsRole(CU(), w) : null;
+  if (!w || !r) return `<div class="panel"><div class="empty">Çalışma alanı bulunamadı ya da bu alana erişimin yok.</div></div>`;
+  const id = esc(w.id), adm = r === 'admin', arch = w.archived === true;
+  const all = DB.projects.filter(p => wsOf(p) === w.id && (isAdmin() || projVisible(p)));
+  const projs = all.filter(p => !p.archived || isSuper() || DB.ui.showArchived);
+  const owner = wsOwner(w);
+  const mems = wsLegacy(w) ? [] : w.members.filter(m => m && user(m.userId));
+  const badge = (uid0, role0) => uid0 === owner ? `<span class="ws-role own" data-r="admin">Sahip · Yönetici</span>` : `<span class="ws-role" data-r="${esc(role0)}">${esc(WS_ROLE_LBL[role0] || role0)}</span>`;
+  const memList = wsLegacy(w)
+    ? `<div class="wsm-note" data-wsplegacy>Bu alanın üye listesi yok: herkes genel rolüyle erişir.${owner && user(owner) ? ` Sahip: <b>${esc(user(owner).name)}</b>.` : ''}</div>`
+    : `<ul class="wsp-mems" aria-label="Alan üyeleri">${mems.map(m => `<li data-wspm="${esc(m.userId)}">${avat(m.userId)}<span class="nm">${esc(user(m.userId).name)}</span>${badge(m.userId, m.role)}</li>`).join('')}</ul>`;
+  return `<section class="ws-page" data-wspage="${id}" aria-labelledby="wsp-h">
+    <div class="ws-gh">${wsBadge(w, 'lg' + (arch ? ' is-arch' : ''))}
+      <div class="tx"><h2 id="wsp-h"><span class="t">${esc(w.name)}</span><span class="cnt">${all.filter(p => !p.archived).length} proje</span>
+        <span class="ws-role" data-r="${r}" data-wsmyrole="${r}" title="Bu alandaki rolün">${WS_ROLE_LBL[r]}</span>${arch ? `<span class="ws-chip">${ic('archive')}Arşivlendi</span>` : ''}</h2>
+        ${w.description ? `<div class="ds" title="${esc(w.description)}">${esc(w.description)}</div>` : ''}</div>
+      <div class="acts">${!arch && canNewProj(w.id) ? `<button type="button" class="btn pri" data-wsnewproj="${id}">${ic('plus')}Proje</button>` : ''}
+        ${adm && !arch ? `<button type="button" class="btn" data-wsedit="${id}">${ic('pencil')}Düzenle</button>` : ''}
+        ${adm && !arch && w.id !== WS_DEFAULT ? `<button type="button" class="btn" data-wsarch="${id}">${ic('archive')}Arşivle</button>` : ''}
+        ${adm && arch ? `<button type="button" class="btn" data-wsunarch="${id}">${ic('unarchive')}Arşivden çıkar</button>` : ''}</div></div>
+    ${projs.length ? `<div class="ws-grid">${projs.map(p => wsProjCard(p, arch)).join('')}</div>`
+      : `<div class="ws-gempty">${ic('folderplus')}<span class="tx">Bu çalışma alanında henüz proje yok</span></div>`}
+    <div class="wsp-sec"><h3>Üyeler</h3>${adm && !arch ? `<button type="button" class="btn sm" data-wsedit="${id}" data-wspmed>${ic('users')}Üyeleri düzenle</button>` : ''}</div>
+    ${memList}</section>`;
+}
 /* ============================ CARİLER (issue #11) ============================
    Müşteri ve tedarikçiler (docs/tasarim/cariler); çalışma alanından bağımsız, ortak liste. Ekle/düzenle/pasife al/sil
    yalnız yönetici. Yetki ve bütünlük sunucuda (store.js: ADMIN_ONLY, vergi no tekilliği, bağlı projesi olan cari silinmez,
@@ -9629,7 +10072,8 @@ function wsEmptyView() {
    sunucudan maskeli gelir. Arama metni DB.ui'ye YAZILMAZ (kişisel veri tercihlere gitmesin). */
 const CU_KIND = { customer: ['Müşteri', 'briefcase'], supplier: ['Tedarikçi', 'truck'], both: ['İkisi', 'swap'] };
 const CU_MAX_CT = 200;
-const CU_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/* mailto: bağlantısına basılır: ? & " < > ve boşluk yok (sunucu validate.js cuEmail ile aynı; değişmeyen eski adres geçer). */
+const CU_EMAIL = /^[^\s@?&"<>]+@[^\s@?&"<>]+\.[^\s@?&"<>]+$/;
 let CU_Q = '', CU_KEYS = new Map();
 const cuList = () => (DB.customers || []).filter(c => c && c.id);
 const cuById = id => id ? cuList().find(c => c.id === id) : undefined;
@@ -9651,7 +10095,7 @@ function renderCustomers() {
   CU_KEYS = new Map(all.map(c => [c.id, cuSearchKey(c)]));
   if (!all.length) return `<div class="hm-empty cu-empty" data-cuempty="none"><span class="hm-empty-ic">${ic('building')}</span><h3>Henüz cari yok</h3>${admin
     ? `<p>Müşteri ve tedarikçilerinizi ekleyin; projelerinizi bir cariye bağlayabilirsiniz.</p>
-       <div class="acts"><button type="button" class="btn pri" data-cunew>${ic('plus')}Cari ekle</button></div>`
+       <div class="acts"><button type="button" class="btn pri" data-cunew>${ic('plus')}Cari ekle</button><button type="button" class="btn" data-cuimp>${ic('up')}CSV'den içe aktar</button></div>`
     : '<p>Cari eklemek için yöneticinize başvurun.</p>'}</div>`;
   const kind = cuCurKind(), pas = !!DB.ui.cuPassive;
   const base = all.filter(c => pas || cuActive(c)), nPas = all.filter(c => !cuActive(c)).length;
@@ -9662,19 +10106,25 @@ function renderCustomers() {
       <div class="cu-seg" role="radiogroup" aria-label="Tür">${seg}</div>
       <button type="button" class="cu-tog" data-cupas aria-pressed="${pas}"><span class="cu-sw" aria-hidden="true"></span>Pasifleri de göster <span class="n">(${nPas})</span></button>
       <span class="spacer"></span>
-      ${admin ? `<button type="button" class="btn pri add" data-cunew>${ic('plus')}Cari ekle</button>` : ''}
+      ${admin ? `<button type="button" class="btn" data-cuimp>${ic('up')}İçe aktar</button><button type="button" class="btn" data-cuexp>${ic('dn')}Dışa aktar (CSV)</button>
+        <button type="button" class="btn pri add" data-cunew>${ic('plus')}Cari ekle</button>` : ''}
     </div>
     <div id="cuList">${cuListHtml()}</div>`;
 }
 
 /* Liste (arama yazılırken yalnız bu bölüm yeniden çizilir; arama kutusunun odağı korunur). */
-function cuListHtml() {
+/* Görünen (süzülmüş) liste: ekran ve CSV dışa aktarma aynı süzgeci kullanır. */
+function cuFiltered() {
   const kind = cuCurKind(), pas = !!DB.ui.cuPassive, raw = CU_Q.trim();
   const q = qmKey(raw), d = raw.replace(/[\s-]/g, ''), qd = /^\d+$/.test(d) ? d : '';
+  return cuList().filter(c => (pas || cuActive(c)) && cuKindMatch(c, kind)
+    && (!q || (CU_KEYS.get(c.id) ?? cuSearchKey(c)).includes(q) || (qd && String(c.taxNo || '').includes(qd)))).sort(cuSort);
+}
+function cuListHtml() {
+  const kind = cuCurKind(), pas = !!DB.ui.cuPassive, raw = CU_Q.trim();
   const nProj = new Map();
   DB.projects.forEach(p => { if (p.customerId) nProj.set(p.customerId, (nProj.get(p.customerId) || 0) + 1); });
-  const rows = cuList().filter(c => (pas || cuActive(c)) && cuKindMatch(c, kind)
-    && (!q || (CU_KEYS.get(c.id) ?? cuSearchKey(c)).includes(q) || (qd && String(c.taxNo || '').includes(qd)))).sort(cuSort);
+  const rows = cuFiltered();
   if (!rows.length) {
     const desc = [raw ? `"${raw}"` : '', kind !== 'all' ? CU_KIND[kind][0] : '', pas ? 'pasifler dahil' : 'yalnız etkin'].filter(Boolean).join(' · ');
     return `<div class="hm-empty cu-empty" data-cuempty="search"><span class="hm-empty-ic">${ic('search')}</span><h3>Aramanızla eşleşen cari yok</h3>
@@ -9754,7 +10204,7 @@ function customerView(c) {
           ? `<span class="cu-mask"><span>${esc(tx)}</span><span class="why">${ic('lock')}İzleyiciye maskeli</span></span>` : esc(tx)}</dd>` : '<dd class="none">—</dd>'}
         <dt>Adres</dt>${dd(c.address)}
         <dt>Telefon</dt>${dd(c.phone)}
-        <dt>E-posta</dt>${c.email ? `<dd><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></dd>` : '<dd class="none">—</dd>'}
+        <dt>E-posta</dt>${c.email ? `<dd><a href="mailto:${esc(encodeURIComponent(c.email))}">${esc(c.email)}</a></dd>` : '<dd class="none">—</dd>'}
         <dt>Notlar</dt>${dd(c.notes)}
       </dl>
       <div class="cu-sech"><h3>${ic('users')}Yetkili kişiler <span class="n">${ct.length}</span></h3></div>
@@ -9841,13 +10291,14 @@ function customerForm(id) {
     if (val('cu_a').trim().length > 500) e.cu_a = 'Adres en fazla 500 karakter';
     if (val('cu_p').trim().length > 30) e.cu_p = 'Telefon en fazla 30 karakter';
     const em = val('cu_m').trim();
-    if (em && (em.length > 200 || !CU_EMAIL.test(em))) e.cu_m = 'E-posta adresi geçersiz';
+    if (em && em !== c?.email && (em.length > 200 || !CU_EMAIL.test(em))) e.cu_m = 'E-posta adresi geçersiz';
     if (val('cu_no').length > 2000) e.cu_no = 'Notlar en fazla 2000 karakter';
     for (const k of Object.keys(ctErr)) delete ctErr[k];
     cts.forEach((x, k) => { if (blankCt(x)) return; const r = {};
       if (!String(x.name || '').trim()) r.name = 'Ad zorunlu';
       if (String(x.title || '').trim().length > 120) r.title = 'Görev en fazla 120 karakter';
-      const m = String(x.email || '').trim(); if (m && (m.length > 200 || !CU_EMAIL.test(m))) r.email = 'E-posta adresi geçersiz';
+      const m = String(x.email || '').trim(), m0 = (c?.contacts || []).find(o => o && o.id === x.id)?.email;
+      if (m && m !== m0 && (m.length > 200 || !CU_EMAIL.test(m))) r.email = 'E-posta adresi geçersiz';
       if (String(x.phone || '').trim().length > 30) r.phone = 'Telefon en fazla 30 karakter';
       if (Object.keys(r).length) ctErr[k] = r; });
     return e;
@@ -10013,7 +10464,7 @@ function cuPickList(cur, pr, q = '') {
 function cuProjRow(p) {
   const cur = p.customerId || '', c = cuById(cur), pid = esc(p.id);
   if (!cur && !cuList().length) return '';
-  if (canEdit()) return `<div class="cu-plink"><label class="lbl" for="pcu-${pid}">${ic('building')}Cari</label>
+  if (canDesign(p)) return `<div class="cu-plink"><label class="lbl" for="pcu-${pid}">${ic('building')}Cari</label>
       <select class="inp" id="pcu-${pid}" data-pcust="${pid}">${cuOptions(cur)}</select>
       ${c && !cuActive(c) ? `<div class="cu-hint">${ic('pause')}Bağlı cari pasif; bağ korunur. Değiştirirseniz yalnız etkin cariler seçilebilir.</div>` : ''}</div>`;
   return `<div class="cu-plink"><span class="lbl">${ic('building')}Cari</span><span class="val">${c
@@ -10021,14 +10472,301 @@ function cuProjRow(p) {
     : '<span style="color:var(--meta);font-weight:500">—</span>'}</span></div>`;
 }
 
+/* ---- Cariler: CSV içe / dışa aktarma (yalnız yönetici) ----
+   Ayrıştırıcı bağımlılıksız (RFC 4180: tırnaklı alan, "" kaçışı, tırnak içinde ayırıcı / yeni satır); ayırıcı ilk
+   satırdan algılanır (; , sekme), Excel'in "sep=;" satırı da tanınır. Dosya UTF-8 (BOM'lu/BOM'suz) okunur; geçersiz
+   UTF-8 ise Excel'in Türkçe ANSI çıktısı (windows-1254) varsayılır. Satır denetimleri validate.js → customers ile
+   aynı (uzunluklar, tür, 10/11 haneli vergi no, cuEmail); asıl kural ve yetki sunucuda (ADMIN_ONLY, vergi no
+   tekilliği). Aktarım /api/sync ile 200'lük partiler hâlinde; reddedilen kayıt satırıyla raporlanır. */
+const CU_CSV = [
+  ['name', 'Unvan', ['unvan', 'ticari unvan', 'firma', 'firma adi', 'cari', 'cari adi', 'cari unvani', 'ad', 'adi', 'name']],
+  ['shortName', 'Kısa ad', ['kisa ad', 'kisa adi', 'short name']],
+  ['kind', 'Tür', ['tur', 'tip', 'cari turu', 'kind', 'type']],
+  ['taxOffice', 'Vergi dairesi', ['vergi dairesi', 'vd', 'tax office']],
+  ['taxNo', 'Vergi no / TCKN', ['vergi no tckn', 'vergi no', 'vergi numarasi', 'vkn', 'tckn', 'tc kimlik no', 'tc no', 'kimlik no', 'tax no']],
+  ['address', 'Adres', ['adres', 'address']],
+  ['phone', 'Telefon', ['telefon', 'tel', 'gsm', 'phone']],
+  ['email', 'E-posta', ['e posta', 'eposta', 'email', 'e mail', 'mail']],
+  ['notes', 'Notlar', ['notlar', 'not', 'aciklama', 'notes']],
+  ['active', 'Durum', ['durum', 'etkin', 'aktif', 'status']],
+];
+const CU_CSV_LIM = { name: 200, shortName: 60, taxOffice: 100, address: 500, phone: 30, notes: 2000, email: 200 };
+const CU_CSV_MAXROWS = 5000, CU_CSV_BATCH = 200;
+const cuCsvKey = v => qmKey(v).replace(/[^a-z0-9]+/g, ' ').trim();
+let CUC = null;                                    // açık içe aktarma penceresinin durumu
+
+function csvSep(text) {
+  const cnt = { ';': 0, ',': 0, '\t': 0 };
+  let q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '"') q = !q;
+    else if (!q && (ch === '\n' || ch === '\r')) break;
+    else if (!q && ch in cnt) cnt[ch]++;
+  }
+  const best = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+  return best[1] ? best[0] : ';';
+}
+/* Kayıtlar: { n: dosyadaki kayıt sırası (başlık 1), cells }. Boş kayıtlar atlanır, numara korunur. */
+function csvParse(text, sep) {
+  const out = []; let row = [], f = '', q = false, n = 1;
+  const end = () => { row.push(f); if (row.some(c => c.trim() !== '')) out.push({ n, cells: row }); row = []; f = ''; n++; };
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) {
+      if (ch !== '"') f += ch;
+      else if (text[i + 1] === '"') { f += '"'; i++; }
+      else q = false;
+    } else if (ch === '"' && f === '') q = true;
+    else if (ch === sep) { row.push(f); f = ''; }
+    else if (ch === '\r' || ch === '\n') { if (ch === '\r' && text[i + 1] === '\n') i++; end(); }
+    else f += ch;
+  }
+  if (f !== '' || row.length) end();
+  return out;
+}
+async function cuCsvDecode(file) {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); }
+  catch (_) { return new TextDecoder('windows-1254').decode(buf); }
+}
+/* Dışa aktarmada formül kaçışı için eklenen ' geri alınır (aynı dosya geri yüklenebilsin). */
+const cuCsvVal = v => { const s = String(v ?? '').trim(); return /^'[=+\-@]/.test(s) ? s.slice(1) : s; };
+const CU_KIND_IN = { musteri: 'customer', customer: 'customer', alici: 'customer', tedarikci: 'supplier', supplier: 'supplier', satici: 'supplier',
+  ikisi: 'both', both: 'both', 'her ikisi': 'both', 'musteri tedarikci': 'both', 'musteri ve tedarikci': 'both' };
+const CU_ACT_IN = { etkin: true, aktif: true, evet: true, e: true, '1': true, true: true, pasif: false, hayir: false, h: false, '0': false, false: false };
+
+function cuCsvLoad(text, name) {
+  text = String(text || '').replace(/^﻿/, '');
+  let sep = null;
+  const m = /^sep=(.)\r?\n/i.exec(text);
+  if (m) { sep = m[1]; text = text.slice(m[0].length); }
+  sep ||= csvSep(text);
+  const recs = csvParse(text, sep);
+  if (recs.length < 2) return toast('Dosyada başlık satırından sonra veri yok', { warn: true });
+  if (recs.length - 1 > CU_CSV_MAXROWS) return toast(`Tek seferde en fazla ${CU_CSV_MAXROWS} satır aktarılabilir`, { warn: true });
+  const head = recs[0].cells.map(h => h.trim());
+  const used = new Set();
+  const map = head.map(h => { const k = cuCsvKey(h);
+    const f = CU_CSV.find(([f, l, syn]) => !used.has(f) && (cuCsvKey(l) === k || syn.includes(k)));
+    if (f) used.add(f[0]); return f ? f[0] : ''; });
+  CUC = { name: name || 'Yapıştırılan metin', sep, head, recs: recs.slice(1), map, mode: 'update', errOnly: false };
+  cuCsvPreview();
+}
+
+/* Satır satır doğrulama: { n, act: add|update|same|skip|error, why, d (dosyadaki değerler), data, base, id }. */
+function cuCsvAnalyze() {
+  const { recs, map, mode } = CUC;
+  const byTax = new Map(cuList().filter(c => c.taxNo).map(c => [String(c.taxNo).replace(/[\s-]/g, ''), c]));
+  const seen = new Map();
+  return recs.map(r => {
+    const v = {}, why = [];
+    map.forEach((f, i) => { if (f) v[f] = cuCsvVal(r.cells[i]); });
+    const d = {};
+    if (!v.name) why.push('Unvan boş');
+    for (const f of ['name', 'shortName', 'taxOffice', 'address', 'phone', 'notes', 'email'])
+      if (v[f]) { if (v[f].length > CU_CSV_LIM[f]) why.push(`${CU_CSV.find(x => x[0] === f)[1]} en fazla ${CU_CSV_LIM[f]} karakter`); d[f] = v[f]; }
+    if (v.email && !CU_EMAIL.test(v.email)) why.push('E-posta adresi geçersiz');
+    if (v.kind) { const k = CU_KIND_IN[cuCsvKey(v.kind)]; if (k) d.kind = k; else why.push('Tür tanınmadı (Müşteri, Tedarikçi ya da İkisi)'); }
+    if (v.active) { const a = CU_ACT_IN[cuCsvKey(v.active)]; if (a !== undefined) d.active = a; else why.push('Durum tanınmadı (Etkin ya da Pasif)'); }
+    const tx = String(v.taxNo || '').replace(/[\s.-]/g, '');
+    if (tx && !/^\d{10,11}$/.test(tx)) why.push('Vergi no 10 (VKN) ya da 11 (TCKN) haneli olmalı');
+    else if (tx) {
+      d.taxNo = tx;
+      if (seen.has(tx)) why.push(`Vergi no dosyada yineleniyor (satır ${seen.get(tx)})`); else seen.set(tx, r.n);
+    }
+    if (why.length) return { n: r.n, act: 'error', why: why.join(' · '), d };
+    const cur = d.taxNo && byTax.get(d.taxNo);
+    if (cur) {
+      if (mode !== 'update') return { n: r.n, act: 'skip', why: `Kayıtlı: ${cur.name}`, d };
+      /* "Etkin" hücresi durum alanı hiç yazılmamış (etkin sayılan) cariyi değiştirmez: dışa aktarılan dosya geri yüklenebilsin. */
+      const base = JSON.parse(JSON.stringify(cur)), dd = { ...d };
+      if (dd.active === cuActive(cur)) delete dd.active;
+      const data = { ...base, ...dd };
+      return cj(data) === cj(base) ? { n: r.n, act: 'same', why: 'Değişiklik yok', d }
+        : { n: r.n, act: 'update', why: `Kayıtlı: ${cur.name}`, d, id: cur.id, base, data };
+    }
+    return { n: r.n, act: 'add', d, id: uid('cu'), data: { kind: 'customer', active: true, contacts: [], ...d } };
+  });
+}
+const CUC_ST = { add: ['Eklenecek', 'plus'], update: ['Güncellenecek', 'swap'], same: ['Atlanacak', 'pause'], skip: ['Atlanacak', 'pause'], error: ['Hatalı', 'alert'] };
+
+function cuCsvOpen() {
+  if (!isAdmin()) return toast('Cari içe aktarma yalnızca yöneticiler içindir');
+  CUC = null; closeModal();
+  openModal(`<div class="m-h cu-h"><span class="cu-ic">${ic('up')}</span><div class="tx"><b id="cuc_t">Carileri içe aktar</b><div class="s">CSV dosyası (; , ya da sekme ayırıcılı) · ilk satır başlık</div></div><button class="x" data-close aria-label="Kapat">×</button></div>
+    <div class="cu-body">
+      <div class="cu-fld full"><label for="cuc_file"><span>Dosya seç</span><span class="opt">Excel → "CSV UTF-8" ya da "CSV (noktalı virgülle ayrılmış)"</span></label>
+        <input class="inp" type="file" id="cuc_file" accept=".csv,.txt,text/csv,text/plain"></div>
+      <div class="cu-fld full"><label for="cuc_paste"><span>ya da metni yapıştırın</span></label>
+        <textarea class="inp" id="cuc_paste" rows="6" spellcheck="false" placeholder="Unvan;Tür;Vergi no / TCKN;E-posta&#10;Örnek Ltd. Şti.;Müşteri;1234567890;bilgi@ornek.com.tr"></textarea></div>
+      <div class="ws-info">${ic('info')}<span>Sütunları bir sonraki adımda eşleyebilirsiniz. <a href="#" id="cuc_tpl">Örnek şablonu indir (CSV)</a></span></div>
+    </div>
+    <div class="m-f"><span class="spacer"></span><button class="btn" data-close>Vazgeç</button><button class="btn pri" id="cuc_go">${ic('arrow')}Önizle</button></div>`, 'cu-m cu-csv');
+  wsDialog('cuc_t');
+  $('#cuc_tpl').onclick = e => { e.preventDefault(); cuCsvTemplate(); };
+  $('#cuc_file').onchange = async e => {
+    const f = e.target.files?.[0]; if (!f) return;
+    if (f.size > 5 * 1024 * 1024) return toast('Dosya en fazla 5 MB olabilir', { warn: true });
+    cuCsvLoad(await cuCsvDecode(f), f.name);
+  };
+  $('#cuc_go').onclick = () => { const t = $('#cuc_paste').value; if (!t.trim()) return toast('Dosya seçin ya da metni yapıştırın', { warn: true }); cuCsvLoad(t); };
+}
+
+function cuCsvPreview() {
+  const S = CUC; if (!S) return;
+  const sepName = { ';': 'noktalı virgül', ',': 'virgül', '\t': 'sekme' }[S.sep] || `"${S.sep}"`;
+  openModal(`<div class="m-h cu-h"><span class="cu-ic">${ic('up')}</span><div class="tx"><b id="cuc_t">Önizleme</b><div class="s" id="cuc_src">${esc(S.name)} · ${S.recs.length} satır · ayırıcı: ${esc(sepName)}</div></div><button class="x" data-close aria-label="Kapat">×</button></div>
+    <div class="cu-body">
+      <h4 class="cuc-h">Sütun eşleme</h4>
+      <div class="cuc-map" id="cuc_map">${S.head.map((h, i) => `<label><span title="${esc(h)}">${esc(h || `Sütun ${i + 1}`)}</span>
+        <select class="inp" data-cucmap="${i}" aria-label="${esc(h || `Sütun ${i + 1}`)} sütunu"><option value="">— Aktarma —</option>${CU_CSV.map(([f, l]) =>
+          `<option value="${f}" ${S.map[i] === f ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`).join('')}</div>
+      <div class="cuc-opts"><span class="lb">Vergi no kayıtlı bir cariyle eşleşirse</span>
+        <div class="cu-seg" role="radiogroup" aria-label="Eşleşen cariler">${[['update', 'Mevcut olanı güncelle'], ['skip', 'Atla']].map(([k, l]) =>
+          `<button type="button" role="radio" data-cucmode="${k}" aria-checked="${S.mode === k}" tabindex="${S.mode === k ? 0 : -1}">${l}</button>`).join('')}</div>
+        <span class="opt">Güncellemede boş hücreler mevcut değeri korur; yetkili kişiler değişmez.</span></div>
+      <div id="cuc_body"></div>
+    </div>
+    <div class="m-f"><button class="btn" id="cuc_back">${ic('back')}Başka dosya</button><span class="spacer"></span><button class="btn" data-close>Vazgeç</button><button class="btn pri" id="cuc_run">${ic('up')}Aktar</button></div>`, 'cu-m cu-csv');
+  wsDialog('cuc_t');
+  $('#cuc_map').onchange = e => { const s = e.target.closest('[data-cucmap]'); if (!s) return; S.map[+s.dataset.cucmap] = s.value; cuCsvPaint(); };
+  $$('[data-cucmode]').forEach(b => b.onclick = () => { S.mode = b.dataset.cucmode;
+    $$('[data-cucmode]').forEach(x => { x.setAttribute('aria-checked', String(x === b)); x.tabIndex = x === b ? 0 : -1; }); cuCsvPaint(); });
+  $('#cuc_back').onclick = cuCsvOpen;
+  $('#cuc_run').onclick = () => cuCsvRun();
+  cuCsvPaint();
+}
+
+function cuCsvPaint() {
+  const S = CUC, box = $('#cuc_body'); if (!S || !box) return;
+  const used = S.map.filter(Boolean), dup = used.find((f, i) => used.indexOf(f) !== i);
+  const block = !used.includes('name') ? 'Unvan sütununu eşleyin (zorunlu).'
+    : dup ? `"${CU_CSV.find(x => x[0] === dup)[1]}" alanı birden çok sütuna eşlendi.` : '';
+  S.rows = block ? [] : cuCsvAnalyze();
+  const n = k => S.rows.filter(r => k.includes(r.act)).length;
+  const cnt = { add: n(['add']), update: n(['update']), skip: n(['skip', 'same']), error: n(['error']) };
+  const go = cnt.add + cnt.update;
+  const run = $('#cuc_run'); run.disabled = !!block || !go;
+  run.innerHTML = `${ic('up')}${go ? `${go} cariyi aktar` : 'Aktar'}`;
+  if (block) { box.innerHTML = `<div class="cu-alert" id="cuc_block">${ic('alert')}<div class="tx"><b>${esc(block)}</b></div></div>`; return; }
+  const tckn = S.rows.some(r => /^\d{11}$/.test(r.d.taxNo || ''));
+  const list = S.errOnly ? S.rows.filter(r => r.act === 'error') : [...S.rows].sort((a, b) => (b.act === 'error') - (a.act === 'error') || a.n - b.n);
+  const shown = list.slice(0, 500);
+  box.innerHTML = `<div class="cuc-sum" id="cuc_sum">
+      <span class="cuc-chip" data-s="add">${ic('plus')}<b data-cucn="add">${cnt.add}</b> eklenecek</span>
+      <span class="cuc-chip" data-s="update">${ic('swap')}<b data-cucn="update">${cnt.update}</b> güncellenecek</span>
+      <span class="cuc-chip" data-s="skip">${ic('pause')}<b data-cucn="skip">${cnt.skip}</b> atlanacak</span>
+      <span class="cuc-chip" data-s="error">${ic('alert')}<b data-cucn="error">${cnt.error}</b> hatalı</span>
+      <span class="spacer"></span>${cnt.error ? `<button type="button" class="cu-tog" id="cuc_erronly" aria-pressed="${S.errOnly}"><span class="cu-sw" aria-hidden="true"></span>Yalnız hatalılar</button>` : ''}</div>
+    ${tckn ? `<div class="ws-info" id="cuc_kvkk">${ic('lock')}<span>Dosyada 11 haneli T.C. kimlik numarası var: kişisel veridir. İzleyici rolündekilere maskeli gider; diğer kullanıcılar tam numarayı görür.</span></div>` : ''}
+    ${cnt.error ? '<p class="cuc-note">Hatalı satırlar aktarılmaz; dosyayı düzeltip yeniden yükleyebilirsiniz.</p>' : ''}
+    <div class="cu-wrap cuc-scroll"><table class="cu-tbl cuc-tbl" aria-label="Önizleme"><thead><tr><th style="width:62px">Satır</th><th style="width:138px">Sonuç</th><th>Unvan</th>
+      <th style="width:112px">Tür</th><th style="width:118px">Vergi no</th><th>E-posta</th><th>Neden</th></tr></thead>
+    <tbody>${shown.map(r => { const st = CUC_ST[r.act], k = r.d.kind || (r.act === 'add' ? 'customer' : '');
+      return `<tr class="cuc-r" data-cucrow="${r.n}" data-act="${r.act}"><td class="mono">${r.n}</td><td><span class="cuc-st" data-s="${r.act}">${ic(st[1])}${st[0]}</span></td>
+        <td class="cuc-tx">${esc(r.d.name || '')}</td><td>${k ? cuKindBadge(k) : ''}</td><td class="mono">${esc(r.d.taxNo || '')}</td>
+        <td class="cuc-tx">${esc(r.d.email || '')}</td><td class="cuc-why">${esc(r.why || '')}</td></tr>`; }).join('')}</tbody></table></div>
+    ${list.length > shown.length ? `<p class="cuc-note">… ve ${list.length - shown.length} satır daha (önizlemede ilk 500 satır gösterilir; tümü aktarılır).</p>` : ''}`;
+  const eo = $('#cuc_erronly'); if (eo) eo.onclick = () => { S.errOnly = !S.errOnly; cuCsvPaint(); };
+}
+
+/* Sunucu iletisi kullanıcıya: vergi no çakışmasında kimlik yerine unvan (sonuçta, yeniden yüklemeden sonra bulunur). */
+function cuCsvReason(reason) {
+  const m = /^Bu vergi numarasıyla kayıtlı cari var \(#([^)]+)\)$/.exec(reason || '');
+  if (m) { const o = cuById(m[1]); return o ? `Bu vergi numarasıyla kayıtlı cari var: ${o.name}` : 'Bu vergi numarasıyla kayıtlı cari var'; }
+  return reason || 'Sunucu kaydı reddetti';
+}
+
+async function cuCsvRun() {
+  const S = CUC; if (!S?.rows || !isAdmin()) return;
+  const todo = S.rows.filter(r => r.act === 'add' || r.act === 'update');
+  if (!todo.length) return;
+  const res = { add: 0, update: 0, skip: S.rows.filter(r => r.act === 'skip' || r.act === 'same').length,
+    error: S.rows.filter(r => r.act === 'error').map(r => ({ n: r.n, name: r.d.name, why: r.why })) };
+  const run = $('#cuc_run'); run.disabled = true; $('#cuc_back').disabled = true;
+  let stop = '';
+  try { await flushAll(); } catch (_) {}
+  for (let i = 0; i < todo.length; i += CU_CSV_BATCH) {
+    const part = todo.slice(i, i + CU_CSV_BATCH);
+    /* Bağlantı ya da yetki hatasında kalan partiler gönderilmez; satırları hatalı sayılır. */
+    if (stop) { part.forEach(r => res.error.push({ n: r.n, name: r.d.name, why: 'Gönderilmedi: ' + stop })); continue; }
+    run.innerHTML = `${ic('up')}Aktarılıyor… ${i}/${todo.length}`;
+    const changes = part.map(r => r.act === 'add' ? { c: 'customers', id: r.id, op: 'put', data: { id: r.id, ...r.data } }
+      : { c: 'customers', id: r.id, op: 'put', data: r.data, base: r.base });
+    let resp = null;
+    for (let t = 0; t < 4 && !resp && !stop; t++) {
+      try { resp = await API.post('/api/sync', { changes }); }
+      catch (e) {
+        if (e.status === 401) return sessionLost();
+        if (e.status === 409 && /^Sunucu meşgul/.test(e.message || '') && t < 3) { await new Promise(r => setTimeout(r, 800 * (t + 1))); continue; }
+        stop = e.message || 'Sunucuya ulaşılamadı';
+      }
+    }
+    if (!resp) { part.forEach(r => res.error.push({ n: r.n, name: r.d.name, why: 'Gönderilemedi: ' + stop })); continue; }
+    const rej = new Map((resp.rejected || []).map(x => [x.id, x.reason]));
+    for (const r of part) {
+      if (rej.has(r.id)) res.error.push({ n: r.n, name: r.d.name, why: rej.get(r.id), srv: true });
+      else res[r.act]++;
+    }
+  }
+  await reloadState();
+  cuCsvResult(res, stop);
+}
+
+function cuCsvResult(res, stop) {
+  const err = res.error.sort((a, b) => a.n - b.n), name = CUC?.name || '';
+  closeModal();
+  openModal(`<div class="m-h cu-h"><span class="cu-ic">${ic(err.length ? 'alert' : 'checkc')}</span><div class="tx"><b id="cuc_t">İçe aktarma tamamlandı</b><div class="s">${esc(name)}</div></div><button class="x" data-close aria-label="Kapat">×</button></div>
+    <div class="cu-body">
+      ${stop ? `<div class="cu-alert" id="cuc_stop">${ic('alert')}<div class="tx"><b>Aktarım yarıda kaldı: ${esc(stop)}</b></div></div>` : ''}
+      <div class="cuc-sum" id="cuc_res">
+        <span class="cuc-chip" data-s="add">${ic('plus')}<b data-cucr="add">${res.add}</b> eklendi</span>
+        <span class="cuc-chip" data-s="update">${ic('swap')}<b data-cucr="update">${res.update}</b> güncellendi</span>
+        <span class="cuc-chip" data-s="skip">${ic('pause')}<b data-cucr="skip">${res.skip}</b> atlandı</span>
+        <span class="cuc-chip" data-s="error">${ic('alert')}<b data-cucr="error">${err.length}</b> hatalı</span></div>
+      ${err.length ? `<div class="cu-wrap cuc-scroll"><table class="cu-tbl cuc-tbl" aria-label="Hatalı satırlar"><thead><tr><th style="width:62px">Satır</th><th>Unvan</th><th>Neden</th></tr></thead>
+        <tbody>${err.slice(0, 500).map(r => `<tr class="cuc-r" data-cucerr="${r.n}" data-act="error"><td class="mono">${r.n}</td><td class="cuc-tx">${esc(r.name || '')}</td><td class="cuc-why">${esc(r.srv ? cuCsvReason(r.why) : r.why)}</td></tr>`).join('')}</tbody></table></div>` : ''}
+    </div>
+    <div class="m-f"><span class="spacer"></span><button class="btn pri" data-close>Kapat</button></div>`, 'cu-m cu-csv');
+  wsDialog('cuc_t');
+  CUC = null;
+}
+
+/* ---- dışa aktarma ---- */
+/* Excel'de formül olarak çalışmasın (CSV/formül enjeksiyonu): = + - @ (ve sekme / satır başı) ile başlayan hücreye ' eklenir. */
+const cuCsvCell = v => {
+  let s = String(v ?? '');
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return /[;",\r\n]/.test(s) || s !== s.trim() ? `"${s.replace(/"/g, '""')}"` : s;
+};
+const cuCsvBlob = lines => new Blob(['﻿' + lines.map(l => l.map(cuCsvCell).join(';')).join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
+function cuCsvExport() {
+  if (!isAdmin()) return toast('Cari dışa aktarma yalnızca yöneticiler içindir');
+  const rows = cuFiltered();
+  if (!rows.length) return toast('Dışa aktarılacak cari yok', { warn: true });
+  /* Yönetici vergi numarasını sunucudan maskesiz alır; maskeli gelmiş bir değer (yıldızlı) olduğu gibi kalır, açılmaz. */
+  const lines = [CU_CSV.map(x => x[1]), ...rows.map(c => CU_CSV.map(([f]) => f === 'kind' ? (CU_KIND[c.kind]?.[0] || '')
+    : f === 'active' ? (cuActive(c) ? 'Etkin' : 'Pasif') : c[f] ?? ''))];
+  download(cuCsvBlob(lines), `cariler-${TODAY}.csv`);
+  toast(`${rows.length} cari dışa aktarıldı`);
+}
+function cuCsvTemplate() {
+  download(cuCsvBlob([CU_CSV.map(x => x[1]),
+    ['Örnek Yazılım Ltd. Şti.', 'Örnek Yazılım', 'Müşteri', 'Kadıköy', '1234567890', 'Caferağa Mah. Örnek Sok. No:1, İstanbul', '0216 000 00 00', 'bilgi@ornek.com.tr', '', 'Etkin'],
+    ['Deneme Tedarik A.Ş.', '', 'Tedarikçi', 'Çankaya', '0987654321', '', '', '', 'Notlar "tırnak" ve ; içerebilir', 'Etkin']]), 'cari-sablon.csv');
+}
+
 /* Olay devri: liste, süzgeçler, kart bağlantıları. */
 function cuClick(e) {
   const t = e.target; if (!(t instanceof Element)) return;
-  const b = t.closest('[data-cunew],[data-cuopen],[data-cukind],[data-cupas],[data-cuclear],[data-cugoproj],[data-cuissues],[data-cugo]');
+  const b = t.closest('[data-cunew],[data-cuimp],[data-cuexp],[data-cuopen],[data-cukind],[data-cupas],[data-cuclear],[data-cugoproj],[data-cuissues],[data-cugo]');
   if (!b || b.disabled) return;
   const d = b.dataset;
   if (b.tagName === 'A') e.preventDefault();
   if ('cunew' in d) return customerForm();
+  if ('cuimp' in d) return cuCsvOpen();
+  if ('cuexp' in d) return cuCsvExport();
   if ('cuopen' in d) return openCustomer(d.cuopen);
   if ('cukind' in d) { DB.ui.cuKind = d.cukind; save(); render(); $(`[data-cukind="${d.cukind}"]`)?.focus(); return; }
   if ('cupas' in d) { DB.ui.cuPassive = !DB.ui.cuPassive; save(); render(); $('[data-cupas]')?.focus(); return; }
@@ -10061,7 +10799,7 @@ function cuInput(e) {
 function cuChange(e) {
   const s = e.target; if (!(s instanceof Element) || !s.matches('[data-pcust]')) return;
   const p = DB.projects.find(x => x.id === s.dataset.pcust); if (!p) return;
-  if (!canEdit()) return toast('İzleyiciler projeyi değiştiremez');
+  if (!canDesign(p)) { render(); return toast(canEdit(p) ? 'Projeyi yalnızca alan yöneticisi değiştirebilir' : 'İzleyiciler projeyi değiştiremez'); }
   const v = s.value;
   if (!v) { if (p.customerId === undefined) return; delete p.customerId; save(); render(); return toast(`${p.name}: cari bağı kaldırıldı`); }
   if (v === p.customerId) return;
@@ -10073,8 +10811,8 @@ function cuChange(e) {
 
 /* ============================ PROJELER ============================ */
 function toolbarProjects() {
-  return `${canEdit() ? `<span class="ws-tb" style="display:contents"><button class="btn pri" id="pNew">${ic('plus')}Yeni proje</button>
-    <button class="btn" id="wsNewBtn" data-wsnew>${ic('layers')}Yeni çalışma alanı</button></span>` : ''}
+  return `${canNewProjAny() ? `<span class="ws-tb" style="display:contents"><button class="btn pri" id="pNew">${ic('plus')}Yeni proje</button>
+    ${isAdmin() ? `<button class="btn" id="wsNewBtn" data-wsnew>${ic('layers')}Yeni çalışma alanı</button>` : ''}</span>` : ''}
     <div class="spacer"></div>
     <span style="font-size:12px;color:var(--ink3)">Proje oluşturma ve üye ekleme herkese açık · silme yalnızca yöneticide</span>`;
 }
@@ -10117,12 +10855,12 @@ function wsGroup(w, list, arch) {
       arch ? `<span class="ws-chip">${ic('archive')}Arşivlendi</span>` : ''}</h2>
       ${w.description ? `<div class="ds" title="${esc(w.description)}">${esc(w.description)}</div>` : ''}</div>
     <div class="acts">${arch ? (manage ? `<button type="button" class="btn" data-wsunarch="${id}">${ic('unarchive')}Arşivden çıkar</button>` : '')
-      : canEdit() ? `<button type="button" class="btn ghost" data-wsnewproj="${id}" aria-label="${esc(w.name)} alanına proje ekle">${ic('plus')}Proje</button>` : ''}
+      : canNewProj(w.id) ? `<button type="button" class="btn ghost" data-wsnewproj="${id}" aria-label="${esc(w.name)} alanına proje ekle">${ic('plus')}Proje</button>` : ''}
       ${items ? wsPopMenu(`${w.name}: alan işlemleri`, 'Alan işlemleri', items) : ''}</div></div>`;
   return `<section class="ws-grp ${arch ? 'is-arch' : ''}" data-wsgrp="${id}" aria-labelledby="wsg-${id}">${head}
     ${projs.length ? `<div class="ws-grid">${projs.map(p => wsProjCard(p, arch)).join('')}</div>`
       : `<div class="ws-gempty">${ic('folderplus')}<span class="tx">Bu çalışma alanında henüz proje yok</span>${
-        canEdit() && !arch ? `<button type="button" class="btn" data-wsnewproj="${id}">${ic('plus')}Yeni proje</button>` : ''}</div>`}</section>`;
+        canNewProj(w.id) && !arch ? `<button type="button" class="btn" data-wsnewproj="${id}">${ic('plus')}Yeni proje</button>` : ''}</div>`}</section>`;
 }
 
 /* ⋯ düğmesi + açılır menü. Menü DOM'da gizli durur (data-arch / data-delproj işleyicileri bağlı kalsın). */
@@ -10134,24 +10872,27 @@ function wsProjCard(p, arch) {
   const open = all.filter(i => stat(i.statusId).cat !== 'done').length;
   const hours = DB.worklogs.filter(w => issue(w.issueId)?.projectId === p.id).reduce((a, w) => a + (+w.hours || 0), 0);
   const cur = p.id === DB.ui.project, pid = esc(p.id);
+  /* Üye çipleri: üyeli alanda yalnız alanın üyeleri (alan dışı kişi projeye eklenmez); sayı işaretli çiplerle aynı. */
+  const w = wsById(wsOf(p));
+  const people = w && !wsLegacy(w) ? wsMembersOf(w) : DB.users.filter(u => u.active && !u.system);
   const items = [
     canEditCols(p) && !arch ? `<button type="button" class="ws-mi" role="menuitem" data-ptypedlg="${pid}">${ic('swap')}<span class="two">Türü değiştir…<span class="why">Şu an ${TYPE_LABEL[projType(p)]}</span></span></button>` : '',
-    canEdit() ? `<button type="button" class="ws-mi" role="menuitem" data-movproj="${pid}">${ic('move')}Çalışma alanını değiştir…</button>` : '',
-    canAdmin() ? `<button type="button" class="ws-mi" role="menuitem" data-arch="${pid}">${ic(p.archived ? 'unarchive' : 'archive')}${p.archived ? 'Yeniden etkinleştir' : 'Arşivle'}</button>` : '',
+    canMoveProj(p) ? `<button type="button" class="ws-mi" role="menuitem" data-movproj="${pid}">${ic('move')}Çalışma alanını değiştir…</button>` : '',
+    canDesign(p) ? `<button type="button" class="ws-mi" role="menuitem" data-arch="${pid}">${ic(p.archived ? 'unarchive' : 'archive')}${p.archived ? 'Yeniden etkinleştir' : 'Arşivle'}</button>` : '',
     isAdmin() ? `<div class="ws-hr" role="separator"></div><button type="button" class="ws-mi danger" role="menuitem" data-delproj="${pid}"
       ${DB.projects.length < 2 ? 'disabled title="Son proje silinemez"' : ''}>${ic('trash')}Projeyi sil</button>` : ''].join('');
   return `<article class="ws-pcard ${cur ? 'is-cur' : ''}" data-wsproj="${pid}">
     <div class="ws-ph"><span class="ws-key">${esc(p.key)}</span>
-      <input class="inp ws-pname" data-projname="${pid}" value="${esc(p.name)}" aria-label="Proje adı" ${canEdit() ? '' : 'disabled'}>
+      <input class="inp ws-pname" data-projname="${pid}" value="${esc(p.name)}" aria-label="Proje adı" ${canDesign(p) ? '' : 'disabled'}>
       ${typeTag(projType(p))}
       ${p.archived ? `<span class="ws-chip">${ic('archive')}arşiv</span>` : cur ? `<span class="ws-chip cur">${ic('check')}seçili</span>` : ''}
       ${items ? wsPopMenu(`${p.name}: işlemler`, 'Proje işlemleri', items) : ''}</div>
     <div class="ws-pstats"><span>${ic('issues')}<b>${all.length}</b> iş</span><span>${ic('circle')}<b>${open}</b> açık</span><span>${ic('hour')}<b>${efFmtSafe(hours)}</b> efor</span></div>
     ${cuProjRow(p)}
-    <div><div class="ws-plbl">Üyeler (${memsOf(p).length})</div>
-      <div class="ws-mems">${DB.users.filter(u => u.active).map(u => {
+    <div><div class="ws-plbl">Üyeler (${people.filter(u => isMember(p, u.id)).length})</div>
+      <div class="ws-mems">${people.map(u => {
         const on = isMember(p, u.id);
-        return `<button class="memchip ${on ? 'on' : ''}" data-mem="${pid}" data-memu="${esc(u.id)}" aria-pressed="${on}" ${canEdit() ? '' : 'disabled'}>
+        return `<button class="memchip ${on ? 'on' : ''}" data-mem="${pid}" data-memu="${esc(u.id)}" aria-pressed="${on}" ${canDesign(p) ? '' : 'disabled'}>
           ${avat(u.id)}<span>${esc(u.name)}</span>${on ? '<em>✓</em>' : '<em>+</em>'}</button>`;
       }).join('')}</div></div>
     <div class="ws-pf"><span class="lead2">Yürüten <b>${esc(user(p.lead)?.name || '—')}</b></span>
@@ -10169,10 +10910,10 @@ const LAST_DONE = 'Projede en az bir Bitti kolonu kalmalı';
 const colKey = s => String(s ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr');
 const colsOf = pid => DB.statuses.filter(s => s.projectId === pid).sort((a, b) => (a.ord ?? 0) - (b.ord ?? 0));
 /* Kolonları ve türü değiştirebilen: yönetici ya da projenin üyesi olan Üye (izleyici hiçbir zaman). */
-const canEditCols = p => !!p && canEdit() && (isAdmin() || isMember(p));
-/* Proje yöneticiliği için tek kapı (sprint başlat/bitir, sprint süresi). Bugün: yönetici ya da proje üyesi (#12);
-   çalışma alanı rolleri gelince yalnız burası değişir. Sunucudaki karşılığı store.js → canConfigure. */
-const canManageProject = p => !!p && (isAdmin() || canEditCols(p));
+const canEditCols = p => canDesign(p);
+/* Proje yöneticiliği için tek kapı (sprint oluştur/başlat/bitir, sprint süresi): projenin alanında Yönetici
+   (sistem yöneticisi ve alan sahibi dahil; üyesiz eski alanda yalnız sistem yöneticisi). Sunucuda store.js → canManageSprint. */
+const canManageProject = p => !!p && wsRole(CU(), wsOf(p)) === 'admin';
 const typeTag = t => t === 'agile' ? `<span class="pt-type agile">${ic('sprint')}Agile</span>` : `<span class="pt-type">${ic('board')}Pano</span>`;
 const catOk = c => ['todo', 'inprogress', 'done'].includes(c) ? c : 'todo';
 function colNameErr(name, others) {
@@ -10565,10 +11306,11 @@ const nameKey = s => String(s).trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr
 const PKEY_RE = /^[\p{L}\p{N}_-]{1,20}$/u;
 
 function newProjectForm(preset = {}) {
-  if (!canEdit()) return toast('İzleyiciler proje oluşturamaz');
+  if (!canNewProjAny()) return toast(role() === 'viewer' ? 'İzleyiciler proje oluşturamaz' : 'Proje açmak için alan yöneticisi yetkisi gerekli');
+  if (preset.workspaceId && !canNewProj(preset.workspaceId)) preset = { ...preset, workspaceId: undefined };
   /* Alan seçimi (#22): grubun "+ Proje"si o alanı, diğer girişler seçili alanı önerir. */
   const fromWs = !!(preset.workspaceId && wsById(preset.workspaceId) && !wsArchived(preset.workspaceId));
-  const def = [preset.workspaceId, DB.ui.workspace, WS_DEFAULT].find(id => wsById(id) && !wsArchived(id)) || WS_DEFAULT;
+  const def = [preset.workspaceId, DB.ui.workspace, WS_DEFAULT, ...wsAll().map(w => w.id)].find(id => canNewProj(id)) || WS_DEFAULT;
   /* Adımlar arası korunan girdiler: ad, anahtar, alan, cari, üyeler; kolonlar şablonla yeniden dolar. */
   const st = { k: 'kanban', sel: 'kanban', name: '', key: '', keyTouched: false, ws: def, cu: '', picked: new Set([SESSION]),
     flow: null, base: '', src: 'default', epic: false, def: false, err: {} };
@@ -10651,7 +11393,7 @@ function newProjectForm(preset = {}) {
   /* ---- Adım 2: ayrıntılar ---- */
   const details = (o = {}) => {
     const t = T(), admin = isAdmin(), cols = st.flow, op = OPEN_LBL[opensAt(t)];
-    const wsl = visibleWs();
+    const wsl = visibleWs().filter(w => canNewProj(w.id));
     if (!wsl.some(w => w.id === st.ws) && wsById(st.ws)) wsl.unshift(wsById(st.ws));
     const E = st.err, fe = (id, m) => m ? `<div class="ps-err" id="${id}" role="alert">${ic('alert')}${esc(m)}</div>` : '';
     const keySug = E.key === 'Bu anahtar kullanımda' ? freeKey(st.key) : '';
@@ -11387,7 +12129,7 @@ function ensureSuper() {
 /* ---------- arşiv ---------- */
 function ensureArchive() { DB.projects.forEach(p => { if (p.archived === undefined) p.archived = false; }); }
 const liveProjects = () => DB.projects.filter(p => isSuper() || !p.archived);
-const canSeeProject = p => isSuper() || (!p.archived && isMember(p));
+const canSeeProject = p => isSuper() || (!p.archived && projVisible(p));
 
 function toggleArchive(pid) {
   const p = DB.projects.find(x => x.id === pid);

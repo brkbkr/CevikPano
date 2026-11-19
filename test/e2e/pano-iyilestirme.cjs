@@ -45,16 +45,20 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
   ok('home: "w" shortcut opens work log', await A.evaluate(() => document.getElementById('scrim').classList.contains('on') && !document.querySelector('#f_sum')));
   await A.evaluate(() => closeModal()); await sleep(200);
 
-  /* ---- test verisi: agile proje (üyeler: admin + u2), 3 kolon, gelecek sprint, üst iş + alt iş, üye olmayan kullanıcı ---- */
-  const MU = 'piuye' + RUN, MID = 'u_pi' + RUN, VU = 'piizl' + RUN, VID = 'u_piv' + RUN;
-  const seed = await A.evaluate(async ([pid, key, mid, mu, vid, vu]) => {
+  /* ---- test verisi: üyeli çalışma alanı (alan Yöneticisi YU, alan Üyesi MU, alan İzleyicisi VU; genel rolleri Üye/Üye/İzleyici),
+     içinde agile proje (proje üyeleri: admin + u2 + MU + VU; atanabilenler alanın Yönetici/Üye kişileri: YU, MU), 3 kolon, gelecek sprint, üst iş + alt iş ---- */
+  const MU = 'piuye' + RUN, MID = 'u_pi' + RUN, VU = 'piizl' + RUN, VID = 'u_piv' + RUN, YU = 'piyon' + RUN, YID = 'u_piy' + RUN, WSID = 'ws_pi' + RUN;
+  const seed = await A.evaluate(async ([pid, key, mid, mu, vid, vu, yid, yu, wsid]) => {
     const st = ['Yapılacak', 'Devam ediyor', 'Bitti'].map((n, k) => ({ id: `${pid}_s${k}`, projectId: pid, name: n, cat: ['todo', 'inprogress', 'done'][k], wip: 0, ord: k }));
     const I = (id, n, sid, extra = {}) => ({ id, projectId: pid, key: `${key}-${n}`, type: 'task', summary: 'PI ' + id, description: '', statusId: sid,
       assignee: null, reporter: ME.id, priority: 3, labels: [], cf: {}, created: Date.now(), updatedAt: Date.now(), rank: n * 100, start: '', due: '', ...extra });
     const r = await API.post('/api/sync', { changes: [
       { c: 'users', id: mid, op: 'put', data: { username: mu, name: 'PI Üye Dışı', role: 'member', active: true, ini: 'PÜ', color: '#0F766E' } },
       { c: 'users', id: vid, op: 'put', data: { username: vu, name: 'PI İzleyici', role: 'viewer', active: true, ini: 'Pİ', color: '#64748B' } },
-      { c: 'projects', id: pid, op: 'put', data: { name: 'Pano iyileştirme ' + key, key, counter: 2, type: 'agile', members: [ME.id, 'u2', vid], workspaceId: 'ws1' } },
+      { c: 'users', id: yid, op: 'put', data: { username: yu, name: 'PI Alan Yöneticisi', role: 'member', active: true, ini: 'PY', color: '#7C3AED' } },
+      { c: 'workspaces', id: wsid, op: 'put', data: { name: 'PI alanı ' + key, color: '#3E7BC4',
+        members: [{ userId: yid, role: 'admin' }, { userId: mid, role: 'member' }, { userId: vid, role: 'viewer' }] } },
+      { c: 'projects', id: pid, op: 'put', data: { name: 'Pano iyileştirme ' + key, key, counter: 2, type: 'agile', members: [ME.id, 'u2', mid, vid], workspaceId: wsid } },
       ...st.map(s => ({ c: 'statuses', id: s.id, op: 'put', data: s })),
       { c: 'projects', id: pid + 'b', op: 'put', data: { name: 'PI Pano ' + key, key: key + 'B', counter: 0, type: 'board', members: [ME.id], workspaceId: 'ws1' } },
       { c: 'sprints', id: pid + '_sp', op: 'put', data: { projectId: pid, name: key + ' Sprint 1', state: 'future', goal: 'Panoyu <b>hızlandır</b>', start: '2026-11-09', end: '2026-11-15' } },
@@ -62,7 +66,7 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
       { c: 'issues', id: pid + '_sub', op: 'put', data: I(pid + '_sub', 2, st[1].id, { parentId: pid + '_par', sprintId: pid + '_sp' }) },
     ] });
     return { rej: r.data?.rejected || r.rejected, st: st.map(s => s.id) };
-  }, [PID, KEY, MID, MU, VID, VU]);
+  }, [PID, KEY, MID, MU, VID, VU, YID, YU, WSID]);
   ok('seed accepted', Array.isArray(seed.rej) && seed.rej.length === 0, JSON.stringify(seed.rej));
   await sleep(4800);                         // poll ile gelsin
   await A.reload(); await sleep(1500);
@@ -91,7 +95,7 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
   ok('type menu has option', await pick('#qa_t', typ), typ);
   ok('priority menu has 4 options', await A.evaluate(() => { document.querySelector('#qa_p').click(); const n = document.querySelectorAll('.qm .qm-opt').length; closeQuick(false); return n; }) === 4);
   ok('priority pick', await pick('#qa_p', '1'));
-  ok('assignee menu (#8 person menu) pick', await pick('#qa_a', 'u2'));
+  ok('assignee menu (#8 person menu) pick', await pick('#qa_a', MID));
   ok('due menu pick "Bugün"', await pick('#qa_d', env.today));
   const chipsNow = await A.evaluate(() => ({ p: document.querySelector('#qa_p').textContent.trim(), d: document.querySelector('#qa_d').textContent.trim(),
     a: document.querySelector('#qa_a').getAttribute('aria-label'), t: document.querySelector('#qa_t').getAttribute('aria-label') }));
@@ -104,7 +108,7 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
     .map(i => ({ s: i.summary, st: i.statusId === s0, p: i.priority, a: i.assignee, d: i.due, t: i.type })), [PID, S0]);
   ok('Enter adds two cards in a row, cursor stays', made.length === 2 && f1 === 'qa_s' && await A.evaluate(() => document.activeElement?.id === 'qa_s' && document.querySelector('#qa_s').value === ''),
     JSON.stringify(made) + ' focus=' + f1);
-  ok('cards get chip values (column, type, priority, assignee, due)', made.every(m => m.st && m.p === 1 && m.a === 'u2' && m.d === env.today && m.t === typ), JSON.stringify(made));
+  ok('cards get chip values (column, type, priority, assignee, due)', made.every(m => m.st && m.p === 1 && m.a === MID && m.d === env.today && m.t === typ), JSON.stringify(made));
   ok('cards visible in column', await A.evaluate(s0 => [...document.querySelectorAll(`.col[data-status="${s0}"] .card .sum`)].filter(e => e.textContent.startsWith('PIQ')).length, S0) === 2);
   ok('choices remembered (chips keep values after add)', (await A.evaluate(() => document.querySelector('#qa_p').textContent)).includes(env.acil));
   await A.screenshot({ path: SS + 'qadd.png' });
@@ -116,7 +120,7 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
   await A.fill('#qa_s', 'PIQ tam form'); await A.click('#qa_more'); await sleep(500);
   const form = await A.evaluate(() => ({ sum: $('#f_sum')?.value, pri: $('#f_pri [aria-checked="true"]')?.dataset.pri, as: $('#f_as')?.value,
     due: $('#f_due')?.value, st: $('#f_st')?.value, type: $('#f_type')?.value, qadd: !!document.querySelector('.qadd') }));
-  ok('"Daha fazla…" opens full form with values', form.sum === 'PIQ tam form' && form.pri === '1' && form.as === 'u2' && form.due === env.today && form.st === S1 && form.type === typ && !form.qadd,
+  ok('"Daha fazla…" opens full form with values', form.sum === 'PIQ tam form' && form.pri === '1' && form.as === MID && form.due === env.today && form.st === S1 && form.type === typ && !form.qadd,
     JSON.stringify(form));
   await A.click('#doCreate'); await sleep(400);
   ok('full form creates in chosen column', await A.evaluate(([pid, s1]) => DB.issues.some(i => i.projectId === pid && i.summary === 'PIQ tam form' && i.statusId === s1 && i.priority === 1), [PID, S1]));
@@ -169,17 +173,40 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
   await go(V, 'backlog');
   const vv = await V.evaluate(pid => ({ box: !!document.querySelector(`[data-sprint="${pid}_sp"]`), start: document.querySelectorAll('[data-start],[data-spcomplete]').length,
     canMan: canManageProject(P()) }), PID);
-  ok('not manager (viewer member): sprint visible, no start/complete buttons', vv.box && vv.start === 0 && vv.canMan === false, JSON.stringify(vv));
+  ok('not manager (workspace viewer): sprint visible, no start/complete buttons', vv.box && vv.start === 0 && vv.canMan === false, JSON.stringify(vv));
   await go(V, 'admin');
   ok('not manager: sprint length read-only', await V.evaluate(() => !document.querySelector('#ptSprintW')));
-  const M = await fresh('nonmember', MU, 'PiUye123456');
+  /* alan Üyesi (projenin üyesi de): düğme yok, sunucu reddeder */
+  const M = await fresh('wsmember', MU, 'PiUye123456');
+  await go(M, 'backlog');
+  const mv = await M.evaluate(pid => ({ box: !!document.querySelector(`[data-sprint="${pid}_sp"]`), start: document.querySelectorAll('[data-start],[data-spcomplete],#newSprint').length,
+    canMan: canManageProject(P()) }), PID);
+  ok('workspace member (project member too): sprint visible, no create/start/complete buttons', mv.box && mv.start === 0 && mv.canMan === false, JSON.stringify(mv));
+  await go(M, 'admin');
+  ok('workspace member: no sprint length setting', await M.evaluate(() => !document.querySelector('#ptSprintW')));
   const srv = await M.evaluate(async pid => { const s = { ...DB.sprints.find(x => x.id === pid + '_sp'), state: 'active' };
     const r = await API.post('/api/sync', { changes: [{ c: 'sprints', id: s.id, op: 'put', data: s }] }); return (r.data?.rejected || r.rejected || []).map(x => x.reason); }, PID);
-  ok('non-member: server rejects sprint start', srv.join() === 'Sprinti yalnızca proje yöneticisi başlatıp bitirebilir', srv.join());
+  ok('workspace member: server rejects sprint start', srv.join() === 'Sprinti yalnızca alan yöneticisi başlatıp bitirebilir', srv.join());
+  const srvW = await M.evaluate(async pid => { const p = { ...DB.projects.find(x => x.id === pid), sprintWeeks: 4 };
+    const r = await API.post('/api/sync', { changes: [{ c: 'projects', id: p.id, op: 'put', data: p }] }); return (r.data?.rejected || r.rejected || []).length; }, PID);
+  ok('workspace member: server rejects sprint length change', srvW === 1, String(srvW));
 
   await go(A, 'admin');
   const w0 = await A.evaluate(() => document.querySelector('#ptSprintW')?.value);
   ok('sprint length setting default 1 week', w0 === '1', w0);
+  /* alan Yöneticisi (genel rolü Üye): sprint düğmeleri var; proje ayarlarında yalnız projeye özel İş akışı sekmesi + sprint süresi */
+  const Y = await fresh('wsadmin', YU, 'PiYon123456');
+  await go(Y, 'backlog');
+  const yv = await Y.evaluate(pid => ({ start: !!document.querySelector(`[data-start="${pid}_sp"]`), nw: !!document.querySelector('#newSprint'), canMan: canManageProject(P()), sys: isAdmin() }), PID);
+  ok('workspace admin: create/start sprint buttons, canManageProject', yv.start && yv.nw && yv.canMan && !yv.sys, JSON.stringify(yv));
+  await go(Y, 'admin');
+  const ya = await Y.evaluate(() => ({ tabs: [...document.querySelectorAll('#adminTabs [data-a]')].map(b => b.dataset.a), w: !!document.querySelector('#ptSprintW'),
+    def: !!document.querySelector('#defFlow,#saveDefFlow'), cols: !!document.querySelector('#ptColsSet') }));
+  ok('workspace admin: project settings show only project-specific workflow tab (no general settings)', JSON.stringify(ya.tabs) === '["workflow"]' && ya.w && !ya.def && ya.cols, JSON.stringify(ya));
+  await Y.selectOption('#ptSprintW', '3'); await sleep(1500);
+  ok('workspace admin: sprint length saved on server', await Y.evaluate(async pid => (await API.get('/api/state')).data.projects.find(p => p.id === pid)?.sprintWeeks === 3, PID));
+  await A.reload(); await sleep(1500); await go(A, 'admin');
+  ok('admin sees workspace admin\'s sprint length', await A.evaluate(() => document.querySelector('#ptSprintW')?.value) === '3');
   await A.selectOption('#ptSprintW', '2'); await sleep(1500);
   ok('sprint length saved (projects.data.sprintWeeks)', await A.evaluate(async pid => P().sprintWeeks === 2
     && (await API.get('/api/state')).data.projects.find(p => p.id === pid)?.sprintWeeks === 2, PID));

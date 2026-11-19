@@ -60,11 +60,13 @@ const ID = { B: 'cu_b' + RUN, C: 'cu_c' + RUN, D: 'cu_d' + RUN, X: 'cu_x' + RUN 
   const Mb = await mk('member'); await login(Mb, 'cum' + RUN, 'Baslangic123', 'CariUye12345!');
   const Vb = await mk('viewer'); await login(Vb, 'cuv' + RUN, 'Baslangic123', 'CariIzl12345!');
 
-  // 1) menü herkese görünür (sol menü + dar ekran sekmesi)
-  for (const [n, p] of [['admin', A], ['member', Mb], ['viewer', Vb]]) {
-    ok(`menu: "Cariler" visible for ${n}`, await p.evaluate(() => { const a = document.querySelector('.nav a[data-v="customers"]');
-      /* Cariler genel ekran: proje sekmesi değil; dar ekranda ☰ çekmecedeki aynı sol menüden açılır. */
-      return !!a && a.offsetParent !== null && a.textContent.trim() === 'Cariler' && !!a.closest('#rail') && !document.querySelector('#vtabs [data-v="customers"]'); }));
+  // 1) menü yalnız sistem yöneticisinde (22b); üye ve izleyici seçicilerde cari adlarını görmeye devam eder
+  ok('menu: "Cariler" visible for admin', await A.evaluate(() => { const a = document.querySelector('.nav a[data-v="customers"]');
+    /* Cariler genel ekran: proje sekmesi değil; dar ekranda ☰ çekmecedeki aynı sol menüden açılır. */
+    return !!a && a.offsetParent !== null && a.textContent.trim() === 'Cariler' && !!a.closest('#rail') && !document.querySelector('#vtabs [data-v="customers"]'); }));
+  for (const [n, p] of [['member', Mb], ['viewer', Vb]]) {
+    ok(`menu: "Cariler" hidden for ${n} (22b), #customers not reachable`, await p.evaluate(() => { const a = !!document.querySelector('[data-v="customers"]');
+      DB.ui.view = 'customers'; render(); return !a && DB.ui.view !== 'customers'; }));
   }
 
   // 2) boş durum (yalnız henüz hiç cari yoksa — temiz veritabanında)
@@ -251,8 +253,8 @@ const ID = { B: 'cu_b' + RUN, C: 'cu_c' + RUN, D: 'cu_d' + RUN, X: 'cu_x' + RUN 
   await view(Mb, 'customers');
   await A.evaluate(r => { DB.customers.push({ id: 'cu_live' + r, name: 'Canlı Cari ' + r, kind: 'customer', active: true, contacts: [] }); save(); }, RUN);
   await flush(A);
-  const live = await waitFor(Mb, r => [...document.querySelectorAll('#cuList .cu-nm')].some(e => e.textContent === 'Canlı Cari ' + r), RUN, 8000);
-  ok('other session sees new customer within 5 s', live >= 0 && live <= 5000, live + ' ms');
+  const live = await waitFor(Mb, r => (DB.customers || []).some(c => c.name === 'Canlı Cari ' + r), RUN, 8000);
+  ok('other session receives new customer within 5 s (for pickers)', live >= 0 && live <= 5000, live + ' ms');
 
   // 12) üye / izleyici: düğme yok, salt okunur kart; sunucu reddeder; istemci üyenin cari değişikliğini göndermez
   ok('member: no "Cari ekle"', await Mb.evaluate(() => !document.querySelector('[data-cunew]')));
