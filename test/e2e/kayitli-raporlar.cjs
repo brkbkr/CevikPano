@@ -51,7 +51,8 @@ const RNAME = 'Proje saatleri ' + XSS, RDESC = 'Açıklama ' + XSS;
     put('users', U2, { username: N2, name: 'Rapor Bora ' + R, role: 'member', active: true })]);
   r = await sync(A, [
     put('workspaces', WS, { name: 'Rapor alanı ' + R, color: '#2563EB', members: [{ userId: U1, role: 'member' }] }),
-    put('projects', PID, { name: 'Rapor projesi', key: KEY, counter: 3, workspaceId: WS, members: [] }),
+    /* İstemcinin şema tamamlayıcısı (ensureProjects) bir şey yazmasın: kod, arşiv ve üye listesi dolu (Üye proje kaydını yazamaz). */
+    put('projects', PID, { name: 'Rapor projesi', key: KEY, code: KEY, counter: 3, archived: false, workspaceId: WS, members: [U1, U2] }),
     put('statuses', PID + '_s0', { projectId: PID, name: 'Yapılacak', cat: 'todo', ord: 0 }),
     put('statuses', PID + '_s1', { projectId: PID, name: 'Bitti', cat: 'done', ord: 1 }),
     put('issues', PID + '_i1', { projectId: PID, key: KEY + '-1', summary: 'Birinci', statusId: PID + '_s0', type: 'task', points: 3, assignee: U1, created: at('2025-04-02') }),
