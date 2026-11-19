@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="tr" data-theme="light"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Proje yetkileri — taslak</title>
+<script>if (/theme=dark/.test(location.search)) document.documentElement.dataset.theme = 'dark';</script>
+<style>
+/* ---- uygulamadan kopyalanan token'lar (tasarım dili v3) ---- */
+:root{
+  --paper:#F3F6FB; --surface:#FFFFFF; --surface2:#F6F9FD; --surface3:#EBF1F9;
+  --line:#E1E8F2; --line2:#CCD7E6;
+  --ink:#0B1B33; --ink2:#43546E; --ink3:#7E8CA3; --meta:#64748B;
+  --accent:#2563EB; --accent-d:#1D4ED8; --accent-soft:#EAF1FE; --accent-ink:#FFFFFF;
+  --btn-grad:linear-gradient(180deg,#3B82F6,#2563EB);
+  --ring:0 0 0 3px rgba(37,99,235,.20);
+  --shadow-sm:0 1px 2px rgba(11,27,51,.05);
+  --shadow:0 1px 2px rgba(11,27,51,.04),0 8px 20px -6px rgba(11,27,51,.10);
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --sans:Inter,system-ui,sans-serif;
+  --todo:#475569; --todo-bg:#F1F5F9; --todo-line:#E2E8F0;
+  --prog-line:#93C5FD;
+  --p-acil:#B91C1C;   --p-acil-bg:#FEF2F2;   --p-acil-ln:#FECACA;
+  --p-yuksek:#C2410C; --p-yuksek-bg:#FFF7ED; --p-yuksek-ln:#FED7AA;
+  --p-orta:#41587A;   --p-orta-bg:#EEF2F7;   --p-orta-ln:#D3DCE8;
+  --p-dusuk:#64748B;  --p-dusuk-bg:#F8FAFC;  --p-dusuk-ln:#E5E9F0;
+  --info-bg:#EFF5FF; --info-ln:#CFE0FB; --info-ink:#1E3A8A;
+  --chg:#B45309; --chg-bg:#FFFBEB; --chg-ln:#FCD34D;
+}
+[data-theme="dark"]{
+  --paper:#060B16; --surface:#0C1424; --surface2:#101A2E; --surface3:#16223A;
+  --line:#1B2842; --line2:#273857;
+  --ink:#E6EDF8; --ink2:#A3B2CB; --ink3:#6B7C99; --meta:#8494AE;
+  --accent:#60A5FA; --accent-d:#93C5FD; --accent-soft:rgba(96,165,250,.14); --accent-ink:#06101F;
+  --btn-grad:linear-gradient(180deg,#60A5FA,#3B82F6);
+  --ring:0 0 0 3px rgba(96,165,250,.28);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 20px -6px rgba(0,0,0,.55);
+  --todo:#CBD5E1; --todo-bg:rgba(148,163,184,.12); --todo-line:rgba(148,163,184,.22);
+  --prog-line:rgba(96,165,250,.45);
+  --p-acil:#FCA5A5;   --p-acil-bg:rgba(248,113,113,.14);  --p-acil-ln:rgba(248,113,113,.30);
+  --p-yuksek:#FDBA74; --p-yuksek-bg:rgba(251,146,60,.14); --p-yuksek-ln:rgba(251,146,60,.30);
+  --p-orta:#B4C2D8;   --p-orta-bg:rgba(148,163,184,.14);  --p-orta-ln:rgba(148,163,184,.28);
+  --p-dusuk:#8A97AB;  --p-dusuk-bg:rgba(148,163,184,.06); --p-dusuk-ln:rgba(148,163,184,.18);
+  --info-bg:rgba(96,165,250,.10); --info-ln:rgba(96,165,250,.28); --info-ink:#BFDBFE;
+  --chg:#FCD34D; --chg-bg:rgba(251,191,36,.10); --chg-ln:rgba(251,191,36,.40);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:var(--sans);background:var(--paper);color:var(--ink);padding:24px;-webkit-font-smoothing:antialiased;font-size:13px}
+button,input,textarea,select{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+:is(button,a,input,select,textarea):focus-visible{outline:none;box-shadow:var(--ring)}
+svg.i{width:16px;height:16px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.doc-h{font-size:20px;margin:0 0 4px;letter-spacing:-.02em}
+.lead{color:var(--ink2);font-size:13px;margin:0 0 18px;max-width:980px;line-height:1.5}
+.sec-t{font-size:13px;font-weight:700;margin:28px 0 10px;color:var(--ink2)}
+.av{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:9.5px;font-weight:700;color:#fff;flex-shrink:0}
+.ti{width:18px;height:18px;border-radius:5px;display:inline-grid;place-items:center;font-size:10px;color:#fff;font-weight:800;flex-shrink:0}
+.ti.task{background:#3E7BC4}.ti.bug{background:#C0392B}.ti.story{background:#3B8A5A}.ti.epic{background:#6B4FBB}
+.prio{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 7px 0 5px;border-radius:7px;border:1px solid;font-size:11.5px;font-weight:600}
+.prio svg.i{width:13px;height:13px;stroke-width:2.2}
+.prio.acil{color:var(--p-acil);background:var(--p-acil-bg);border-color:var(--p-acil-ln)}
+.prio.yuksek{color:var(--p-yuksek);background:var(--p-yuksek-bg);border-color:var(--p-yuksek-ln)}
+.prio.orta{color:var(--p-orta);background:var(--p-orta-bg);border-color:var(--p-orta-ln)}
+.prio.dusuk{color:var(--p-dusuk);background:var(--p-dusuk-bg);border-color:var(--p-dusuk-ln)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px;border:1px solid var(--line2);background:var(--surface);padding:7px 12px;border-radius:9px;font-weight:550;color:var(--ink)}
+.btn:hover{background:var(--surface2)}
+.btn.pri{background:var(--btn-grad);border-color:transparent;color:var(--accent-ink);box-shadow:0 1px 2px rgba(11,27,51,.12),0 4px 12px -2px color-mix(in srgb,var(--accent) 45%,transparent),inset 0 1px 0 rgba(255,255,255,.18)}
+.btn.ghost{border-color:transparent;background:none;color:var(--ink2)}
+.inp{border:1px solid var(--line2);background:var(--surface);padding:7px 10px;border-radius:9px;width:100%;min-height:36px}
+.lnk{color:var(--accent-d);text-decoration:none;font-weight:550}
+.lnk:hover{text-decoration:underline}
+kbd{font-family:var(--mono);font-size:10.5px;border:1px solid var(--line2);border-bottom-width:2px;border-radius:5px;padding:0 4px;background:var(--surface);color:var(--ink2)}
+
+/* ================= YENİ: yetkiler (pm-) ================= */
+.pane{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);max-width:920px;overflow:hidden}
+.pane-h{padding:16px 20px 0;border-bottom:1px solid var(--line)}
+.pane-h h2{margin:0 0 2px;font-size:16px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+.pane-h .k{font-family:var(--mono);font-size:12px;color:var(--meta);font-weight:500}
+.tabs{display:flex;gap:2px;margin-top:10px;overflow-x:auto}
+.tabs a{display:inline-flex;align-items:center;gap:6px;padding:10px 12px;font-weight:550;color:var(--ink2);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap}
+.tabs a.on{color:var(--accent-d);border-bottom-color:var(--accent)}
+.pane-b{padding:18px 20px 22px;display:flex;flex-direction:column;gap:22px}
+.sh{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.sh h3{margin:0;font-size:14px}
+.sh .sub{color:var(--ink2);font-size:12.5px}
+.sh .sp{flex:1}
+.info{display:flex;gap:10px;align-items:flex-start;background:var(--info-bg);border:1px solid var(--info-ln);color:var(--info-ink);border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.5}
+.info svg.i{margin-top:1px}
+.info .avs{display:inline-flex;gap:4px;vertical-align:middle;margin:0 2px}
+.info .av{width:20px;height:20px;font-size:8.5px}
+/* üyeler */
+.mem{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.mr{display:grid;grid-template-columns:minmax(0,1fr) 168px 44px;gap:12px;align-items:center;padding:8px 12px;border-top:1px solid var(--line)}
+.mr:first-child{border-top:none}
+.mr.hd{background:var(--surface2);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink2);padding:8px 12px}
+.who{display:flex;align-items:center;gap:10px;min-width:0}
+.who .av{width:32px;height:32px;font-size:11px}
+.who .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who .ml{font-size:12px;color:var(--meta);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who > div{min-width:0}
+.chip{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid var(--line2);color:var(--ink2);background:var(--surface2);white-space:nowrap;vertical-align:middle}
+.chip svg.i{width:12px;height:12px}
+.chip.own{color:var(--accent-d);background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 30%,transparent)}
+.chip.off{color:var(--ink2);background:var(--todo-bg);border-style:dashed}
+.chip.chg{color:var(--chg);background:var(--chg-bg);border-color:var(--chg-ln)}
+.rsel{appearance:none;-webkit-appearance:none;height:36px;border:1px solid var(--line2);border-radius:9px;background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 9px center/14px;padding:0 30px 0 10px;font-weight:550;width:100%}
+.rlock{display:flex;align-items:center;gap:6px;height:36px;padding:0 10px;border:1px dashed var(--line2);border-radius:9px;color:var(--ink2);font-weight:550;background:var(--surface2)}
+.rlock svg.i{width:14px;height:14px}
+.ib{width:36px;height:36px;border-radius:9px;border:1px solid transparent;background:none;display:grid;place-items:center;color:var(--ink2)}
+.ib:hover{background:var(--p-acil-bg);color:var(--p-acil);border-color:var(--p-acil-ln)}
+.mr.off .who .nm{color:var(--ink2)}
+.mr.off .who .av{filter:grayscale(1);opacity:.6}
+.add{display:flex;gap:8px;align-items:center}
+.srch{position:relative;flex:1;min-width:0}
+.srch svg.i{position:absolute;left:10px;top:10px;color:var(--meta)}
+.srch .inp{padding-left:34px}
+/* yetki tablosu */
+.pt{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.pt th,.pt td{padding:9px 12px;border-top:1px solid var(--line);text-align:left;vertical-align:middle}
+.pt thead th{border-top:none;background:var(--surface2);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink2)}
+.pt .rc{width:112px;text-align:center}
+.pt .ac{width:170px;text-align:right;white-space:nowrap}
+.pt .pn{font-weight:600}
+.pt .pd{font-size:12px;color:var(--meta);margin-top:1px}
+.pt tr.fix td{background:var(--surface2)}
+.pt tr.fix .pn{color:var(--ink2)}
+.pt .grp td{background:var(--surface2);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink2);padding:7px 12px}
+.cb{position:relative;display:inline-grid;place-items:center;width:36px;height:36px;border-radius:9px;cursor:pointer}
+.cb input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.cb .bx{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--line2);background:var(--surface);display:grid;place-items:center;color:transparent}
+.cb .bx svg.i{width:14px;height:14px;stroke-width:3}
+.cb input:checked + .bx{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.cb input:focus-visible + .bx{box-shadow:var(--ring)}
+.cb.lock{cursor:not-allowed}
+.cb.lock .bx,.cb.lock input:checked + .bx{background:var(--surface3);border-color:var(--line2);color:var(--ink2)}
+.cb.chg::after{content:"";position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:50%;background:var(--chg);box-shadow:0 0 0 2px var(--surface)}
+.pt tr.chg td{background:var(--chg-bg)}
+.pt tr.chg td:first-child{box-shadow:inset 3px 0 0 var(--chg)}
+.thl{display:inline-flex;align-items:center;gap:5px;justify-content:center}
+.thl svg.i{width:13px;height:13px}
+.rev{display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:0 8px;border-radius:9px;border:1px solid transparent;background:none;color:var(--accent-d);font-weight:550;font-size:12.5px}
+.rev:hover{background:var(--accent-soft)}
+.rev svg.i{width:14px;height:14px}
+.only{font-size:12px;color:var(--ink2);display:inline-flex;align-items:center;gap:5px}
+.only svg.i{width:13px;height:13px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink2);align-items:center}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend .d{width:8px;height:8px;border-radius:50%;background:var(--chg)}
+.legend svg.i{width:13px;height:13px}
+/* mobil kartlar (tablo yerine) */
+.pcards{display:none;flex-direction:column;gap:8px}
+.pc{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface)}
+.pc.chg{border-color:var(--chg-ln);background:var(--chg-bg);box-shadow:inset 3px 0 0 var(--chg)}
+.pc.fix{background:var(--surface2)}
+.pc .pn{font-weight:600}
+.pc .pd{font-size:12px;color:var(--meta);margin:1px 0 6px}
+.pc .rw{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pc .tg{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:10px;padding:0 10px 0 2px;font-weight:550;font-size:12.5px;background:var(--surface)}
+.pc .adm{font-size:12px;color:var(--ink2);display:inline-flex;align-items:center;gap:5px;margin-right:4px}
+.pc .adm svg.i{width:13px;height:13px}
+.pc .rev{margin-left:auto}
+/* rol açıklamaları */
+.roles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.role{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface)}
+.role h4{margin:0 0 4px;font-size:13.5px;display:flex;align-items:center;gap:8px}
+.role h4 .ri{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent-d)}
+.role p{margin:0;color:var(--ink2);font-size:12.5px;line-height:1.5}
+.role ul{margin:8px 0 0;padding-left:0;list-style:none;font-size:12.5px;display:flex;flex-direction:column;gap:4px}
+.role li{display:flex;gap:6px;align-items:flex-start}
+.role li svg.i{width:14px;height:14px;margin-top:1px}
+.role li.y svg.i{color:var(--done,#047857)}
+.role li.n{color:var(--ink2)} .role li.n svg.i{color:var(--meta)}
+/* yeni proje formu */
+.form{display:grid;grid-template-columns:1fr 160px;gap:12px}
+.fl{display:flex;flex-direction:column;gap:5px}
+.fl > span{font-size:12px;font-weight:600;color:var(--ink2)}
+.fl.span{grid-column:1 / -1}
+.foot{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--line);background:var(--surface2)}
+.doc-grid{display:flex;flex-direction:column;gap:12px}
+.cap{font-size:12px;color:var(--meta)}
+:root{--done:#047857} [data-theme="dark"]{--done:#34D399}
+
+@media (max-width:640px){
+  body{padding:12px}
+  .pane-h{padding:14px 14px 0}
+  .pane-b{padding:14px 14px 18px}
+  .mr.hd{display:none}
+  .mr{grid-template-columns:minmax(0,1fr) 44px;row-gap:8px}
+  .mr .rcol{grid-column:1 / 2;grid-row:2}
+  .mr .xcol{grid-row:1;grid-column:2}
+  .rsel,.rlock,.btn,.inp{min-height:44px;height:44px}
+  .ib{width:44px;height:44px}
+  .pt{display:none}
+  .pcards{display:flex}
+  .roles{grid-template-columns:1fr}
+  .form{grid-template-columns:1fr}
+  .add{flex-wrap:wrap}
+  .add .srch{flex-basis:100%}
+  .add .rsel{flex:1}
+}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+  <symbol id="i-crown" viewBox="0 0 24 24"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7Z"/><path d="M5 20h14"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></symbol>
+</svg>
+
+<h1 class="doc-h">Proje yetkileri</h1>
+<p class="lead">Üç ekran: (a) proje ayarlarında <b>Yetkiler</b> sekmesi, (b) yeni proje formunda <b>Kişiler ve roller</b>, (c) Sistem ekranında <b>Varsayılan yetkiler</b>. Roller sabit: Yönetici, Üye, İzleyici. Yönetici sütunu her zaman açıktır ve kilitlidir. Bu projede varsayılandan farklı olan hücreler sarı nokta ve "Değiştirildi" etiketiyle gösterilir.</p>
+
+<!-- ============ (a) ============ -->
+<h2 class="sec-t">(a) Proje ayarları → Yetkiler</h2>
+<div class="pane">
+  <div class="pane-h">
+    <h2>Nova Muhasebe <span class="k">NA</span></h2>
+    <nav class="tabs" aria-label="Proje ayarları"><a href="#">Genel</a><a href="#">Kolonlar</a><a href="#">Alanlar</a><a href="#" class="on" aria-current="page"><svg class="i"><use href="#i-shield"/></svg>Yetkiler</a></nav>
+  </div>
+  <div class="pane-b">
+    <div class="doc-grid">
+      <div class="sh"><h3>Kişiler</h3><span class="sub">5 kişi</span></div>
+      <div class="info"><svg class="i"><use href="#i-info"/></svg><div>Alan yöneticileri bu projeyi zaten yönetir:
+        <span class="avs"><span class="av" style="background:#B45309">EŞ</span></span><b>Elif Şahin</b>,
+        <span class="avs"><span class="av" style="background:#0E7490">BY</span></span><b>Burak Yıldız</b>. Sistem yöneticileri de her projeyi yönetir. Listeye eklenmeleri gerekmez.</div></div>
+      <div class="mem" role="table" aria-label="Proje kişileri">
+        <div class="mr hd" role="row"><span>Kişi</span><span>Proje rolü</span><span></span></div>
+        <div id="mems"></div>
+      </div>
+      <div class="add">
+        <label class="srch"><svg class="i"><use href="#i-search"/></svg><input class="inp" placeholder="Kişi ekle: ad ya da e-posta" aria-label="Eklenecek kişiyi ara"></label>
+        <select class="rsel" style="width:140px" aria-label="Eklenecek kişinin rolü"><option>Üye</option><option>Yönetici</option><option>İzleyici</option></select>
+        <button class="btn pri"><svg class="i"><use href="#i-plus"/></svg>Kişi ekle</button>
+      </div>
+    </div>
+
+    <div class="doc-grid">
+      <div class="sh"><h3>Rol yetkileri</h3><span class="chip chg">2 hücre değiştirildi</span><span class="sp"></span>
+        <button class="btn"><svg class="i"><use href="#i-undo"/></svg>Tümünü varsayılana döndür</button></div>
+      <div class="legend"><span><svg class="i"><use href="#i-lock"/></svg>Yönetici her zaman yapabilir</span><span><i class="d"></i>Bu projede değiştirildi (sistem varsayılanından farklı)</span></div>
+      <div id="tblA"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ (b) ============ -->
+<h2 class="sec-t">(b) Yeni proje → Kişiler ve roller</h2>
+<div class="pane" style="max-width:640px">
+  <div class="pane-h" style="padding-bottom:14px"><h2>Yeni proje</h2></div>
+  <div class="pane-b">
+    <div class="form">
+      <label class="fl"><span>Proje adı</span><input class="inp" value="Mobil Uygulama 2.0"></label>
+      <label class="fl"><span>Anahtar</span><input class="inp" value="MOB" style="font-family:var(--mono)"></label>
+      <label class="fl span"><span>Çalışma alanı</span><select class="rsel"><option>Ürün Geliştirme</option><option disabled>Finans (yalnız alan yöneticileri proje açar)</option></select></label>
+    </div>
+    <div class="doc-grid">
+      <div class="sh"><h3>Kişiler ve roller</h3><span class="sub">Projeyi yalnız buradaki kişiler görür.</span></div>
+      <div class="mem" id="memsB"></div>
+      <div class="add">
+        <label class="srch"><svg class="i"><use href="#i-search"/></svg><input class="inp" value="ze" aria-label="Eklenecek kişiyi ara"></label>
+        <select class="rsel" style="width:140px" aria-label="Rol"><option>Üye</option><option>Yönetici</option><option>İzleyici</option></select>
+        <button class="btn pri"><svg class="i"><use href="#i-plus"/></svg>Ekle</button>
+      </div>
+      <div class="info"><svg class="i"><use href="#i-info"/></svg><div>Bu alanın yöneticileri (<b>Elif Şahin</b>, <b>Burak Yıldız</b>) projeyi otomatik görür ve yönetir. Rol, eklenen kişinin genel rolüne göre önerilir; değiştirebilirsiniz.</div></div>
+    </div>
+  </div>
+  <div class="foot"><button class="btn">Vazgeç</button><button class="btn pri">Projeyi oluştur</button></div>
+</div>
+
+<!-- ============ (c) ============ -->
+<h2 class="sec-t">(c) Sistem → Varsayılan yetkiler (yalnız sistem yöneticisi)</h2>
+<div class="pane">
+  <div class="pane-h" style="padding-bottom:14px"><h2><svg class="i"><use href="#i-shield"/></svg>Varsayılan yetkiler</h2>
+    <div class="cap">Yeni ve kendi ayarı olmayan tüm projeler bu tabloyu kullanır. Proje yöneticisi kendi projesinde değiştirebilir.</div></div>
+  <div class="pane-b">
+    <div class="roles">
+      <div class="role"><h4><span class="ri"><svg class="i"><use href="#i-crown"/></svg></span>Yönetici</h4><p>Projede her şeyi yapar; kişileri ve yetkileri yönetir.</p>
+        <ul><li class="y"><svg class="i"><use href="#i-check"/></svg>İş, sprint, kolon, alan, ayarlar</li><li class="y"><svg class="i"><use href="#i-check"/></svg>Kişi ekler, rol ve yetki değiştirir</li><li class="n"><svg class="i"><use href="#i-minus"/></svg>Projeyi silemez (yalnız sistem yöneticisi)</li></ul></div>
+      <div class="role"><h4><span class="ri"><svg class="i"><use href="#i-pen"/></svg></span>Üye</h4><p>İş açar, düzenler, yorum ve süre girer.</p>
+        <ul><li class="y"><svg class="i"><use href="#i-check"/></svg>İş açma, düzenleme, silme</li><li class="y"><svg class="i"><use href="#i-check"/></svg>Sprint planlama, kendi süre kaydı</li><li class="n"><svg class="i"><use href="#i-minus"/></svg>Sprint başlatma, proje ayarları</li></ul></div>
+      <div class="role"><h4><span class="ri"><svg class="i"><use href="#i-eye"/></svg></span>İzleyici</h4><p>Projeyi ve işleri görür, değiştirmez.</p>
+        <ul><li class="y"><svg class="i"><use href="#i-check"/></svg>Pano, liste, raporlar</li><li class="n"><svg class="i"><use href="#i-minus"/></svg>İş, yorum, süre kaydı (açılabilir)</li><li class="n"><svg class="i"><use href="#i-minus"/></svg>Ayarlar ve kişiler</li></ul></div>
+    </div>
+    <div class="doc-grid">
+      <div class="sh"><h3>Rol yetkileri</h3><span class="sub">Kendi ayarı olan projeler: <a href="#" class="lnk">3 proje</a></span><span class="sp"></span>
+        <button class="btn"><svg class="i"><use href="#i-undo"/></svg>Fabrika ayarına dön</button></div>
+      <div id="tblC"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const P = [
+  ['g','İşler'],
+  ['issue.create','İş açma','Yeni kart, alt iş'],
+  ['issue.edit','İş düzenleme','Taşıma, atama, bağlantı'],
+  ['issue.delete','İş silme','Bağlı kayıtlarla birlikte'],
+  ['comment.write','Yorum yazma','Kendi yorumu'],
+  ['worklog.own','Kendi süre kaydı',''],
+  ['g','Sprint'],
+  ['sprint.edit','Sprint oluşturma ve düzenleme','Başlamamış sprintler'],
+  ['sprint.manage','Sprint başlatma ve bitirme','Sprint süresi'],
+  ['g','Proje'],
+  ['project.settings','Proje adı ve ayarları','Ad, anahtar, açıklama, renk, lider, arşiv'],
+  ['project.columns','Kolonlar ve proje türü',''],
+  ['project.fields','Projeye özel alanlar',''],
+];
+const DEF = {member:{'issue.create':1,'issue.edit':1,'issue.delete':1,'comment.write':1,'worklog.own':1,'sprint.edit':1},viewer:{}};
+const PROJ = {member:{'project.settings':1},viewer:{'comment.write':1}}; // bu projede değiştirilenler
+const FIX = [['Kişiler ve yetkiler','Üye ekleme, rol ve yetki tablosu','Yalnız Yönetici'],['Proje silme','','Yalnız sistem yöneticisi']];
+const chk = '<svg class="i"><use href="#i-check"/></svg>';
+const cell = (on,lock,chg,label) => `<label class="cb${lock?' lock':''}${chg?' chg':''}" title="${chg?'Bu projede değiştirildi':''}"><input type="checkbox" ${on?'checked':''} ${lock?'disabled':''} aria-label="${label}"><span class="bx">${on?chk:''}</span></label>`;
+function eff(proj, role, k){ const d=!!DEF[role][k]; if(!proj) return [d,false]; if(k in proj[role]) return [!!proj[role][k], !!proj[role][k]!==d]; return [d,false]; }
+function table(proj){
+  let h = `<table class="pt"><thead><tr><th>Yetki</th><th class="rc"><span class="thl"><svg class="i"><use href="#i-lock"/></svg>Yönetici</span></th><th class="rc">Üye</th><th class="rc">İzleyici</th><th class="ac"><span class="sr" style="position:absolute;clip:rect(0 0 0 0)">İşlem</span></th></tr></thead><tbody>`;
+  let cards = '';
+  for (const r of P){
+    if (r[0]==='g'){ h+=`<tr class="grp"><td colspan="5">${r[1]}</td></tr>`; continue; }
+    const [k,n,d]=r, [m,mc]=eff(proj,'member',k), [v,vc]=eff(proj,'viewer',k), ch=mc||vc;
+    h+=`<tr class="${ch?'chg':''}"><td><div class="pn">${n}${ch?' <span class="chip chg">Değiştirildi</span>':''}</div>${d?`<div class="pd">${d}</div>`:''}</td>
+      <td class="rc">${cell(1,1,0,n+' — Yönetici (her zaman)')}</td><td class="rc">${cell(m,0,mc,n+' — Üye')}</td><td class="rc">${cell(v,0,vc,n+' — İzleyici')}</td>
+      <td class="ac">${ch?'<button class="rev"><svg class="i"><use href="#i-undo"/></svg>Varsayılana dön</button>':''}</td></tr>`;
+    cards+=`<div class="pc${ch?' chg':''}"><div class="pn">${n}${ch?' <span class="chip chg">Değiştirildi</span>':''}</div>${d?`<div class="pd">${d}</div>`:'<div class="pd"></div>'}
+      <div class="rw"><span class="adm"><svg class="i"><use href="#i-lock"/></svg>Yönetici</span>
+      <span class="tg">${cell(m,0,mc,n+' — Üye')}Üye</span><span class="tg">${cell(v,0,vc,n+' — İzleyici')}İzleyici</span>
+      ${ch?'<button class="rev" aria-label="'+n+': varsayılana dön"><svg class="i"><use href="#i-undo"/></svg>Varsayılan</button>':''}</div></div>`;
+  }
+  h+=`<tr class="grp"><td colspan="5">Sabit (değiştirilemez)</td></tr>`;
+  for (const [n,d,o] of FIX){
+    h+=`<tr class="fix"><td><div class="pn">${n}</div>${d?`<div class="pd">${d}</div>`:''}</td><td colspan="3" class="rc"><span class="only"><svg class="i"><use href="#i-lock"/></svg>${o}</span></td><td></td></tr>`;
+    cards+=`<div class="pc fix"><div class="pn">${n}</div><div class="pd">${d}</div><span class="only"><svg class="i"><use href="#i-lock"/></svg>${o}</span></div>`;
+  }
+  return h+'</tbody></table><div class="pcards">'+cards+'</div>';
+}
+document.getElementById('tblA').innerHTML = table(PROJ);
+document.getElementById('tblC').innerHTML = table(null);
+
+const M = [
+  ['AK','#2563EB','Ayşe Kaya','ayse.kaya@novayazilim.com.tr','admin',{own:1,g:'Üye'}],
+  ['MD','#7C3AED','Mehmet Demir','mehmet.demir@novayazilim.com.tr','member',{g:'Üye'}],
+  ['ZA','#1F7A5C','Zeynep Arslan','zeynep.arslan@novayazilim.com.tr','viewer',{g:'İzleyici'}],
+  ['SÇ','#BE185D','Selin Çelik','selin.celik@musteri-ornek.com','viewer',{g:'İzleyici'}],
+  ['CÖ','#475569','Can Öztürk','can.ozturk@novayazilim.com.tr','member',{g:'Üye',off:1}],
+];
+const RN={admin:'Yönetici',member:'Üye',viewer:'İzleyici'};
+const sel=(r,n)=>`<select class="rsel" aria-label="${n} proje rolü">${['admin','member','viewer'].map(x=>`<option ${x===r?'selected':''}>${RN[x]}</option>`).join('')}</select>`;
+const row=(m,me)=>{const [i,c,n,ml,r,o]=m;return `<div class="mr${o.off?' off':''}" role="row">
+  <div class="who"><span class="av" style="background:${c}">${i}</span><div><div class="nm">${n}${me?' <span class="chip own">siz</span>':''}</div>
+   <div class="ml">${o.own?'<span class="chip own"><svg class="i"><use href="#i-crown"/></svg>Sahip</span> ':''}${o.off?'<span class="chip off">Pasif</span> ':''}Genel rol: ${o.g}</div></div></div>
+  <div class="rcol">${o.own?'<span class="rlock" title="Projeyi açan kişi her zaman Yönetici"><svg class="i"><use href="#i-lock"/></svg>Yönetici</span>':sel(r,n)}</div>
+  <div class="xcol">${o.own?'':`<button class="ib" aria-label="${n} kişisini projeden çıkar" title="Çıkar"><svg class="i"><use href="#i-x"/></svg></button>`}</div></div>`;};
+document.getElementById('mems').innerHTML = M.map(m=>row(m,m[0]==='AK')).join('');
+document.getElementById('memsB').innerHTML = [M[0],M[1],M[2]].map(m=>row(m,m[0]==='AK')).join('');
+</script>
+</body></html>
