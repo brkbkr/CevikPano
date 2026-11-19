@@ -736,9 +736,9 @@ function buildScope(me, workspaces, projects) {
   const wsOfP = p => wsMap.get(projWsId(p)) ?? wsMap.get(DEFAULT_WS);
   const proj = new Set(projects.filter(p => p && p.id && projRole(me, p, wsOfP(p)) !== null).map(p => p.id));
   const wsOk = new Set([...wsMap.values()].filter(w => w.id === DEFAULT_WS || isWsAdmin(me, w) || wsHasNoAdmin(w)).map(w => w.id));
-  /* Alan kapsamlı paylaşılan rapor (reportVisible): alan yöneticisi ya da alanda en az bir projede rolü olan. */
+  /* Alan kapsamlı paylaşılan rapor (reportVisible): yalnız alan yöneticisi (sistem yöneticisi zaten süzülmez). */
   const wsRep = new Set([...wsMap.values()].filter(w => isWsAdmin(me, w)).map(w => w.id));
-  for (const p of projects) if (p && proj.has(p.id)) { const w = wsOfP(p); if (w) { wsOk.add(w.id); wsRep.add(w.id); } }
+  for (const p of projects) if (p && proj.has(p.id)) { const w = wsOfP(p); if (w) wsOk.add(w.id); }
   return { me, wsOk, wsRep, proj };
 }
 /* Kayıt görünür mü (issueOk: iş kimliği → görünür mü). */
@@ -1168,15 +1168,15 @@ async function enforceWsMembers(c, me, data, cur) {
 
 /* ---- kayıtlı raporlar (011) ----
    Sahip (ownerId) oluşturmada oturumdur, sonradan değişmez. Değiştirme ve silme: sahip ya da sistem yöneticisi.
-   Okuma: kendi raporu ve kapsamına (tüm sistem / çalışma alanı / proje) erişebildiği paylaşılan rapor (reportVisible,
-   okuma süzmesiyle aynı erişim kuralı). Paylaşmak için yazanın da o kapsama erişimi olmalı; tüm sistemle paylaşmak
+   Okuma: kendi raporu ve kapsamına (tüm sistem / çalışma alanı / proje) erişebildiği paylaşılan rapor (reportVisible).
+   Paylaşmak için yazanın da o kapsama erişimi olmalı (alan kapsamında alan yöneticiliği); tüm sistemle paylaşmak
    yalnız sistem yöneticisi; genel izleyici yalnız kendine kaydeder. Rapor yalnız ayardır: veriyi her okuyan kendi
    erişebildiği kayıtlarla hesaplar. */
 export const REPORT_FORBIDDEN = 'Raporu yalnızca sahibi ya da sistem yöneticisi değiştirebilir';
 export const REPORT_MAX_PER_USER = 200;
-export const REPORT_WS_FORBIDDEN = 'Bu çalışma alanında rolünüz yok';
+export const REPORT_WS_FORBIDDEN = 'Raporu çalışma alanıyla yalnızca alan yöneticisi paylaşabilir';
 /* Okuma (yetki-v2): proje kapsamı → projede rolü olan (projRole: proje rolü, proje sahibi, alan/sistem yöneticisi);
-   alan kapsamı → alan yöneticisi ya da alanda en az bir projede rolü olan (göreceği veri zaten kendi projeleriyle sınırlı);
+   alan kapsamı → yalnız alan yöneticisi (alanda tek projede rolü olan görmez; kendi kişisel raporu sahiplikten görünür);
    tüm sistem → herkes (paylaşmayı yalnız sistem yöneticisi yapar). */
 function reportVisible(d, scope) {
   if (scope.me && d.ownerId === scope.me.id) return true;
@@ -1208,11 +1208,7 @@ async function checkReport(c, me, data, cur) {
   }
   const ws = (await c.query('SELECT data FROM workspaces WHERE id=$1', [s.id])).rows[0]?.data;
   if (!ws) throw new HttpError(400, 'Raporun kapsamı bulunamadı');
-  if (isWsAdmin(me, ws)) return;
-  const pids = await wsProjectIds(c, s.id);
-  for (const r of pids.length ? (await c.query('SELECT data FROM projects WHERE id = ANY($1)', [pids])).rows : [])
-    if (projRole(me, r.data, ws) !== null) return;
-  throw new HttpError(403, REPORT_WS_FORBIDDEN);
+  if (!isWsAdmin(me, ws)) throw new HttpError(403, REPORT_WS_FORBIDDEN);
 }
 
 /* ---- proje alanları (parametrik alanlar) ----
