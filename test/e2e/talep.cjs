@@ -56,7 +56,7 @@ const XSS = '<img src=x onerror="window.__xss=1">';
     ] });
     if (r.rejected.length) throw new Error(JSON.stringify(r.rejected));
     await reloadState();
-    const p = DB.projects.find(x => x.id === 'p1'); p.members = [...new Set([...(p.members || []), M])];
+    const p = DB.projects.find(x => x.id === 'p1'); p.roles = { ...(p.roles || {}), [M]: 'member' }; p.members = [...new Set([...(p.members || []), M])];
     save(); await flushAll();
   }, [RUN, M, V, PT, C1, C2, KEY, XSS]);
   const CA = 'ct_a' + RUN;

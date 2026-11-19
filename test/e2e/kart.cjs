@@ -180,9 +180,10 @@ const XSS = '<img src=x onerror="window.__xss=1">';
   await A.click(`[data-qas="${ID(4)}"]`); await sleep(200); await A.click(`.qm [data-qv="${target.id}"]`); await sleep(300);
   ok('same assignee writes nothing', await A.evaluate(([id, n]) => DB.history.filter(h => h.issueId === id).length === n, [ID(4), hc]));
   /* 8'den fazla kişide arama kutusu: geçici (kaydedilmeyen) kişilerle denenir. */
-  await A.evaluate(() => { const p = DB.projects.find(x => x.id === 'p1'); window.__mem = [...p.members];
+  /* yetki-v2: atanabilir = projeye eklenmiş (roles) ve iş düzenleme yetkili kişi */
+  await A.evaluate(() => { const p = DB.projects.find(x => x.id === 'p1'); window.__mem = [...p.members]; window.__roles = { ...p.roles };
     for (let k = 0; k < 7; k++) { DB.users.push({ id: 'u_tmp' + k, username: 'tmp' + k, name: 'Geçici Kişi ' + k, role: 'member', active: true, ini: 'G' + k, color: '#0F766E' });
-      p.members.push('u_tmp' + k); } });
+      p.members.push('u_tmp' + k); p.roles['u_tmp' + k] = 'member'; } });
   await A.click(`[data-qas="${ID(7)}"]`); await sleep(250);
   const hasSearch = await A.evaluate(() => document.activeElement?.classList.contains('qm-in'));
   await A.keyboard.type('bur'); await sleep(150);
@@ -190,7 +191,7 @@ const XSS = '<img src=x onerror="window.__xss=1">';
   await A.keyboard.type('xyz'); await sleep(150);
   const none = await A.evaluate(() => document.querySelectorAll('.qm .qm-opt').length === 0 && !!document.querySelector('.qm-empty'));
   await A.keyboard.press('Escape'); await sleep(150);
-  await A.evaluate(() => { DB.users = DB.users.filter(u => !u.id.startsWith('u_tmp')); DB.projects.find(x => x.id === 'p1').members = window.__mem; render(); });
+  await A.evaluate(() => { DB.users = DB.users.filter(u => !u.id.startsWith('u_tmp')); DB.projects.find(x => x.id === 'p1').members = window.__mem; DB.projects.find(x => x.id === 'p1').roles = window.__roles; render(); });
   ok('assignee search shown for > 8 people and focused', hasSearch);
   ok('assignee search filters by name', filtered.join() === 'u1', filtered.join());
   ok('assignee search: no match message', none);
@@ -238,7 +239,7 @@ const XSS = '<img src=x onerror="window.__xss=1">';
   const vu = 'kartizl' + RUN, vid = 'u_kv' + RUN;
   await A.evaluate(async ([vid, vu]) => {
     await API.post('/api/sync', { changes: [{ c: 'users', id: vid, op: 'put', data: { username: vu, name: 'Kart İzleyici', role: 'viewer', active: true, ini: 'Kİ', color: '#64748B' } }] });
-    const p = DB.projects.find(x => x.id === 'p1'); p.members = [...new Set([...(p.members || []), vid])]; save();
+    const p = DB.projects.find(x => x.id === 'p1'); p.roles = { ...(p.roles || {}), [vid]: 'viewer' }; p.members = [...new Set([...(p.members || []), vid])]; save();
   }, [vid, vu]);
   await sleep(1500);
   const V = await mk('viewer'); await login(V, vu, 'Baslangic123');
