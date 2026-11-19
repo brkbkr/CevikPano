@@ -2,8 +2,9 @@ import bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
 import { TABLES, PREF_KEYS, IGNORED_KEYS, MISC_COLLECTIONS, tx, tableOf, reservedName } from './db.js';
 import { HttpError, cj, same, merge3, isAdminRole } from './util.js';
-import { validate, PROJECT_TYPES, normalizePriority, normalizeArchived, normalizeCustomer, normalizeHistory, validId, validateCfg, validateNavDefault, stripBadKeys, HIST_TEXT_MAX } from './validate.js';
+import { validate, PROJECT_TYPES, normalizePriority, normalizeArchived, normalizeCustomer, normalizeHistory, validId, validateCfg, validateNavDefault, validatePerms, stripBadKeys, HIST_TEXT_MAX } from './validate.js';
 import { notifyForIssue, notifyForComment } from './notify.js';
+import { PERM_KEYS, PERM_LABEL, PROJECT_ROLES, projRole, roleCan, isWsAdmin, wsAdminIds, wsHasNoAdmin, mergeMap, mergePerms } from './perms.js';
 
 export { HttpError };
 
@@ -337,6 +338,12 @@ async function applyRecord(c, ctx, ch) {
     if (ch.c === 'customers' && (mine.contacts === undefined || Array.isArray(mine.contacts))
         && [ch.base, mine, cur].some(x => x.contacts !== undefined))
       data.contacts = mergeContacts(ch.base.contacts, mine.contacts, cur.contacts);
+    /* Proje rolleri ve yetki tablosu kişi/anahtar düzeyinde birleşir: iki yönetici aynı anda farklı kişileri değiştirirse
+       ikisinin değişikliği de kalır. */
+    if (ch.c === 'projects' && mine.roles && typeof mine.roles === 'object' && !Array.isArray(mine.roles))
+      data.roles = mergeMap(ch.base.roles, mine.roles, cur.roles);
+    if (ch.c === 'projects' && mine.perms && typeof mine.perms === 'object' && !Array.isArray(mine.perms))
+      data.perms = mergePerms(ch.base.perms, mine.perms, cur.perms);
     adjusted = true;
   }
   if (ch.c === 'projects' && cur) {                 // iş sayacı geri gitmesin
@@ -350,6 +357,7 @@ async function applyRecord(c, ctx, ch) {
   if (ch.c === 'customers' && normalizeCustomer(data)) adjusted = true;
   if (ch.c === 'workspaces' && enforceCreatedBy(data, cur, me)) adjusted = true;
   if (ch.c === 'workspaces' && enforceOwner(data, cur, me)) adjusted = true;
+  if (ch.c === 'projects' && await enforceProjectRoles(c, ctx, data, cur)) adjusted = true;
   if (ch.c === 'history' && normalizeHistory(data)) adjusted = true;
   if (ch.c === 'history' && stripHistKeys(data)) adjusted = true;
   if (ch.c === 'history' && !meAdmin && enforceHistoryAuthor(data, me)) adjusted = true;
@@ -402,6 +410,7 @@ async function applyRecord(c, ctx, ch) {
   if (cur && same(cur, data)) { if (adjusted) ctx.adjusted.push({ c: ch.c, id: ch.id }); return false; }
   if (!ctx.system) await checkScope(c, me, ch.c, cur, data);
   if (ch.c === 'workspaces') await checkWorkspace(c, me, ch.id, data, cur);
+  if (ch.c === 'projects') await checkProjectRoles(c, data, cur);
   if (ch.c === 'projects') await checkProjectWorkspace(c, data, cur);
   if (ch.c === 'projects' && cur) await checkProjectMove(c, me, cur, data);
   if (ch.c === 'projects') await checkProjectCustomer(c, data, cur);
@@ -903,6 +912,53 @@ function enforceOwner(data, cur, me) {
   return !same(before, data.ownerId);
 }
 
+/* ---- proje rolleri (yetki-v2) ----
+   roles = { kullanıcı: 'admin'|'member'|'viewer' } yetkinin kaynağıdır; members eski kodla uyum için roles'taki kişilerdir
+   (sunucu eşitler; istemcinin tek başına gönderdiği members yok sayılır). ownerId: yeni projede oturumdaki kullanıcı,
+   sonradan yalnız sistem ya da alan yöneticisi değiştirir; sahip roles'ta her zaman 'admin'. roles bir kez yazıldıktan
+   sonra silinemez (proje eski kurala düşürülüp herkese açılamaz). Değiştiyse true. */
+const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+async function enforceProjectRoles(c, ctx, data, cur) {
+  const { me } = ctx;
+  const before = cj({ roles: data.roles, members: data.members, ownerId: data.ownerId });
+  if (data.roles == null) { if (isObj(cur?.roles)) data.roles = { ...cur.roles }; else delete data.roles; }
+  if (!cur) data.ownerId = me.id;
+  else if ((cur.ownerId ?? null) !== (data.ownerId ?? null)) {
+    const allowed = isAdminRole(me.role) || isWsAdmin(me, await wsOfProjectData(c, cur));
+    if (!allowed) { if (Object.hasOwn(cur, 'ownerId')) data.ownerId = cur.ownerId; else delete data.ownerId; }
+  }
+  if (!cur && !isObj(data.roles) && ROLES_ON_CREATE) data.roles = {};
+  if (isObj(data.roles)) {
+    const r = {};
+    for (const [k, v] of Object.entries(data.roles)) r[k] = v;
+    if (typeof data.ownerId === 'string' && data.ownerId) r[data.ownerId] = 'admin';
+    data.roles = r;
+    const keys = Object.keys(r), set = new Set(keys);
+    const prev = Array.isArray(cur?.members) ? cur.members : Array.isArray(data.members) ? data.members : [];
+    const order = [...new Set(prev.filter(x => set.has(x)))];
+    for (const k of keys) if (!order.includes(k)) order.push(k);
+    data.members = order;
+  }
+  return before !== cj({ roles: data.roles, members: data.members, ownerId: data.ownerId });
+}
+/* Rolü olmayan projede (part 1) yeni proje roles'suz kalır; parça 2'de her yeni proje roles ile açılır. */
+const ROLES_ON_CREATE = false;
+
+/* Rol/sahip değişikliğinin doğrulaması (yetki denetiminden SONRA: yetkisize kişi var/yok bilgisi sızmasın).
+   Yeni eklenen kişi var olan, sistem kullanıcısı olmayan bir kullanıcı olmalı; yeni sahip etkin olmalı. */
+async function checkProjectRoles(c, data, cur) {
+  const old = isObj(cur?.roles) ? cur.roles : {};
+  const fresh = isObj(data.roles) ? Object.keys(data.roles).filter(k => !Object.hasOwn(old, k) && k !== data.ownerId) : [];
+  if (fresh.length) {
+    /* Sistem hesabı (e-posta) projeye eklenmez; kurulumdaki süper yönetici de system işaretlidir ve eklenebilir. */
+    const ok = new Set((await c.query(`SELECT id FROM users WHERE id = ANY($1) AND (NOT system OR role IN ('admin','super'))`, [fresh])).rows.map(r => r.id));
+    if (fresh.some(id => !ok.has(id))) throw new HttpError(400, 'Projeye eklenen kişi bulunamadı');
+  }
+  if (cur && (cur.ownerId ?? null) !== (data.ownerId ?? null) && data.ownerId != null
+      && !(await c.query(`SELECT 1 FROM users WHERE id=$1 AND active AND (NOT system OR role IN ('admin','super'))`, [data.ownerId])).rowCount)
+    throw new HttpError(400, 'Proje sahibi bulunamadı ya da pasif');
+}
+
 /* Üye listesi: biçim, tekil kişi, var olan kullanıcı; sahip listede ve 'admin' (kaldırılamaz, düşürülemez).
    Dolu listeyi boşaltmak (alanı herkese açmak) yalnız sistem yöneticisi. Değiştiyse true. */
 async function enforceWsMembers(c, me, data, cur) {
@@ -1209,11 +1265,12 @@ async function applySetting(c, ctx, ch) {
   let val = ch.data;
   if (cur !== undefined && ch.base !== undefined && !same(cur, ch.base)
       && val && typeof val === 'object' && !Array.isArray(val) && cur && typeof cur === 'object' && !Array.isArray(cur)) {
-    val = merge3(ch.base, val, cur);
+    val = ch.id === 'perms' ? mergePerms(ch.base, val, cur) : merge3(ch.base, val, cur);
     ctx.adjusted.push({ c: '_settings', id: ch.id });
   }
   if (ch.id === 'cfg') validateCfg(val);
   if (ch.id === 'navDefault') validateNavDefault(val);
+  if (ch.id === 'perms') validatePerms(val);
   if (cur !== undefined && same(cur, val)) return false;
   await c.query(
     `INSERT INTO settings AS s (key, value, updated_by) VALUES ($1, $2::jsonb, $3)
@@ -1235,6 +1292,7 @@ async function applyUser(c, ctx, ch) {
     await c.query(`INSERT INTO deleted_records (collection, record_id, data, batch_id, deleted_by)
       VALUES ('users',$1,$2::jsonb,$3,$4)`, [cur.id, JSON.stringify(publicUser(cur)), batch, me.id]);
     await c.query('DELETE FROM users WHERE id=$1', [ch.id]);
+    await removeUserFromProjects(c, ctx, cur.id);
     return true;
   }
 
@@ -1291,6 +1349,32 @@ async function applyUser(c, ctx, ch) {
   return r.rowCount > 0;
 }
 
+/* Silinen kullanıcı projelerin rollerinden/üye listesinden ve alanların yönetici listesinden çıkar; sahibi olduğu
+   projenin sahibi boşalır. Rolü olmayan eski projede üye listesi boşalacaksa dokunulmaz (boş liste eski kuralda
+   "herkes" demektir). */
+async function removeUserFromProjects(c, ctx, uid) {
+  const { me, batch } = ctx;
+  const rows = (await c.query(`SELECT id, data FROM projects WHERE data->'roles' ? $1 OR data->>'ownerId' = $1 OR data->'members' ? $1
+      ORDER BY id FOR UPDATE`, [uid])).rows;
+  for (const r of rows) {
+    const d = { ...r.data };
+    if (isObj(d.roles)) { d.roles = { ...d.roles }; delete d.roles[uid]; }
+    if (Array.isArray(d.members) && (isObj(d.roles) || d.members.filter(x => x !== uid).length > 0)) d.members = d.members.filter(x => x !== uid);
+    if (d.ownerId === uid) d.ownerId = null;
+    if (same(d, r.data)) continue;
+    await c.query('UPDATE projects SET data=$2::jsonb, version=version+1, updated_at=now(), updated_by=$3 WHERE id=$1', [r.id, JSON.stringify(d), me.id]);
+    await logChange(c, 'projects', r.id, 'put', me.id, batch);
+    ctx.adjusted.push({ c: 'projects', id: r.id });
+  }
+  const ws = (await c.query(`SELECT id, data FROM workspaces WHERE data->'admins' ? $1 ORDER BY id FOR UPDATE`, [uid])).rows;
+  for (const r of ws) {
+    const d = { ...r.data, admins: r.data.admins.filter(x => x !== uid) };
+    await c.query('UPDATE workspaces SET data=$2::jsonb, version=version+1, updated_at=now(), updated_by=$3 WHERE id=$1', [r.id, JSON.stringify(d), me.id]);
+    await logChange(c, 'workspaces', r.id, 'put', me.id, batch);
+    ctx.adjusted.push({ c: 'workspaces', id: r.id });
+  }
+}
+
 /* ---- ilk kurulum: yönetici ve boş bir proje ---- */
 export async function bootstrap(pool, log = console.log) {
   const username = (process.env.ADMIN_USERNAME || 'admin').trim().toLowerCase();
@@ -1320,7 +1404,8 @@ export async function bootstrap(pool, log = console.log) {
     await tx(pool, async c => {
       await c.query(`INSERT INTO projects (id, data) VALUES ('p1', $1::jsonb)`, [JSON.stringify({
         id: 'p1', key: 'GEN', code: 'GEN', name: 'Genel', lead: admin?.id || null, counter: 0,
-        members: admin ? [admin.id] : [], archived: false, workspaceId: DEFAULT_WS })]);
+        members: admin ? [admin.id] : [], archived: false, workspaceId: DEFAULT_WS,
+        ...(admin ? { ownerId: admin.id, roles: { [admin.id]: 'admin' } } : {}) })]);
       const st = [['Yapılacak', 'todo'], ['Devam ediyor', 'inprogress'], ['Beklemede', 'inprogress'], ['Bitti', 'done']];
       for (const [i, [name, cat]] of st.entries()) {
         await c.query(`INSERT INTO statuses (id, data) VALUES ($1, $2::jsonb)`,

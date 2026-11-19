@@ -9715,6 +9715,65 @@ function wsRole(u, ws) {
 }
 const projectRole = (u, p) => wsRole(u, wsOf(p));
 const wsAtLeast = (r, need) => (WS_RANK[r] || 0) >= WS_RANK[need];
+/* ---- Proje bazlı yetkiler (yetki-v2) ----
+   Sunucudaki server/perms.js ile birebir aynı kural. Etkin proje rolü (projRole): sistem yöneticisi, alan yöneticisi (sahip ya da
+   ws.admins) ve proje sahibi (ownerId) 'admin'; diğerleri projenin roles haritasındaki rol; roles'u olmayan eski kayıtta eski kural.
+   Rolün yapabildikleri: PERM_DEFAULT ⊕ DB.perms (sistem varsayılanı) ⊕ p.perms (projeye özel). Yönetici sütunu sabit. */
+const PERM_KEYS = ['issue.create', 'issue.edit', 'issue.delete', 'comment.write', 'worklog.own',
+  'sprint.edit', 'sprint.manage', 'project.settings', 'project.columns', 'project.fields'];
+const PERM_LABEL = {
+  'issue.create': 'İş açma', 'issue.edit': 'İş düzenleme', 'issue.delete': 'İş silme', 'comment.write': 'Yorum yazma',
+  'worklog.own': 'Süre kaydı', 'sprint.edit': 'Sprint oluşturma', 'sprint.manage': 'Sprint başlatma ve bitirme',
+  'project.settings': 'Proje adı ve ayarları', 'project.columns': 'Kolonlar ve proje türü', 'project.fields': 'Proje alanları',
+};
+const PERM_DEFAULT = { member: Object.fromEntries(PERM_KEYS.map(k => [k, ['issue.create', 'issue.edit', 'issue.delete', 'comment.write', 'worklog.own', 'sprint.edit'].includes(k)])),
+  viewer: Object.fromEntries(PERM_KEYS.map(k => [k, false])) };
+const PERM_ROLES = ['member', 'viewer'];
+const isPlainObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+/* Sistem varsayılanı (fabrika ⊕ DB.perms) ve bir projenin etkin tablosu. */
+function sysPerms() {
+  const out = {};
+  for (const r of PERM_ROLES) { out[r] = { ...PERM_DEFAULT[r] };
+    const m = isPlainObj(DB.perms) && isPlainObj(DB.perms[r]) ? DB.perms[r] : null;
+    if (m) for (const k of PERM_KEYS) if (typeof m[k] === 'boolean') out[r][k] = m[k]; }
+  return out;
+}
+function effPerms(p) {
+  const out = sysPerms();
+  for (const r of PERM_ROLES) { const m = isPlainObj(p?.perms) && isPlainObj(p.perms[r]) ? p.perms[r] : null;
+    if (m) for (const k of PERM_KEYS) if (typeof m[k] === 'boolean') out[r][k] = m[k]; }
+  out.admin = Object.fromEntries(PERM_KEYS.map(k => [k, true]));
+  return out;
+}
+/* Alan yöneticileri: sahip + admins (admins alanı olmayan eski alanda üye listesindeki Yöneticiler). */
+function wsAdminIds(w) {
+  const ids = Array.isArray(w?.admins) ? w.admins.filter(x => typeof x === 'string')
+    : (Array.isArray(w?.members) ? w.members : []).filter(m => m && m.role === 'admin' && typeof m.userId === 'string').map(m => m.userId);
+  const o = wsOwner(w);
+  return o ? [o, ...ids.filter(x => x !== o)] : ids;
+}
+const isWsAdmin = (u, w) => !!u && !!w && wsAdminIds(w).includes(u.id);
+const wsHasNoAdmin = w => !!w && wsAdminIds(w).length === 0;
+function legacyProjRole(u, p, w) {
+  if (u.system) return null;
+  const mem = Array.isArray(w?.members) ? w.members : [];
+  if (mem.length) { const r = mem.find(m => m && m.userId === u.id)?.role; return WS_RANK[r] ? r : null; }
+  const list = Array.isArray(p?.members) ? p.members : [];
+  if (list.length && !list.includes(u.id)) return null;
+  return u.role === 'viewer' ? 'viewer' : 'member';
+}
+function projRole(u, p) {
+  if (!u || u.active === false) return null;
+  if (u.role === 'admin' || u.role === 'super') return 'admin';
+  const w = p ? wsById(wsOf(p)) : null;
+  if (isWsAdmin(u, w)) return 'admin';
+  if (!p) return null;
+  if (p.ownerId && p.ownerId === u.id) return 'admin';
+  if (isPlainObj(p.roles)) { const r = Object.hasOwn(p.roles, u.id) ? p.roles[u.id] : null; return WS_RANK[r] ? r : null; }
+  return legacyProjRole(u, p, w);
+}
+/* Bu kullanıcı bu projede bu yetkiye sahip mi (u verilmezse oturumdaki kişi). */
+const canP = (p, key, u = CU()) => { const r = projRole(u, p); return r === 'admin' || (!!r && effPerms(p)[r]?.[key] === true); };
 /* Proje tasarımı (kolon, tür, proje ayarı/üyeleri): alan yöneticisi; eski alanda bugünkü kural (projenin üyesi olan Üye). */
 function canDesign(p) {
   if (!p) return false;

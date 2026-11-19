@@ -1,4 +1,5 @@
 import { HttpError } from './util.js';
+import { PROJECT_ROLES, MAX_PROJECT_ROLES, permsError } from './perms.js';
 
 /* Kayıt doğrulama. Eski verilerle uyum için gevşek tutuldu: yalnızca verinin
    bütünlüğünü bozacak hataları reddeder. */
@@ -103,7 +104,7 @@ const cfOk = v => v == null || (typeof v === 'object' && !Array.isArray(v) && Ob
 const changed = (d, opts, k) => !!opts.live && (!opts.cur || !sameJson(opts.cur[k], d[k]));
 
 const RULES = {
-  projects: d => [
+  projects: (d, opts) => [
     [str(d.name, 200) && d.name.trim(), 'Proje adı gerekli'],
     [optKey(d.key, KEY_RE), 'Proje anahtarı yalnızca harf, rakam, _ ve - içerebilir (en fazla 20)'],
     [optKey(d.code, KEY_RE), 'Proje kodu geçersiz'],
@@ -114,6 +115,13 @@ const RULES = {
     [d.template == null || d.template === '' || PROJECT_TEMPLATES.includes(d.template), 'Geçersiz şablon'],
     [d.sprintWeeks == null || (Number.isInteger(d.sprintWeeks) && d.sprintWeeks >= 1 && d.sprintWeeks <= 8),
       'Sprint süresi 1 ile 8 hafta arasında bir tamsayı olmalı'],
+    /* Proje rolleri (yetki-v2): { kullanıcı kimliği: 'admin'|'member'|'viewer' }, en çok 1000 kişi. */
+    [d.roles == null || (typeof d.roles === 'object' && !Array.isArray(d.roles) && Object.keys(d.roles).length <= MAX_PROJECT_ROLES
+      && Object.entries(d.roles).every(([k, v]) => validId(k) && PROJECT_ROLES.includes(v))),
+      `Proje rolleri geçersiz (kişi kimliği ve rol: admin, member, viewer; en fazla ${MAX_PROJECT_ROLES} kişi)`],
+    [d.ownerId == null || validId(d.ownerId), 'Proje sahibi geçersiz'],
+    [!changed(d, opts, 'members') || d.members == null || (Array.isArray(d.members) && d.members.length <= MAX_PROJECT_ROLES && d.members.every(validId)), 'Proje üyeleri geçersiz'],
+    [d.perms == null || !permsError(d.perms), d.perms == null ? '' : permsError(d.perms) || ''],
   ],
   /* Cariler (#11). İletilerde değer YOK: kişisel veri (T.C. kimlik no, e-posta) günlüğe/yanıta düşmesin. */
   customers: (d, opts) => [
@@ -136,6 +144,9 @@ const RULES = {
     [d.color == null || d.color === '' || (typeof d.color === 'string' && HEX_RE.test(d.color)), 'Renk #RRGGBB biçiminde olmalı'],
     [optStr(d.description, 500), 'Açıklama en fazla 500 karakter'],
     [optBool(d.archived), 'Arşiv bilgisi true ya da false olmalı'],
+    /* Alan yöneticileri (yetki-v2): kişi kimlikleri, tekil, en çok 1000. */
+    [d.admins == null || (Array.isArray(d.admins) && d.admins.length <= MAX_PROJECT_ROLES && d.admins.every(validId)
+      && new Set(d.admins).size === d.admins.length), 'Alan yöneticileri geçersiz (tekil kişi kimlikleri, en fazla 1000)'],
   ],
   /* Kolon adı 1–30 karakter: yalnız canlı yazmada (opts.live), yeni kolonda ya da ad değişince.
      Eski uzun adlı kolon sıralanabilir; içe aktarma/geri yükleme eski veriyi reddetmez. */
@@ -307,6 +318,11 @@ export function validateCfg(v) {
 /* Genel ayar `navDefault` (yönetici, herkes için varsayılan kenar çubuğu): { items: [{ id, visible }] }.
    Kimlikler istemcideki NAV_MOVABLE ile aynı (bilinen, benzersiz); visible boolean; başka anahtar yok. */
 export const NAV_DEFAULT_IDS = ['recent', 'customers', 'reports', 'pool', 'users', 'system'];
+/* Genel ayar `perms` (sistem varsayılanı rol yetkileri, yalnız sistem yöneticisi): perms.js permsError. */
+export function validatePerms(v) {
+  const e = permsError(v, { system: true });
+  if (e) throw new HttpError(400, e);
+}
 export function validateNavDefault(v) {
   const ok = v != null && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).every(k => k === 'items')
     && Array.isArray(v.items) && v.items.length <= NAV_DEFAULT_IDS.length
