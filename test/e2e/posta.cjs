@@ -118,6 +118,60 @@ const XSS = '<img src=x onerror="window.__xss=1">';
   ok('OAuth dönüşü: neden bildirilir', /süresi doldu/.test(await txt(A, '#toast') || await A.evaluate(() => document.body.textContent)), await txt(A, '#toast'));
   await A.unroute('**/api/mail/status');
 
+  /* ---- 2b) kart içinden e-postayla yanıt (madde 21) ---- */
+  const PB = 'p_mbb' + RUN, IE = 'i_mbe' + RUN, IN = 'i_mbn' + RUN;
+  await A.evaluate(async ([R, PB, IE, IN]) => {
+    const ws = DB.workspaces[0]?.id || 'ws1', K = 'MBB' + R.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const r = await API.post('/api/sync', { changes: [
+      { c: 'projects', id: PB, op: 'put', data: { name: 'Posta iç ' + R, key: K, counter: 2, workspaceId: ws, type: 'board' } },
+      { c: 'statuses', id: PB + '_s0', op: 'put', data: { projectId: PB, name: 'Yeni', cat: 'todo', ord: 0 } },
+      { c: 'issues', id: IE, op: 'put', data: { projectId: PB, key: K + '-1', summary: 'E-postadan gelen', statusId: PB + '_s0',
+        source: { kind: 'email', provider: 'google', from: 'ayse@musteri.test' } } },
+      { c: 'issues', id: IN, op: 'put', data: { projectId: PB, key: K + '-2', summary: 'Elle açılan', statusId: PB + '_s0' } },
+      { c: 'history', id: 'h_mbe' + R, op: 'put', data: { issueId: IE, userId: CU().id, at: Date.now() - 5000, field: 'E-posta', from: '', to: 'ayse@musteri.test · Re: E-postadan gelen', kind: 'reply' } },
+    ] });
+    if (r.rejected.length) throw new Error(JSON.stringify(r.rejected));
+    await reloadState();
+  }, [RUN, PB, IE, IN]);
+  const openI = async id => { await A.evaluate(id => { closeModal(); DB.ui.idFeed = 'all'; openIssue(id); }, id); await A.waitForSelector('#idA #newCmt'); await sleep(700); };
+  /* gerçek sunucu (posta yapılandırılmamış): düğme yok */
+  await openI(IE);
+  ok('yapılandırılmamış: "E-postayla yanıtla" düğmesi yok', !(await A.$('#mailCmt')));
+  ok('sunucu durumu: available=false', await A.evaluate(async id => (await API.get('/api/mail/reply/' + id)).available === false, IE));
+  /* durum taklit: bağlı kutu; alıcı ve konu sunucudan (XSS denemesiyle) */
+  let replyGets = 0, replyPost = null, replyStatus = 200;
+  await A.route('**/api/mail/reply/**', async r => {
+    if (r.request().method() === 'GET') { replyGets++; return r.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify({ available: true, to: 'ayse' + XSS + '@musteri.test', subject: 'Re: E-postadan gelen ' + XSS, provider: 'google' }) }); }
+    replyPost = JSON.parse(r.request().postData() || '{}');
+    return replyStatus === 200 ? r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, to: 'ayse@musteri.test', subject: 'Re: x', commentId: 'c_x', recorded: true }) })
+      : r.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: 'Posta kutusunu yeniden bağlayın (Sistem → Posta kutuları): gönderme izni yok ya da bağlantının süresi doldu' }) });
+  });
+  await openI(IN);
+  ok('e-postasız işte düğme yok ve sunucuya sorulmaz', !(await A.$('#mailCmt')) && replyGets === 0, String(replyGets));
+  await openI(IE);
+  ok('e-postadan gelen işte "E-postayla yanıtla" düğmesi (yorum kutusu açılmadan görünür)', await A.isVisible('#mailCmt'));
+  await A.click('#mailCmt'); await sleep(300);
+  ok('yanıt kipi: alıcı ve konu gösterilir (metin olarak), "E-postayla gönder"', await A.isVisible('#mailTo') && await A.isVisible('#sendMail')
+    && /Alıcı: ayse<img/.test(await txt(A, '#mailTo')) && /Konu: Re: E-postadan gelen/.test(await txt(A, '#mailTo')), await txt(A, '#mailTo'));
+  ok('alıcı/konu HTML olarak basılmaz (XSS yok)', !(await A.evaluate(() => window.__xss)) && !(await A.$('#mailTo img')));
+  await A.fill('#newCmt', 'Merhaba,\nsorununuz çözüldü.');
+  await A.click('#sendMail'); await sleep(900);
+  ok('gönderim: istemci yalnız metni yollar (alıcı/konu yok)', replyPost && JSON.stringify(Object.keys(replyPost)) === '["body"]' && replyPost.body === 'Merhaba,\nsorununuz çözüldü.', JSON.stringify(replyPost));
+  ok('gönderim sonrası bildirim ve kutu sıfırlanır', /E-postayla yanıtlandı/.test(await txt(A, '#toast')) && !(await A.$('#sendMail')) && await A.evaluate(() => !$('#newCmt').value), await txt(A, '#toast'));
+  /* 409: anlaşılır hata, düğme gizlenir */
+  replyStatus = 409; replyPost = null;
+  await A.click('#mailCmt'); await sleep(200);
+  await A.fill('#newCmt', 'ikinci'); await A.click('#sendMail'); await sleep(900);
+  ok('409: "Posta kutusunu yeniden bağlayın" bildirilir, düğme kalkar, metin korunur', /Posta kutusunu yeniden bağlayın/.test(await txt(A, '#toast'))
+    && !(await A.$('#mailCmt')) && !(await A.$('#sendMail')) && await A.evaluate(() => $('#newCmt').value === 'ikinci'), await txt(A, '#toast'));
+  /* geçmiş satırı */
+  await A.evaluate(() => { DB.ui.idFeed = 'hist'; refreshIssue(['act']); }); await sleep(300);
+  ok('Geçmiş: "✉ E-postayla yanıtlandı" satırı', /✉ E-postayla yanıtlandı: ayse@musteri\.test · Re: E-postadan gelen/.test(await txt(A, '#idA .id-feed')), await txt(A, '#idA .id-feed'));
+  await A.evaluate(() => { DB.ui.idFeed = 'all'; closeModal(); });
+  await A.screenshot({ path: SS + '3_yanit.png' });
+  await A.unroute('**/api/mail/reply/**');
+
   /* ---- 3) üye: Sistem ekranı yok, uç 403 ---- */
   const P = await mk('uye'); await login(P, 'mbm' + RUN, 'Baslangic123', 'PostaUye12345');
   const st = await P.evaluate(async () => { try { await API.get('/api/mail/status'); return 200; } catch (e) { return e.status; } });

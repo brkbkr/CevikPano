@@ -782,6 +782,15 @@ export async function userSeesProject(c, userId, pid) {
   if (isAdminRole(u.role)) return true;
   return canAccess(u, await wsOfProjectData(c, await projById(c, pid)));
 }
+/* Bir işe erişim (posta yanıtı, mail.js): yoksa ya da okunamıyorsa null; varsa { data, role } (okuma süzmesiyle aynı kural).
+   Yazma için role 'member' ya da 'admin' olmalı (needMember ile aynı). */
+export async function issueAccess(c, me, iid) {
+  if (typeof iid !== 'string' || !iid) return null;
+  const row = (await c.query('SELECT data FROM issues WHERE id=$1', [iid])).rows[0];
+  if (!row) return null;
+  const r = isAdminRole(me?.role) ? 'admin' : wsRole(me, await wsOfProjectData(c, await projById(c, row.data?.projectId)));
+  return r ? { data: row.data, role: r, write: atLeast(r, 'member') } : null;
+}
 /* Atanabilir kişi: üye listesi tanımsız (eski) alanda herkes (bugünkü davranış); üyeli alanda rolü Yönetici ya da Üye. */
 const ASSIGNEE_NO_ACCESS = 'Atanan kişinin bu çalışma alanında Üye ya da Yönetici rolü yok';
 async function assignable(c, u, pid) {
