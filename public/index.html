@@ -1629,6 +1629,28 @@ button.c-av::after{content:"";position:absolute;inset:-6px}
 .cu-st.on{color:var(--done)}
 .cu-st.off{height:22px;padding:0 8px 0 6px;border-radius:6px;border:1px dashed var(--line2);background:var(--surface);color:var(--ink2);font-size:11.5px;font-weight:650}
 .mob-l,.cu-mob{display:none}
+/* Cariler modülü / cari alanları / eski 11 haneli vergi no */
+.cu-oldtag{display:inline-flex;align-items:center;height:18px;margin-left:6px;padding:0 6px;border-radius:5px;border:1px dashed var(--line2);font-size:10.5px;font-weight:650;color:var(--ink2);white-space:nowrap}
+.cu-tbl td.c-cf{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cu-tbl th[data-cufcol] span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cu-tbl td.c-cf .none{color:var(--meta)}
+.cuf-list{display:flex;flex-direction:column;gap:6px;margin-bottom:6px}
+.cuf-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.cuf-row.sel{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 18%,transparent)}
+.cuf-row.off{background:var(--cu-off-bg)}
+.cuf-row .cuf-ic{display:inline-flex;color:var(--ink3)} .cuf-row .cuf-ic svg.i{width:16px;height:16px}
+.cuf-row .tx{flex:1;min-width:0;font-size:13px}
+.cuf-row .tx .key{font-family:var(--mono);font-size:11.5px;color:var(--meta)}
+.cuf-row .tx .d{font-size:12px;color:var(--meta);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cuf-row .cu-tog{width:auto;height:32px;border-color:transparent;background:none}
+.cu-kseg.cuf-types{grid-template-columns:repeat(5,minmax(0,1fr))}
+.cuf-chk{display:flex!important;align-items:center;justify-content:flex-start!important;gap:8px;font-weight:550!important}
+.cuf-chk input{width:auto}
+.sm-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);margin:10px 0}
+.sm-row .sm-ic{display:inline-flex;color:var(--ink3)} .sm-row .sm-ic svg.i{width:20px;height:20px}
+.sm-row .tx{flex:1;min-width:0} .sm-row .tx b{display:block;font-size:13.5px}
+.sm-row .tx span{display:block;font-size:12px;color:var(--meta);margin-top:2px}
+.sm-row .cu-tog{width:auto}
 
 /* pencere */
 .modal.cu-m{max-width:780px;display:flex;flex-direction:column}
@@ -1781,6 +1803,9 @@ button.cu-prj:hover{background:var(--surface2)}
   .cu-tbl td.c-nm{grid-area:nm} .cu-tbl td.c-st{grid-area:st;justify-self:end;align-self:start}
   .cu-tbl td.c-kd{grid-area:kd} .cu-tbl td.c-tx{grid-area:tx} .cu-tbl td.c-pj{grid-area:pj;justify-self:end}
   .cu-tbl tr.cu-row td.c-go{display:none}
+  .cu-tbl tr.cu-row td.c-cf{grid-column:1 / -1;font-size:12px}
+  .cu-kseg.cuf-types{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cuf-row{flex-wrap:wrap}
   .cu-sn.empty{display:none}
   .cu-nm{white-space:normal;overflow-wrap:anywhere}
   .mob-l{display:inline;font-family:var(--sans);font-weight:500;color:var(--meta);font-size:12px;letter-spacing:0}
@@ -5787,7 +5812,7 @@ function issueProps(i) {
       ${row('Tip', pb('type', 'type', `${tIcon(i.type)}<span class="t">${esc(TYPE[i.type]?.[2] || i.type)}</span>`, 'Tip: ' + (TYPE[i.type]?.[2] || i.type)))}`)
     + grp('users', 'Kişiler', row('Atanan', pb('assignee', 'as', nm(i.assignee, 'Atanmamış'), 'Atanan: ' + (user(i.assignee)?.name || 'Atanmamış')))
       + (MOD('reporter') ? row('Raporlayan', pb('reporter', 'rep', nm(i.reporter, 'Yok'), 'Raporlayan: ' + (user(i.reporter)?.name || 'Yok'))) : ''))
-    + (reqMode(pr) || i.requester ? grp('building', 'Talep eden', reqDetail(i, ed, reqMode(pr), row, pb)) : '')
+    + (reqMode(pr) || (cuOn() && i.requester) ? grp('building', 'Talep eden', reqDetail(i, ed, reqMode(pr), row, pb)) : '')
     + grp('cal', 'Planlama', (projType(pr) === 'agile' ? row('Sprint', pb('sprintId', 'sprint', `<span class="t">${sp ? esc(sp.name) + (sp.state === 'active' ? ' <small>aktif</small>' : '') : 'Backlog'}</span>`, 'Sprint: ' + (sp?.name || 'Backlog'))) : '')
       + (MOD('epic') ? row('Epik', pb('epicId', 'epic', ep ? `<span class="id-epic">${ic('layers')}${esc(ep.summary)}</span>` : '<span class="t muted">Yok</span>', 'Epik: ' + (ep?.summary || 'Yok'))) : '')
       + row('Başlangıç', ed ? dateField({ id: 'idStart', f: 'start', value: der('start') ? der('start').v : i.start, label: 'Başlangıç', err: der('start')?.msg, quick: true })
@@ -6319,7 +6344,7 @@ const logWorkForm = (issueId, userId, date) => worklogForm({ issueId, date });
    cari bağlı diğer projelerde isteğe bağlı, diğerlerinde gizli. Raporlayan (kullanıcı) ayrı alandır, değişmez.
    Kural ve yetki sunucuda (store.js checkRequester, POST /api/customers/:id/contacts); burası yalnız deneyim. */
 const isTalep = p => p?.template === 'talep';
-const reqMode = p => (isTalep(p) ? 'req' : p?.customerId ? 'opt' : '');
+const reqMode = p => (!cuOn() ? '' : isTalep(p) ? 'req' : p?.customerId ? 'opt' : '');
 const reqVal = r => (r && r.customerId && r.contactId ? `${r.customerId}|${r.contactId}` : '');
 const reqParse = v => { const [customerId, contactId] = String(v || '').split('|'); return customerId && contactId ? { customerId, contactId } : null; };
 const custShort = c => (c ? c.shortName || c.name || '' : '');
@@ -6440,6 +6465,7 @@ function emailTalep(pid) {
   if (!ps.length) return toast('Talep projesi yok');
   let pr = ps.find(p => p.id === pid) || ps.find(p => p.id === DB.ui.project) || ps[0];
   let REQ = null, auto = false;
+  const cuo = cuOn();                                 // Cariler kapalıysa talep eden seçilmez (sunucu da istemez)
   openModal(`
     <div class="id-mh"><span class="id-mic">${ic('mail')}</span>
       <div class="tx"><b id="etTitle">E-postadan talep oluştur</b><div class="sub">E-postayı yapıştırın; konu özet, gövde açıklama olur</div></div>
@@ -6449,10 +6475,10 @@ function emailTalep(pid) {
         <select class="inp" id="et_proj">${ps.map(p => `<option value="${esc(p.id)}" ${p === pr ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>` : ''}
       <div class="id-fl"><label for="et_from">Kimden</label></div>
       <input class="inp" id="et_from" maxlength="300" autocomplete="off" placeholder="Ad Soyad &lt;ad@ornek.com&gt;">
-      <div class="id-fl"><span>Talep eden <span class="req">*</span></span></div>
+      ${cuo ? `<div class="id-fl"><span>Talep eden <span class="req">*</span></span></div>
       <button type="button" class="id-pick" id="et_reqBtn" aria-haspopup="menu"></button>
       <div class="id-hint tp-match" id="et_match" role="status"></div>
-      <div class="id-err" id="et_req_e" role="alert"></div>
+      <div class="id-err" id="et_req_e" role="alert"></div>` : ''}
       <div class="id-fl"><label for="et_sub">Konu <span class="req">*</span></label><span class="num id-cc" id="et_sub_c">0 / 500</span></div>
       <input class="inp" id="et_sub" maxlength="500" autocomplete="off">
       <div class="id-err" id="et_sub_e" role="alert"></div>
@@ -6463,9 +6489,10 @@ function emailTalep(pid) {
       <button type="button" class="btn pri" id="et_ok">${ic('check')}Talep oluştur</button></div>`, 'id-m id-new tp-et');
   const m = $('#scrim .modal'); m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-labelledby', 'etTitle');
   const setReq = (r, isAuto = false) => { REQ = r && reqInfo(r)?.p ? r : null; auto = !!REQ && isAuto;
-    const b = $('#et_reqBtn'); b.innerHTML = reqBtnHtml(REQ); b.classList.toggle('empty', !REQ);
+    const b = $('#et_reqBtn'); if (!b) return; b.innerHTML = reqBtnHtml(REQ); b.classList.toggle('empty', !REQ);
     b.setAttribute('aria-label', 'Talep eden: ' + (reqName(REQ) || 'Seçilmedi')); if (REQ) $('#et_req_e').innerHTML = ''; };
   const match = () => {
+    if (!cuo) return;
     const f = parseFrom($('#et_from').value), hit = reqByEmail(f.email), out = $('#et_match');
     if (hit) { setReq(hit, true); out.innerHTML = `${ic('check')}Eşleşti: <b>${esc(reqName(hit))}</b>`; return; }
     if (auto) setReq(null);
@@ -6477,12 +6504,12 @@ function emailTalep(pid) {
   $('#et_from').addEventListener('input', match);
   $('#et_proj')?.addEventListener('change', e => { pr = ps.find(p => p.id === e.target.value) || pr; });
   $('#et_sub').addEventListener('input', () => { $('#et_sub_c').textContent = `${$('#et_sub').value.length} / 500`; if ($('#et_sub').value.trim()) $('#et_sub_e').innerHTML = ''; });
-  $('#et_reqBtn').onclick = e => { e.stopPropagation(); const f = parseFrom($('#et_from').value);
+  if (cuo) $('#et_reqBtn').onclick = e => { e.stopPropagation(); const f = parseFrom($('#et_from').value);
     reqPick($('#et_reqBtn'), '#et_reqBtn', REQ, pr, r => { setReq(r); match(); }, { name: f.name, email: f.email }); };
   setTimeout(() => $('#et_from').focus(), 40);
   $('#et_ok').onclick = () => {
     const s = $('#et_sub').value.trim();
-    if (!REQ) { $('#et_req_e').innerHTML = ic('alert') + 'Talep eden gerekli. Bir kişi seçin ya da yeni kişi ekleyin.'; return $('#et_reqBtn').focus(); }
+    if (cuo && !REQ) { $('#et_req_e').innerHTML = ic('alert') + 'Talep eden gerekli. Bir kişi seçin ya da yeni kişi ekleyin.'; return $('#et_reqBtn').focus(); }
     if (!s) { $('#et_sub_e').innerHTML = ic('alert') + 'Konu gerekli.'; return $('#et_sub').focus(); }
     const st = statsOf(pr.id), s0 = st.find(x => x.cat === 'todo') || st[0];
     const it = createIssue(pr, { summary: s.slice(0, 500), description: $('#et_body').value.replace(/\s+$/, ''), statusId: s0?.id, requester: REQ }, pr.key);
@@ -6500,14 +6527,15 @@ function poolItems() {
 function renderPool() {
   const ps = poolProjects(), all = poolItems(), edit = canEdit();
   if (TP.proj && !ps.some(p => p.id === TP.proj)) TP.proj = '';
-  const list = all.filter(i => (!TP.proj || i.projectId === TP.proj) && (!TP.cust || i.requester?.customerId === TP.cust) && (!TP.un || !i.assignee))
+  const cuo = cuOn();
+  const list = all.filter(i => (!TP.proj || i.projectId === TP.proj) && (!cuo || !TP.cust || i.requester?.customerId === TP.cust) && (!TP.un || !i.assignee))
     .sort((a, b) => (b.created || 0) - (a.created || 0));
   const cids = [...new Set(all.map(i => i.requester?.customerId).filter(Boolean))].filter(id => (DB.customers || []).some(c => c.id === id));
   if (TP.cust && !cids.includes(TP.cust)) TP.cust = '';
   const mailBtn = id => edit ? `<button type="button" class="btn ${id === 'tp_mail2' ? 'pri' : ''}" id="${id}">${ic('mail')}E-postadan talep oluştur</button>` : '';
   const bar = `<div class="tp-bar" role="group" aria-label="Talep havuzu süzgeci">
       <select class="inp" id="tp_proj" aria-label="Proje"><option value="">Tüm talep projeleri</option>${ps.map(p => `<option value="${esc(p.id)}" ${TP.proj === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
-      <select class="inp" id="tp_cust" aria-label="Cari"><option value="">Tüm cariler</option>${cids.map(id => `<option value="${esc(id)}" ${TP.cust === id ? 'selected' : ''}>${esc(custShort(DB.customers.find(c => c.id === id)))}</option>`).join('')}</select>
+      ${cuo ? `<select class="inp" id="tp_cust" aria-label="Cari"><option value="">Tüm cariler</option>${cids.map(id => `<option value="${esc(id)}" ${TP.cust === id ? 'selected' : ''}>${esc(custShort(DB.customers.find(c => c.id === id)))}</option>`).join('')}</select>` : ''}
       <label class="tp-un"><input type="checkbox" id="tp_un" ${TP.un ? 'checked' : ''}> Yalnız atanmamış</label>
       <span class="spacer"></span>${all.length ? mailBtn('tp_mail') : ''}</div>`;
   const age = t => { const d = Math.floor((Date.now() - (+t || Date.now())) / 864e5); return d <= 0 ? 'bugün' : `${d} gün önce`; };
@@ -6516,7 +6544,7 @@ function renderPool() {
     return `<div class="tp-row" data-tprow="${id}">
       <div class="tp-main"><button type="button" class="hm-t" data-open="${id}" title="${esc(i.summary)}">${esc(i.summary)}</button>
         <div class="hm-sub tp-sub"><span class="k">${esc(i.key)}</span><span class="hm-sep"></span><span class="pj">${ic('folder')}${esc(projName(i.projectId))}</span>
-          <span class="hm-sep"></span><span class="tp-rq ${rn ? '' : 'none'}">${ic('building')}${rn ? esc(rn) : 'Talep eden yok'}</span>
+          ${cuo ? `<span class="hm-sep"></span><span class="tp-rq ${rn ? '' : 'none'}">${ic('building')}${rn ? esc(rn) : 'Talep eden yok'}</span>` : ''}
           <span class="hm-sep"></span><span>${age(i.created)}</span></div></div>
       <span class="tp-as">${u ? `${avat(u.id)}<span>${esc(u.name)}</span>` : `<span class="c-av none">${ic('userx')}</span><span class="muted">Atanmamış</span>`}</span>
       ${edit ? `<button type="button" class="btn sm" data-tpmove="${id}" aria-label="Taşı ve ata: ${esc(i.key)}">${ic('move')}Taşı / ata</button>` : ''}</div>`;
@@ -6617,7 +6645,8 @@ function viewAllowed(v) {
   if (v === 'roadmap') return MOD('epic');
   if (v === 'sprint') return AGILE();                             // Pano türündeki projede sekme yok
   if (v === 'pool') return poolProjects().length > 0;            // talep projesi yoksa havuz yok (görev 12)
-  if (v === 'users' || v === 'system' || v === 'customers') return isAdmin();
+  if (v === 'customers') return isAdmin() && cuOn();
+  if (v === 'users' || v === 'system') return isAdmin();
   if (v === 'admin') return isAdmin() || adminTabs().length > 0;   // proje ayarları: proje Yöneticisi ya da tabloda açık ayar yetkisi
   if (v === 'workspace') return !!wsById(DB.ui.workspace) && visibleWs().some(w => w.id === DB.ui.workspace);
   return true;
@@ -7054,6 +7083,10 @@ const MODULE_LABELS = {
   reporter: ['Raporlayan', 'İşi kimin açtığı bilgisi'],
 };
 const MOD = k => DB?.cfg?.modules?.[k] === true;
+/* Cariler modülü (Sistem → Modüller; genel ayar `modules` = { customers }): yok/true = açık. Kapalıyken menü ve komut
+   paleti girişi, cari seçicileri, projenin cari bağı, raporlardaki cari boyutları, "Cari" hazır alanı ve talep eden
+   arayüzden kalkar; veri silinmez, açınca geri gelir. Sunucu kapalıyken cari yazmalarını reddeder (store.js customersOff). */
+const cuOn = () => DB?.modules?.customers !== false;
 /* Proje türü (#12): 'board' (Pano: kolonlar, sprint yok) | 'agile' (backlog + sprintler). Türü olmayan
    (eski) proje genel sprint ayarından hesaplanır; kayda yazılmaz. Sunucudaki projType ile aynı. */
 const PROJECT_TYPES = ['board', 'agile'];
@@ -7353,7 +7386,7 @@ function cfInput(f, v) {
    tanımı ve işlerdeki değerleri silinmez (eski sürüm açılırsa görür).
    `hidden` iki anlamda: bind'siz kayıtta 005 gizlemesi; hazır alan (bind) kaydında yalnız eski sürümden gizleme.
    Hazır alanlar burada YOK (değerleri cf'de değil): bindOn/bindField ile okunur. Kapatılan (archived) alan görünmez. */
-const liveField = f => !!f && !f.bind && f.archived !== true && f.hidden !== true;
+const liveField = f => !!f && !f.bind && f.archived !== true && f.hidden !== true && f.scope !== 'customer';
 const liveFields = () => (DB.fields || []).filter(liveField);
 const fieldsFor = () => liveFields().filter(f => !f.projectId || f.projectId === DB.ui.project);
 
@@ -7825,9 +7858,9 @@ const PF_TL = { ...Object.fromEntries(PF_TYPES.map(([v, l]) => [v, l])), cari: '
 const PF_TI = { ...Object.fromEntries(PF_TYPES.map(([v, , i]) => [v, i])), cari: 'building' };
 const PF_KEY_RE = /^[a-z0-9_]{1,30}$/;
 /* Serbest alanlar (hazır alan ve 005'in gizlediği eski alan hariç): pid null → tüm projelerde geçerli. */
-const pfFree = pid => (DB.fields || []).filter(f => f && !f.bind && f.hidden !== true && (pid === null ? !f.projectId : f.projectId === pid));
+const pfFree = pid => (DB.fields || []).filter(f => f && !f.bind && f.hidden !== true && f.scope !== 'customer' && (pid === null ? !f.projectId : f.projectId === pid));
 /* Anahtar tekilliği (sunucudaki checkFieldKey ile aynı): proje alanı aynı proje + genel alanlarla, genel alan hepsiyle. */
-const fieldKeyTaken = (key, pid, id) => (DB.fields || []).some(x => x && x.id !== id && x.key === key && !(x.hidden === true && !x.bind)
+const fieldKeyTaken = (key, pid, id) => (DB.fields || []).some(x => x && x.id !== id && x.key === key && x.scope !== 'customer' && !(x.hidden === true && !x.bind)
   && (pid == null || !x.projectId || x.projectId === pid));
 const pfSlug = s => String(s || '').toLocaleLowerCase('tr').replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ç/g, 'c')
   .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 30);
@@ -7858,9 +7891,9 @@ function renderFieldsTab() {
   const can = canFields(pr), sys = isAdmin();
   if (PF && PF.id && !PF.id.startsWith('b:') && !DB.fields.some(f => f.id === PF.id)) PF = null;   // alan başka yerden silindi
   const own = pfFree(pr.id), glob = pfFree(null);
-  const pre = BINDS.map(b => pfRow(bindField(pr.id, b), 'b:' + b, bindOn(pr.id, b), can)).join('');
+  const pre = BINDS.filter(b => b !== 'customerId' || cuOn()).map(b => pfRow(bindField(pr.id, b), 'b:' + b, bindOn(pr.id, b), can)).join('');
   const blk = (icn, t, sub, right, body) => `<section class="pf-blk"><div class="pf-bh">${ic(icn)}<h3>${t}</h3>${sub ? `<span class="sub">${sub}</span>` : ''}<span class="sp"></span>${right}</div>${body}</section>`;
-  const left = blk('receipt', 'Hazır alanlar', 'Faturalama ve cari için', '', pre)
+  const left = blk('receipt', 'Hazır alanlar', cuOn() ? 'Faturalama ve cari için' : 'Faturalama için', '', pre)
     + blk('sliders', 'Bu projenin alanları', `${own.length} alan`, can ? `<button type="button" class="btn pri" id="addField">${ic('plus')}<span class="t">Alan ekle</span></button>` : '',
       own.map(f => pfRow(f, f.id, f.archived !== true, can)).join('')
       || '<div class="pf-empty">Bu projede alan yok. Hazır alanlardan birini açın ya da yeni alan ekleyin.</div>')
@@ -8465,8 +8498,11 @@ const DIMS = {
   month:   { l: 'Ay',      k: w => w.date.slice(0, 7),
              n: m => monthName(m), short: m => m },
 };
+/* Efor raporunun seçili satır/sütun boyutu; Cariler kapalıyken kayıtlı "Cari" seçimi saklanır ama varsayılan kullanılır. */
+const efRowK = () => { const k = DB.ui.efRow || 'user'; return k === 'customer' && !cuOn() ? 'user' : k; };
+const efColK = () => { const k = DB.ui.efCol ?? 'project'; return k === 'customer' && !cuOn() ? 'project' : k; };
 const activeDims = () => Object.entries(DIMS).filter(([k]) =>
-  (k !== 'epic' || MOD('epic')) && (k !== 'sprint' || anyAgile()));
+  (k !== 'epic' || MOD('epic')) && (k !== 'sprint' || anyAgile()) && (k !== 'customer' || cuOn()));
 const MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
                 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 const monthName = m => `${MONTHS[+m.slice(5, 7) - 1]} ${m.slice(0, 4)}`;
@@ -8523,10 +8559,10 @@ function toolbarEffort() {
          <button class="btn sm" id="mNow">Bu ay</button>`}
     <span style="color:var(--ink3)">|</span>
     <select class="inp" id="efRow" style="width:auto">
-      ${activeDims().map(([v, o]) => `<option value="${v}" ${(DB.ui.efRow || 'user') === v ? 'selected' : ''}>Satır: ${o.l}</option>`).join('')}</select>
+      ${activeDims().map(([v, o]) => `<option value="${v}" ${efRowK() === v ? 'selected' : ''}>Satır: ${o.l}</option>`).join('')}</select>
     <select class="inp" id="efCol" style="width:auto">
       <option value="">Sütun: yok</option>
-      ${activeDims().map(([v, o]) => `<option value="${v}" ${(DB.ui.efCol ?? 'project') === v ? 'selected' : ''}>Sütun: ${o.l}</option>`).join('')}</select>
+      ${activeDims().map(([v, o]) => `<option value="${v}" ${(efColK()) === v ? 'selected' : ''}>Sütun: ${o.l}</option>`).join('')}</select>
     <select class="inp" id="efProject" style="width:auto"><option value="">Tüm projeler</option>
       ${(isSuper() ? DB.projects : liveProjects()).map(p2 => `<option value="${p2.id}" ${efProj() === p2.id ? 'selected' : ''}>${esc(p2.name)}</option>`).join('')}</select>
     <select class="inp" id="efUser" style="width:auto"><option value="">Tüm kişiler</option>
@@ -8544,8 +8580,8 @@ function toolbarEffort() {
 function renderEffort() {
   const p = period();
   const logs = periodLogs();
-  const rowD = DIMS[DB.ui.efRow || 'user'];
-  const colK = DB.ui.efCol ?? 'project';
+  const rowD = DIMS[efRowK()];
+  const colK = efColK();
   const colD = colK ? DIMS[colK] : null;
 
   /* boyut değerlerini topla — sabit listesi olanlar hep görünür */
@@ -8565,7 +8601,7 @@ function renderEffort() {
   const grand = logs.reduce((a, w) => a + w.hours, 0);
 
   const wd = workdays(p.from, p.to);
-  const isUser = (DB.ui.efRow || 'user') === 'user';
+  const isUser = efRowK() === 'user';
   const capOfPeriod = u => capOf(u) / 5 * wd;          // haftalık kapasite → dönem kapasitesi
 
   const visible = rows.filter(r => rowTot(r) > 0 || (isUser && !DB.ui.efUser));
@@ -8662,13 +8698,13 @@ function showLogs(title, chip, logs, addCtx) {
 
 /* ---- efor raporu hücresi ---- */
 function drill(rv, cv) {
-  const rowD = DIMS[DB.ui.efRow || 'user'], colK = DB.ui.efCol ?? 'project';
+  const rowD = DIMS[efRowK()], colK = efColK();
   const colD = cv != null && colK ? DIMS[colK] : null;
   const logs = periodLogs().filter(w => String(rowD.k(w)) === String(rv) && (!colD || String(colD.k(w)) === String(cv)));
   showLogs(rowD.n(rv) + (colD ? ' × ' + colD.n(cv) : ''), period().label, logs,
-    { userId: (DB.ui.efRow || 'user') === 'user' ? rv : null,
-      issueId: (DB.ui.efRow || 'user') === 'issue' ? rv : null,
-      date: DIMS[DB.ui.efCol]?.l === 'Gün' ? cv : null });
+    { userId: efRowK() === 'user' ? rv : null,
+      issueId: efRowK() === 'issue' ? rv : null,
+      date: DIMS[efColK()]?.l === 'Gün' ? cv : null });
 }
 
 function wireEffort() {
@@ -8769,6 +8805,10 @@ function grScopeName(kind, id) {
 }
 const GR_NONE = '__none', GR_UNK = '__unk';
 const GR_FKEYS = ['ws', 'proj', 'cu', 'user', 'type', 'bill', 'cfv'];
+/* Etkin süzgeçler (Cariler kapalıyken cari süzgeci saklanır ama uygulanmaz/gösterilmez). */
+const grActF = f => GR_FKEYS.filter(k => f[k] && (k !== 'cu' || cuOn()));
+/* Faturalanabilir saat satırı: cari adı; Cariler kapalıyken tek satır "Tüm projeler". */
+const grCuName = (X, id) => id === GR_NONE ? (cuOn() ? 'Cari bağlı değil' : 'Tüm projeler') : (X.CUM.get(id)?.name || '—');
 /* Parametrik proje alanları: raporlanabilir alan türleri (metin yalnız Excel ayrıntısında değil, hiç boyut değil). */
 const GR_CF_TYPES = ['select', 'checkbox', 'user'];
 const GR_DIM_GROUPS = [['base', 'Temel'], ['preset', 'Hazır alanlar'], ['cf', 'Proje alanları']];
@@ -8792,7 +8832,7 @@ function grCtx() {
   if (f.ms && !GR_MEASURES.some(m => m[0] === f.ms)) delete f.ms;
   if (f.ch && !GR_CHARTS.some(m => m[0] === f.ch)) delete f.ch;
   const scope = grScope();
-  const PM = new Map(), WS = new Map(), CUM = new Map(cuList().map(c => [c.id, c]));
+  const PM = new Map(), WS = new Map(), CUM = new Map(cuOn() ? cuList().map(c => [c.id, c]) : []);   // Cariler kapalı: cari haritası boş (tüm kayıtlar "cari yok")
   scope.forEach(p => { PM.set(p.id, p); WS.set(p.id, wsOf(p)); });
   /* alan seçiliyse proje listesi daralır; geçersiz proje seçimi temizlenir */
   if (f.ws && !scope.some(p => WS.get(p.id) === f.ws)) delete f.ws;
@@ -8800,7 +8840,7 @@ function grCtx() {
   if (f.user && f.user !== GR_UNK && f.user !== GR_NONE && !DB.users.some(u => u.id === f.user)) delete f.user;
   if (f.type && !TYPE[f.type]) delete f.type;
   if (f.bill && !BILLABLE.includes(f.bill)) delete f.bill;
-  if (f.cu && f.cu !== GR_NONE && !CUM.has(f.cu)) delete f.cu;
+  if (cuOn() && f.cu && f.cu !== GR_NONE && !CUM.has(f.cu)) delete f.cu;   // kapalıyken süzgeç saklanır, uygulanmaz
   const IM = new Map(); DB.issues.forEach(i => { if (PM.has(i.projectId)) IM.set(i.id, i); });
   const UM = new Map(DB.users.map(u => [u.id, u]));
   const cuOfP = p => p.customerId && CUM.has(p.customerId) ? p.customerId : GR_NONE;
@@ -8850,6 +8890,7 @@ function grDims(X) {
     billType: { l: 'Fatura türü', g: 'preset', k: (w, i, p) => (X.BON.get(p.id)?.billType !== false && i.billType) || GR_NONE, n: x => x === GR_NONE ? 'Belirtilmemiş' : x },
   };
   D.customer.g = 'preset';
+  if (!cuOn()) delete D.customer;
   for (const [k, d] of X.FD) D[k] = { l: d.l, g: 'cf', cf: d,
     k: (w, i, p) => { const fl = d.byP.get(p.id) || d.glob; if (!fl) return GR_NONE;
       const v = i.cf?.[fl.id];
@@ -8876,7 +8917,7 @@ const grIDate = i => { const t = i?.created ?? i?.createdAt;
   return typeof t === 'string' && /^\d{4}-\d{2}-\d{2}/.test(t) ? t.slice(0, 10) : null; };
 function grCompute() {
   const X = grCtx(), f = X.f, per = grPeriod(), D = grDims(X), ms = grMs(f);
-  const rowK = D[f.row] ? f.row : 'customer';
+  const rowK = D[f.row] ? f.row : (D.customer ? 'customer' : 'project');
   const colK = f.col === '' ? '' : (D[f.col] ? f.col : 'user');
   const rD = D[rowK], cD = colK ? D[colK] : null;
   const cells = new Map(), rT = new Map(), cT = new Map(), bill = new Map(), logs = [], issues = new Set(), projs = new Set();
@@ -8901,7 +8942,7 @@ function grCompute() {
     if (f.bill && b !== f.bill) continue;
     if (cfD && String(cfD.k(w, i, p) ?? GR_NONE) !== f.cfv) continue;
     const cu = X.cuOfP(p);
-    if (f.cu && cu !== f.cu) continue;
+    if (cuOn() && f.cu && cu !== f.cu) continue;
     const h = ms === 'hours' ? (+w.hours || 0) : ms === 'points' ? (+i.points || 0) : 1;
     logs.push({ w, i, p, cu, b, v: h });
     issues.add(i.id); projs.add(p.id);
@@ -8964,7 +9005,7 @@ function grFilterBar(R) {
     cu: id => id === GR_NONE ? 'Cari bağlı değil' : X.CUM.get(id)?.name, user: id => id === GR_UNK ? 'Bilinmeyen' : X.UM.get(id)?.name,
     type: t => TYPE[t]?.[2], bill: b => b, cfv: v => fdim?.n(v) };
   const LBL = { ws: 'Alan', proj: 'Proje', cu: 'Cari', user: 'Kişi', type: 'İş tipi', bill: 'Faturalama', cfv: fdim?.l || 'Alan' };
-  const act = GR_FKEYS.filter(k => f[k]);
+  const act = grActF(f);
   const sk = grSk(f);
   return `<section class="gr-fbar ${GR.sheet ? 'open' : ''}" aria-label="Süzgeçler">
     ${grScopeRow(f, sk)}
@@ -8979,7 +9020,7 @@ function grFilterBar(R) {
       <span class="gr-fhint">${ic('lock')}Süzgeçler sana özel hatırlanır</span>
     </div>
     <div class="gr-fgrid">
-      ${sk === 'all' ? sel('ws', 'Alan', 'Tümü', wsOpts) : ''}${sk === 'project' ? '' : sel('proj', 'Proje', 'Tümü', pOpts)}${sel('cu', 'Cari', 'Tümü', cOpts)}
+      ${sk === 'all' ? sel('ws', 'Alan', 'Tümü', wsOpts) : ''}${sk === 'project' ? '' : sel('proj', 'Proje', 'Tümü', pOpts)}${cuOn() ? sel('cu', 'Cari', 'Tümü', cOpts) : ''}
       ${sel('user', 'Kişi', 'Herkes', uOpts)}${sel('type', 'İş tipi', 'Tümü', tOpts)}${sel('bill', 'Faturalama', 'Tümü', bOpts)}
       <label class="gr-fs ${f.cfk ? 'on' : ''}"><span class="lb">Proje alanı</span><select class="inp" data-grcfk aria-label="Proje alanı süzgeci"><option value="">Seçin</option>${kOpts.map(([v, t]) =>
         `<option value="${esc(v)}" ${f.cfk === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label>
@@ -9033,11 +9074,13 @@ const grTplOn = (t, R) => t.tab ? grTab() === t.tab
   : grTab() === 'sure' && (t.row === 'cf:' ? String(R.rowK).startsWith('cf:') : R.rowK === t.row) && R.colK === t.col;
 function grTplBar(R) {
   return `<section class="gr-tplw" aria-labelledby="grTplH"><div class="gr-tplh" id="grTplH">Hazır raporlar</div>
-    <div class="gr-tpl" role="toolbar" aria-labelledby="grTplH">${GR_TEMPLATES.map(t => `<button type="button" data-grtpl="${t.id}" aria-pressed="${grTplOn(t, R)}">
+    <div class="gr-tpl" role="toolbar" aria-labelledby="grTplH">${grTemplates().map(t => `<button type="button" data-grtpl="${t.id}" aria-pressed="${grTplOn(t, R)}">
       <span class="ti">${ic(t.icon)}</span><span class="tx"><b>${esc(t.l)}</b><span class="s">${esc(t.s)}</span></span></button>`).join('')}</div></section>`;
 }
+/* Cariler kapalıyken "Cari × Proje" yok; Faturalanabilir saat proje kırılımıyla kalır. */
+const grTemplates = () => cuOn() ? GR_TEMPLATES : GR_TEMPLATES.filter(t => t.row !== 'customer').map(t => t.id === 'fatura' ? { ...t, s: 'Projelere göre' } : t);
 function grTpl(id, o = {}) {
-  const t = GR_TEMPLATES.find(x => x.id === id); if (!t) return false;
+  const t = grTemplates().find(x => x.id === id); if (!t) return false;
   const R = grCompute(), f = grF();
   if (!t.tab) {
     let row = t.row;
@@ -9158,7 +9201,7 @@ function grSaveDlg(mode, id, tpl) {
   const shareL = scope.kind === 'all' ? 'Herkesle paylaş (tüm sistem)' : scope.kind === 'ws' ? `“${sl}” çalışma alanıyla paylaş` : `“${sl}” projesiyle paylaş`;
   const vis = r?.vis === 'shared' && canShare && mode === 'edit' ? 'shared' : 'private';
   const per = grPeriod(), custom = f.range === 'custom' && f.from && f.to, thisMon = !custom && per.month === TODAY.slice(0, 7);
-  const tp = tpl ? GR_TEMPLATES.find(t => t.id === tpl) : null;
+  const tp = tpl ? grTemplates().find(t => t.id === tpl) : null;
   const name0 = mode === 'edit' ? r.name : tp ? `${tp.l} (kopya)` : r ? `${r.name} (kopya)`.slice(0, 80) : '';
   openModal(`<div class="m-h"><b id="grs_t">${mode === 'edit' ? 'Raporu düzenle' : tp ? 'Hazır raporu kopyala' : 'Raporu kaydet'}</b><button class="x" data-close aria-label="Kapat">×</button></div>
     <div class="ws-b gr-sdl">
@@ -9258,7 +9301,7 @@ function grList() {
         <button type="button" class="btn sm" data-grcopy="${esc(r.id)}">${ic('copy')}Kopyala</button>
         ${can ? `<button type="button" class="btn sm danger" data-grdel="${esc(r.id)}" aria-label="${esc(r.name)}: sil">${ic('trash')}Sil</button>` : ''}</div></li>`; };
   const recent = (Array.isArray(DB.ui.grRecent) ? DB.ui.grRecent : []).map(id => typeof id !== 'string' ? null
-    : id.startsWith('tpl:') ? (t => t && { id, name: t.l, icon: t.icon })(GR_TEMPLATES.find(t => 'tpl:' + t.id === id))
+    : id.startsWith('tpl:') ? (t => t && { id, name: t.l, icon: t.icon })(grTemplates().find(t => 'tpl:' + t.id === id))
     : (r => r && { id, name: r.name, icon: r.vis === 'shared' ? 'users' : 'star' })(all.find(r => r.id === id))).filter(Boolean).slice(0, 5);
   const sec = (k, icn, h, n, body, empty) => `<section class="gr-card gr-rls" data-grsec="${k}" aria-labelledby="grh-${k}">
       <div class="gr-card-h"><span class="gr-rlh" id="grh-${k}">${ic(icn)}${h}</span><span class="meta"><b>${n}</b> rapor</span></div>
@@ -9268,7 +9311,7 @@ function grList() {
       <button type="button" class="btn pri" data-grnew>${ic('plus')}Yeni rapor</button></div>
     ${recent.length ? `<section class="gr-rrec" aria-labelledby="grh-rec"><span class="gr-rlh" id="grh-rec">${ic('recent')}Son açılanlar</span>
       <div class="gr-rchips">${recent.map(x => `<button type="button" class="gr-rchip" data-gropen="${esc(x.id)}">${ic(x.icon)}<span>${esc(x.name)}</span></button>`).join('')}</div></section>` : ''}
-    ${sec('tpl', 'zap', 'Hazır raporlar', GR_TEMPLATES.length, GR_TEMPLATES.map(tplRow).join(''), '')}
+    ${sec('tpl', 'zap', 'Hazır raporlar', grTemplates().length, grTemplates().map(tplRow).join(''), '')}
     ${sec('mine', 'star', 'Benim raporlarım', mine.length, mine.map(repRow).join(''), `Henüz kaydettiğin rapor yok. “Özet tablo” sekmesinde kapsamı, boyutları ve süzgeçleri seç, sonra “Raporu kaydet”e bas.`)}
     ${sec('shared', 'users', 'Paylaşılan', shared.length, shared.map(repRow).join(''), 'Seninle paylaşılan rapor yok. Paylaşılan raporu yalnız kapsamına (çalışma alanı ya da proje) erişebilenler görür.')}
     <div class="gr-rl-empty gr-rl-none" id="grQNone" hidden>Aramayla eşleşen rapor yok.</div>`;
@@ -9395,7 +9438,7 @@ function grDrill(R) {
 function grBillRows(R) {
   const X = R.X;
   return [...R.bill.entries()].map(([id, v]) => ({ id, f: v.f, n: v.n, t: v.f + v.n,
-    name: id === GR_NONE ? 'Cari bağlı değil' : (X.CUM.get(id)?.name || '—'), pas: id !== GR_NONE && !cuActive(X.CUM.get(id)),
+    name: grCuName(X, id), pas: id !== GR_NONE && !cuActive(X.CUM.get(id)),
     projs: [...v.p.entries()].map(([pid, x]) => ({ p: X.PM.get(pid), f: x.f, n: x.n, t: x.f + x.n })).sort((a, b) => b.t - a.t || String(a.p.key).localeCompare(String(b.p.key))) }))
     .sort((a, b) => (a.id === GR_NONE) - (b.id === GR_NONE) || b.t - a.t || a.name.localeCompare(b.name, 'tr'));
 }
@@ -9418,12 +9461,12 @@ function grFatura(R) {
       ${open ? `<ul class="gr-fc-p">${r.projs.map(x => `<li><span class="r1"><span class="gr-pk">${esc(x.p.key)}</span><span class="gr-pn">${esc(x.p.name)}</span>${x.p.archived ? grTag('arch') : ''}</span>
         <span class="r2"><span>F ${grH(x.f)}</span><span>FY ${grH(x.n)}</span><b>T ${grH(x.t)}</b><span>%${grPct(x.f, x.t)}</span></span></li>`).join('')}</ul>` : ''}</article>`; }).join('');
   return `<div class="gr-kpis">${grKpi('issues', 'Faturalanacak', `<span data-grf-f="${grR2(F)}">${grH(F)}</span>`)}${grKpi('pause', 'Faturalanmayacak', `<span data-grf-n="${grR2(N)}">${grH(N)}</span>`)}
-      ${grKpi('clock', 'Toplam', `<span data-grf-t="${grR2(T)}">${grH(T)}</span>`)}${grKpi('reports', 'Faturalanabilir oran', '%' + grPct(F, T), `${rows.filter(r => r.id !== GR_NONE).length} cari · ${R.projs.size} proje`, '')}</div>
+      ${grKpi('clock', 'Toplam', `<span data-grf-t="${grR2(T)}">${grH(T)}</span>`)}${grKpi('reports', 'Faturalanabilir oran', '%' + grPct(F, T), `${cuOn() ? `${rows.filter(r => r.id !== GR_NONE).length} cari · ` : ''}${R.projs.size} proje`, '')}</div>
     <section class="gr-card" aria-label="Faturalanabilir saat">
-      <div class="gr-card-h"><span class="meta"><b>${rows.length}</b> satır · ${esc(R.per.label)} · cari = projenin carisi</span><span class="spacer"></span>
+      <div class="gr-card-h"><span class="meta"><b>${rows.length}</b> satır · ${esc(R.per.label)}${cuOn() ? ' · cari = projenin carisi' : ''}</span><span class="spacer"></span>
         <button type="button" class="btn gr-xls" data-grxls>${ic('issues')}Excel'e aktar</button></div>
       <div class="gr-ftwrap"><table class="gr-ft" id="grFt"><colgroup><col style="width:38%"><col><col><col><col style="width:150px"></colgroup>
-        <thead><tr><th scope="col">Cari</th><th scope="col">Faturalanacak</th><th scope="col">Faturalanmayacak</th><th scope="col">Toplam</th><th scope="col">Oran</th></tr></thead>
+        <thead><tr><th scope="col">${cuOn() ? 'Cari' : 'Projeler'}</th><th scope="col">Faturalanacak</th><th scope="col">Faturalanmayacak</th><th scope="col">Toplam</th><th scope="col">Oran</th></tr></thead>
         <tbody>${table}</tbody>
         <tfoot><tr><td>Toplam</td><td>${grH(F)}</td><td>${grH(N)}</td><td class="grand">${grH(T)}</td><td>${grRate(F, T)}</td></tr></tfoot></table></div>
       <div class="gr-fc-list">${cards}<article class="gr-fc tot"><div class="gr-fc-n"><div><span>Faturalanacak</span><b>${grH(F)}</b></div><div><span>Faturalanmayacak</span><b>${grH(N)}</b></div><div class="t"><span>Toplam</span><b>${grH(T)}</b></div></div></article></div>
@@ -9437,19 +9480,20 @@ function grExcel() {
   if (!R.logs.length) return toast(R.ms === 'hours' ? 'Aktarılacak süre kaydı yok: bu süzgeçlerle süre kaydı bulunmuyor' : 'Aktarılacak iş yok: bu süzgeçlerle iş bulunmuyor', { warn: true });
   const X = R.X, f = R.f, hrs = R.ms === 'hours', mL = GR_MEASURES.find(m => m[0] === R.ms)[1];
   const LBL = { ws: 'Alan', proj: 'Proje', cu: 'Cari', user: 'Kişi', type: 'İş tipi', bill: 'Faturalama', cfv: R.D[f.cfk]?.l || 'Alan' };
-  const val = { ws: id => wsById(id)?.name, proj: id => X.PM.get(id)?.name, cu: id => id === GR_NONE ? 'Cari bağlı değil' : X.CUM.get(id)?.name,
+  const val = { ws: id => wsById(id)?.name, proj: id => X.PM.get(id)?.name, cu: id => grCuName(X, id),
     user: id => id === GR_UNK ? 'Bilinmeyen' : id === GR_NONE ? 'Atanmamış' : X.UM.get(id)?.name, type: t => TYPE[t]?.[2], bill: b => b, cfv: v => R.D[f.cfk]?.n(v) };
   const cur = grCurRep(), sk = grSk(f);
   const top = [[(cur ? cur.name + ' — ' : '') + (tab === 'fatura' ? 'Genel rapor — Faturalanabilir saat' : hrs ? 'Genel rapor — Süre' : 'Genel rapor — ' + mL)],
     ['Kapsam', sk === 'all' ? 'Tüm sistem' : grScopeName(sk, f.sid)], ['Dönem', R.per.label + (hrs ? '' : ' (işin oluşturulma tarihi)')],
-    ['Süzgeçler', GR_FKEYS.filter(k => f[k]).map(k => `${LBL[k]}: ${val[k](f[k]) || '—'}`).join(' · ') || 'Yok'], []];
+    ['Süzgeçler', grActF(f).map(k => `${LBL[k]}: ${val[k](f[k]) || '—'}`).join(' · ') || 'Yok'], []];
   let sum;
   if (tab === 'fatura') {
     const rows = grBillRows(R), F = rows.reduce((a, r) => a + r.f, 0), N = rows.reduce((a, r) => a + r.n, 0);
-    sum = [...top, ['Cari', 'Faturalanacak', 'Faturalanmayacak', 'Toplam', 'Oran %'],
+    const cl = cuOn() ? 'Cari' : 'Projeler';
+    sum = [...top, [cl, 'Faturalanacak', 'Faturalanmayacak', 'Toplam', 'Oran %'],
       ...rows.map(r => [r.name + (r.pas ? ' (pasif)' : ''), grR2(r.f), grR2(r.n), grR2(r.t), grPct(r.f, r.t)]),
       ['TOPLAM', grR2(F), grR2(N), grR2(F + N), grPct(F, F + N)], [], ['Proje kırılımı'],
-      ['Cari', 'Proje', 'Faturalanacak', 'Faturalanmayacak', 'Toplam', 'Oran %'],
+      [cl, 'Proje', 'Faturalanacak', 'Faturalanmayacak', 'Toplam', 'Oran %'],
       ...rows.flatMap(r => r.projs.map(x => [r.name, `${x.p.key} — ${x.p.name}${x.p.archived ? ' (arşivli)' : ''}`, grR2(x.f), grR2(x.n), grR2(x.t), grPct(x.f, x.t)]))];
   } else {
     const { rD, cD, rows, cols } = R;
@@ -9467,8 +9511,9 @@ function grExcel() {
       hrs ? w.comment?.trim() || '' : X.STM.get(i.statusId)?.name || '',
       tv(w, i, p), b, grR2(val), ...cfx.map(k => { const v = R.D[k].k(w, i, p); return v === GR_NONE ? '' : R.D[k].n(v); })]),
     ['', '', '', '', '', '', '', '', 'TOPLAM', grR2(R.grand)]];
+  const cuo = cuOn(), noCu = r => (cuo ? r : r.slice(1));   // Cariler kapalı: ayrıntıda Cari sütunu yok
   const blob = makeXlsx([{ name: 'Özet', rows: sum, widths: [34, 16, 16, 16, 16, 12] },
-    { name: 'Detay', rows: detail, widths: [26, 18, 24, 12, 20, 36, 40, 12, 16, 10] }]);
+    { name: 'Detay', rows: detail.map(noCu), widths: noCu([26, 18, 24, 12, 20, 36, 40, 12, 16, 10]) }]);
   download(blob, `genel-rapor-${tab}${hrs ? '' : '-' + R.ms}-${R.per.file}.xlsx`);
   toast('Excel dosyası hazırlandı');
 }
@@ -11258,6 +11303,64 @@ const CU_MAX_CT = 200;
 /* mailto: bağlantısına basılır: ? & " < > ve boşluk yok (sunucu validate.js cuEmail ile aynı; değişmeyen eski adres geçer). */
 const CU_EMAIL = /^[^\s@?&"<>]+@[^\s@?&"<>]+\.[^\s@?&"<>]+$/;
 let CU_Q = '', CU_KEYS = new Map();
+/* Cari alanları (fields.scope = 'customer'): genel, projesiz; değer customers.data.cf[alan kimliği]. Tanımı yalnız sistem
+   yöneticisi yazar (sunucu: store.js checkScope projesiz alan, validate.js RULES.fields). Kayıtlar hidden:true taşır: eski
+   sürümün iş formlarında görünmez. Kapatılan (archived) alan formda, kartta, listede ve CSV'de yok; değerler silinmez. */
+const CUF_TYPES = [['text', 'Metin', 'ftext'], ['number', 'Sayı', 'hash'], ['date', 'Tarih', 'cal'], ['select', 'Seçim', 'list'], ['checkbox', 'Evet/Hayır', 'chkbox']];
+const CUF_TL = Object.fromEntries(CUF_TYPES.map(([v, l]) => [v, l]));
+const cuFields = () => (DB.fields || []).filter(f => f && f.scope === 'customer' && !f.bind && !f.projectId);
+const cuLiveFields = () => cuFields().filter(f => f.archived !== true);
+const cuCfOf = c => (c && c.cf && typeof c.cf === 'object' && !Array.isArray(c.cf) ? c.cf : {});
+const cuCfHas = (c, f) => { const v = cuCfOf(c)[f.id]; return v != null && v !== ''; };
+function cuCfShow(f, v) {
+  if (v == null || v === '') return '—';
+  if (f.type === 'checkbox') return v === true ? 'Evet' : v === false ? 'Hayır' : String(v);
+  if (f.type === 'date' && /^\d{4}-\d{2}-\d{2}$/.test(String(v))) return trDate(v);
+  if (f.type === 'number' && typeof v === 'number') return v.toLocaleString('tr-TR', { maximumFractionDigits: 6 });
+  return String(v);
+}
+/* CSV hücresi: geri okunabilir biçim (evet/hayır, YYYY-AA-GG, virgüllü sayı). */
+const cuCfCsv = (f, v) => v == null || v === '' ? '' : f.type === 'checkbox' ? (v === true ? 'Evet' : v === false ? 'Hayır' : String(v))
+  : f.type === 'number' && typeof v === 'number' ? String(v).replace('.', ',') : String(v);
+const CU_YN = { evet: true, e: true, '1': true, true: true, var: true, hayir: false, h: false, '0': false, false: false, yok: false };
+/* Girilen metni alan türüne çevirir: { v } (undefined = boş) ya da { err }. prev: kayıttaki değer (seçenekten çıkarılmış
+   eski değer olduğu gibi kalabilsin). Kural sunucudaki cfOk ile uyumlu (metin ≤ 1000, sayı, boolean). */
+function cuCfParse(f, raw, prev) {
+  const t = String(raw ?? '').trim();
+  if (t === '') return { v: undefined };
+  if (prev != null && t === String(prev)) return { v: prev };
+  if (f.type === 'number') {
+    let x = t.replace(/\s/g, ''); if (x.includes(',')) x = x.replace(/\./g, '').replace(',', '.');
+    const n = /^[-+]?\d*\.?\d+(e[-+]?\d+)?$/i.test(x) ? Number(x) : NaN;
+    return Number.isFinite(n) ? { v: n } : { err: `${f.name}: sayı olmalı` };
+  }
+  if (f.type === 'checkbox') { const b = CU_YN[cuCsvKey(t)]; return b === undefined ? { err: `${f.name}: Evet ya da Hayır olmalı` } : { v: b }; }
+  if (f.type === 'date') {
+    let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(t), y, mo, d;
+    if (m) [, y, mo, d] = m; else if ((m = /^(\d{1,2})[./](\d{1,2})[./](\d{4})$/.exec(t))) [, d, mo, y] = m;
+    const iso = m ? `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}` : '';
+    const ok = iso && !Number.isNaN(Date.parse(iso + 'T00:00:00Z')) && new Date(iso + 'T00:00:00Z').toISOString().slice(0, 10) === iso;
+    return ok ? { v: iso } : { err: `${f.name}: tarih GG.AA.YYYY ya da YYYY-AA-GG olmalı` };
+  }
+  if (f.type === 'select') {
+    const o = (f.options || []).find(x => qmKey(x) === qmKey(t));
+    return o !== undefined ? { v: o } : { err: `${f.name}: seçeneklerden biri olmalı (${(f.options || []).join(', ')})` };
+  }
+  return t.length > 1000 ? { err: `${f.name}: en fazla 1000 karakter` } : { v: t };
+}
+/* Cari formundaki alan girişi (k: sıra; kimlik cucf_k). Kullanıcı metinleri esc() ile. */
+function cuCfInput(f, v, k) {
+  const a = `class="inp" id="cucf_${k}" data-cucf="${esc(f.id)}" aria-describedby="cucf_${k}_e"`, has = v != null && v !== '';
+  const opts = Array.isArray(f.options) ? f.options : [];
+  switch (f.type) {
+    case 'select': return `<select ${a}><option value="">—</option>${opts.map(o => `<option value="${esc(o)}" ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('')}${
+      has && !opts.includes(v) ? `<option value="${esc(String(v))}" selected>${esc(String(v))} (eski değer)</option>` : ''}</select>`;
+    case 'checkbox': return `<select ${a}><option value="">—</option><option value="evet" ${v === true ? 'selected' : ''}>Evet</option><option value="hayir" ${v === false ? 'selected' : ''}>Hayır</option></select>`;
+    case 'date': return `<input type="date" ${a} value="${esc(has ? String(v) : '')}">`;
+    case 'number': return `<input ${a} inputmode="decimal" value="${esc(has ? String(v).replace('.', ',') : '')}" placeholder="—">`;
+    default: return `<input ${a} maxlength="1000" value="${esc(has ? String(v) : '')}" placeholder="—">`;
+  }
+}
 const cuList = () => (DB.customers || []).filter(c => c && c.id);
 const cuById = id => id ? cuList().find(c => c.id === id) : undefined;
 const cuActive = c => c?.active !== false;
@@ -11278,7 +11381,7 @@ function renderCustomers() {
   CU_KEYS = new Map(all.map(c => [c.id, cuSearchKey(c)]));
   if (!all.length) return `<div class="hm-empty cu-empty" data-cuempty="none"><span class="hm-empty-ic">${ic('building')}</span><h3>Henüz cari yok</h3>${admin
     ? `<p>Müşteri ve tedarikçilerinizi ekleyin; projelerinizi bir cariye bağlayabilirsiniz.</p>
-       <div class="acts"><button type="button" class="btn pri" data-cunew>${ic('plus')}Cari ekle</button><button type="button" class="btn" data-cuimp>${ic('up')}CSV'den içe aktar</button></div>`
+       <div class="acts"><button type="button" class="btn pri" data-cunew>${ic('plus')}Cari ekle</button><button type="button" class="btn" data-cuimp>${ic('up')}CSV'den içe aktar</button><button type="button" class="btn" data-cufields>${ic('sliders')}Cari alanları</button></div>`
     : '<p>Cari eklemek için yöneticinize başvurun.</p>'}</div>`;
   const kind = cuCurKind(), pas = !!DB.ui.cuPassive;
   const base = all.filter(c => pas || cuActive(c)), nPas = all.filter(c => !cuActive(c)).length;
@@ -11289,7 +11392,7 @@ function renderCustomers() {
       <div class="cu-seg" role="radiogroup" aria-label="Tür">${seg}</div>
       <button type="button" class="cu-tog" data-cupas aria-pressed="${pas}"><span class="cu-sw" aria-hidden="true"></span>Pasifleri de göster <span class="n">(${nPas})</span></button>
       <span class="spacer"></span>
-      ${admin ? `<button type="button" class="btn" data-cuimp>${ic('up')}İçe aktar</button><button type="button" class="btn" data-cuexp>${ic('dn')}Dışa aktar (CSV)</button>
+      ${admin ? `<button type="button" class="btn" data-cufields>${ic('sliders')}Cari alanları</button><button type="button" class="btn" data-cuimp>${ic('up')}İçe aktar</button><button type="button" class="btn" data-cuexp>${ic('dn')}Dışa aktar (CSV)</button>
         <button type="button" class="btn pri add" data-cunew>${ic('plus')}Cari ekle</button>` : ''}
     </div>
     <div id="cuList">${cuListHtml()}</div>`;
@@ -11316,15 +11419,19 @@ function cuListHtml() {
       <div class="acts"><button type="button" class="btn" data-cuclear>${ic('x')}Süzgeçleri temizle</button></div></div>`;
   }
   const nOff = rows.filter(c => !cuActive(c)).length;
+  const lf = cuLiveFields().filter(f => f.onList === true);          // listede sütun olarak gösterilen cari alanları
   return `<div class="cu-meta"><span><b>${rows.length}</b> cari${nOff ? ` · <b>${nOff}</b> pasif dahil` : ''} · unvana göre A→Z</span></div>
     <div class="cu-wrap"><table class="cu-tbl" aria-label="Cariler"><thead><tr>
       <th aria-sort="ascending"><span class="srt">Unvan ${ic('up')}</span></th><th style="width:140px">Tür</th><th style="width:150px">Vergi no</th>
+      ${lf.map(f => `<th style="width:140px" data-cufcol="${esc(f.id)}"><span title="${esc(f.name)}">${esc(f.name)}</span></th>`).join('')}
       <th class="r" style="width:96px">Projeler</th><th style="width:108px">Durum</th><th style="width:44px"><span class="ws-sr">Aç</span></th></tr></thead>
     <tbody>${rows.map(c => { const off = !cuActive(c), n = nProj.get(c.id) || 0, tx = String(c.taxNo || '');
       return `<tr class="cu-row ${off ? 'is-off' : 'is-on'}" tabindex="0" data-cuopen="${esc(c.id)}" aria-label="${esc(c.name)}${off ? ' (Pasif)' : ''}">
         <td class="c-nm"><span class="cu-nm">${esc(c.name)}</span><span class="cu-sn ${c.shortName ? '' : 'empty'}">${c.shortName ? esc(c.shortName) : '<span class="ws-sr">Kısa ad yok</span>&nbsp;'}</span></td>
         <td class="c-kd">${cuKindBadge(c.kind)}</td>
-        <td class="c-tx">${tx ? `<span class="cu-tax"><span class="mob-l">${tx.length === 11 ? 'TCKN' : 'VKN'} </span>${esc(tx)}</span>` : '<span class="cu-tax none">— <span class="mob-l">vergi no yok</span></span>'}</td>
+        <td class="c-tx">${tx ? `<span class="cu-tax"><span class="mob-l">Vergi no </span>${esc(tx)}</span>${tx.length === 11 ? '<span class="cu-oldtag" title="11 haneli eski kayıt: salt okunur, yalnız yöneticiye görünür">eski kayıt</span>' : ''}` : '<span class="cu-tax none">— <span class="mob-l">vergi no yok</span></span>'}</td>
+        ${lf.map(f => { const v = cuCfOf(c)[f.id], t = cuCfShow(f, v);
+          return `<td class="c-cf" title="${esc(f.name)}: ${esc(t)}"><span class="mob-l">${esc(f.name)}: </span>${v == null || v === '' ? '<span class="none">—</span>' : esc(t)}</td>`; }).join('')}
         <td class="c-pj r"><span class="cu-pj ${n ? '' : 'zero'}"><span class="cu-mob">${ic('folder')}</span>${n}<span class="mob-l"> proje</span></span></td>
         <td class="c-st">${cuStatus(c)}</td>
         <td class="c-go r"><span class="cu-go">${ic('chevr')}</span></td></tr>`; }).join('')}</tbody></table></div>`;
@@ -11372,7 +11479,8 @@ function cuSummaryHtml(c) {
 /* Üye / izleyici: salt okunur kart + özet (düzenleme düğmesi hiç çizilmez). */
 function customerView(c) {
   const ct = Array.isArray(c.contacts) ? c.contacts.filter(x => x && typeof x === 'object') : [];
-  const tx = String(c.taxNo || ''), masked = tx.includes('*');
+  /* Yalnız 10 haneli VKN gösterilir: 11 haneli eski kayıt (izleyiciye maskeli gelir) yalnız yöneticinin formunda görünür. */
+  const tx = String(c.taxNo || ''), vkn = /^\d{10}$/.test(tx) ? tx : '';
   const dd = v => v ? `<dd>${esc(v)}</dd>` : '<dd class="none">—</dd>';
   const person = x => `<div class="cu-person"><span class="cu-av" aria-hidden="true">${esc(cuIni(x.name))}</span><div class="tx"><b>${esc(x.name)}</b>${x.title ? ` <span class="r">· ${esc(x.title)}</span>` : ''}
       ${x.email || x.phone ? `<div class="ln">${x.email ? `<span>${ic('mail')}${esc(x.email)}</span>` : ''}${x.phone ? `<span>${ic('phone')}${esc(x.phone)}</span>` : ''}</div>` : ''}</div></div>`;
@@ -11383,12 +11491,12 @@ function customerView(c) {
       <dl class="cu-dl">
         <dt>Kısa ad</dt>${c.shortName ? `<dd>${esc(c.shortName)}</dd>` : '<dd class="none">— (unvan kullanılır)</dd>'}
         <dt>Vergi dairesi</dt>${dd(c.taxOffice)}
-        <dt>${tx.length === 11 ? 'T.C. kimlik no' : 'Vergi no'}</dt>${tx ? `<dd class="mono" id="cu_tx">${masked
-          ? `<span class="cu-mask"><span>${esc(tx)}</span><span class="why">${ic('lock')}İzleyiciye maskeli</span></span>` : esc(tx)}</dd>` : '<dd class="none">—</dd>'}
+        <dt>Vergi no</dt>${vkn ? `<dd class="mono" id="cu_tx">${esc(vkn)}</dd>` : '<dd class="none" id="cu_tx">—</dd>'}
         <dt>Adres</dt>${dd(c.address)}
         <dt>Telefon</dt>${dd(c.phone)}
         <dt>E-posta</dt>${c.email ? `<dd><a href="mailto:${esc(encodeURIComponent(c.email))}">${esc(c.email)}</a></dd>` : '<dd class="none">—</dd>'}
         <dt>Notlar</dt>${dd(c.notes)}
+        ${cuLiveFields().map(f => `<dt data-cufv="${esc(f.id)}">${esc(f.name)}</dt>${cuCfHas(c, f) ? `<dd>${esc(cuCfShow(f, cuCfOf(c)[f.id]))}</dd>` : '<dd class="none">—</dd>'}`).join('')}
       </dl>
       <div class="cu-sech"><h3>${ic('users')}Yetkili kişiler <span class="n">${ct.length}</span></h3></div>
       ${ct.length ? ct.map(person).join('') : '<div class="cu-hint">Yetkili kişi yok.</div>'}
@@ -11405,6 +11513,9 @@ function customerForm(id) {
   let kind = CU_KIND[c?.kind] ? c.kind : '', active = c ? cuActive(c) : true, shown = new Set(), all = false;
   const cts = (Array.isArray(c?.contacts) ? c.contacts : []).filter(x => x && typeof x === 'object').map(x => ({ ...x }));
   const v = k => String(c?.[k] ?? '');
+  /* Eski 11 haneli vergi no (T.C. kimlik no) silinmez: girişte görünmez, altında salt okunur "eski kayıt"; yeni VKN yazılırsa yerine geçer. */
+  const oldTx = /^\d{11}$/.test(v('taxNo')) ? v('taxNo') : '';
+  const cfs = cuLiveFields(), cf0 = cuCfOf(c);
   const cnt = (fid, max) => `<span class="cu-cnt" id="${fid}_c">${v({ cu_n: 'name', cu_s: 'shortName', cu_a: 'address', cu_no: 'notes' }[fid]).length} / ${max}</span>`;
   const fld = (fid, label, input, o = {}) => `<div class="cu-fld ${o.full ? 'full' : ''}" id="${fid}_f"><label for="${fid}"><span>${label}${o.req ? '<span class="req" aria-hidden="true">*</span>' : ''}</span>${o.right || ''}</label>
       ${input}<div class="cu-err" id="${fid}_e" role="alert"></div>${o.hint || ''}</div>`;
@@ -11421,17 +11532,21 @@ function customerForm(id) {
             ${Object.entries(CU_KIND).map(([k, [l, i]]) => `<button type="button" role="radio" data-cuk="${k}" aria-checked="${kind === k}" tabindex="${kind === k || (!kind && k === 'customer') ? 0 : -1}">${ic(i)}${l}</button>`).join('')}</div>
           <div class="cu-err" id="cu_k_e" role="alert"></div></div>
         ${fld('cu_vd', 'Vergi dairesi', inp('cu_vd', 'taxOffice', 100))}
-        ${fld('cu_vn', 'Vergi no', inp('cu_vn', 'taxNo', 40, 'inputmode="numeric" style="font-family:var(--mono)" aria-describedby="cu_vn_h"'),
-          { right: '<span class="opt" id="cu_vn_h">10 hane VKN · 11 hane TCKN</span>' })}
+        ${fld('cu_vn', 'Vergi no', `<input class="inp" id="cu_vn" value="${oldTx ? '' : esc(v('taxNo'))}" maxlength="40" inputmode="numeric" style="font-family:var(--mono)" aria-describedby="cu_vn_h">`,
+          { right: '<span class="opt" id="cu_vn_h">10 hane VKN</span>',
+            hint: oldTx ? `<div class="cu-hint" id="cu_vn_old">${ic('lock')}<span>Eski kayıt (salt okunur): <span style="font-family:var(--mono)">${esc(oldTx)}</span>. Yeni bir VKN girerseniz yerine geçer.</span></div>` : '' })}
         ${fld('cu_a', 'Adres', `<textarea class="inp" id="cu_a" rows="2" maxlength="500">${esc(v('address'))}</textarea>`, { full: true, right: cnt('cu_a', 500) })}
         ${fld('cu_p', 'Telefon', inp('cu_p', 'phone', 30, 'inputmode="tel"'))}
         ${fld('cu_m', 'E-posta', inp('cu_m', 'email', 200, 'type="email"'))}
         ${fld('cu_no', 'Notlar', `<textarea class="inp" id="cu_no" rows="2" maxlength="2000" aria-describedby="cu_no_h">${esc(v('notes'))}</textarea>`,
-          { full: true, right: cnt('cu_no', 2000), hint: `<div class="cu-hint warn" id="cu_no_h">${ic('shield')}Kişisel veya hassas bilgi yazmayın (T.C. kimlik no, sağlık, banka bilgisi vb.).</div>` })}
+          { full: true, right: cnt('cu_no', 2000), hint: `<div class="cu-hint warn" id="cu_no_h">${ic('shield')}Kişisel veya hassas bilgi yazmayın (sağlık, banka bilgisi vb.).</div>` })}
         <div class="cu-fld full"><div class="cu-active">
           <button type="button" role="switch" id="cu_act" aria-checked="${active}"><span class="cu-sw" aria-hidden="true"></span><span id="cu_act_l">${active ? 'Etkin' : 'Pasif'}</span></button>
           <span class="tx">Pasif cariler yeni projelere bağlanamaz; mevcut bağlar ve geçmiş süreler korunur.</span></div></div>
       </div>
+      ${cfs.length ? `<div class="cu-sech"><h3>${ic('sliders')}Cari alanları <span class="n">${cfs.length}</span></h3></div>
+      <div class="cu-form" id="cu_cf">${cfs.map((f, k) => `<div class="cu-fld" id="cucf_${k}_f"><label for="cucf_${k}"><span>${esc(f.name)}</span><span class="opt">${esc(CUF_TL[f.type] || '')}</span></label>
+        ${cuCfInput(f, cf0[f.id], k)}<div class="cu-err" id="cucf_${k}_e" role="alert"></div></div>`).join('')}</div>` : ''}
       <div class="cu-sech"><h3>${ic('users')}Yetkili kişiler <span class="n" id="cu_ctn">${cts.length}</span></h3></div>
       <div class="cu-ct" id="cu_ct"></div>
       <button type="button" class="cu-add" id="cu_add">${ic('userplus')}Kişi ekle</button>
@@ -11468,7 +11583,7 @@ function customerForm(id) {
     if (val('cu_s').trim().length > 60) e.cu_s = 'Kısa ad en fazla 60 karakter';
     if (val('cu_vd').trim().length > 100) e.cu_vd = 'Vergi dairesi en fazla 100 karakter';
     const tn = val('cu_vn').replace(/[\s-]/g, '');
-    if (tn && !/^\d{10,11}$/.test(tn)) e.cu_vn = 'Vergi numarası 10 ya da 11 haneli olmalı';
+    if (tn && !/^\d{10}$/.test(tn)) e.cu_vn = 'Vergi numarası 10 haneli olmalı';
     else if (tn) { const o = cuList().find(x => x.id !== c?.id && x.taxNo === tn);
       if (o) e.cu_vn = `Bu vergi numarasıyla kayıtlı cari var: ${esc(o.name)} · <a href="#" role="button" data-cuopen="${esc(o.id)}">Kartı aç</a>`; }
     if (val('cu_a').trim().length > 500) e.cu_a = 'Adres en fazla 500 karakter';
@@ -11540,16 +11655,116 @@ function customerForm(id) {
       return;
     }
     const val = fid => $('#' + fid).value.trim();
+    /* Cari alanları: türüne göre çevrilir; kapatılmış alanların değerleri olduğu gibi kalır. */
+    const cf = { ...cf0 };
+    for (let k = 0; k < cfs.length; k++) {
+      const el = $('#cucf_' + k), r = cuCfParse(cfs[k], el.value, cf0[cfs[k].id]), box = $(`#cucf_${k}_f`);
+      box.classList.toggle('has-err', !!r.err);
+      $(`#cucf_${k}_e`).innerHTML = r.err ? `${ic('alert')}<span>${esc(r.err)}</span>` : '';
+      if (r.err) { el.setAttribute('aria-invalid', 'true'); return el.focus(); }
+      el.removeAttribute('aria-invalid');
+      if (r.v === undefined) delete cf[cfs[k].id]; else cf[cfs[k].id] = r.v;
+    }
     const contacts = cts.filter(x => !blankCt(x)).map(x => { const o = { id: x.id, name: String(x.name).trim() };
       for (const f of ['title', 'email', 'phone']) { const s = String(x[f] || '').trim(); if (s) o[f] = s; }
       return o; });
-    const data = { name: val('cu_n'), shortName: val('cu_s'), kind, taxOffice: val('cu_vd'), taxNo: val('cu_vn').replace(/[\s-]/g, ''),
-      address: val('cu_a'), phone: val('cu_p'), email: val('cu_m'), notes: val('cu_no'), active, contacts };
+    const data = { name: val('cu_n'), shortName: val('cu_s'), kind, taxOffice: val('cu_vd'), taxNo: val('cu_vn').replace(/[\s-]/g, '') || oldTx,
+      address: val('cu_a'), phone: val('cu_p'), email: val('cu_m'), notes: val('cu_no'), active, contacts,
+      ...(Object.keys(cf).length || c?.cf !== undefined ? { cf } : {}) };
     if (c) Object.assign(c, data);
     else (DB.customers ||= []).push({ id: uid('cu'), ...data });
     closeModal(); save(); render(); toast(c ? `${data.name} kaydedildi` : `${data.name} eklendi`);
   };
   setTimeout(() => $('#cu_n')?.focus(), 40);
+}
+
+/* ---- Cari alanları penceresi (yalnız sistem yöneticisi): liste (listede göster, aç/kapat, düzenle, sil) + ekle/düzenle formu.
+   Taslak CUF'ta; kayıt DB.fields'e (scope 'customer', hidden: true) gider. Silme yalnız tanımı siler, carilerdeki değerler kalır. */
+let CUF = null;
+function cuFieldsOpen(id) {
+  if (!isAdmin()) return toast('Cari alanlarını yalnızca sistem yöneticisi tanımlar');
+  const f = id ? cuFields().find(x => x.id === id) : null;
+  CUF = f ? { id: f.id, name: f.name || '', key: f.key || '', type: CUF_TL[f.type] ? f.type : 'text', opts: (Array.isArray(f.options) ? f.options : []).join('\n'), onList: f.onList === true, keyTouched: true }
+    : { id: '', name: '', key: '', type: 'text', opts: '', onList: false, keyTouched: false };
+  closeModal();
+  openModal(`<div class="m-h cu-h"><span class="cu-ic">${ic('sliders')}</span><div class="tx"><b id="cuf_t">Cari alanları</b><div class="s">Tüm carilerde geçerli · yalnız sistem yöneticisi tanımlar</div></div><button class="x" data-close aria-label="Kapat">×</button></div>
+    <div class="cu-body"><div class="cuf-list" id="cuf_list" aria-label="Cari alanları"></div>
+      <div class="cu-sech"><h3 id="cuf_ft">${ic(f ? 'pencil' : 'plus')}${f ? `Alanı düzenle: ${esc(f.name)}` : 'Yeni alan'}</h3></div>
+      <div class="cu-form" id="cuf_form">
+        <div class="cu-fld"><label for="cuf_n"><span>Görünen ad<span class="req" aria-hidden="true">*</span></span></label><input class="inp" id="cuf_n" maxlength="60" value="${esc(CUF.name)}" autocomplete="off"></div>
+        <div class="cu-fld"><label for="cuf_k"><span>Anahtar</span><span class="opt">küçük harf, rakam, _</span></label><input class="inp" id="cuf_k" maxlength="30" value="${esc(CUF.key)}" autocomplete="off" spellcheck="false" style="font-family:var(--mono)"></div>
+        <div class="cu-fld full"><div class="lb" id="cuf_tl"><span>Tür</span></div>
+          <div class="cu-kseg cuf-types" role="radiogroup" aria-labelledby="cuf_tl">${CUF_TYPES.map(([v, l, i]) => `<button type="button" role="radio" data-cuft="${v}" aria-checked="${CUF.type === v}" tabindex="${CUF.type === v ? 0 : -1}">${ic(i)}${l}</button>`).join('')}</div></div>
+        <div class="cu-fld full" id="cuf_of" ${CUF.type === 'select' ? '' : 'hidden'}><label for="cuf_o"><span>Seçenekler</span><span class="opt">her satıra bir seçenek</span></label>
+          <textarea class="inp" id="cuf_o" rows="3">${esc(CUF.opts)}</textarea></div>
+        <div class="cu-fld full"><label class="cuf-chk"><input type="checkbox" id="cuf_l" ${CUF.onList ? 'checked' : ''}>Cari listesinde sütun olarak göster</label></div>
+        <div class="cu-err full" id="cuf_e" role="alert"></div>
+      </div></div>
+    <div class="m-f">${f ? `<button type="button" class="btn" id="cuf_new">${ic('plus')}Yeni alan</button>` : ''}<span class="spacer"></span><button class="btn" data-close>Kapat</button>
+      <button type="button" class="btn pri" id="cuf_ok">${ic('check')}${f ? 'Kaydet' : 'Alan ekle'}</button></div>`, 'cu-m');
+  wsDialog('cuf_t');
+  cufDraw();
+  const m = $('#scrim .modal');
+  m.addEventListener('input', e => {
+    const t = e.target;
+    if (t.id === 'cuf_n') { CUF.name = t.value; if (!CUF.id && !CUF.keyTouched) { CUF.key = pfSlug(t.value); $('#cuf_k').value = CUF.key; } }
+    else if (t.id === 'cuf_k') { CUF.key = t.value; CUF.keyTouched = true; }
+    else if (t.id === 'cuf_o') CUF.opts = t.value;
+  });
+  m.addEventListener('change', e => { if (e.target.id === 'cuf_l') CUF.onList = e.target.checked; });
+  m.addEventListener('click', e => {
+    const q = sel => e.target.closest(sel); let b;
+    if ((b = q('[data-cuft]'))) { CUF.type = b.dataset.cuft; $$('[data-cuft]').forEach(x => { x.setAttribute('aria-checked', String(x === b)); x.tabIndex = x === b ? 0 : -1; });
+      $('#cuf_of').hidden = CUF.type !== 'select'; return; }
+    if ((b = q('[data-cuflist]'))) { const x = cuFields().find(y => y.id === b.dataset.cuflist); if (!x) return;
+      x.onList = x.onList !== true; save(); render(); cufDraw(); return $(`[data-cuflist="${CSS.escape(x.id)}"]`)?.focus(); }
+    if ((b = q('[data-cufarch]'))) { const x = cuFields().find(y => y.id === b.dataset.cufarch); if (!x) return;
+      x.archived = x.archived !== true; save(); render(); cufDraw();
+      toast(x.archived ? `${x.name} kapatıldı. Carilerdeki değerler silinmez.` : `${x.name} açıldı`); return $(`[data-cufarch="${CSS.escape(x.id)}"]`)?.focus(); }
+    if ((b = q('[data-cufed]'))) return cuFieldsOpen(b.dataset.cufed);
+    if ((b = q('[data-cufdel]'))) { const x = cuFields().find(y => y.id === b.dataset.cufdel); if (!x) return;
+      if (!confirm(`"${x.name}" alanı silinsin mi? Carilerdeki değerleri korumak için alanı kapatabilirsiniz.`)) return;
+      DB.fields = DB.fields.filter(y => y.id !== x.id); save(); render(); toast(`${x.name} silindi`);
+      return CUF?.id === x.id ? cuFieldsOpen() : cufDraw(); }
+    if (q('#cuf_new')) return cuFieldsOpen();
+    if (q('#cuf_ok')) return cufSave();
+  });
+  setTimeout(() => $('#cuf_n')?.focus(), 40);
+}
+function cufDraw() {
+  const box = $('#cuf_list'); if (!box) return;
+  const fs = cuFields();
+  box.innerHTML = fs.length ? fs.map(f => { const on = f.archived !== true, ti = CUF_TYPES.find(t => t[0] === f.type);
+    const desc = [CUF_TL[f.type] || f.type, f.type === 'select' && Array.isArray(f.options) && f.options.length ? f.options.join(', ') : ''].filter(Boolean).join(' · ');
+    return `<div class="cuf-row ${on ? '' : 'off'} ${CUF?.id === f.id ? 'sel' : ''}" data-cufrow="${esc(f.id)}"><span class="cuf-ic">${ic(ti ? ti[2] : 'sliders')}</span>
+      <div class="tx"><b>${esc(f.name)}</b> <span class="key">${esc(f.key)}</span><div class="d" title="${esc(desc)}">${esc(desc)}</div></div>
+      <button type="button" class="cu-tog" data-cuflist="${esc(f.id)}" aria-pressed="${f.onList === true}" aria-label="${esc(f.name)}: listede sütun olarak göster"><span class="cu-sw" aria-hidden="true"></span>Listede</button>
+      <button type="button" class="cu-tog" role="switch" data-cufarch="${esc(f.id)}" aria-checked="${on}" aria-label="${esc(f.name)} alanını aç/kapat"><span class="cu-sw" aria-hidden="true"></span>${on ? 'Açık' : 'Kapalı'}</button>
+      <button type="button" class="iconbtn" data-cufed="${esc(f.id)}" aria-label="${esc(f.name)}: düzenle">${ic('pencil')}</button>
+      <button type="button" class="iconbtn" data-cufdel="${esc(f.id)}" aria-label="${esc(f.name)}: sil">${ic('trash')}</button></div>`; }).join('')
+    : `<div class="cu-hint" id="cuf_none">${ic('info')}<span>Henüz cari alanı yok. Aşağıdan ekleyin: ör. Sektör (seçim), Sözleşme bitişi (tarih).</span></div>`;
+}
+/* İstemci denetimleri sunucuyla aynı (validate.js RULES.fields, store.js checkFieldKey: cari alanları kendi aralarında tekil). */
+function cufSave() {
+  const d = CUF; if (!d || !isAdmin()) return;
+  const bad = (msg, el) => { $('#cuf_e').innerHTML = `${ic('alert')}<span>${esc(msg)}</span>`; $(el)?.focus(); };
+  const name = String(d.name || '').trim(), key = String(d.key || '').trim().toLowerCase();
+  if (!name || name.length > 60) return bad('Alan adı gerekli (en fazla 60 karakter)', '#cuf_n');
+  if (!PF_KEY_RE.test(key)) return bad('Anahtar yalnız küçük harf, rakam ve _ içerebilir (en fazla 30)', '#cuf_k');
+  if (cuFields().some(x => x.id !== d.id && x.key === key)) return bad('Bu anahtarla bir cari alanı zaten var', '#cuf_k');
+  let options = [];
+  if (d.type === 'select') {
+    options = String(d.opts || '').split('\n').map(x => x.trim()).filter(Boolean);
+    if (!options.length) return bad('En az bir seçenek gerekli', '#cuf_o');
+    if (new Set(options).size !== options.length) return bad('Seçenekler tekil olmalı', '#cuf_o');
+    if (options.length > 100 || options.some(x => x.length > 100)) return bad('En fazla 100 seçenek (her biri en fazla 100 karakter)', '#cuf_o');
+  }
+  const o = { name, key, type: d.type, options, onList: !!d.onList };
+  const f = d.id ? cuFields().find(x => x.id === d.id) : null;
+  if (f) Object.assign(f, o);
+  else (DB.fields ||= []).push({ id: uid('cf'), scope: 'customer', hidden: true, archived: false, ...o });
+  save(); render(); toast(`${name} ${f ? 'kaydedildi' : 'eklendi'}`);
+  cuFieldsOpen();
 }
 
 /* Silme: bağlı projesi (arşivli dahil) olan cari silinmez → "Pasife al". Bağsızsa kalıcı silme onayı (çöp kutusuna gitmez). */
@@ -11645,6 +11860,7 @@ function cuPickList(cur, pr, q = '') {
     + (act.map(x => pmOpt(x.id, cur, ic('building'), esc(x.name))).join('') || (k ? '<div class="qm-empty">Eşleşen cari yok</div>' : ''));
 }
 function cuProjRow(p) {
+  if (!cuOn()) return '';
   const cur = p.customerId || '', c = cuById(cur), pid = esc(p.id);
   if (!cur && !cuList().length) return '';
   if (canDesign(p)) return `<div class="cu-plink"><label class="lbl" for="pcu-${pid}">${ic('building')}Cari</label>
@@ -11666,7 +11882,7 @@ const CU_CSV = [
   ['shortName', 'Kısa ad', ['kisa ad', 'kisa adi', 'short name']],
   ['kind', 'Tür', ['tur', 'tip', 'cari turu', 'kind', 'type']],
   ['taxOffice', 'Vergi dairesi', ['vergi dairesi', 'vd', 'tax office']],
-  ['taxNo', 'Vergi no / TCKN', ['vergi no tckn', 'vergi no', 'vergi numarasi', 'vkn', 'tckn', 'tc kimlik no', 'tc no', 'kimlik no', 'tax no']],
+  ['taxNo', 'Vergi no', ['vergi no', 'vergi no tckn', 'vergi numarasi', 'vkn', 'tckn', 'tc kimlik no', 'tc no', 'kimlik no', 'tax no']],
   ['address', 'Adres', ['adres', 'address']],
   ['phone', 'Telefon', ['telefon', 'tel', 'gsm', 'phone']],
   ['email', 'E-posta', ['e posta', 'eposta', 'email', 'e mail', 'mail']],
@@ -11676,6 +11892,9 @@ const CU_CSV = [
 const CU_CSV_LIM = { name: 200, shortName: 60, taxOffice: 100, address: 500, phone: 30, notes: 2000, email: 200 };
 const CU_CSV_MAXROWS = 5000, CU_CSV_BATCH = 200;
 const cuCsvKey = v => qmKey(v).replace(/[^a-z0-9]+/g, ' ').trim();
+/* Sütunlar: yerleşik alanlar + açık cari alanları ('cf:<kimlik>'). */
+const cuCsvCols = () => [...CU_CSV.map(([f, l]) => [f, l]), ...cuLiveFields().map(f => ['cf:' + f.id, f.name])];
+const cuCsvLabel = k => cuCsvCols().find(x => x[0] === k)?.[1] || k;
 let CUC = null;                                    // açık içe aktarma penceresinin durumu
 
 function csvSep(text) {
@@ -11733,7 +11952,10 @@ function cuCsvLoad(text, name) {
   const used = new Set();
   const map = head.map(h => { const k = cuCsvKey(h);
     const f = CU_CSV.find(([f, l, syn]) => !used.has(f) && (cuCsvKey(l) === k || syn.includes(k)));
-    if (f) used.add(f[0]); return f ? f[0] : ''; });
+    if (f) { used.add(f[0]); return f[0]; }
+    const x = cuLiveFields().find(y => !used.has('cf:' + y.id) && (cuCsvKey(y.name) === k || cuCsvKey(y.key) === k));
+    if (x) { used.add('cf:' + x.id); return 'cf:' + x.id; }
+    return ''; });
   CUC = { name: name || 'Yapıştırılan metin', sep, head, recs: recs.slice(1), map, mode: 'update', errOnly: false };
   cuCsvPreview();
 }
@@ -11744,9 +11966,14 @@ function cuCsvAnalyze() {
   const byTax = new Map(cuList().filter(c => c.taxNo).map(c => [String(c.taxNo).replace(/[\s-]/g, ''), c]));
   const seen = new Map();
   return recs.map(r => {
-    const v = {}, why = [];
+    const v = {}, why = [], cfv = {};
     map.forEach((f, i) => { if (f) v[f] = cuCsvVal(r.cells[i]); });
     const d = {};
+    for (const fl of cuLiveFields()) {
+      if (!Object.hasOwn(v, 'cf:' + fl.id)) continue;
+      const x = cuCfParse(fl, v['cf:' + fl.id]);
+      if (x.err) why.push(x.err); else if (x.v !== undefined) cfv[fl.id] = x.v;
+    }
     if (!v.name) why.push('Unvan boş');
     for (const f of ['name', 'shortName', 'taxOffice', 'address', 'phone', 'notes', 'email'])
       if (v[f]) { if (v[f].length > CU_CSV_LIM[f]) why.push(`${CU_CSV.find(x => x[0] === f)[1]} en fazla ${CU_CSV_LIM[f]} karakter`); d[f] = v[f]; }
@@ -11754,7 +11981,8 @@ function cuCsvAnalyze() {
     if (v.kind) { const k = CU_KIND_IN[cuCsvKey(v.kind)]; if (k) d.kind = k; else why.push('Tür tanınmadı (Müşteri, Tedarikçi ya da İkisi)'); }
     if (v.active) { const a = CU_ACT_IN[cuCsvKey(v.active)]; if (a !== undefined) d.active = a; else why.push('Durum tanınmadı (Etkin ya da Pasif)'); }
     const tx = String(v.taxNo || '').replace(/[\s.-]/g, '');
-    if (tx && !/^\d{10,11}$/.test(tx)) why.push('Vergi no 10 (VKN) ya da 11 (TCKN) haneli olmalı');
+    /* Yeni vergi no 10 haneli (VKN); kayıtlı bir cariye ait 11 haneli eski numara yalnız eşleştirme için kabul edilir. */
+    if (tx && !/^\d{10}$/.test(tx) && !(/^\d{11}$/.test(tx) && byTax.has(tx))) why.push('Vergi no 10 haneli (VKN) olmalı');
     else if (tx) {
       d.taxNo = tx;
       if (seen.has(tx)) why.push(`Vergi no dosyada yineleniyor (satır ${seen.get(tx)})`); else seen.set(tx, r.n);
@@ -11766,11 +11994,12 @@ function cuCsvAnalyze() {
       /* "Etkin" hücresi durum alanı hiç yazılmamış (etkin sayılan) cariyi değiştirmez: dışa aktarılan dosya geri yüklenebilsin. */
       const base = JSON.parse(JSON.stringify(cur)), dd = { ...d };
       if (dd.active === cuActive(cur)) delete dd.active;
+      if (Object.keys(cfv).length) dd.cf = { ...cuCfOf(base), ...cfv };       // boş hücre mevcut değeri korur
       const data = { ...base, ...dd };
       return cj(data) === cj(base) ? { n: r.n, act: 'same', why: 'Değişiklik yok', d }
         : { n: r.n, act: 'update', why: `Kayıtlı: ${cur.name}`, d, id: cur.id, base, data };
     }
-    return { n: r.n, act: 'add', d, id: uid('cu'), data: { kind: 'customer', active: true, contacts: [], ...d } };
+    return { n: r.n, act: 'add', d, id: uid('cu'), data: { kind: 'customer', active: true, contacts: [], ...d, ...(Object.keys(cfv).length ? { cf: cfv } : {}) } };
   });
 }
 const CUC_ST = { add: ['Eklenecek', 'plus'], update: ['Güncellenecek', 'swap'], same: ['Atlanacak', 'pause'], skip: ['Atlanacak', 'pause'], error: ['Hatalı', 'alert'] };
@@ -11783,7 +12012,7 @@ function cuCsvOpen() {
       <div class="cu-fld full"><label for="cuc_file"><span>Dosya seç</span><span class="opt">Excel → "CSV UTF-8" ya da "CSV (noktalı virgülle ayrılmış)"</span></label>
         <input class="inp" type="file" id="cuc_file" accept=".csv,.txt,text/csv,text/plain"></div>
       <div class="cu-fld full"><label for="cuc_paste"><span>ya da metni yapıştırın</span></label>
-        <textarea class="inp" id="cuc_paste" rows="6" spellcheck="false" placeholder="Unvan;Tür;Vergi no / TCKN;E-posta&#10;Örnek Ltd. Şti.;Müşteri;1234567890;bilgi@ornek.com.tr"></textarea></div>
+        <textarea class="inp" id="cuc_paste" rows="6" spellcheck="false" placeholder="Unvan;Tür;Vergi no;E-posta&#10;Örnek Ltd. Şti.;Müşteri;1234567890;bilgi@ornek.com.tr"></textarea></div>
       <div class="ws-info">${ic('info')}<span>Sütunları bir sonraki adımda eşleyebilirsiniz. <a href="#" id="cuc_tpl">Örnek şablonu indir (CSV)</a></span></div>
     </div>
     <div class="m-f"><span class="spacer"></span><button class="btn" data-close>Vazgeç</button><button class="btn pri" id="cuc_go">${ic('arrow')}Önizle</button></div>`, 'cu-m cu-csv');
@@ -11804,8 +12033,8 @@ function cuCsvPreview() {
     <div class="cu-body">
       <h4 class="cuc-h">Sütun eşleme</h4>
       <div class="cuc-map" id="cuc_map">${S.head.map((h, i) => `<label><span title="${esc(h)}">${esc(h || `Sütun ${i + 1}`)}</span>
-        <select class="inp" data-cucmap="${i}" aria-label="${esc(h || `Sütun ${i + 1}`)} sütunu"><option value="">— Aktarma —</option>${CU_CSV.map(([f, l]) =>
-          `<option value="${f}" ${S.map[i] === f ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`).join('')}</div>
+        <select class="inp" data-cucmap="${i}" aria-label="${esc(h || `Sütun ${i + 1}`)} sütunu"><option value="">— Aktarma —</option>${cuCsvCols().map(([f, l]) =>
+          `<option value="${esc(f)}" ${S.map[i] === f ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`).join('')}</div>
       <div class="cuc-opts"><span class="lb">Vergi no kayıtlı bir cariyle eşleşirse</span>
         <div class="cu-seg" role="radiogroup" aria-label="Eşleşen cariler">${[['update', 'Mevcut olanı güncelle'], ['skip', 'Atla']].map(([k, l]) =>
           `<button type="button" role="radio" data-cucmode="${k}" aria-checked="${S.mode === k}" tabindex="${S.mode === k ? 0 : -1}">${l}</button>`).join('')}</div>
@@ -11826,7 +12055,7 @@ function cuCsvPaint() {
   const S = CUC, box = $('#cuc_body'); if (!S || !box) return;
   const used = S.map.filter(Boolean), dup = used.find((f, i) => used.indexOf(f) !== i);
   const block = !used.includes('name') ? 'Unvan sütununu eşleyin (zorunlu).'
-    : dup ? `"${CU_CSV.find(x => x[0] === dup)[1]}" alanı birden çok sütuna eşlendi.` : '';
+    : dup ? `"${cuCsvLabel(dup)}" alanı birden çok sütuna eşlendi.` : '';
   S.rows = block ? [] : cuCsvAnalyze();
   const n = k => S.rows.filter(r => k.includes(r.act)).length;
   const cnt = { add: n(['add']), update: n(['update']), skip: n(['skip', 'same']), error: n(['error']) };
@@ -11834,7 +12063,6 @@ function cuCsvPaint() {
   const run = $('#cuc_run'); run.disabled = !!block || !go;
   run.innerHTML = `${ic('up')}${go ? `${go} cariyi aktar` : 'Aktar'}`;
   if (block) { box.innerHTML = `<div class="cu-alert" id="cuc_block">${ic('alert')}<div class="tx"><b>${esc(block)}</b></div></div>`; return; }
-  const tckn = S.rows.some(r => /^\d{11}$/.test(r.d.taxNo || ''));
   const list = S.errOnly ? S.rows.filter(r => r.act === 'error') : [...S.rows].sort((a, b) => (b.act === 'error') - (a.act === 'error') || a.n - b.n);
   const shown = list.slice(0, 500);
   box.innerHTML = `<div class="cuc-sum" id="cuc_sum">
@@ -11843,7 +12071,6 @@ function cuCsvPaint() {
       <span class="cuc-chip" data-s="skip">${ic('pause')}<b data-cucn="skip">${cnt.skip}</b> atlanacak</span>
       <span class="cuc-chip" data-s="error">${ic('alert')}<b data-cucn="error">${cnt.error}</b> hatalı</span>
       <span class="spacer"></span>${cnt.error ? `<button type="button" class="cu-tog" id="cuc_erronly" aria-pressed="${S.errOnly}"><span class="cu-sw" aria-hidden="true"></span>Yalnız hatalılar</button>` : ''}</div>
-    ${tckn ? `<div class="ws-info" id="cuc_kvkk">${ic('lock')}<span>Dosyada 11 haneli T.C. kimlik numarası var: kişisel veridir. İzleyici rolündekilere maskeli gider; diğer kullanıcılar tam numarayı görür.</span></div>` : ''}
     ${cnt.error ? '<p class="cuc-note">Hatalı satırlar aktarılmaz; dosyayı düzeltip yeniden yükleyebilirsiniz.</p>' : ''}
     <div class="cu-wrap cuc-scroll"><table class="cu-tbl cuc-tbl" aria-label="Önizleme"><thead><tr><th style="width:62px">Satır</th><th style="width:138px">Sonuç</th><th>Unvan</th>
       <th style="width:112px">Tür</th><th style="width:118px">Vergi no</th><th>E-posta</th><th>Neden</th></tr></thead>
@@ -11931,27 +12158,30 @@ function cuCsvExport() {
   const rows = cuFiltered();
   if (!rows.length) return toast('Dışa aktarılacak cari yok', { warn: true });
   /* Yönetici vergi numarasını sunucudan maskesiz alır; maskeli gelmiş bir değer (yıldızlı) olduğu gibi kalır, açılmaz. */
-  const lines = [CU_CSV.map(x => x[1]), ...rows.map(c => CU_CSV.map(([f]) => f === 'kind' ? (CU_KIND[c.kind]?.[0] || '')
-    : f === 'active' ? (cuActive(c) ? 'Etkin' : 'Pasif') : c[f] ?? ''))];
+  const cfs = cuLiveFields();
+  const lines = [[...CU_CSV.map(x => x[1]), ...cfs.map(f => f.name)], ...rows.map(c => [...CU_CSV.map(([f]) => f === 'kind' ? (CU_KIND[c.kind]?.[0] || '')
+    : f === 'active' ? (cuActive(c) ? 'Etkin' : 'Pasif') : c[f] ?? ''), ...cfs.map(f => cuCfCsv(f, cuCfOf(c)[f.id]))])];
   download(cuCsvBlob(lines), `cariler-${TODAY}.csv`);
   toast(`${rows.length} cari dışa aktarıldı`);
 }
 function cuCsvTemplate() {
-  download(cuCsvBlob([CU_CSV.map(x => x[1]),
-    ['Örnek Yazılım Ltd. Şti.', 'Örnek Yazılım', 'Müşteri', 'Kadıköy', '1234567890', 'Caferağa Mah. Örnek Sok. No:1, İstanbul', '0216 000 00 00', 'bilgi@ornek.com.tr', '', 'Etkin'],
-    ['Deneme Tedarik A.Ş.', '', 'Tedarikçi', 'Çankaya', '0987654321', '', '', '', 'Notlar "tırnak" ve ; içerebilir', 'Etkin']]), 'cari-sablon.csv');
+  const cfs = cuLiveFields(), pad = cfs.map(() => '');
+  download(cuCsvBlob([[...CU_CSV.map(x => x[1]), ...cfs.map(f => f.name)],
+    ['Örnek Yazılım Ltd. Şti.', 'Örnek Yazılım', 'Müşteri', 'Kadıköy', '1234567890', 'Caferağa Mah. Örnek Sok. No:1, İstanbul', '0216 000 00 00', 'bilgi@ornek.com.tr', '', 'Etkin', ...pad],
+    ['Deneme Tedarik A.Ş.', '', 'Tedarikçi', 'Çankaya', '0987654321', '', '', '', 'Notlar "tırnak" ve ; içerebilir', 'Etkin', ...pad]]), 'cari-sablon.csv');
 }
 
 /* Olay devri: liste, süzgeçler, kart bağlantıları. */
 function cuClick(e) {
   const t = e.target; if (!(t instanceof Element)) return;
-  const b = t.closest('[data-cunew],[data-cuimp],[data-cuexp],[data-cuopen],[data-cukind],[data-cupas],[data-cuclear],[data-cugoproj],[data-cuissues],[data-cugo]');
+  const b = t.closest('[data-cunew],[data-cuimp],[data-cuexp],[data-cufields],[data-cuopen],[data-cukind],[data-cupas],[data-cuclear],[data-cugoproj],[data-cuissues],[data-cugo]');
   if (!b || b.disabled) return;
   const d = b.dataset;
   if (b.tagName === 'A') e.preventDefault();
   if ('cunew' in d) return customerForm();
   if ('cuimp' in d) return cuCsvOpen();
   if ('cuexp' in d) return cuCsvExport();
+  if ('cufields' in d) return cuFieldsOpen();
   if ('cuopen' in d) return openCustomer(d.cuopen);
   if ('cukind' in d) { DB.ui.cuKind = d.cukind; save(); render(); $(`[data-cukind="${d.cukind}"]`)?.focus(); return; }
   if ('cupas' in d) { DB.ui.cuPassive = !DB.ui.cuPassive; save(); render(); $('[data-cupas]')?.focus(); return; }
@@ -12600,10 +12830,10 @@ function newProjectForm(preset = {}) {
           <div class="ps-fld ${E.ws ? 'err' : ''}"><label for="np_ws">Çalışma alanı</label><select class="inp" id="np_ws" ${E.ws ? 'aria-invalid="true" aria-describedby="np_ws_e"' : ''}>
               ${wsl.map(w => `<option value="${esc(w.id)}" ${w.id === st.ws ? 'selected' : ''}>${esc(w.name)}${w.archived ? ' (arşivde)' : ''}</option>`).join('')}</select>
             ${fe('np_ws_e', E.ws)}${fromWs && st.ws === preset.workspaceId && !E.ws ? `<div class="ps-hint">${ic('info')}Bu alandan açtınız</div>` : ''}</div>
-          <div class="ps-fld ${E.cu ? 'err' : ''}"><label for="np_cu">Cari <span class="opt">isteğe bağlı</span></label>${cuList().some(cuActive) || st.cu
+          ${cuOn() ? `<div class="ps-fld ${E.cu ? 'err' : ''}"><label for="np_cu">Cari <span class="opt">isteğe bağlı</span></label>${cuList().some(cuActive) || st.cu
             ? `<select class="inp" id="np_cu" ${E.cu ? 'aria-invalid="true" aria-describedby="np_cu_e"' : ''}>${cuOptions(st.cu)}</select>${fe('np_cu_e', E.cu)}
                ${E.cu ? '' : `<div class="ps-hint">${ic('info')}Yalnız etkin cariler listelenir.</div>`}`
-            : `<div class="cu-hint" id="np_cu_none">${ic('info')}<span>Henüz cari yok.${admin ? ' <a href="#customers" data-cugo>Cariler</a>' : ''}</span></div>`}</div>
+            : `<div class="cu-hint" id="np_cu_none">${ic('info')}<span>Henüz cari yok.${admin ? ' <a href="#customers" data-cugo>Cariler</a>' : ''}</span></div>`}</div>` : ''}
         </div>
         <div class="ps-fld pm-sec"><div class="pm-sh"><b>Kişiler ve roller</b><span class="sub" id="np_mc">Projeyi yalnız buradaki kişiler görür.</span></div>
           <div id="np_m"></div></div>
@@ -12678,7 +12908,7 @@ function newProjectForm(preset = {}) {
       const ws = st.ws;
       if (!wsById(ws)) err.ws = 'Çalışma alanı bulunamadı';
       else if (wsArchived(ws)) err.ws = 'Bu çalışma alanı arşivde; başka bir alan seçin';
-      const cu = st.cu;
+      const cu = cuOn() ? st.cu : '';
       if (cu && !cuById(cu)) err.cu = 'Cari bulunamadı';
       else if (cu && !cuActive(cuById(cu))) err.cu = 'Bu cari pasif; başka bir cari seçin';
       if (Object.keys(err).length) { st.err = err; st.key = key; details(); st.colsErr(); return; }
@@ -12902,7 +13132,7 @@ const FIELD_PRESETS = {
 const BINDS = Object.keys(FIELD_PRESETS);
 const bindId = (b, pid) => `cf_${b}_${pid}`.slice(0, 200);
 const bindRec = (pid, b) => (DB.fields || []).find(f => f && f.bind === b && f.projectId === pid);
-const bindOn = (pid, b) => bindRec(pid, b)?.archived !== true;
+const bindOn = (pid, b) => (b !== 'customerId' || cuOn()) && bindRec(pid, b)?.archived !== true;
 /* Etkin tanım: kayıt + şablon. Faturalama seçenekleri sabit; Fatura türü seçenekleri projeye göre. */
 function bindField(pid, b) {
   const P0 = FIELD_PRESETS[b], r = bindRec(pid, b);
@@ -12944,7 +13174,7 @@ function cardBadges(i) {
   const pid = i.projectId, out = [];
   for (const b of BINDS) {
     const f = bindRec(pid, b);
-    if (!f || f.archived === true || f.onCard !== true) continue;
+    if (!f || f.archived === true || f.onCard !== true || (b === 'customerId' && !cuOn())) continue;
     const nm = f.name || FIELD_PRESETS[b].name;
     if (b === 'billable') { if (i.billable === BILLABLE[1]) out.push({ ic: 'receipt', t: i.billable, title: `${nm}: ${i.billable}`, risk: true }); }
     else if (b === 'billType') { if (i.billType) out.push({ ic: 'tag', t: `${nm}: ${i.billType}`, title: `${nm}: ${i.billType}` }); }
@@ -13227,7 +13457,7 @@ const trDate = d => { const [y, m, dd] = String(d).split('-'); return `${dd}.${m
 /* İşin carisi (görev 11b): işe bağlı cari, yoksa projenin carisi; ikisi de yoksa (ya da cari bulunamıyorsa) boş. */
 const CU_NONE = 'Cari bağlı değil';
 function customerIdOf(i) {
-  if (!i) return '';
+  if (!i || !cuOn()) return '';
   if (i.customerId && cuById(i.customerId)) return i.customerId;
   const p = DB.projects.find(x => x.id === i.projectId);
   return p?.customerId && cuById(p.customerId) ? p.customerId : '';
@@ -13254,13 +13484,15 @@ function billingRows() {
 }
 const BILL_HEAD = ['Cari', 'Tarih', 'Proje', 'Açıklama', 'Tür', 'Çalışılan Zaman', 'Faturalanma Durumu'];
 
+/* Cariler kapalıysa raporlarda Cari sütunu (ilk sütun) yok. */
+const billNoCu = r => (cuOn() ? r : r.slice(1));
 function exportBillingXlsx() {
   const rows = billingRows();
   if (!rows.length) return toast('Bu dönemde süre kaydı yok');
   const total = rows.reduce((a, r) => a + r[5], 0);
-  const data = [BILL_HEAD, ...rows, [], ['', '', '', 'TOPLAM', '', Math.round(total * 100) / 100, '']];
+  const data = [BILL_HEAD, ...rows, [], ['', '', '', 'TOPLAM', '', Math.round(total * 100) / 100, '']].map(r => (r.length ? billNoCu(r) : r));
   const p = period();
-  download(makeXlsx(data, p.month ? monthName(p.month) : 'Rapor', [18, 12, 24, 70, 12, 15, 20]),
+  download(makeXlsx(data, p.month ? monthName(p.month) : 'Rapor', billNoCu([18, 12, 24, 70, 12, 15, 20])),
     `fatura-raporu-${p.month || p.from}.xlsx`);
   toast(`${rows.length} satır · ${efFmt(total)} Excel'e aktarıldı`);
 }
@@ -13848,12 +14080,13 @@ function billingRows2() {
 function reportPreview() {
   const rows = billingRows2();
   if (!rows.length) return toast('Bu dönemde süre kaydı yok');
-  const state = rows.map(r => [...r]);
+  const o = cuOn() ? 0 : 1, H = 6 - o, A = 4 - o, head = billNoCu(BILL_HEAD2);   // Cari sütunu yoksa sütunlar bir kayar
+  const state = rows.map(r => billNoCu([...r]));
   const draw = () => {
-    const tot = state.reduce((a, r) => a + (parseFloat(r[6]) || 0), 0);
+    const tot = state.reduce((a, r) => a + (parseFloat(r[H]) || 0), 0);
     $('#rp_b').innerHTML = state.map((r, k) => `<tr data-r="${k}">
       ${r.map((c, ci) => `<td contenteditable="true" data-c="${ci}"
-        class="${ci === 6 ? 'num' : ''}" style="${ci === 4 ? 'min-width:280px' : ''}">${esc(c)}</td>`).join('')}
+        class="${ci === H ? 'num' : ''}" style="${ci === A ? 'min-width:280px' : ''}">${esc(c)}</td>`).join('')}
       <td><button class="btn sm danger" data-rx="${k}">×</button></td></tr>`).join('');
     $('#rp_t').textContent = `${state.length} satır · ${Math.round(tot * 100) / 100} saat`;
     $$('#rp_b [contenteditable]').forEach(td => td.onblur = () => {
@@ -13866,7 +14099,7 @@ function reportPreview() {
       <span class="spacer"></span><span class="k" id="rp_t"></span>
       <button class="x" data-close>×</button></div>
     <div style="padding:0;max-height:64vh;overflow:auto">
-      <table class="ts rp"><thead><tr>${BILL_HEAD2.map(x => `<th>${x}</th>`).join('')}<th></th></tr></thead>
+      <table class="ts rp"><thead><tr>${head.map(x => `<th>${x}</th>`).join('')}<th></th></tr></thead>
       <tbody id="rp_b"></tbody></table>
     </div>
     <div class="m-f">
@@ -13875,11 +14108,11 @@ function reportPreview() {
       <button class="btn pri" id="rp_x">Excel'e aktar</button></div>`);
   draw();
   $('#rp_x').onclick = () => {
-    const tot = state.reduce((a, r) => a + (parseFloat(r[6]) || 0), 0);
-    const data = [BILL_HEAD2, ...state.map(r => r.map((c, k) => k === 6 ? (parseFloat(c) || 0) : c)),
-      [], ['', '', '', '', 'TOPLAM', '', Math.round(tot * 100) / 100, '']];
+    const tot = state.reduce((a, r) => a + (parseFloat(r[H]) || 0), 0);
+    const data = [head, ...state.map(r => r.map((c, k) => k === H ? (parseFloat(c) || 0) : c)),
+      [], billNoCu(['', '', '', '', 'TOPLAM', '', Math.round(tot * 100) / 100, ''])];
     const p = period();
-    download(makeXlsx([{ name: p.month ? monthName(p.month) : 'Rapor', rows: data, widths: [18, 12, 16, 24, 70, 12, 15, 20] }]),
+    download(makeXlsx([{ name: p.month ? monthName(p.month) : 'Rapor', rows: data, widths: billNoCu([18, 12, 16, 24, 70, 12, 15, 20]) }]),
       `efor-raporu-${p.month || p.from}.xlsx`);
     toast(`${state.length} satır aktarıldı`);
   };
@@ -13937,26 +14170,26 @@ function monthlySummary() {
         <div><b class="num">${efFmt(s.total)}</b><span>toplam efor</span></div>
         <div><b class="num">${(s.total / H_PER_DAY).toFixed(1)}</b><span>adam-gün</span></div>
         <div><b>${s.count}</b><span>kayıt</span></div>
-        <div><b>${s.customer.length}</b><span>müşteri</span></div>
+        ${cuOn() ? `<div><b>${s.customer.length}</b><span>müşteri</span></div>` : ''}
         <div><b>${s.project.length}</b><span>proje</span></div>
         <div><b>${s.user.length}</b><span>kişi</span></div>
       </div>
-      ${tbl('Cari bazında', s.customer, true)}
+      ${cuOn() ? tbl('Cari bazında', s.customer, true) : ''}
       ${tbl('Proje bazında', s.project, true)}
       ${tbl('Kişi bazında', s.user, false)}
     </div>
     <div class="m-f"><button class="btn" data-close>Kapat</button>
-      <button class="btn pri" id="ms_x">Excel'e aktar (4 sayfa)</button></div>`);
+      <button class="btn pri" id="ms_x">Excel'e aktar (${cuOn() ? 4 : 3} sayfa)</button></div>`);
   $('#ms_x').onclick = () => {
     const head = ['Ad', 'Kayıt', 'Faturalanacak (saat)', 'Faturasız (saat)', 'Toplam (saat)', 'Pay %'];
     const mk = rows => [head, ...rows.map(r => [r.name, r.n, Math.round(r.bill * 100) / 100,
       Math.round(r.nobill * 100) / 100, Math.round(r.h * 100) / 100, Math.round(r.h / s.total * 100)])];
     const p = period();
     download(makeXlsx([
-      { name: 'Cari', rows: mk(s.customer), widths: [26, 10, 20, 18, 16, 10] },
+      ...(cuOn() ? [{ name: 'Cari', rows: mk(s.customer), widths: [26, 10, 20, 18, 16, 10] }] : []),
       { name: 'Proje',   rows: mk(s.project),  widths: [30, 10, 20, 18, 16, 10] },
       { name: 'Kişi',    rows: mk(s.user),     widths: [24, 10, 20, 18, 16, 10] },
-      { name: 'Detay',   rows: [BILL_HEAD2, ...billingRows2()], widths: [18, 12, 16, 24, 70, 12, 15, 20] },
+      { name: 'Detay',   rows: [BILL_HEAD2, ...billingRows2()].map(billNoCu), widths: billNoCu([18, 12, 16, 24, 70, 12, 15, 20]) },
     ]), `aylik-ozet-${p.month || p.from}.xlsx`);
     toast('Excel oluşturuldu');
   };
@@ -14237,7 +14470,7 @@ function wireSysPerms(el) {
 /* ---- Sistem: yedekler, çöp kutusu, etkinlik (yönetici) ---- */
 let SYS_TAB = 'versions';
 function toolbarSystem() {
-  return `<div class="seg">${[['versions', 'Sürümler'], ['perms', 'Varsayılan yetkiler'], ['backups', 'Yedekler'], ['mail', 'Posta kutuları'], ['data', 'Veri aktarımı'], ['trash', 'Çöp kutusu'], ['activity', 'Etkinlik']].map(([k, l]) =>
+  return `<div class="seg">${[['versions', 'Sürümler'], ['perms', 'Varsayılan yetkiler'], ['backups', 'Yedekler'], ['mail', 'Posta kutuları'], ['modules', 'Modüller'], ['data', 'Veri aktarımı'], ['trash', 'Çöp kutusu'], ['activity', 'Etkinlik']].map(([k, l]) =>
     `<button data-systab="${k}" class="${SYS_TAB === k ? 'on' : ''}">${l}</button>`).join('')}</div>
     <div class="spacer"></div>
     ${SYS_TAB === 'backups' ? '<button class="btn pri" id="sysBackup">+ Şimdi yedek al</button>' : ''}`;
@@ -14245,6 +14478,25 @@ function toolbarSystem() {
 function renderSystem() {
   setTimeout(loadSystem, 0);
   return `<div class="panel" id="sysBody"><div class="empty">Yükleniyor…</div></div>`;
+}
+/* Sistem → Modüller: Cariler aç/kapat (yalnız yönetici; yazma yetkisi ve biçim sunucuda: ADMIN_ONLY _settings,
+   validate.js validateModules). Kapatmak veri silmez. */
+function sysModules(el) {
+  const on = cuOn();
+  el.innerHTML = `<h3>Modüller</h3>
+    <div class="sub">Kapatılan modül arayüzden kalkar; kayıtlar silinmez, modülü yeniden açınca her şey geri gelir.</div>
+    <div class="sm-row" id="smCu"><span class="sm-ic">${ic('building')}</span>
+      <div class="tx"><b id="smCuL">Cariler</b><span id="smCuD">Müşteri ve tedarikçi kayıtları, cari alanları, proje ve işte cari bağı, talep eden, raporlarda cari kırılımı.</span></div>
+      <span class="chip ${on ? 'cat-done' : 'lbl'}" id="smCuS">${on ? 'açık' : 'kapalı'}</span>
+      <button type="button" class="cu-tog" role="switch" id="modCu" aria-checked="${on}" aria-labelledby="smCuL" aria-describedby="smCuD"><span class="cu-sw" aria-hidden="true"></span></button></div>
+    ${on ? '' : `<div class="ws-info" id="smCuOff">${ic('info')}<span>Cariler kapalı: ${cuList().length} cari kaydı ve cari alanları korunuyor. Kapalıyken cari kaydı değiştirilemez.</span></div>`}`;
+  $('#modCu').onclick = () => {
+    const to = !cuOn();
+    DB.modules = { customers: to };
+    if (!to && DB.ui.view === 'customers') DB.ui.view = 'home';
+    save(); render(); toast(to ? 'Cariler açıldı' : 'Cariler kapatıldı. Kayıtlar silinmez; yeniden açınca geri gelir.');
+    setTimeout(() => $('#modCu')?.focus(), 30);
+  };
 }
 const KIND_TR = { auto: 'Otomatik', manual: 'Elle', 'pre-import': 'İçe aktarma öncesi', 'pre-restore': 'Geri yükleme öncesi' };
 const COL_TR = { issues: 'İş', projects: 'Proje', users: 'Kullanıcı', comments: 'Yorum', worklogs: 'Süre kaydı', sprints: 'Sprint',
@@ -14264,6 +14516,8 @@ async function loadSystem() {
   try {
     if (SYS_TAB === 'versions') {
       el.innerHTML = await renderVersions();
+    } else if (SYS_TAB === 'modules') {
+      sysModules(el);
     } else if (SYS_TAB === 'data') {
       el.innerHTML = `<h3>Veri aktarımı</h3>
         <div class="sub">Bu araçlar yalnızca yöneticilere görünür. İçe aktarma ve birleştirmeden önce otomatik yedek alınır.</div>

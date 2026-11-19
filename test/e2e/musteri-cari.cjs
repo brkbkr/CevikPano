@@ -118,6 +118,25 @@ const ID = { S: 'cu_ms' + RUN, T: 'cu_mt' + RUN, P: 'cu_mp' + RUN };
     window.makeXlsx = orig; return rows ? rows.slice(0, 3).map(x => x[0]) : null; });
   ok('billing Excel first column header "Cari"', Array.isArray(xl) ? xl[0] === 'Cari' : xl === null, JSON.stringify(xl));
 
+  /* Cariler modülü kapalıyken (yalnız yerel görünüm; sunucu tarafı cariler-modul.cjs): raporlarda cari boyutu ve sütunu yok,
+     işin carisi boş; açınca geri gelir. Veri değişmez. */
+  const off = await A.evaluate(() => { const keep = DB.modules, er0 = DB.ui.efRow; let rows = null; const orig = makeXlsx, _dl = window.download;
+    const grab = fn => { rows = null; window.makeXlsx = (d, ...a) => { rows = d; return orig(d, ...a); }; window.download = () => {};
+      try { fn(); } finally { window.makeXlsx = orig; window.download = _dl; } return rows; };
+    const nCu = DB.issues.filter(i => i.customerId).length;
+    DB.modules = { customers: false };
+    try {
+      DB.ui.efPeriod = 'all';
+      const bill = grab(exportBillingXlsx), sum = (monthlySummary(), document.querySelector('#scrim .modal')?.textContent || ''); closeModal();
+      const r = { dims: activeDims().map(([k]) => k), head: bill?.[0], sum: /Cari bazında/.test(sum), cuOf: DB.issues.slice(0, 30).every(i => customerIdOf(i) === ''),
+        x: DB.ui.efRow = 'customer', row: efRowK(), keep: DB.issues.filter(i => i.customerId).length === nCu };
+      DB.modules = keep; DB.ui.efRow = er0;
+      r.back = activeDims().some(([k]) => k === 'customer') && grab(exportBillingXlsx)?.[0]?.[0] === 'Cari';
+      return r;
+    } catch (e) { DB.modules = keep; return 'ERR ' + e.message; } });
+  ok('module off: no cari dimension / column / "Cari bazında" in reports, issue cari empty; data kept; back on restores', typeof off === 'object'
+    && !off.dims.includes('customer') && off.head?.[0] === 'Tarih' && !off.sum && off.cuOf && off.row === 'user' && off.keep && off.back, JSON.stringify(off));
+
   /* 6) Cari kartı özeti: iş düzeyi bağ sayılır */
   const sm = await A.evaluate(ID => { const s = cuSummary(ID.T);
     const exp = DB.issues.filter(i => i.customerId === ID.T && stat(i.statusId).cat !== 'done' && (MOD('epic') || i.type !== 'epic')).length;
