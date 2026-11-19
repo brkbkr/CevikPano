@@ -46,7 +46,7 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
   await A.evaluate(() => closeModal()); await sleep(200);
 
   /* ---- test verisi: üyeli çalışma alanı (alan Yöneticisi YU, alan Üyesi MU, alan İzleyicisi VU; genel rolleri Üye/Üye/İzleyici),
-     içinde agile proje (proje üyeleri: admin + u2 + MU + VU), 3 kolon, gelecek sprint, üst iş + alt iş ---- */
+     içinde agile proje (proje üyeleri: admin + u2 + MU + VU; atanabilenler alanın Yönetici/Üye kişileri: YU, MU), 3 kolon, gelecek sprint, üst iş + alt iş ---- */
   const MU = 'piuye' + RUN, MID = 'u_pi' + RUN, VU = 'piizl' + RUN, VID = 'u_piv' + RUN, YU = 'piyon' + RUN, YID = 'u_piy' + RUN, WSID = 'ws_pi' + RUN;
   const seed = await A.evaluate(async ([pid, key, mid, mu, vid, vu, yid, yu, wsid]) => {
     const st = ['Yapılacak', 'Devam ediyor', 'Bitti'].map((n, k) => ({ id: `${pid}_s${k}`, projectId: pid, name: n, cat: ['todo', 'inprogress', 'done'][k], wip: 0, ord: k }));
@@ -95,7 +95,7 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
   ok('type menu has option', await pick('#qa_t', typ), typ);
   ok('priority menu has 4 options', await A.evaluate(() => { document.querySelector('#qa_p').click(); const n = document.querySelectorAll('.qm .qm-opt').length; closeQuick(false); return n; }) === 4);
   ok('priority pick', await pick('#qa_p', '1'));
-  ok('assignee menu (#8 person menu) pick', await pick('#qa_a', 'u2'));
+  ok('assignee menu (#8 person menu) pick', await pick('#qa_a', MID));
   ok('due menu pick "Bugün"', await pick('#qa_d', env.today));
   const chipsNow = await A.evaluate(() => ({ p: document.querySelector('#qa_p').textContent.trim(), d: document.querySelector('#qa_d').textContent.trim(),
     a: document.querySelector('#qa_a').getAttribute('aria-label'), t: document.querySelector('#qa_t').getAttribute('aria-label') }));
@@ -108,7 +108,7 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
     .map(i => ({ s: i.summary, st: i.statusId === s0, p: i.priority, a: i.assignee, d: i.due, t: i.type })), [PID, S0]);
   ok('Enter adds two cards in a row, cursor stays', made.length === 2 && f1 === 'qa_s' && await A.evaluate(() => document.activeElement?.id === 'qa_s' && document.querySelector('#qa_s').value === ''),
     JSON.stringify(made) + ' focus=' + f1);
-  ok('cards get chip values (column, type, priority, assignee, due)', made.every(m => m.st && m.p === 1 && m.a === 'u2' && m.d === env.today && m.t === typ), JSON.stringify(made));
+  ok('cards get chip values (column, type, priority, assignee, due)', made.every(m => m.st && m.p === 1 && m.a === MID && m.d === env.today && m.t === typ), JSON.stringify(made));
   ok('cards visible in column', await A.evaluate(s0 => [...document.querySelectorAll(`.col[data-status="${s0}"] .card .sum`)].filter(e => e.textContent.startsWith('PIQ')).length, S0) === 2);
   ok('choices remembered (chips keep values after add)', (await A.evaluate(() => document.querySelector('#qa_p').textContent)).includes(env.acil));
   await A.screenshot({ path: SS + 'qadd.png' });
@@ -120,7 +120,7 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
   await A.fill('#qa_s', 'PIQ tam form'); await A.click('#qa_more'); await sleep(500);
   const form = await A.evaluate(() => ({ sum: $('#f_sum')?.value, pri: $('#f_pri [aria-checked="true"]')?.dataset.pri, as: $('#f_as')?.value,
     due: $('#f_due')?.value, st: $('#f_st')?.value, type: $('#f_type')?.value, qadd: !!document.querySelector('.qadd') }));
-  ok('"Daha fazla…" opens full form with values', form.sum === 'PIQ tam form' && form.pri === '1' && form.as === 'u2' && form.due === env.today && form.st === S1 && form.type === typ && !form.qadd,
+  ok('"Daha fazla…" opens full form with values', form.sum === 'PIQ tam form' && form.pri === '1' && form.as === MID && form.due === env.today && form.st === S1 && form.type === typ && !form.qadd,
     JSON.stringify(form));
   await A.click('#doCreate'); await sleep(400);
   ok('full form creates in chosen column', await A.evaluate(([pid, s1]) => DB.issues.some(i => i.projectId === pid && i.summary === 'PIQ tam form' && i.statusId === s1 && i.priority === 1), [PID, S1]));
