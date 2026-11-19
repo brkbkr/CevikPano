@@ -9409,9 +9409,16 @@ const NAV_ITEMS = {
 /* Sırası değişebilen / gizlenebilen öğeler (varsayılan sıra). Benim işlerim 1., Çalışma alanları 3. sırada sabit. */
 const NAV_MOVABLE = ['recent', 'customers', 'reports', 'pool', 'users', 'system'];
 const navAvail = k => !NAV_ITEMS[k].v || viewAllowed(NAV_ITEMS[k].v);
-/* Kayıtlı tercih → geçerli sıra + gizliler (bilinmeyen kimlik atılır; sonradan eklenen öğe görünür olarak sona). */
-function navCfg() {
-  const n = DB.ui.nav && typeof DB.ui.nav === 'object' ? DB.ui.nav : {};
+/* Yöneticinin herkes için varsayılanı (settings.navDefault = { items: [{ id, visible }] }; yazma yetkisi ve biçim sunucuda)
+   → { order, hidden }. Yoksa kod içi varsayılan (NAV_MOVABLE, hepsi görünür). */
+function navDefaultCfg() {
+  const it = DB.navDefault && Array.isArray(DB.navDefault.items) ? DB.navDefault.items.filter(x => x && NAV_MOVABLE.includes(x.id)) : [];
+  return { order: it.map(x => x.id), hidden: it.filter(x => x.visible === false).map(x => x.id) };
+}
+/* Kayıtlı tercih → geçerli sıra + gizliler (bilinmeyen kimlik atılır; sonradan eklenen öğe görünür olarak sona).
+   Kişisel düzeni (DB.ui.nav) olmayan kullanıcı yöneticinin varsayılanını görür; yetkisiz öğe her durumda süzülür. */
+function navCfg(useDefault) {
+  const n = !useDefault && DB.ui.nav && typeof DB.ui.nav === 'object' ? DB.ui.nav : navDefaultCfg();
   const ord = (Array.isArray(n.order) ? n.order : []).filter((k, i, a) => NAV_MOVABLE.includes(k) && a.indexOf(k) === i);
   NAV_MOVABLE.forEach(k => { if (!ord.includes(k)) ord.push(k); });
   const hidden = (Array.isArray(n.hidden) ? n.hidden : []).filter(k => NAV_MOVABLE.includes(k) && navAvail(k));
@@ -9424,7 +9431,8 @@ function navSave(order, hidden) {
   const old = DB.ui.nav && Array.isArray(DB.ui.nav.hidden) ? DB.ui.nav.hidden : [];
   const h = NAV_MOVABLE.filter(k => hidden.includes(k) || (old.includes(k) && !navAvail(k)));
   const ord = order.filter(k => NAV_MOVABLE.includes(k));
-  if (ord.join() === NAV_MOVABLE.filter(navAvail).join() && !h.length) delete DB.ui.nav;
+  const d = navCfg(true);
+  if (ord.join() === d.order.join() && h.join() === NAV_MOVABLE.filter(k => d.hidden.includes(k)).join()) delete DB.ui.nav;
   else DB.ui.nav = { order: ord, hidden: h };
 }
 /* Son kullanılan proje / alan: render'da güncellenir (save çağırmadan; sonraki gönderimle gider). */
@@ -9618,7 +9626,11 @@ function navCustomize() {
     <div class="nv-czb"><p>Seçili öğeler kenar çubuğunda her zaman görünür; seçmediklerin <b>"Daha fazla"</b> menüsünde. Değişiklikler yalnız seni etkiler.</p>
       <div class="nv-cz-h">Kenar çubuğu öğeleri <span id="cz_n"></span></div>
       <ul class="nv-cz" id="cz_l" aria-label="Kenar çubuğu öğeleri"></ul>
-      <div class="ws-sr" id="cz_live" role="status" aria-live="polite"></div></div>
+      <div class="ws-sr" id="cz_live" role="status" aria-live="polite"></div>
+      ${isAdmin() ? `<div class="nv-cz-h">Herkes için varsayılan</div>
+      <p>Kendi düzenini kaydetmemiş kullanıcılar bu düzeni görür. Yetkisi olmayan öğeler yine gösterilmez.${DB.navDefault ? '' : ' Şu an kod içi varsayılan kullanılıyor.'}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn sm" id="cz_setdef">Bu düzeni herkes için varsayılan yap</button>
+      ${DB.navDefault ? '<button type="button" class="btn sm ghost" id="cz_clrdef">Varsayılanı sıfırla</button>' : ''}</div>` : ''}</div>
     <div class="m-f"><button type="button" class="btn ghost" id="cz_reset">${ic('reset')}Varsayılana dön</button><span class="spacer"></span>
       <button type="button" class="btn" data-close>Vazgeç</button><button type="button" class="btn pri" id="cz_ok">Değişiklikleri kaydet</button></div>`, 'narrow nv-dlg');
   wsDialog('cz_t');
@@ -9632,10 +9644,24 @@ function navCustomize() {
       czPopClose(); return czMove(k, mv.dataset.czmv === 'top' ? 0 : i + (mv.dataset.czmv === 'up' ? -1 : 1), `[data-czmore="${k}"]`); }
     const mo = t.closest('[data-czmore]'); if (mo) return czPop(mo);
     if (t.closest('#cz_reset')) {
-      CZ.order = NAV_MOVABLE.filter(navAvail); CZ.hidden = new Set(); czDraw('#cz_reset');
-      $('#cz_live').textContent = 'Varsayılan sıra yüklendi; kalıcı olması için kaydet'; return;
+      const d = navCfg(true);
+      CZ.order = [...d.order]; CZ.hidden = new Set(d.hidden); CZ.def = true; czDraw('#cz_reset');
+      $('#cz_live').textContent = 'Varsayılan düzen yüklendi; kalıcı olması için kaydet'; return;
     }
-    if (t.closest('#cz_ok')) { navSave(CZ.order, [...CZ.hidden]); CZ = null; closeModal(); save(); render(); toast('Kenar çubuğu kaydedildi'); }
+    if (t.closest('#cz_ok')) {
+      if (CZ.def) delete DB.ui.nav; else navSave(CZ.order, [...CZ.hidden]);
+      CZ = null; closeModal(); save(); render(); toast('Kenar çubuğu kaydedildi'); return;
+    }
+    if (t.closest('#cz_setdef')) {
+      /* Taslak sırası; yöneticide de koşula bağlı gizli öğe (ör. talep projesi yoksa Talep havuzu) eski görünürlüğüyle sona.
+         Yöneticinin kişisel düzeni de varsayılana bağlanır. */
+      const dh = navDefaultCfg().hidden, rest = NAV_MOVABLE.filter(k => !CZ.order.includes(k));
+      DB.navDefault = { items: [...CZ.order.map(k => ({ id: k, visible: !CZ.hidden.has(k) })), ...rest.map(k => ({ id: k, visible: !dh.includes(k) }))] };
+      delete DB.ui.nav; CZ = null; closeModal(); save(); render(); toast('Varsayılan menü herkes için kaydedildi'); return;
+    }
+    if (t.closest('#cz_clrdef')) {
+      delete DB.navDefault; CZ = null; closeModal(); save(); render(); toast('Varsayılan menü sıfırlandı'); return;
+    }
   });
   box.addEventListener('keydown', e => {
     if (!CZ) return;
@@ -9676,13 +9702,13 @@ function czDraw(focus) {
 }
 function czToggle(k) {
   if (!NAV_MOVABLE.includes(k)) return;
-  CZ.hidden.has(k) ? CZ.hidden.delete(k) : CZ.hidden.add(k);
+  CZ.hidden.has(k) ? CZ.hidden.delete(k) : CZ.hidden.add(k); CZ.def = false;
   czDraw(`[data-czchk="${k}"]`);
 }
 function czMove(k, to, focus) {
   const o = CZ.order, i = o.indexOf(k); to = Math.max(0, Math.min(o.length - 1, to));
   if (i < 0 || to === i) return;
-  o.splice(i, 1); o.splice(to, 0, k);
+  o.splice(i, 1); o.splice(to, 0, k); CZ.def = false;
   czDraw(focus || `[data-czgrip="${k}"]`);
   $('#cz_live').textContent = `${NAV_ITEMS[k].t} ${navFull(o).indexOf(k) + 1}. sıraya taşındı`;
 }

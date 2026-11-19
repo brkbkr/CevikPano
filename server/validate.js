@@ -246,6 +246,19 @@ export function validateCfg(v) {
   if (!ok) throw new HttpError(400, 'Geçersiz iş tipi ayarı (kimlik, ad, harf ve #RRGGBB renk gerekli)');
 }
 
+/* Genel ayar `navDefault` (yönetici, herkes için varsayılan kenar çubuğu): { items: [{ id, visible }] }.
+   Kimlikler istemcideki NAV_MOVABLE ile aynı (bilinen, benzersiz); visible boolean; başka anahtar yok. */
+export const NAV_DEFAULT_IDS = ['recent', 'customers', 'reports', 'pool', 'users', 'system'];
+export function validateNavDefault(v) {
+  const ok = v != null && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).every(k => k === 'items')
+    && Array.isArray(v.items) && v.items.length <= NAV_DEFAULT_IDS.length
+    && v.items.every((x, i, a) => x && typeof x === 'object' && !Array.isArray(x)
+      && Object.keys(x).every(k => k === 'id' || k === 'visible')
+      && typeof x.id === 'string' && NAV_DEFAULT_IDS.includes(x.id) && typeof x.visible === 'boolean'
+      && a.findIndex(y => y && y.id === x.id) === i);
+  if (!ok) throw new HttpError(400, 'Geçersiz varsayılan menü (bilinen öğe kimlikleri, benzersiz, görünürlük true/false)');
+}
+
 /* opts: { live: true, cur } → /api/sync yazması (cur: veritabanındaki güncel hâl); içe aktarmada verilmez. */
 export function validate(collection, data, opts = {}) {
   if (JSON.stringify(data).length > MAX_RECORD) throw new HttpError(400, 'Kayıt çok büyük');

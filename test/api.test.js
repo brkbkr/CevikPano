@@ -209,6 +209,45 @@ t('gezinme (A2): sol menü tercihleri (nav, wsOpen, recentProj, recentWs) kişis
   assert.equal(rj.json.applied, 0);
 });
 
+t('varsayılan menü (navDefault): yalnız yönetici yazar/siler, biçim doğrulanır, herkese gider', async () => {
+  const a = client(); await a.login('admin', 'test-admin-pw');
+  const m = client(); await m.login('ali', 'AliYeni12345');
+  const v = client(); await v.login('izci', 'IzciYeni12345');
+  const good = { items: [{ id: 'reports', visible: true }, { id: 'recent', visible: false }, { id: 'customers', visible: true },
+    { id: 'pool', visible: true }, { id: 'users', visible: true }, { id: 'system', visible: false }] };
+  /* üye ve izleyici yazamaz */
+  for (const c of [m, v]) {
+    const r = await c.sync([{ c: '_settings', id: 'navDefault', op: 'put', data: good }]);
+    assert.equal(r.json.applied, 0);
+  }
+  assert.equal((await pool.query(`SELECT 1 FROM settings WHERE key='navDefault'`)).rowCount, 0);
+  /* biçim: bilinmeyen kimlik, yinelenen, boolean olmayan görünürlük, fazladan anahtar, uzunluk, dizi/metin */
+  const bad = [
+    { items: [{ id: 'projects', visible: true }] }, { items: [{ id: 'x"><img src=x>', visible: true }] },
+    { items: [{ id: 'pool', visible: true }, { id: 'pool', visible: false }] },
+    { items: [{ id: 'pool', visible: 'true' }] }, { items: [{ id: 'pool' }] }, { items: [{ id: 'pool', visible: true, t: '<b>' }] },
+    { items: [...good.items, { id: 'recent', visible: true }] }, { items: 'pool' }, { items: [null] }, { items: [], x: 1 }, 'metin', [1],
+  ];
+  for (const data of bad) {
+    const r = await a.sync([{ c: '_settings', id: 'navDefault', op: 'put', data }]);
+    assert.equal(r.json.applied, 0, JSON.stringify(data));
+    assert.match(r.json.rejected[0].reason, /varsayılan menü|Geçersiz/, JSON.stringify(data));
+  }
+  let r = await a.sync([{ c: '_settings', id: 'navDefault', op: 'put', data: good }]);
+  assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
+  assert.equal((await a.sync([{ c: '_settings', id: 'navDefault', op: 'put', data: { items: [] } }])).json.applied, 1);   // eksik öğe: istemci sona ekler
+  r = await a.sync([{ c: '_settings', id: 'navDefault', op: 'put', data: good }]);
+  assert.equal(r.json.applied, 1);
+  /* herkes okur (izleyici dahil) */
+  assert.deepEqual((await v.state()).json.data.navDefault, good);
+  assert.deepEqual((await m.state()).json.data.navDefault, good);
+  /* üye silemez; yönetici siler (Varsayılanı sıfırla) */
+  assert.equal((await m.sync([{ c: '_settings', id: 'navDefault', op: 'del' }])).json.applied, 0);
+  assert.deepEqual((await v.state()).json.data.navDefault, good);
+  assert.equal((await a.sync([{ c: '_settings', id: 'navDefault', op: 'del' }])).json.applied, 1);
+  assert.equal((await v.state()).json.data.navDefault, undefined);
+});
+
 t('son aktif yönetici pasifleştirilemez; kendi hesabını silemez', async () => {
   const a = client();
   await a.login('admin', 'test-admin-pw');
