@@ -2936,6 +2936,18 @@ button.id-pv:hover{background:var(--surface);border-color:var(--line)}
 .wsr-row select{width:auto;min-width:170px}
 
 /* ---- Parametrik proje alanları: Proje ayarları → Alanlar (pf-) ve genel rapor şablonları (docs/tasarim/parametrik-alanlar) ---- */
+.gr-tplw{margin:0 0 12px}
+.gr-tplh{font-size:12px;font-weight:650;color:var(--ink2);margin-bottom:6px}
+.gr-tpl{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:thin}
+.gr-tpl button{flex:0 0 auto;display:flex;align-items:center;gap:10px;min-height:52px;padding:8px 12px 8px 10px;border:1px solid var(--line);border-radius:12px;background:var(--surface);box-shadow:var(--shadow-sm);text-align:left;max-width:240px;color:var(--ink)}
+.gr-tpl button:hover{border-color:var(--line2)}
+.gr-tpl .ti{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;background:var(--surface3);color:var(--ink2);flex-shrink:0}
+.gr-tpl .ti svg.i{width:17px;height:17px}
+.gr-tpl b{display:block;font-size:12.5px}
+.gr-tpl .s{display:block;font-size:11px;color:var(--meta);margin-top:1px}
+.gr-tpl button[aria-pressed="true"]{border-color:var(--accent);box-shadow:var(--ring)}
+.gr-tpl button[aria-pressed="true"] .ti{background:var(--accent-soft);color:var(--accent-d)}
+.gr-note{border-top:0;padding-top:0}
 .pf-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
 .pf-grid.has-form{grid-template-columns:minmax(0,1fr) 360px}
 .pf-col{display:flex;flex-direction:column;gap:14px;min-width:0}
@@ -2974,7 +2986,7 @@ button.pf-card:hover{background:var(--surface2);border-color:var(--line)}
 .pf-info{margin:0}
 .pf-form{border:1px solid var(--line);border-radius:12px;background:var(--surface);box-shadow:var(--shadow);min-width:0}
 .pf-form .fbody{padding:12px;display:flex;flex-direction:column;gap:12px}
-.pf-form .fld label,.pf-form .fld .lbl{display:block;font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:5px}
+.pf-form .fld label,.pf-form .fld .pf-lb{display:block;font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:5px}
 .pf-form .hint{font-size:11.5px;color:var(--meta);margin-top:4px}
 .pf-form .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .pf-form .inp.mono{font-family:var(--mono)}
@@ -7460,9 +7472,9 @@ function pfPanel(pr) {
   const types = (isB ? (d.type === 'cari' ? [['cari', 'Cari kaydı', 'building']] : PF_TYPES.filter(t => t[0] === d.type)) : PF_TYPES)
     .map(([v, l, i]) => `<button type="button" role="radio" data-pftype="${v}" aria-checked="${d.type === v}" ${isB ? 'disabled' : ''}>${ic(i)}${l}</button>`).join('');
   const optEdit = d.type === 'select' && d.bind !== 'billable';
-  const opts = d.bind === 'billable' ? `<div class="fld"><span class="lbl">Seçenekler</span><div class="pf-fixed">${BILLABLE.map(x => `<span class="chip">${esc(x)}</span>`).join('')}</div>
+  const opts = d.bind === 'billable' ? `<div class="fld"><span class="pf-lb">Seçenekler</span><div class="pf-fixed">${BILLABLE.map(x => `<span class="chip">${esc(x)}</span>`).join('')}</div>
       <div class="hint">Faturalama seçenekleri sabittir. Boş bırakılan iş raporda "Faturalanacak" sayılır.</div></div>`
-    : optEdit ? `<div class="fld"><span class="lbl">Seçenekler</span><div class="pf-opts">${d.options.map((o, k) => `<div class="pf-opt"><span class="grip">${ic('grip')}</span>
+    : optEdit ? `<div class="fld"><span class="pf-lb">Seçenekler</span><div class="pf-opts">${d.options.map((o, k) => `<div class="pf-opt"><span class="grip">${ic('grip')}</span>
       <input class="inp" data-pfo="${k}" value="${esc(o)}" maxlength="100" aria-label="Seçenek ${k + 1}">${o && o === d.def ? `<span class="def">${ic('check')}Varsayılan</span>` : ''}
       <button type="button" class="iconbtn sm" data-pfox="${k}" aria-label="Seçeneği sil: ${esc(o)}">${ic('x')}</button></div>`).join('')}
       <button type="button" class="btn ghost pf-oadd" data-pfoadd>${ic('plus')}Seçenek ekle</button></div>
@@ -7479,7 +7491,7 @@ function pfPanel(pr) {
     <div class="fbody">
       <div class="two"><div class="fld"><label for="pf_n">Görünen ad</label><input class="inp" id="pf_n" data-pfd="name" maxlength="60" value="${esc(d.name)}" autocomplete="off"></div>
         <div class="fld"><label for="pf_k">Anahtar</label><input class="inp mono" id="pf_k" data-pfd="key" maxlength="30" value="${esc(d.key)}" ${isB ? 'disabled' : ''} autocomplete="off"></div></div>
-      <div class="fld"><span class="lbl">Tür</span><div class="pf-types" role="radiogroup" aria-label="Tür">${types}</div>
+      <div class="fld"><span class="pf-lb">Tür</span><div class="pf-types" role="radiogroup" aria-label="Tür">${types}</div>
         <div class="hint">${isB ? 'Hazır alanın türü değişmez.' : 'Hiçbir alan zorunlu değildir; boş bırakılabilir.'}</div></div>
       ${!isB && isAdmin() && !PF.id ? `<div class="fld"><label for="pf_sc">Kapsam</label><select class="inp" id="pf_sc" data-pfd="scope">
         <option value="p" ${d.scope !== 'g' ? 'selected' : ''}>Bu proje (${esc(pr.key)})</option><option value="g" ${d.scope === 'g' ? 'selected' : ''}>Tüm projeler</option></select></div>`
@@ -8321,7 +8333,18 @@ function grPeriod() {
 /* Görünüm kapsamındaki projeler (arşivliler dahil: geçmiş dönem etiketle görünür). */
 const grScope = () => isSuper() ? DB.projects.slice() : userProjects(CU()?.id).filter(projVisible);
 const GR_NONE = '__none', GR_UNK = '__unk';
-const GR_FKEYS = ['ws', 'proj', 'cu', 'user', 'type', 'bill'];
+const GR_FKEYS = ['ws', 'proj', 'cu', 'user', 'type', 'bill', 'cfv'];
+/* Parametrik proje alanları: raporlanabilir alan türleri (metin yalnız Excel ayrıntısında değil, hiç boyut değil). */
+const GR_CF_TYPES = ['select', 'checkbox', 'user'];
+const GR_DIM_GROUPS = [['base', 'Temel'], ['preset', 'Hazır alanlar'], ['cf', 'Proje alanları']];
+/* Hazır raporlar: seçilince sekme, satır ve sütun tek tıkla ayarlanır (süzgeç ve dönem korunur; grF kişisel hatırlanır). */
+const GR_TEMPLATES = [
+  { id: 'fatura', icon: 'receipt', l: 'Faturalanabilir saat', s: 'Cariye göre', tab: 'fatura' },
+  { id: 'turay', icon: 'tag', l: 'Fatura türü × Ay', s: 'Aylık saat', row: 'billType', col: 'month' },
+  { id: 'kisifat', icon: 'users', l: 'Kişi × Faturalama', s: 'Kim, ne kadar', row: 'user', col: 'billable' },
+  { id: 'cariproje', icon: 'building', l: 'Cari × Proje', s: 'Dağılım', row: 'customer', col: 'project' },
+  { id: 'alanay', icon: 'sliders', l: 'Alana göre aylık', s: 'Alan seçin', row: 'cf:', col: 'month' },
+];
 
 /* Bağlam: bir kez kurulur (Map'ler), boyut anahtarları buradan okunur. */
 function grCtx() {
@@ -8338,8 +8361,25 @@ function grCtx() {
   const IM = new Map(); DB.issues.forEach(i => { if (PM.has(i.projectId)) IM.set(i.id, i); });
   const UM = new Map(DB.users.map(u => [u.id, u]));
   const cuOfP = p => p.customerId && CUM.has(p.customerId) ? p.customerId : GR_NONE;
-  const cuOfI = (i, p) => i?.customerId && CUM.has(i.customerId) ? i.customerId : cuOfP(p);
-  return { scope, f, PM, WS, CUM, IM, UM, cuOfP, cuOfI, SM: new Map((DB.sprints || []).map(s => [s.id, s])) };
+  /* Hazır alanlar projede açık mı (bir kez; kayıt döngüsünde arama yok). Cari alanı kapalıysa işin carisi değil projeninki. */
+  const BON = new Map(scope.map(p => [p.id, { billable: bindOn(p.id, 'billable'), billType: bindOn(p.id, 'billType'), customerId: bindOn(p.id, 'customerId') }]));
+  const cuOfI = (i, p) => BON.get(p.id)?.customerId !== false && i?.customerId && CUM.has(i.customerId) ? i.customerId : cuOfP(p);
+  /* Proje alanı boyutları: kapsamdaki projelerin açık seçim / evet-hayır / kişi alanları; aynı anahtar projeler arasında
+     tek boyutta birleşir (ilk tür esas). Alan projede yoksa ya da kapalıysa değer "Belirtilmemiş". */
+  const FD = new Map();
+  for (const fl of DB.fields || []) {
+    if (!liveField(fl) || !GR_CF_TYPES.includes(fl.type) || typeof fl.key !== 'string' || !fl.key) continue;
+    if (fl.projectId && !PM.has(fl.projectId)) continue;
+    const k = 'cf:' + fl.key;
+    let d = FD.get(k);
+    if (!d) FD.set(k, d = { key: fl.key, type: fl.type, l: fl.name || fl.key, byP: new Map(), glob: null, opts: new Set() });
+    if (d.type !== fl.type) continue;
+    if (fl.projectId) d.byP.set(fl.projectId, fl); else d.glob = fl;
+    (Array.isArray(fl.options) ? fl.options : []).forEach(o => d.opts.add(String(o)));
+  }
+  if (f.cfk && f.cfk !== 'billType' && !FD.has(f.cfk)) delete f.cfk;
+  if (!f.cfk) delete f.cfv;
+  return { scope, f, PM, WS, CUM, IM, UM, cuOfP, cuOfI, BON, FD, SM: new Map((DB.sprints || []).map(s => [s.id, s])) };
 }
 
 /* Boyutlar: Efor DIMS ile aynı anahtarlar; Cari (işin carisi, yoksa projenin) ve Çalışma alanı eklenir. */
@@ -8356,9 +8396,19 @@ function grDims(X) {
     month:    { l: 'Ay', k: w => w.date.slice(0, 7), n: m => monthName(m), time: true },
     week:     { l: 'Hafta', k: w => wk(w.date), n: d => trDate(d) + ' haftası', time: true },
     type:     { l: 'İş tipi', k: (w, i) => i.type, n: t => TYPE[t]?.[2] || '—' },
-    billable: { l: 'Faturalama', k: (w, i) => billOf(i), n: x => x },
-    billType: { l: 'Fatura türü', k: (w, i) => btypeOf(i), n: x => x },
+    /* Faturalama boş ya da projede kapalıysa "Faturalanacak" (toplamlar değişmez); Fatura türü boş/kapalı → Belirtilmemiş. */
+    billable: { l: 'Faturalama', g: 'preset', k: (w, i, p) => X.BON.get(p.id)?.billable === false ? BILLABLE[0] : billOf(i), n: x => x },
+    billType: { l: 'Fatura türü', g: 'preset', k: (w, i, p) => (X.BON.get(p.id)?.billType !== false && i.billType) || GR_NONE, n: x => x === GR_NONE ? 'Belirtilmemiş' : x },
   };
+  D.customer.g = 'preset';
+  for (const [k, d] of X.FD) D[k] = { l: d.l, g: 'cf', cf: d,
+    k: (w, i, p) => { const fl = d.byP.get(p.id) || d.glob; if (!fl) return GR_NONE;
+      const v = i.cf?.[fl.id];
+      if (v == null || v === '') return GR_NONE;
+      if (d.type === 'checkbox') return v ? 'Evet' : 'Hayır';
+      if (d.type === 'user') return X.UM.has(v) ? v : GR_UNK;
+      return String(v); },
+    n: x => x === GR_NONE ? 'Belirtilmemiş' : x === GR_UNK ? 'Bilinmeyen' : d.type === 'user' ? (X.UM.get(x)?.name || 'Bilinmeyen') : String(x) };
   if (MOD('epic')) D.epic = { l: 'Epik', k: (w, i) => i.epicId || GR_NONE, n: id => id === GR_NONE ? 'Epik yok' : (issue(id)?.summary || '—') };
   if (anyAgile()) D.sprint = { l: 'Sprint', k: (w, i) => i.sprintId || GR_NONE, n: id => id === GR_NONE ? 'Backlog' : (X.SM.get(id)?.name || '—') };
   return D;
@@ -8373,6 +8423,7 @@ function grCompute() {
   const cells = new Map(), rT = new Map(), cT = new Map(), bill = new Map(), logs = [], issues = new Set(), projs = new Set();
   let grand = 0;
   const F0 = BILLABLE[0];
+  const cfD = f.cfk && f.cfv ? D[f.cfk] : null;
   for (const w of DB.worklogs) {
     const d = w.date;
     if (!d || d < per.from || d > per.to) continue;
@@ -8382,12 +8433,13 @@ function grCompute() {
     if (f.ws && X.WS.get(p.id) !== f.ws) continue;
     if (f.user && (f.user === GR_UNK ? X.UM.has(w.userId) : w.userId !== f.user)) continue;
     if (f.type && i.type !== f.type) continue;
-    const b = billOf(i);
+    const b = X.BON.get(p.id)?.billable === false ? F0 : billOf(i);   // kapalı Faturalama → Faturalanacak
     if (f.bill && b !== f.bill) continue;
+    if (cfD && String(cfD.k(w, i, p) ?? GR_NONE) !== f.cfv) continue;
     const cu = X.cuOfP(p);
     if (f.cu && cu !== f.cu) continue;
     const h = +w.hours || 0;
-    logs.push({ w, i, p, cu });
+    logs.push({ w, i, p, cu, b });
     issues.add(i.id); projs.add(p.id);
     grand += h;
     const r = rD.k(w, i, p) ?? GR_NONE, c = cD ? (cD.k(w, i, p) ?? GR_NONE) : '';
@@ -8433,13 +8485,20 @@ function grFilterBar(R) {
   uOpts.push([GR_UNK, 'Bilinmeyen (silinmiş)']);
   const tOpts = Object.keys(TYPE).map(t => [t, TYPE[t][2]]);
   const bOpts = BILLABLE.map(b => [b, b]);
+  /* Alan süzgeci (proje alanı + değer): Fatura türü ve kapsamdaki proje alanları. */
+  const kOpts = [['billType', 'Fatura türü'], ...[...X.FD].map(([k, d]) => [k, d.l])];
+  const fdim = f.cfk ? R.D[f.cfk] : null, fcf = fdim?.cf;
+  const vOpts = !fdim ? [] : [...(f.cfk === 'billType' ? [...new Set(X.scope.flatMap(p => bindField(p.id, 'billType').options))].map(v => [v, v])
+    : fcf.type === 'checkbox' ? [['Evet', 'Evet'], ['Hayır', 'Hayır']]
+    : fcf.type === 'user' ? DB.users.filter(u => !u.system || isSuper()).map(u => [u.id, u.name])
+    : [...fcf.opts].map(v => [v, v])), [GR_NONE, 'Belirtilmemiş']];
   const sel = (k, l, all, opts) => `<label class="gr-fs ${f[k] ? 'on' : ''}"><span class="lb">${l}</span>
       <select class="inp" data-grf="${k}" aria-label="${l}"><option value="">${all}</option>${opts.map(([v, t]) =>
         `<option value="${esc(v)}" ${f[k] === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label>`;
   const nameOf = { ws: id => wsById(id)?.name, proj: id => { const p = X.PM.get(id); return p && `${p.key} — ${p.name}`; },
     cu: id => id === GR_NONE ? 'Cari bağlı değil' : X.CUM.get(id)?.name, user: id => id === GR_UNK ? 'Bilinmeyen' : X.UM.get(id)?.name,
-    type: t => TYPE[t]?.[2], bill: b => b };
-  const LBL = { ws: 'Alan', proj: 'Proje', cu: 'Cari', user: 'Kişi', type: 'İş tipi', bill: 'Faturalama' };
+    type: t => TYPE[t]?.[2], bill: b => b, cfv: v => fdim?.n(v) };
+  const LBL = { ws: 'Alan', proj: 'Proje', cu: 'Cari', user: 'Kişi', type: 'İş tipi', bill: 'Faturalama', cfv: fdim?.l || 'Alan' };
   const act = GR_FKEYS.filter(k => f[k]);
   return `<section class="gr-fbar ${GR.sheet ? 'open' : ''}" aria-label="Süzgeçler">
     <div class="gr-frow">
@@ -8455,6 +8514,9 @@ function grFilterBar(R) {
     <div class="gr-fgrid">
       ${sel('ws', 'Alan', 'Tümü', wsOpts)}${sel('proj', 'Proje', 'Tümü', pOpts)}${sel('cu', 'Cari', 'Tümü', cOpts)}
       ${sel('user', 'Kişi', 'Herkes', uOpts)}${sel('type', 'İş tipi', 'Tümü', tOpts)}${sel('bill', 'Faturalama', 'Tümü', bOpts)}
+      <label class="gr-fs ${f.cfk ? 'on' : ''}"><span class="lb">Proje alanı</span><select class="inp" data-grcfk aria-label="Proje alanı süzgeci"><option value="">Seçin</option>${kOpts.map(([v, t]) =>
+        `<option value="${esc(v)}" ${f.cfk === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label>
+      ${fdim ? sel('cfv', esc(fdim.l), 'Tümü', vOpts) : ''}
     </div>
     ${act.length ? `<div class="gr-chips"><span class="lbl">${act.length} süzgeç etkin:</span>${act.map(k =>
       `<span class="gr-chip"><span class="t"><span>${LBL[k]}:</span> ${esc(nameOf[k](f[k]) || '—')}</span><button type="button" data-grx="${k}" aria-label="${LBL[k]} süzgecini kaldır">${ic('x')}</button></span>`).join('')}
@@ -8477,7 +8539,31 @@ function renderGr() {
     <a href="#raporlar/fatura" class="gr-tab" role="tab" id="grtab-fatura" aria-selected="${tab === 'fatura'}" aria-controls="grPanel" tabindex="${tab === 'fatura' ? 0 : -1}">${ic('issues')}Faturalanabilir saat</a></div>`;
   const body = !R.logs.length ? grEmpty() : tab === 'fatura' ? grFatura(R) : grSure(R);
   GR.ms = performance.now() - t0;
-  return `<div class="gr" data-grms="${GR.ms.toFixed(1)}">${tabs}<div id="grPanel" role="tabpanel" aria-labelledby="grtab-${tab}" class="gr-panel">${grFilterBar(R)}${body}</div></div>`;
+  return `<div class="gr" data-grms="${GR.ms.toFixed(1)}">${tabs}<div id="grPanel" role="tabpanel" aria-labelledby="grtab-${tab}" class="gr-panel">${grTplBar(R)}${grFilterBar(R)}${body}</div></div>`;
+}
+const grTplOn = (t, R) => t.tab ? grTab() === t.tab
+  : grTab() === 'sure' && (t.row === 'cf:' ? String(R.rowK).startsWith('cf:') : R.rowK === t.row) && R.colK === t.col;
+function grTplBar(R) {
+  return `<section class="gr-tplw" aria-labelledby="grTplH"><div class="gr-tplh" id="grTplH">Hazır raporlar</div>
+    <div class="gr-tpl" role="toolbar" aria-labelledby="grTplH">${GR_TEMPLATES.map(t => `<button type="button" data-grtpl="${t.id}" aria-pressed="${grTplOn(t, R)}">
+      <span class="ti">${ic(t.icon)}</span><span class="tx"><b>${esc(t.l)}</b><span class="s">${esc(t.s)}</span></span></button>`).join('')}</div></section>`;
+}
+function grTpl(id) {
+  const t = GR_TEMPLATES.find(x => x.id === id); if (!t) return;
+  const R = GR.last || grCompute(), f = grF();
+  if (!t.tab) {
+    let row = t.row;
+    if (row === 'cf:') {
+      row = String(R.rowK).startsWith('cf:') ? R.rowK : Object.keys(R.D).find(k => k.startsWith('cf:'));
+      if (!row) return toast('Raporlanabilir proje alanı yok: projeye seçim, evet/hayır ya da kişi türünde bir alan ekleyin', { warn: true });
+    }
+    f.row = row; f.col = t.col;
+  }
+  GR.cell = null;
+  const tab = t.tab || 'sure';
+  DB.ui.grTab = tab; save();
+  if (location.hash !== '#raporlar/' + tab) location.hash = 'raporlar/' + tab; else render();
+  setTimeout(() => { $(`[data-grtpl="${id}"]`)?.focus(); if (t.row === 'cf:') $('[data-grdim="row"]')?.focus(); }, 60);
 }
 
 function grSure(R) {
@@ -8493,7 +8579,9 @@ function grSure(R) {
       aria-label="${esc(r === '*' ? 'Toplam' : rD.n(r))}${c === '*' || !cD ? '' : ' × ' + esc(cD.n(c))}: ${grH(v)} saat" ${v ? '' : 'disabled'}>${v ? grH(v) : '·'}</button>`;
   };
   const opt = (sel, none) => (none ? `<option value="" ${sel === '' ? 'selected' : ''}>Yok</option>` : '')
-    + dims.map(([k, o]) => `<option value="${k}" ${sel === k ? 'selected' : ''}>${esc(o.l)}</option>`).join('');
+    + GR_DIM_GROUPS.map(([g, gl]) => { const ds = dims.filter(([, o]) => (o.g || 'base') === g);
+      return ds.length ? `<optgroup label="${gl}">${ds.map(([k, o]) => `<option value="${esc(k)}" ${sel === k ? 'selected' : ''}>${esc(o.l)}</option>`).join('')}</optgroup>` : ''; }).join('');
+  const fieldDim = [rowK, colK].some(k => k === 'billType' || k === 'billable' || String(k).startsWith('cf:'));
   const head = `<tr><th class="rh dimh" scope="col">${esc(rD.l)}${cD ? `<span>/</span>${esc(cD.l)}` : ''}</th>
     ${cols.map(c => `<th scope="col" title="${esc(cD.n(c))}"><span class="ph">${colK === 'user' ? (c === GR_UNK ? '<span class="gr-unk" aria-hidden="true">?</span>' : avat(c)) : ''}${esc(cD.n(c))}${cD.tag ? grTag(cD.tag(c)) : ''}</span></th>`).join('')}
     <th scope="col" class="tot">Toplam</th></tr>`;
@@ -8517,6 +8605,7 @@ function grSure(R) {
         <button type="button" class="btn gr-xls" data-grxls>${ic('issues')}Excel'e aktar</button></div>
       <div class="gr-pv-wrap" id="grPvWrap"><table class="gr-pv" id="grPv"><thead>${head}</thead><tbody>${body}</tbody><tfoot>${foot}</tfoot></table></div>
       <div class="gr-foot">${ic('info')}Bir hücreye tıkla ya da Enter'a bas: o kesitin süre kayıtları altta açılır.</div>
+      ${fieldDim ? `<div class="gr-foot gr-note" data-grnote>${ic('info')}"Belirtilmemiş": alanı boş işler ve alanın kapalı olduğu projeler. Faturalama boş ya da kapalıysa "Faturalanacak" sayılır.</div>` : ''}
     </section>${grDrill(R)}`;
 }
 
@@ -8584,7 +8673,7 @@ function grFatura(R) {
         <tbody>${table}</tbody>
         <tfoot><tr><td>Toplam</td><td>${grH(F)}</td><td>${grH(N)}</td><td class="grand">${grH(T)}</td><td>${grRate(F, T)}</td></tr></tfoot></table></div>
       <div class="gr-fc-list">${cards}<article class="gr-fc tot"><div class="gr-fc-n"><div><span>Faturalanacak</span><b>${grH(F)}</b></div><div><span>Faturalanmayacak</span><b>${grH(N)}</b></div><div class="t"><span>Toplam</span><b>${grH(T)}</b></div></div></article></div>
-      <div class="gr-foot">${ic('info')}Faturalama işin alanından gelir; alanı boş işler "Faturalanacak" sayılır. Faturalanacak + Faturalanmayacak = Toplam.</div>
+      <div class="gr-foot">${ic('info')}Faturalama işin alanından gelir; alanı boş ya da projede kapalı işler "Faturalanacak" sayılır. Faturalanacak + Faturalanmayacak = Toplam.</div>
     </section>`;
 }
 
@@ -8593,9 +8682,9 @@ function grExcel() {
   const R = grCompute(), tab = grTab();
   if (!R.logs.length) return toast('Aktarılacak süre kaydı yok: bu süzgeçlerle süre kaydı bulunmuyor', { warn: true });
   const X = R.X, f = R.f;
-  const LBL = { ws: 'Alan', proj: 'Proje', cu: 'Cari', user: 'Kişi', type: 'İş tipi', bill: 'Faturalama' };
+  const LBL = { ws: 'Alan', proj: 'Proje', cu: 'Cari', user: 'Kişi', type: 'İş tipi', bill: 'Faturalama', cfv: R.D[f.cfk]?.l || 'Alan' };
   const val = { ws: id => wsById(id)?.name, proj: id => X.PM.get(id)?.name, cu: id => id === GR_NONE ? 'Cari bağlı değil' : X.CUM.get(id)?.name,
-    user: id => id === GR_UNK ? 'Bilinmeyen' : X.UM.get(id)?.name, type: t => TYPE[t]?.[2], bill: b => b };
+    user: id => id === GR_UNK ? 'Bilinmeyen' : X.UM.get(id)?.name, type: t => TYPE[t]?.[2], bill: b => b, cfv: v => R.D[f.cfk]?.n(v) };
   const top = [[tab === 'fatura' ? 'Genel rapor — Faturalanabilir saat' : 'Genel rapor — Süre'], ['Dönem', R.per.label],
     ['Süzgeçler', GR_FKEYS.filter(k => f[k]).map(k => `${LBL[k]}: ${val[k](f[k]) || '—'}`).join(' · ') || 'Yok'], []];
   let sum;
@@ -8613,10 +8702,13 @@ function grExcel() {
       ['TOPLAM', ...cols.map(c => grR2(R.cT.get(c))), grR2(R.grand)]];
   }
   const det = R.logs.slice().sort((a, b) => a.w.date.localeCompare(b.w.date) || String(a.i.key).localeCompare(String(b.i.key)));
-  const detail = [['Cari', 'Alan', 'Proje', 'Tarih', 'Kişi', 'İş', 'Açıklama', 'Tür', 'Faturalama', 'Saat'],
-    ...det.map(({ w, i, p, cu }) => [cu === GR_NONE ? 'Cari bağlı değil' : (X.CUM.get(cu)?.name || ''), wsById(X.WS.get(p.id))?.name || '',
+  /* Seçili proje alanı boyutları (satır/sütun) ayrıntıda Saat'ten sonra sütun olur. */
+  const cfx = [...new Set([R.rowK, R.colK].filter(k => String(k).startsWith('cf:') && R.D[k]))];
+  const tv = (w, i, p) => { const v = R.D.billType.k(w, i, p); return v === GR_NONE ? '' : v; };
+  const detail = [['Cari', 'Alan', 'Proje', 'Tarih', 'Kişi', 'İş', 'Açıklama', 'Tür', 'Faturalama', 'Saat', ...cfx.map(k => R.D[k].l)],
+    ...det.map(({ w, i, p, cu, b }) => [cu === GR_NONE ? 'Cari bağlı değil' : (X.CUM.get(cu)?.name || ''), wsById(X.WS.get(p.id))?.name || '',
       p.name, trDate(w.date), X.UM.get(w.userId)?.name || 'Bilinmeyen', `${i.key} — ${i.summary}`, w.comment?.trim() || '',
-      btypeOf(i), billOf(i), grR2(w.hours)]),
+      tv(w, i, p), b, grR2(w.hours), ...cfx.map(k => { const v = R.D[k].k(w, i, p); return v === GR_NONE ? '' : R.D[k].n(v); })]),
     ['', '', '', '', '', '', '', '', 'TOPLAM', grR2(R.grand)]];
   const blob = makeXlsx([{ name: 'Özet', rows: sum, widths: [34, 16, 16, 16, 16, 12] },
     { name: 'Detay', rows: detail, widths: [26, 18, 24, 12, 20, 36, 40, 12, 16, 10] }]);
@@ -8634,8 +8726,9 @@ function wireGr() {
     let b;
     if ((b = q('[data-grrange]'))) return grSet(f => { f.range = b.dataset.grrange; if (f.range === 'custom' && !f.from) { const p = grPeriod(); f.from = p.from; f.to = p.to; } });
     if ((b = q('[data-grm]'))) return grSet(f => { const n = +b.dataset.grm; f.month = n ? shiftMonth(grPeriod().month || TODAY.slice(0, 7), n) : TODAY.slice(0, 7); });
-    if ((b = q('[data-grx]'))) return grSet(f => { delete f[b.dataset.grx]; });
-    if (q('[data-grclear]')) return grSet(f => { GR_FKEYS.forEach(k => delete f[k]); GR.cell = null; });
+    if ((b = q('[data-grx]'))) return grSet(f => { delete f[b.dataset.grx]; if (b.dataset.grx === 'cfv') delete f.cfk; });
+    if (q('[data-grclear]')) return grSet(f => { GR_FKEYS.forEach(k => delete f[k]); delete f.cfk; GR.cell = null; });
+    if ((b = q('[data-grtpl]'))) return grTpl(b.dataset.grtpl);
     if (q('[data-grsheet]')) { GR.sheet = !GR.sheet; return render(); }
     if (q('[data-grswap]')) return grSet(f => { const R = GR.last; if (!R?.colK) return; f.row = R.colK; f.col = R.rowK; GR.cell = null; });
     if (q('[data-grxls]')) return grExcel();
@@ -8654,6 +8747,7 @@ function wireGr() {
     const t = e.target;
     if (t.dataset.grf) return grSet(f => { if (t.value) f[t.dataset.grf] = t.value; else delete f[t.dataset.grf]; GR.cell = null; });
     if (t.dataset.grd) return grSet(f => { if (t.value) f[t.dataset.grd] = t.value; });
+    if (t.matches('[data-grcfk]')) return grSet(f => { if (t.value) f.cfk = t.value; else delete f.cfk; delete f.cfv; GR.cell = null; });
     if (t.dataset.grdim) return grSet(f => { f[t.dataset.grdim] = t.value; GR.cell = null; });
   });
   v.addEventListener('scroll', e => { if (e.target.id === 'grPvWrap') GR.sl = e.target.scrollLeft; }, true);
@@ -12232,9 +12326,9 @@ function billingRows() {
       trDate(w.date),
       DB.projects.find(p => p.id === i.projectId)?.name || '',
       w.comment?.trim() || i.description?.trim() || i.summary,
-      btypeOf(i),
+      bindOn(i.projectId, 'billType') ? btypeOf(i) : '',          // alan projede kapalı: tür boş
       Math.round(w.hours * 100) / 100,
-      billOf(i),
+      bindOn(i.projectId, 'billable') ? billOf(i) : BILLABLE[0],   // kapalı Faturalama → Faturalanacak
     ];
   });
 }

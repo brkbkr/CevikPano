@@ -200,7 +200,7 @@ const FN = 'Sahne ' + XSS, OPT2 = '<b>Kalın</b>' + XSS;
   await fieldsTab(YP);
   await YP.click('[data-pfsw="b:billable"]'); await sleep(300); await flush(YP); await sleep(300);
   const T2 = await tot();
-  ok('closing Faturalama: total unchanged', T2.t === T0.t, JSON.stringify([T0, T2]));
+  ok('closing Faturalama: total unchanged, closed counts as Faturalanacak', T2.t === T0.t && T2.f === T0.t && T2.n === 0, JSON.stringify([T0, T2]));
   ok('closing Faturalama keeps issue value on server', (await srv(YP, (d, id) => d.issues.find(i => i.id === id)?.billable, I1)) === 'Faturalanmayacak');
   /* yeniden aç: değerler geri gelir */
   await YP.click('[data-pfsw="b:billType"]'); await sleep(200); await YP.click('[data-pfsw="b:billable"]'); await sleep(300); await flush(YP); await sleep(300);
@@ -226,7 +226,79 @@ const FN = 'Sahne ' + XSS, OPT2 = '<b>Kalın</b>' + XSS;
   ok('mobile 390px: Alanlar tab without horizontal overflow', ov.rows >= 4 && ov.sw <= ov.cw + 1, JSON.stringify(ov));
 
   /* ---------------- P2 raporlar ---------------- */
-  /*@@P2@@*/
+  const grGo = async (f, tab = 'sure') => {
+    await A.evaluate(async ([f, tab]) => { await reloadState(); closeModal(); GR.cell = null; DB.ui.grF = f; DB.ui.grTab = tab;
+      if (location.hash === '#raporlar/' + tab) { DB.ui.view = 'greports'; render(); } else location.hash = 'raporlar/' + tab; }, [f, tab]);
+    await sleep(500);
+  };
+  const piv = () => A.evaluate(() => { const R = GR.last; return { row: R.rowK, col: R.colK, rows: R.rows.map(r => [R.rD.n(r), Math.round(R.rT.get(r) * 100) / 100]),
+    cols: R.cols.map(c => R.cD.n(c)), total: R.grand, tab: grTab(), pressed: [...document.querySelectorAll('[data-grtpl][aria-pressed="true"]')].map(b => b.dataset.grtpl) }; });
+  await grGo({ month: MON, proj: PID });
+  const dimOpts = await A.evaluate(() => [...document.querySelectorAll('[data-grdim="row"] optgroup')].map(g => [g.label, [...g.querySelectorAll('option')].map(o => o.value)]));
+  const g = Object.fromEntries(dimOpts);
+  ok('report dimension picker: groups Temel / Hazır alanlar / Proje alanları, project field listed', g['Hazır alanlar']?.join() === 'customer,billable,billType'
+    && (g['Proje alanları'] || []).includes('cf:sahne') && (g['Temel'] || []).includes('user'), JSON.stringify(dimOpts));
+  ok('template bar: five ready reports', (await A.evaluate(() => [...document.querySelectorAll('[data-grtpl]')].map(b => b.dataset.grtpl).join())) === 'fatura,turay,kisifat,cariproje,alanay');
+  await A.selectOption('[data-grdim="row"]', 'cf:sahne'); await sleep(300);
+  await A.selectOption('[data-grdim="col"]', ''); await sleep(300);
+  let pv = await piv();
+  ok('field dimension: values by project field, empty → Belirtilmemiş (last)', JSON.stringify(pv.rows) === JSON.stringify([['Canlı', 4.5], ['Belirtilmemiş', 4]]) && pv.total === 8.5, JSON.stringify(pv));
+  ok('field dimension footnote shown; XSS in field name/options inert', await A.evaluate(() => !!document.querySelector('[data-grnote]') && /kapalı olduğu projeler/.test(document.querySelector('[data-grnote]').textContent)
+    && !window.__xss && !document.querySelector('#view img')));
+  /* Excel: seçili alan boyutu ayrıntıda sütun */
+  const [dl] = await Promise.all([A.waitForEvent('download', { timeout: 5000 }), A.click('[data-grxls]')]);
+  const xf = SS + R + '_' + dl.suggestedFilename(); await dl.saveAs(xf);
+  const xraw = require('fs').readFileSync(xf).toString('utf8');
+  ok('Excel detail has project field column (escaped)', xraw.includes('Sahne &lt;img') && xraw.includes('Canlı') && !xraw.includes('<img src=x'), xf);
+  /* Hazır şablonlar */
+  await A.click('[data-grtpl="turay"]'); await sleep(400);
+  pv = await piv();
+  ok('template "Fatura türü × Ay": row billType, col month, pressed', pv.row === 'billType' && pv.col === 'month' && pv.tab === 'sure' && pv.pressed.join() === 'turay'
+    && JSON.stringify(pv.rows) === JSON.stringify([['Sabit fiyat', 4.5], ['Adam/Ay', 4]]) && pv.cols.length === 1, JSON.stringify(pv));
+  await shot(A, 'rapor-sablonlari');
+  await A.click('[data-grtpl="kisifat"]'); await sleep(400);
+  pv = await piv();
+  ok('template "Kişi × Faturalama": row user, col billable', pv.row === 'user' && pv.col === 'billable' && pv.pressed.join() === 'kisifat' && pv.cols.join() === 'Faturalanacak,Faturalanmayacak', JSON.stringify(pv));
+  await A.click('[data-grtpl="cariproje"]'); await sleep(400);
+  pv = await piv();
+  ok('template "Cari × Proje": row customer, col project', pv.row === 'customer' && pv.col === 'project' && pv.rows[0]?.[0] === 'Pa Cari ' + R, JSON.stringify(pv));
+  await A.click('[data-grtpl="alanay"]'); await sleep(400);
+  pv = await piv();
+  ok('template "Alana göre aylık": first project field × month', pv.row.startsWith('cf:') && pv.col === 'month' && pv.pressed.join() === 'alanay', JSON.stringify(pv));
+  await A.click('[data-grtpl="fatura"]'); await sleep(500);
+  ok('template "Faturalanabilir saat": opens billable tab', await A.evaluate(() => grTab() === 'fatura' && location.hash === '#raporlar/fatura' && !!document.querySelector('#grFt')
+    && document.querySelector('[data-grtpl="fatura"]').getAttribute('aria-pressed') === 'true'));
+  ok('template choice remembered personally (grF)', await A.evaluate(async () => { await flushAll(); const u = (await API.get('/api/state')).data.ui; return u?.grF?.row?.startsWith('cf:') && u.grF.col === 'month'; }));
+  /* Alan süzgeci: alan + değer, çip, temizle */
+  await grGo({ month: MON, proj: PID, row: 'user', col: '' });
+  await A.selectOption('[data-grcfk]', 'cf:sahne'); await sleep(300);
+  await A.selectOption('[data-grf="cfv"]', 'Canlı'); await sleep(300);
+  pv = await piv();
+  const chip = await A.evaluate(() => [...document.querySelectorAll('.gr-chip')].map(c => c.textContent.replace(/\s+/g, ' ').trim()));
+  ok('field filter: only matching hours, chip shown', pv.total === 4.5 && chip.some(t => t.includes('Canlı')), JSON.stringify([pv.total, chip]));
+  await A.selectOption('[data-grf="cfv"]', '__none'); await sleep(300);
+  ok('field filter "Belirtilmemiş": issues without value', (await piv()).total === 4);
+  await A.click('[data-grx="cfv"]'); await sleep(300);
+  ok('field filter chip removed → all hours, field cleared', (await piv()).total === 8.5 && await A.evaluate(() => !DB.ui.grF.cfk && !DB.ui.grF.cfv));
+  /* Kapalı alan: Fatura türü boyutunda tüm saat "Belirtilmemiş"; Faturalama boyutunda "Faturalanacak" */
+  await fieldsTab(YP);
+  await YP.click('[data-pfsw="b:billType"]'); await sleep(200); await YP.click('[data-pfsw="b:billable"]'); await sleep(300); await flush(YP); await sleep(300);
+  await grGo({ month: MON, proj: PID, row: 'billType', col: 'billable' });
+  pv = await piv();
+  ok('closed presets in report: Fatura türü → Belirtilmemiş, Faturalama → Faturalanacak, total same', JSON.stringify(pv.rows) === JSON.stringify([['Belirtilmemiş', 8.5]])
+    && pv.cols.join() === 'Faturalanacak' && pv.total === 8.5, JSON.stringify(pv));
+  await grGo({ month: MON, proj: PID }, 'fatura');
+  const T3 = await A.evaluate(() => ({ f: +document.querySelector('[data-grf-f]').dataset.grfF, n: +document.querySelector('[data-grf-n]').dataset.grfN, t: +document.querySelector('[data-grf-t]').dataset.grfT }));
+  ok('closed Faturalama: billable tab total same, all Faturalanacak', T3.t === 8.5 && T3.f === 8.5 && T3.n === 0, JSON.stringify(T3));
+  await YP.click('[data-pfsw="b:billType"]'); await sleep(200); await YP.click('[data-pfsw="b:billable"]'); await sleep(300); await flush(YP); await sleep(300);
+  await grGo({ month: MON, proj: PID }, 'fatura');
+  const T4 = await A.evaluate(() => ({ f: +document.querySelector('[data-grf-f]').dataset.grfF, n: +document.querySelector('[data-grf-n]').dataset.grfN, t: +document.querySelector('[data-grf-t]').dataset.grfT }));
+  ok('reopened: billable split back (values kept)', T4.f === 4.5 && T4.n === 4 && T4.t === 8.5, JSON.stringify(T4));
+  /* mobil: şablon çubuğu sayfayı taşırmaz */
+  const AM = await mk('admin-mobile', { width: 390, height: 844 }); await login(AM, 'admin', 'admin12345');
+  await AM.evaluate(([pid, mon]) => { DB.ui.grF = { month: mon, proj: pid }; location.hash = 'raporlar/sure'; }, [PID, MON]); await sleep(600);
+  const mo = await AM.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth, n: document.querySelectorAll('[data-grtpl]').length }));
+  ok('mobile 390px: report templates scroll inside bar (no page overflow)', mo.n === 5 && mo.sw <= mo.cw + 1, JSON.stringify(mo));
 
   /* ---------------- demo veri: değerler yine aynı ---------------- */
   const demo1 = await demoVals();
