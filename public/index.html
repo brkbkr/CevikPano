@@ -1595,6 +1595,27 @@ button.c-av::after{content:"";position:absolute;inset:-6px}
 /* pencere */
 .modal.cu-m{max-width:780px;display:flex;flex-direction:column}
 .modal.cu-m.narrow{max-width:500px}
+.modal.cu-m.cu-csv{max-width:980px}
+.cuc-h{margin:0 0 8px;font-size:12px;font-weight:700;color:var(--ink2)}
+.cuc-map{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px 10px;margin-bottom:14px}
+.cuc-map label{display:flex;flex-direction:column;gap:4px;min-width:0;font-size:11.5px;font-weight:600;color:var(--meta)}
+.cuc-map label > span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cuc-opts{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;font-size:12px}
+.cuc-opts .lb{font-weight:600;color:var(--ink2)} .cuc-opts .opt{color:var(--meta)}
+.cuc-sum{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px} .cuc-sum .spacer{flex:1}
+.cuc-chip,.cuc-st{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px 0 8px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);font-size:12px;font-weight:600;color:var(--ink2);white-space:nowrap}
+.cuc-st{height:22px;font-size:11.5px}
+.cuc-chip svg.i,.cuc-st svg.i{width:13px;height:13px}
+.cuc-chip b{font-family:var(--mono)}
+.cuc-chip[data-s="add"],.cuc-st[data-s="add"],.cuc-chip[data-s="update"],.cuc-st[data-s="update"]{background:var(--done-bg);border-color:var(--done-line);color:var(--done)}
+.cuc-chip[data-s="error"],.cuc-st[data-s="error"]{background:var(--risk-bg);border-color:var(--risk-line);color:var(--risk)}
+.cuc-scroll{max-height:44vh;overflow:auto}
+.cuc-tbl td{padding:7px 10px;font-size:12.5px} .cuc-tbl th{padding:8px 10px;position:sticky;top:0;z-index:1}
+.cuc-tbl td.cuc-tx{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cuc-tbl tr[data-act="error"] td{background:var(--risk-bg)}
+.cuc-tbl td.cuc-why{color:var(--meta);overflow-wrap:anywhere}
+.cuc-tbl tr[data-act="error"] td.cuc-why{color:var(--risk);font-weight:600}
+.cuc-note{margin:0 0 10px;font-size:12px;color:var(--meta)}
 .cu-m .cu-h{gap:12px;padding:14px 12px 14px 18px}
 .cu-m .cu-h .tx{flex:1;min-width:0}
 .cu-m .cu-h b{display:block;font-size:15px;font-weight:700;letter-spacing:-.01em;overflow-wrap:anywhere}
@@ -10048,7 +10069,7 @@ function renderCustomers() {
   CU_KEYS = new Map(all.map(c => [c.id, cuSearchKey(c)]));
   if (!all.length) return `<div class="hm-empty cu-empty" data-cuempty="none"><span class="hm-empty-ic">${ic('building')}</span><h3>Henüz cari yok</h3>${admin
     ? `<p>Müşteri ve tedarikçilerinizi ekleyin; projelerinizi bir cariye bağlayabilirsiniz.</p>
-       <div class="acts"><button type="button" class="btn pri" data-cunew>${ic('plus')}Cari ekle</button></div>`
+       <div class="acts"><button type="button" class="btn pri" data-cunew>${ic('plus')}Cari ekle</button><button type="button" class="btn" data-cuimp>${ic('up')}CSV'den içe aktar</button></div>`
     : '<p>Cari eklemek için yöneticinize başvurun.</p>'}</div>`;
   const kind = cuCurKind(), pas = !!DB.ui.cuPassive;
   const base = all.filter(c => pas || cuActive(c)), nPas = all.filter(c => !cuActive(c)).length;
@@ -10059,19 +10080,25 @@ function renderCustomers() {
       <div class="cu-seg" role="radiogroup" aria-label="Tür">${seg}</div>
       <button type="button" class="cu-tog" data-cupas aria-pressed="${pas}"><span class="cu-sw" aria-hidden="true"></span>Pasifleri de göster <span class="n">(${nPas})</span></button>
       <span class="spacer"></span>
-      ${admin ? `<button type="button" class="btn pri add" data-cunew>${ic('plus')}Cari ekle</button>` : ''}
+      ${admin ? `<button type="button" class="btn" data-cuimp>${ic('up')}İçe aktar</button><button type="button" class="btn" data-cuexp>${ic('dn')}Dışa aktar (CSV)</button>
+        <button type="button" class="btn pri add" data-cunew>${ic('plus')}Cari ekle</button>` : ''}
     </div>
     <div id="cuList">${cuListHtml()}</div>`;
 }
 
 /* Liste (arama yazılırken yalnız bu bölüm yeniden çizilir; arama kutusunun odağı korunur). */
-function cuListHtml() {
+/* Görünen (süzülmüş) liste: ekran ve CSV dışa aktarma aynı süzgeci kullanır. */
+function cuFiltered() {
   const kind = cuCurKind(), pas = !!DB.ui.cuPassive, raw = CU_Q.trim();
   const q = qmKey(raw), d = raw.replace(/[\s-]/g, ''), qd = /^\d+$/.test(d) ? d : '';
+  return cuList().filter(c => (pas || cuActive(c)) && cuKindMatch(c, kind)
+    && (!q || (CU_KEYS.get(c.id) ?? cuSearchKey(c)).includes(q) || (qd && String(c.taxNo || '').includes(qd)))).sort(cuSort);
+}
+function cuListHtml() {
+  const kind = cuCurKind(), pas = !!DB.ui.cuPassive, raw = CU_Q.trim();
   const nProj = new Map();
   DB.projects.forEach(p => { if (p.customerId) nProj.set(p.customerId, (nProj.get(p.customerId) || 0) + 1); });
-  const rows = cuList().filter(c => (pas || cuActive(c)) && cuKindMatch(c, kind)
-    && (!q || (CU_KEYS.get(c.id) ?? cuSearchKey(c)).includes(q) || (qd && String(c.taxNo || '').includes(qd)))).sort(cuSort);
+  const rows = cuFiltered();
   if (!rows.length) {
     const desc = [raw ? `"${raw}"` : '', kind !== 'all' ? CU_KIND[kind][0] : '', pas ? 'pasifler dahil' : 'yalnız etkin'].filter(Boolean).join(' · ');
     return `<div class="hm-empty cu-empty" data-cuempty="search"><span class="hm-empty-ic">${ic('search')}</span><h3>Aramanızla eşleşen cari yok</h3>
@@ -10419,14 +10446,301 @@ function cuProjRow(p) {
     : '<span style="color:var(--meta);font-weight:500">—</span>'}</span></div>`;
 }
 
+/* ---- Cariler: CSV içe / dışa aktarma (yalnız yönetici) ----
+   Ayrıştırıcı bağımlılıksız (RFC 4180: tırnaklı alan, "" kaçışı, tırnak içinde ayırıcı / yeni satır); ayırıcı ilk
+   satırdan algılanır (; , sekme), Excel'in "sep=;" satırı da tanınır. Dosya UTF-8 (BOM'lu/BOM'suz) okunur; geçersiz
+   UTF-8 ise Excel'in Türkçe ANSI çıktısı (windows-1254) varsayılır. Satır denetimleri validate.js → customers ile
+   aynı (uzunluklar, tür, 10/11 haneli vergi no, cuEmail); asıl kural ve yetki sunucuda (ADMIN_ONLY, vergi no
+   tekilliği). Aktarım /api/sync ile 200'lük partiler hâlinde; reddedilen kayıt satırıyla raporlanır. */
+const CU_CSV = [
+  ['name', 'Unvan', ['unvan', 'ticari unvan', 'firma', 'firma adi', 'cari', 'cari adi', 'cari unvani', 'ad', 'adi', 'name']],
+  ['shortName', 'Kısa ad', ['kisa ad', 'kisa adi', 'short name']],
+  ['kind', 'Tür', ['tur', 'tip', 'cari turu', 'kind', 'type']],
+  ['taxOffice', 'Vergi dairesi', ['vergi dairesi', 'vd', 'tax office']],
+  ['taxNo', 'Vergi no / TCKN', ['vergi no tckn', 'vergi no', 'vergi numarasi', 'vkn', 'tckn', 'tc kimlik no', 'tc no', 'kimlik no', 'tax no']],
+  ['address', 'Adres', ['adres', 'address']],
+  ['phone', 'Telefon', ['telefon', 'tel', 'gsm', 'phone']],
+  ['email', 'E-posta', ['e posta', 'eposta', 'email', 'e mail', 'mail']],
+  ['notes', 'Notlar', ['notlar', 'not', 'aciklama', 'notes']],
+  ['active', 'Durum', ['durum', 'etkin', 'aktif', 'status']],
+];
+const CU_CSV_LIM = { name: 200, shortName: 60, taxOffice: 100, address: 500, phone: 30, notes: 2000, email: 200 };
+const CU_CSV_MAXROWS = 5000, CU_CSV_BATCH = 200;
+const cuCsvKey = v => qmKey(v).replace(/[^a-z0-9]+/g, ' ').trim();
+let CUC = null;                                    // açık içe aktarma penceresinin durumu
+
+function csvSep(text) {
+  const cnt = { ';': 0, ',': 0, '\t': 0 };
+  let q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '"') q = !q;
+    else if (!q && (ch === '\n' || ch === '\r')) break;
+    else if (!q && ch in cnt) cnt[ch]++;
+  }
+  const best = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+  return best[1] ? best[0] : ';';
+}
+/* Kayıtlar: { n: dosyadaki kayıt sırası (başlık 1), cells }. Boş kayıtlar atlanır, numara korunur. */
+function csvParse(text, sep) {
+  const out = []; let row = [], f = '', q = false, n = 1;
+  const end = () => { row.push(f); if (row.some(c => c.trim() !== '')) out.push({ n, cells: row }); row = []; f = ''; n++; };
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) {
+      if (ch !== '"') f += ch;
+      else if (text[i + 1] === '"') { f += '"'; i++; }
+      else q = false;
+    } else if (ch === '"' && f === '') q = true;
+    else if (ch === sep) { row.push(f); f = ''; }
+    else if (ch === '\r' || ch === '\n') { if (ch === '\r' && text[i + 1] === '\n') i++; end(); }
+    else f += ch;
+  }
+  if (f !== '' || row.length) end();
+  return out;
+}
+async function cuCsvDecode(file) {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); }
+  catch (_) { return new TextDecoder('windows-1254').decode(buf); }
+}
+/* Dışa aktarmada formül kaçışı için eklenen ' geri alınır (aynı dosya geri yüklenebilsin). */
+const cuCsvVal = v => { const s = String(v ?? '').trim(); return /^'[=+\-@]/.test(s) ? s.slice(1) : s; };
+const CU_KIND_IN = { musteri: 'customer', customer: 'customer', alici: 'customer', tedarikci: 'supplier', supplier: 'supplier', satici: 'supplier',
+  ikisi: 'both', both: 'both', 'her ikisi': 'both', 'musteri tedarikci': 'both', 'musteri ve tedarikci': 'both' };
+const CU_ACT_IN = { etkin: true, aktif: true, evet: true, e: true, '1': true, true: true, pasif: false, hayir: false, h: false, '0': false, false: false };
+
+function cuCsvLoad(text, name) {
+  text = String(text || '').replace(/^﻿/, '');
+  let sep = null;
+  const m = /^sep=(.)\r?\n/i.exec(text);
+  if (m) { sep = m[1]; text = text.slice(m[0].length); }
+  sep ||= csvSep(text);
+  const recs = csvParse(text, sep);
+  if (recs.length < 2) return toast('Dosyada başlık satırından sonra veri yok', { warn: true });
+  if (recs.length - 1 > CU_CSV_MAXROWS) return toast(`Tek seferde en fazla ${CU_CSV_MAXROWS} satır aktarılabilir`, { warn: true });
+  const head = recs[0].cells.map(h => h.trim());
+  const used = new Set();
+  const map = head.map(h => { const k = cuCsvKey(h);
+    const f = CU_CSV.find(([f, l, syn]) => !used.has(f) && (cuCsvKey(l) === k || syn.includes(k)));
+    if (f) used.add(f[0]); return f ? f[0] : ''; });
+  CUC = { name: name || 'Yapıştırılan metin', sep, head, recs: recs.slice(1), map, mode: 'update', errOnly: false };
+  cuCsvPreview();
+}
+
+/* Satır satır doğrulama: { n, act: add|update|same|skip|error, why, d (dosyadaki değerler), data, base, id }. */
+function cuCsvAnalyze() {
+  const { recs, map, mode } = CUC;
+  const byTax = new Map(cuList().filter(c => c.taxNo).map(c => [String(c.taxNo).replace(/[\s-]/g, ''), c]));
+  const seen = new Map();
+  return recs.map(r => {
+    const v = {}, why = [];
+    map.forEach((f, i) => { if (f) v[f] = cuCsvVal(r.cells[i]); });
+    const d = {};
+    if (!v.name) why.push('Unvan boş');
+    for (const f of ['name', 'shortName', 'taxOffice', 'address', 'phone', 'notes', 'email'])
+      if (v[f]) { if (v[f].length > CU_CSV_LIM[f]) why.push(`${CU_CSV.find(x => x[0] === f)[1]} en fazla ${CU_CSV_LIM[f]} karakter`); d[f] = v[f]; }
+    if (v.email && !CU_EMAIL.test(v.email)) why.push('E-posta adresi geçersiz');
+    if (v.kind) { const k = CU_KIND_IN[cuCsvKey(v.kind)]; if (k) d.kind = k; else why.push('Tür tanınmadı (Müşteri, Tedarikçi ya da İkisi)'); }
+    if (v.active) { const a = CU_ACT_IN[cuCsvKey(v.active)]; if (a !== undefined) d.active = a; else why.push('Durum tanınmadı (Etkin ya da Pasif)'); }
+    const tx = String(v.taxNo || '').replace(/[\s.-]/g, '');
+    if (tx && !/^\d{10,11}$/.test(tx)) why.push('Vergi no 10 (VKN) ya da 11 (TCKN) haneli olmalı');
+    else if (tx) {
+      d.taxNo = tx;
+      if (seen.has(tx)) why.push(`Vergi no dosyada yineleniyor (satır ${seen.get(tx)})`); else seen.set(tx, r.n);
+    }
+    if (why.length) return { n: r.n, act: 'error', why: why.join(' · '), d };
+    const cur = d.taxNo && byTax.get(d.taxNo);
+    if (cur) {
+      if (mode !== 'update') return { n: r.n, act: 'skip', why: `Kayıtlı: ${cur.name}`, d };
+      /* "Etkin" hücresi durum alanı hiç yazılmamış (etkin sayılan) cariyi değiştirmez: dışa aktarılan dosya geri yüklenebilsin. */
+      const base = JSON.parse(JSON.stringify(cur)), dd = { ...d };
+      if (dd.active === cuActive(cur)) delete dd.active;
+      const data = { ...base, ...dd };
+      return cj(data) === cj(base) ? { n: r.n, act: 'same', why: 'Değişiklik yok', d }
+        : { n: r.n, act: 'update', why: `Kayıtlı: ${cur.name}`, d, id: cur.id, base, data };
+    }
+    return { n: r.n, act: 'add', d, id: uid('cu'), data: { kind: 'customer', active: true, contacts: [], ...d } };
+  });
+}
+const CUC_ST = { add: ['Eklenecek', 'plus'], update: ['Güncellenecek', 'swap'], same: ['Atlanacak', 'pause'], skip: ['Atlanacak', 'pause'], error: ['Hatalı', 'alert'] };
+
+function cuCsvOpen() {
+  if (!isAdmin()) return toast('Cari içe aktarma yalnızca yöneticiler içindir');
+  CUC = null; closeModal();
+  openModal(`<div class="m-h cu-h"><span class="cu-ic">${ic('up')}</span><div class="tx"><b id="cuc_t">Carileri içe aktar</b><div class="s">CSV dosyası (; , ya da sekme ayırıcılı) · ilk satır başlık</div></div><button class="x" data-close aria-label="Kapat">×</button></div>
+    <div class="cu-body">
+      <div class="cu-fld full"><label for="cuc_file"><span>Dosya seç</span><span class="opt">Excel → "CSV UTF-8" ya da "CSV (noktalı virgülle ayrılmış)"</span></label>
+        <input class="inp" type="file" id="cuc_file" accept=".csv,.txt,text/csv,text/plain"></div>
+      <div class="cu-fld full"><label for="cuc_paste"><span>ya da metni yapıştırın</span></label>
+        <textarea class="inp" id="cuc_paste" rows="6" spellcheck="false" placeholder="Unvan;Tür;Vergi no / TCKN;E-posta&#10;Örnek Ltd. Şti.;Müşteri;1234567890;bilgi@ornek.com.tr"></textarea></div>
+      <div class="ws-info">${ic('info')}<span>Sütunları bir sonraki adımda eşleyebilirsiniz. <a href="#" id="cuc_tpl">Örnek şablonu indir (CSV)</a></span></div>
+    </div>
+    <div class="m-f"><span class="spacer"></span><button class="btn" data-close>Vazgeç</button><button class="btn pri" id="cuc_go">${ic('arrow')}Önizle</button></div>`, 'cu-m cu-csv');
+  wsDialog('cuc_t');
+  $('#cuc_tpl').onclick = e => { e.preventDefault(); cuCsvTemplate(); };
+  $('#cuc_file').onchange = async e => {
+    const f = e.target.files?.[0]; if (!f) return;
+    if (f.size > 5 * 1024 * 1024) return toast('Dosya en fazla 5 MB olabilir', { warn: true });
+    cuCsvLoad(await cuCsvDecode(f), f.name);
+  };
+  $('#cuc_go').onclick = () => { const t = $('#cuc_paste').value; if (!t.trim()) return toast('Dosya seçin ya da metni yapıştırın', { warn: true }); cuCsvLoad(t); };
+}
+
+function cuCsvPreview() {
+  const S = CUC; if (!S) return;
+  const sepName = { ';': 'noktalı virgül', ',': 'virgül', '\t': 'sekme' }[S.sep] || `"${S.sep}"`;
+  openModal(`<div class="m-h cu-h"><span class="cu-ic">${ic('up')}</span><div class="tx"><b id="cuc_t">Önizleme</b><div class="s" id="cuc_src">${esc(S.name)} · ${S.recs.length} satır · ayırıcı: ${esc(sepName)}</div></div><button class="x" data-close aria-label="Kapat">×</button></div>
+    <div class="cu-body">
+      <h4 class="cuc-h">Sütun eşleme</h4>
+      <div class="cuc-map" id="cuc_map">${S.head.map((h, i) => `<label><span title="${esc(h)}">${esc(h || `Sütun ${i + 1}`)}</span>
+        <select class="inp" data-cucmap="${i}" aria-label="${esc(h || `Sütun ${i + 1}`)} sütunu"><option value="">— Aktarma —</option>${CU_CSV.map(([f, l]) =>
+          `<option value="${f}" ${S.map[i] === f ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`).join('')}</div>
+      <div class="cuc-opts"><span class="lb">Vergi no kayıtlı bir cariyle eşleşirse</span>
+        <div class="cu-seg" role="radiogroup" aria-label="Eşleşen cariler">${[['update', 'Mevcut olanı güncelle'], ['skip', 'Atla']].map(([k, l]) =>
+          `<button type="button" role="radio" data-cucmode="${k}" aria-checked="${S.mode === k}" tabindex="${S.mode === k ? 0 : -1}">${l}</button>`).join('')}</div>
+        <span class="opt">Güncellemede boş hücreler mevcut değeri korur; yetkili kişiler değişmez.</span></div>
+      <div id="cuc_body"></div>
+    </div>
+    <div class="m-f"><button class="btn" id="cuc_back">${ic('back')}Başka dosya</button><span class="spacer"></span><button class="btn" data-close>Vazgeç</button><button class="btn pri" id="cuc_run">${ic('up')}Aktar</button></div>`, 'cu-m cu-csv');
+  wsDialog('cuc_t');
+  $('#cuc_map').onchange = e => { const s = e.target.closest('[data-cucmap]'); if (!s) return; S.map[+s.dataset.cucmap] = s.value; cuCsvPaint(); };
+  $$('[data-cucmode]').forEach(b => b.onclick = () => { S.mode = b.dataset.cucmode;
+    $$('[data-cucmode]').forEach(x => { x.setAttribute('aria-checked', String(x === b)); x.tabIndex = x === b ? 0 : -1; }); cuCsvPaint(); });
+  $('#cuc_back').onclick = cuCsvOpen;
+  $('#cuc_run').onclick = () => cuCsvRun();
+  cuCsvPaint();
+}
+
+function cuCsvPaint() {
+  const S = CUC, box = $('#cuc_body'); if (!S || !box) return;
+  const used = S.map.filter(Boolean), dup = used.find((f, i) => used.indexOf(f) !== i);
+  const block = !used.includes('name') ? 'Unvan sütununu eşleyin (zorunlu).'
+    : dup ? `"${CU_CSV.find(x => x[0] === dup)[1]}" alanı birden çok sütuna eşlendi.` : '';
+  S.rows = block ? [] : cuCsvAnalyze();
+  const n = k => S.rows.filter(r => k.includes(r.act)).length;
+  const cnt = { add: n(['add']), update: n(['update']), skip: n(['skip', 'same']), error: n(['error']) };
+  const go = cnt.add + cnt.update;
+  const run = $('#cuc_run'); run.disabled = !!block || !go;
+  run.innerHTML = `${ic('up')}${go ? `${go} cariyi aktar` : 'Aktar'}`;
+  if (block) { box.innerHTML = `<div class="cu-alert" id="cuc_block">${ic('alert')}<div class="tx"><b>${esc(block)}</b></div></div>`; return; }
+  const tckn = S.rows.some(r => /^\d{11}$/.test(r.d.taxNo || ''));
+  const list = S.errOnly ? S.rows.filter(r => r.act === 'error') : [...S.rows].sort((a, b) => (b.act === 'error') - (a.act === 'error') || a.n - b.n);
+  const shown = list.slice(0, 500);
+  box.innerHTML = `<div class="cuc-sum" id="cuc_sum">
+      <span class="cuc-chip" data-s="add">${ic('plus')}<b data-cucn="add">${cnt.add}</b> eklenecek</span>
+      <span class="cuc-chip" data-s="update">${ic('swap')}<b data-cucn="update">${cnt.update}</b> güncellenecek</span>
+      <span class="cuc-chip" data-s="skip">${ic('pause')}<b data-cucn="skip">${cnt.skip}</b> atlanacak</span>
+      <span class="cuc-chip" data-s="error">${ic('alert')}<b data-cucn="error">${cnt.error}</b> hatalı</span>
+      <span class="spacer"></span>${cnt.error ? `<button type="button" class="cu-tog" id="cuc_erronly" aria-pressed="${S.errOnly}"><span class="cu-sw" aria-hidden="true"></span>Yalnız hatalılar</button>` : ''}</div>
+    ${tckn ? `<div class="ws-info" id="cuc_kvkk">${ic('lock')}<span>Dosyada 11 haneli T.C. kimlik numarası var: kişisel veridir; tam hâlini yalnız yöneticiler görür, izleyicilere maskeli gider.</span></div>` : ''}
+    ${cnt.error ? '<p class="cuc-note">Hatalı satırlar aktarılmaz; dosyayı düzeltip yeniden yükleyebilirsiniz.</p>' : ''}
+    <div class="cu-wrap cuc-scroll"><table class="cu-tbl cuc-tbl" aria-label="Önizleme"><thead><tr><th style="width:62px">Satır</th><th style="width:138px">Sonuç</th><th>Unvan</th>
+      <th style="width:112px">Tür</th><th style="width:118px">Vergi no</th><th>E-posta</th><th>Neden</th></tr></thead>
+    <tbody>${shown.map(r => { const st = CUC_ST[r.act], k = r.d.kind || (r.act === 'add' ? 'customer' : '');
+      return `<tr class="cuc-r" data-cucrow="${r.n}" data-act="${r.act}"><td class="mono">${r.n}</td><td><span class="cuc-st" data-s="${r.act}">${ic(st[1])}${st[0]}</span></td>
+        <td class="cuc-tx">${esc(r.d.name || '')}</td><td>${k ? cuKindBadge(k) : ''}</td><td class="mono">${esc(r.d.taxNo || '')}</td>
+        <td class="cuc-tx">${esc(r.d.email || '')}</td><td class="cuc-why">${esc(r.why || '')}</td></tr>`; }).join('')}</tbody></table></div>
+    ${list.length > shown.length ? `<p class="cuc-note">… ve ${list.length - shown.length} satır daha (önizlemede ilk 500 satır gösterilir; tümü aktarılır).</p>` : ''}`;
+  const eo = $('#cuc_erronly'); if (eo) eo.onclick = () => { S.errOnly = !S.errOnly; cuCsvPaint(); };
+}
+
+/* Sunucu iletisi kullanıcıya: vergi no çakışmasında kimlik yerine unvan (sonuçta, yeniden yüklemeden sonra bulunur). */
+function cuCsvReason(reason) {
+  const m = /^Bu vergi numarasıyla kayıtlı cari var \(#([^)]+)\)$/.exec(reason || '');
+  if (m) { const o = cuById(m[1]); return o ? `Bu vergi numarasıyla kayıtlı cari var: ${o.name}` : 'Bu vergi numarasıyla kayıtlı cari var'; }
+  return reason || 'Sunucu kaydı reddetti';
+}
+
+async function cuCsvRun() {
+  const S = CUC; if (!S?.rows || !isAdmin()) return;
+  const todo = S.rows.filter(r => r.act === 'add' || r.act === 'update');
+  if (!todo.length) return;
+  const res = { add: 0, update: 0, skip: S.rows.filter(r => r.act === 'skip' || r.act === 'same').length,
+    error: S.rows.filter(r => r.act === 'error').map(r => ({ n: r.n, name: r.d.name, why: r.why })) };
+  const run = $('#cuc_run'); run.disabled = true; $('#cuc_back').disabled = true;
+  let stop = '';
+  try { await flushAll(); } catch (_) {}
+  for (let i = 0; i < todo.length; i += CU_CSV_BATCH) {
+    const part = todo.slice(i, i + CU_CSV_BATCH);
+    /* Bağlantı ya da yetki hatasında kalan partiler gönderilmez; satırları hatalı sayılır. */
+    if (stop) { part.forEach(r => res.error.push({ n: r.n, name: r.d.name, why: 'Gönderilmedi: ' + stop })); continue; }
+    run.innerHTML = `${ic('up')}Aktarılıyor… ${i}/${todo.length}`;
+    const changes = part.map(r => r.act === 'add' ? { c: 'customers', id: r.id, op: 'put', data: { id: r.id, ...r.data } }
+      : { c: 'customers', id: r.id, op: 'put', data: r.data, base: r.base });
+    let resp = null;
+    for (let t = 0; t < 4 && !resp && !stop; t++) {
+      try { resp = await API.post('/api/sync', { changes }); }
+      catch (e) {
+        if (e.status === 401) return sessionLost();
+        if (e.status === 409 && /^Sunucu meşgul/.test(e.message || '') && t < 3) { await new Promise(r => setTimeout(r, 800 * (t + 1))); continue; }
+        stop = e.message || 'Sunucuya ulaşılamadı';
+      }
+    }
+    if (!resp) { part.forEach(r => res.error.push({ n: r.n, name: r.d.name, why: 'Gönderilemedi: ' + stop })); continue; }
+    const rej = new Map((resp.rejected || []).map(x => [x.id, x.reason]));
+    for (const r of part) {
+      if (rej.has(r.id)) res.error.push({ n: r.n, name: r.d.name, why: rej.get(r.id), srv: true });
+      else res[r.act]++;
+    }
+  }
+  await reloadState();
+  cuCsvResult(res, stop);
+}
+
+function cuCsvResult(res, stop) {
+  const err = res.error.sort((a, b) => a.n - b.n), name = CUC?.name || '';
+  closeModal();
+  openModal(`<div class="m-h cu-h"><span class="cu-ic">${ic(err.length ? 'alert' : 'checkc')}</span><div class="tx"><b id="cuc_t">İçe aktarma tamamlandı</b><div class="s">${esc(name)}</div></div><button class="x" data-close aria-label="Kapat">×</button></div>
+    <div class="cu-body">
+      ${stop ? `<div class="cu-alert" id="cuc_stop">${ic('alert')}<div class="tx"><b>Aktarım yarıda kaldı: ${esc(stop)}</b></div></div>` : ''}
+      <div class="cuc-sum" id="cuc_res">
+        <span class="cuc-chip" data-s="add">${ic('plus')}<b data-cucr="add">${res.add}</b> eklendi</span>
+        <span class="cuc-chip" data-s="update">${ic('swap')}<b data-cucr="update">${res.update}</b> güncellendi</span>
+        <span class="cuc-chip" data-s="skip">${ic('pause')}<b data-cucr="skip">${res.skip}</b> atlandı</span>
+        <span class="cuc-chip" data-s="error">${ic('alert')}<b data-cucr="error">${err.length}</b> hatalı</span></div>
+      ${err.length ? `<div class="cu-wrap cuc-scroll"><table class="cu-tbl cuc-tbl" aria-label="Hatalı satırlar"><thead><tr><th style="width:62px">Satır</th><th>Unvan</th><th>Neden</th></tr></thead>
+        <tbody>${err.slice(0, 500).map(r => `<tr class="cuc-r" data-cucerr="${r.n}" data-act="error"><td class="mono">${r.n}</td><td class="cuc-tx">${esc(r.name || '')}</td><td class="cuc-why">${esc(r.srv ? cuCsvReason(r.why) : r.why)}</td></tr>`).join('')}</tbody></table></div>` : ''}
+    </div>
+    <div class="m-f"><span class="spacer"></span><button class="btn pri" data-close>Kapat</button></div>`, 'cu-m cu-csv');
+  wsDialog('cuc_t');
+  CUC = null;
+}
+
+/* ---- dışa aktarma ---- */
+/* Excel'de formül olarak çalışmasın (CSV/formül enjeksiyonu): = + - @ (ve sekme / satır başı) ile başlayan hücreye ' eklenir. */
+const cuCsvCell = v => {
+  let s = String(v ?? '');
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return /[;",\r\n]/.test(s) || s !== s.trim() ? `"${s.replace(/"/g, '""')}"` : s;
+};
+const cuCsvBlob = lines => new Blob(['﻿' + lines.map(l => l.map(cuCsvCell).join(';')).join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
+function cuCsvExport() {
+  if (!isAdmin()) return toast('Cari dışa aktarma yalnızca yöneticiler içindir');
+  const rows = cuFiltered();
+  if (!rows.length) return toast('Dışa aktarılacak cari yok', { warn: true });
+  /* Yönetici vergi numarasını sunucudan maskesiz alır; maskeli gelmiş bir değer (yıldızlı) olduğu gibi kalır, açılmaz. */
+  const lines = [CU_CSV.map(x => x[1]), ...rows.map(c => CU_CSV.map(([f]) => f === 'kind' ? (CU_KIND[c.kind]?.[0] || '')
+    : f === 'active' ? (cuActive(c) ? 'Etkin' : 'Pasif') : c[f] ?? ''))];
+  download(cuCsvBlob(lines), `cariler-${TODAY}.csv`);
+  toast(`${rows.length} cari dışa aktarıldı`);
+}
+function cuCsvTemplate() {
+  download(cuCsvBlob([CU_CSV.map(x => x[1]),
+    ['Örnek Yazılım Ltd. Şti.', 'Örnek Yazılım', 'Müşteri', 'Kadıköy', '1234567890', 'Caferağa Mah. Örnek Sok. No:1, İstanbul', '0216 000 00 00', 'bilgi@ornek.com.tr', '', 'Etkin'],
+    ['Deneme Tedarik A.Ş.', '', 'Tedarikçi', 'Çankaya', '0987654321', '', '', '', 'Notlar "tırnak" ve ; içerebilir', 'Etkin']]), 'cari-sablon.csv');
+}
+
 /* Olay devri: liste, süzgeçler, kart bağlantıları. */
 function cuClick(e) {
   const t = e.target; if (!(t instanceof Element)) return;
-  const b = t.closest('[data-cunew],[data-cuopen],[data-cukind],[data-cupas],[data-cuclear],[data-cugoproj],[data-cuissues],[data-cugo]');
+  const b = t.closest('[data-cunew],[data-cuimp],[data-cuexp],[data-cuopen],[data-cukind],[data-cupas],[data-cuclear],[data-cugoproj],[data-cuissues],[data-cugo]');
   if (!b || b.disabled) return;
   const d = b.dataset;
   if (b.tagName === 'A') e.preventDefault();
   if ('cunew' in d) return customerForm();
+  if ('cuimp' in d) return cuCsvOpen();
+  if ('cuexp' in d) return cuCsvExport();
   if ('cuopen' in d) return openCustomer(d.cuopen);
   if ('cukind' in d) { DB.ui.cuKind = d.cukind; save(); render(); $(`[data-cukind="${d.cukind}"]`)?.focus(); return; }
   if ('cupas' in d) { DB.ui.cuPassive = !DB.ui.cuPassive; save(); render(); $('[data-cupas]')?.focus(); return; }

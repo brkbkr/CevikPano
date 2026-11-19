@@ -1172,6 +1172,37 @@ describe('cariler', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     for (const id of ['c_t1', 'c_t2', 'c_t3']) ok(await A.sync([del('customers', id)]));
   });
 
+  test('CSV toplu aktarım partisi: 200 kayıt tek iletide; yinelenen vergi no ve geçersiz satır yalnız kendisi reddedilir; üye ve izleyici yazamaz', async () => {
+    const T = '44' + String(Date.now()).slice(-7);                   // 9 hane + 0NN = 11 hane
+    ok(await A.sync([cu('c_csv0', firm('CSV Kayıtlı A.Ş.', { taxNo: T + '00' }))]));
+    const part = Array.from({ length: 200 }, (_, i) => cu('c_csv' + (i + 1), firm(`CSV Toplu ${i + 1}`, { taxNo: T + String(i + 1).padStart(2, '0').slice(-2) })));
+    part[49] = cu('c_csv50', firm('CSV Yinelenen', { taxNo: T + '00' }));                 // kayıtlı cariyle çakışır
+    part[99] = cu('c_csv100', firm('CSV Kötü e-posta', { email: 'a b@ornek.com' }));       // canlı yazmada cuEmail
+    part[149] = cu('c_csv150', firm('', {}));                                             // unvan zorunlu
+    /* 101..199 için iki haneli son ek tekrar eder (01..99): ikinciler parti içinde reddedilir */
+    const r = await A.sync(part);
+    assert.equal(r.status, 200);
+    const rej = new Map(r.json.rejected.map(x => [x.id, x.reason]));
+    assert.equal(rej.get('c_csv50'), 'Bu vergi numarasıyla kayıtlı cari var (#c_csv0)');
+    assert.equal(rej.get('c_csv100'), 'E-posta adresi geçersiz');
+    assert.equal(rej.get('c_csv150'), 'Unvan gerekli (en fazla 200 karakter)');
+    assert.match(rej.get('c_csv101'), /^Bu vergi numarasıyla kayıtlı cari var \(#c_csv1\)$/);
+    assert.ok(!rej.has('c_csv1') && !rej.has('c_csv2') && rej.has('c_csv200'));
+    assert.equal(r.json.applied + r.json.rejected.length, 200);
+    const n = Number((await pool.query(`SELECT count(*) n FROM customers WHERE id LIKE 'c_csv%'`)).rows[0].n);
+    assert.equal(n, 1 + r.json.applied);
+    /* güncelleme (base ile) partisi; üye ve izleyici aynı partiyi gönderemez */
+    const cur = (await row('customers', 'c_csv1')).data;
+    ok(await A.sync([cu('c_csv1', { ...cur, phone: '0212 000 00 00' }, cur)]));
+    assert.equal((await row('customers', 'c_csv1')).data.phone, '0212 000 00 00');
+    for (const k of [U, V]) {
+      const m = await k.sync([cu('c_csvm', firm('CSV Üye', { taxNo: T + '9' })), cu('c_csv1', { ...cur, name: 'x' }, cur)]);
+      assert.equal(m.json.applied, 0); assert.equal(m.json.rejected.length, 2);
+    }
+    assert.equal(await row('customers', 'c_csvm'), undefined);
+    await pool.query(`DELETE FROM customers WHERE id LIKE 'c_csv%'`);
+  });
+
   test('vergi no tekilliği eşzamanlı yazmada da korunur (500 yok, aynı ileti)', async () => {
     const [r1, r2] = await Promise.all([
       A.sync([cu('c_y1', firm('Yarış Bir', { taxNo: '3333333333' }))]),
