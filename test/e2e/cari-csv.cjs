@@ -181,6 +181,16 @@ const enc1254 = s => Buffer.from([...s].map(c => c.charCodeAt(0) < 128 ? c.charC
     && lines[0] === 'Unvan;Kısa ad;Tür;Vergi dairesi;Vergi no / TCKN;Adres;Telefon;E-posta;Notlar;Durum', lines[0]);
   const fx = txt.split('\r\n').find(l => l.includes(tx(40))) || '';
   ok('export: formula cells prefixed with \' (= + - @), quotes doubled', fx.startsWith(`"'=HYPERLINK(""http://x"",""tıkla"") ${RUN}";'-2+3;Müşteri;;${tx(40)};"Satır 1\nSatır 2; daire 3";'+90 555 000 00 00;;'@SUM(A1);Pasif`), fx);
+  /* baştaki boşluk / tam genişlik ＝＋－＠ sonrası formül de kaçırılır; içe aktarmada ' geri alınır */
+  const fw = await A.evaluate(() => {
+    const ins = [' =1+1', '  +A1', '　-2', ' @SUM(A1)', '＝1+1', '＋A1', '－2', '＠SUM(A1)', ' ＝cmd', '\t=1', '\tdüz', '\rx'];
+    const plain = ['a=1', 'Ltd. Şti.', '1-2', 'x@y.test', ' düz metin', '％'];
+    return { ins: ins.map(s => [s, cuCsvCell(s)]), plain: plain.map(s => [s, cuCsvCell(s)]),
+      back: ins.map(s => [s.trim(), cuCsvVal(csvParse(cuCsvCell(s), ';')[0].cells[0])]) };
+  });
+  ok('export: leading space / full-width formula chars prefixed with \'', fw.ins.every(([, c]) => /^"?'/.test(c)), JSON.stringify(fw.ins));
+  ok('export: plain text not prefixed', fw.plain.every(([, c]) => !c.replace(/^"/, '').startsWith("'")), JSON.stringify(fw.plain));
+  ok('import: \' prefix undone for new escapes (round trip)', fw.back.every(([s, b]) => b === s), JSON.stringify(fw.back));
   /* görünen (süzülmüş) liste: satır sayısı ekranla aynı; tür süzgeci uygulanır */
   const nRec = await A.evaluate(t => csvParse(t.replace(/^﻿/, ''), ';').length - 1, txt);
   ok('export: only visible (filtered) rows', nRec === shown && shown >= 8, `${nRec} / ${shown}`);

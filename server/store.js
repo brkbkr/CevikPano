@@ -418,7 +418,7 @@ async function applyRecord(c, ctx, ch) {
     await canManageSprint(c, me, ch.id, SPRINT_WEEKS_FORBIDDEN);
   if (ch.c === 'sprints') await checkSprintState(c, me, data, cur);
   if (ch.c === 'sprints') await checkSprintStart(c, data, cur);
-  if (ch.c === 'sprints') await checkSprintPlan(c, me, data, cur, ctx.system);
+  if (ch.c === 'sprints') await checkSprintPlan(c, me, ch.id, data, cur, ctx.system);
   if (ch.c === 'statuses') {
     if (cur) await canConfigure(c, me, cur.projectId);
     await canConfigure(c, me, data.projectId);
@@ -548,14 +548,20 @@ async function checkSprintStart(c, data, cur) {
 
 /* Sprint planı (`plan`: başlatma anındaki kapsam — sayı, puan, iş kimlikleri): yalnız sprint başlatılırken
    (aktif olmayan → aktif) ve başlatabilen (canManageSprint) yazar; yazıldıktan sonra değişmez, silinmez.
-   İçe aktarma / geri yükleme (system) eski veriyi olduğu gibi yazar. */
+   Silinmiş (başlamış) bir sprint kimliğiyle yeniden oluşturmada plan yazılamaz (sil + aynı kimlikle başlat ile plan
+   yeniden yazılamasın). İçe aktarma / geri yükleme (system) eski veriyi olduğu gibi yazar. */
 const SPRINT_PLAN_LOCKED = 'Sprintin başlangıç planı değiştirilemez';
-async function checkSprintPlan(c, me, data, cur, system) {
+async function checkSprintPlan(c, me, id, data, cur, system) {
   if (same(cur?.plan ?? null, data.plan ?? null)) return;
   if (system) return;
   if (cur?.plan != null) throw new HttpError(403, SPRINT_PLAN_LOCKED);
   if (data.plan == null) return;
   if (data.state !== 'active' || cur?.state === 'active') throw new HttpError(400, 'Sprint planı yalnızca sprint başlatılırken kaydedilir');
+  /* Çöp kutusunda başlamış (planlı ya da aktif/kapalı) hâli duran kimlik yeniden plan alamaz; hiç başlamamış
+     (gelecek) sprintin silinip yeniden oluşturulması ya da geri yüklenmesi engellenmez. */
+  if ((await c.query(`SELECT 1 FROM deleted_records WHERE collection='sprints' AND record_id=$1
+      AND (data->'plan' IS NOT NULL AND data->'plan' <> 'null'::jsonb OR data->>'state' IN ('active','closed')) LIMIT 1`, [id])).rowCount)
+    throw new HttpError(403, SPRINT_PLAN_LOCKED);
   await canManageSprint(c, me, data.projectId);
 }
 
