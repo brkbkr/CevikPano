@@ -99,6 +99,8 @@ jobs:
         run: node test/e2e/cari-csv.cjs
       - name: Varsayılan menü testi (yönetici herkes için kenar çubuğu, kişisel düzen, yetkiye bağlı öğeler, yoklama)
         run: node test/e2e/varsayilan-menu.cjs
+      - name: Bitti kolonu testi (Tamamlananlar grubu yok, tamamlanan iş Bitti kolonunda, son 20 / Tümünü göster, Bitti kolonu kilitli, kolonsuz projede ilk kolon Bitti)
+        run: node test/e2e/bitti-kolonu.cjs
       - name: Sunucu günlüğü
         if: failure()
         run: cat server.log

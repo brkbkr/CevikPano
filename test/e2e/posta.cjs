@@ -47,6 +47,7 @@ const XSS = '<img src=x onerror="window.__xss=1">';
       { c: 'users', id: M, op: 'put', data: { username: 'mbm' + R, name: 'Posta Üye ' + R, role: 'member', active: true, ini: 'PÜ', color: '#0F766E' } },
       { c: 'projects', id: PT, op: 'put', data: { name: 'Posta destek ' + R, key: 'MB' + R.toUpperCase().replace(/[^A-Z0-9]/g, ''), counter: 0, workspaceId: ws, template: 'talep', type: 'board' } },
       { c: 'statuses', id: PT + '_s0', op: 'put', data: { projectId: PT, name: 'Yeni', cat: 'todo', ord: 0 } },
+      { c: 'statuses', id: PT + '_s9', op: 'put', data: { projectId: PT, name: 'Çözüldü', cat: 'done', ord: 9 } },
     ] });
     if (r.rejected.length) throw new Error(JSON.stringify(r.rejected));
     await reloadState();
@@ -125,6 +126,7 @@ const XSS = '<img src=x onerror="window.__xss=1">';
     const r = await API.post('/api/sync', { changes: [
       { c: 'projects', id: PB, op: 'put', data: { name: 'Posta iç ' + R, key: K, counter: 2, workspaceId: ws, type: 'board' } },
       { c: 'statuses', id: PB + '_s0', op: 'put', data: { projectId: PB, name: 'Yeni', cat: 'todo', ord: 0 } },
+      { c: 'statuses', id: PB + '_s9', op: 'put', data: { projectId: PB, name: 'Bitti', cat: 'done', ord: 9 } },
       { c: 'issues', id: IE, op: 'put', data: { projectId: PB, key: K + '-1', summary: 'E-postadan gelen', statusId: PB + '_s0',
         source: { kind: 'email', provider: 'google', from: 'ayse@musteri.test' } } },
       { c: 'issues', id: IN, op: 'put', data: { projectId: PB, key: K + '-2', summary: 'Elle açılan', statusId: PB + '_s0' } },

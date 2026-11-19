@@ -340,19 +340,19 @@ const XSS = '<img src=x onerror="window.__xss=1">';
   const mt = await Mo.evaluate(() => { const r = document.getElementById('toast').getBoundingClientRect(); return r.left >= 0 && r.right <= 375 && r.bottom <= 812; });
   ok('mobile toast inside viewport', mt);
 
-  // 15b) bayat İlerlet işlem yapmaz; yeniden açma / kolon: doneFrom yalnız var olan ve kendi projesinin durumuysa
+  // 15b) bayat İlerlet işlem yapmaz; yeniden açma: doneFrom yalnız var olan ve kendi projesinin durumuysa; pano kolonu her zaman durum
   const stale = await M.evaluate(id => { const s0 = issue(id).statusId; homeAdvance(id, 'yok_durum');
     const t = document.getElementById('toast'); return issue(id).statusId === s0 && t.classList.contains('t-warn') && /Durumlar değişti/.test(t.textContent); }, ID('bTodo'));
   ok('stale İlerlet target: no change + "Durumlar değişti" toast', stale);
   const ro = await M.evaluate(([id, pb]) => { const i = issue(id), p1 = statsOf('p1'), r = {};
     i.doneFrom = 'yok_durum'; r.colMissing = colOf(i) === i.statusId;
     i.doneFrom = pb + '_s0'; r.colOther = colOf(i) === i.statusId;
-    i.doneFrom = p1[1].id; r.colOwn = colOf(i) === p1[1].id;
+    i.doneFrom = p1[1].id; r.colOwn = colOf(i) === i.statusId;              // tamamlanan iş Bitti kolonunda (katlanmış grup yok)
     i.doneFrom = pb + '_s0'; reopenIssue(id); r.reOther = i.statusId === p1[0].id && !i.doneFrom;
     completeIssue(id); i.doneFrom = 'yok_durum'; reopenIssue(id); r.reMissing = i.statusId === p1[0].id;
     completeIssue(id); i.doneFrom = p1[1].id; reopenIssue(id); r.reOwn = i.statusId === p1[1].id;
     return r; }, [ID('done'), PB]);
-  ok('doneFrom of other project / deleted → first status; own → back', Object.values(ro).every(Boolean), JSON.stringify(ro));
+  ok('doneFrom of other project / deleted → first status; own → back; board column = status', Object.values(ro).every(Boolean), JSON.stringify(ro));
 
   // 16) izleyici: boş durumda yalnız "Projelere git"; atanmış işte düğme yok
   const Vp = await mk('viewer'); await login(Vp, 'hmv' + RUN, 'Baslangic123', 'HmvYeni12345');

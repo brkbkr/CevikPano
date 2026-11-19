@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
 import { TABLES, IGNORED_KEYS, PREF_KEYS, tx, tableOf, reservedName } from './db.js';
 import { HttpError } from './util.js';
-import { readAll, publicUser, logChange, DEFAULT_USER_PASSWORD, ensureDefaultWorkspace, DEFAULT_WS } from './store.js';
+import { readAll, publicUser, logChange, DEFAULT_USER_PASSWORD, ensureDefaultWorkspace, ensureDoneColumns, DEFAULT_WS } from './store.js';
 import { validate, normalizePriority, normalizeArchived, normalizeCustomer, normalizeHistory, validId, stripBadKeys } from './validate.js';
 
 const KEEP_AUTO = 14, KEEP_OTHER = 30;
@@ -148,6 +148,7 @@ export async function replaceAll(pool, me, data, kind) {
     /* Dosyada çalışma alanı yoksa (eski yedek) varsayılan "Genel" yeniden oluşur. Genel arşivlenemez:
        dosyada arşivliyse arşivden çıkar. Olmayan alana bağlı projenin bağı kalkar (Genel'de sayılır). */
     await ensureDefaultWorkspace(c);
+    await ensureDoneColumns(c);                          // dosyada Bitti kolonu olmayan proje: Bitti eklenir
     await c.query(`UPDATE workspaces SET data = data || '{"archived":false}'::jsonb WHERE id=$1 AND archived`, [DEFAULT_WS]);
     await c.query(`UPDATE projects p SET data = p.data - 'workspaceId'
       WHERE p.data ? 'workspaceId' AND coalesce(p.workspace_id, '') <> ''

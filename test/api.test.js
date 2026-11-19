@@ -1691,7 +1691,7 @@ describe('proje türü ve kolonlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
   });
 
   test('son kolon ve son Bitti kolonu silinemez, son Bitti kategorisi değişemez; iki Bitti\'den biri silinir', async () => {
-    ok(await A.sync([P('pk_tek', {}), S('pk_tek_a', 'pk_tek', 'Tek', 'todo', 0)]));
+    ok(await A.sync([P('pk_tek', {}), S('pk_tek_a', 'pk_tek', 'Tek', 'done', 0)]));
     conflict(await A.sync([D('statuses', 'pk_tek_a')]), 'Projenin son kolonu silinemez');
     assert.ok(await row('statuses', 'pk_tek_a'));
     conflict(await M.sync([D('statuses', 'pk1_c')]), 'Projede en az bir Bitti kolonu kalmalı');
@@ -1702,9 +1702,92 @@ describe('proje türü ve kolonlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
     /* ihlal tüm gönderimi geri alır (ilgisiz değişiklik dahil) */
     conflict(await M.sync([I('i_k1', 'pk1', 'pk1_a'), D('statuses', 'pk1_c')]), 'Projede en az bir Bitti kolonu kalmalı');
     assert.equal((await row('issues', 'i_k1')).statusId, 'pk1_b');
-    /* eski projede Bitti hiç yoksa kural işlemez */
     ok(await A.sync([S('pk_tek_b', 'pk_tek', 'İkinci', 'todo', 1)]));
     ok(await A.sync([D('statuses', 'pk_tek_b')]));
+  });
+
+  test('Bitti kolonu her zaman: Bitti\'siz yeni akış ve Bitti\'siz eski projede kolon değişikliği 409; ilk Bitti eklenince kabul', async () => {
+    /* yeni proje Bitti'siz kolonlarla açılamaz (proje dahil tüm gönderim geri alınır) */
+    conflict(await M.sync([P('pk_nb', { members: ['u_k_m'] }), S('pk_nb_a', 'pk_nb', 'Yapılacak', 'todo', 0)]), 'Projede en az bir Bitti kolonu olmalı');
+    assert.equal(await row('projects', 'pk_nb'), undefined);
+    /* kolonsuz proje: ilk kolon Bitti değilse 409, Bitti ile kabul */
+    ok(await A.sync([P('pk_nb', { members: ['u_k_m'] })]));
+    conflict(await M.sync([S('pk_nb_a', 'pk_nb', 'Yeni kolon', 'inprogress', 0)]), 'Projede en az bir Bitti kolonu olmalı');
+    ok(await M.sync([S('pk_nb_d', 'pk_nb', 'Bitti', 'done', 0)]));
+    ok(await M.sync([S('pk_nb_a', 'pk_nb', 'Yapılacak', 'todo', 1)]));
+    /* eski (Bitti'siz) proje: artık muaf değil; her kolon değişikliği Bitti ister */
+    await pool.query(`INSERT INTO statuses (id, data) VALUES ('pk_nb_x', '{"id":"pk_nb_x","projectId":"pk_nb","name":"Eski","cat":"todo","ord":2}')`);
+    await pool.query(`DELETE FROM statuses WHERE id='pk_nb_d'`);
+    conflict(await M.sync([S('pk_nb_x', 'pk_nb', 'Eski ad', 'todo', 2)]), 'Projede en az bir Bitti kolonu olmalı');
+    ok(await M.sync([S('pk_nb_x', 'pk_nb', 'Bitti', 'done', 2)]));
+  });
+
+  test('ensureDoneColumns: Bitti\'siz (kolonsuz dahil) projeye sona Bitti ekler; ad çakışırsa Tamamlandı; tekrar çalışınca eklemez; değişiklik akışına düşer', async () => {
+    const { ensureDoneColumns } = await import('../server/store.js');
+    await pool.query(`INSERT INTO projects (id, data) VALUES ('pk_ed1', '{"id":"pk_ed1","key":"ED1","name":"Eski 1","counter":0}'),
+      ('pk_ed2', '{"id":"pk_ed2","key":"ED2","name":"Eski 2","counter":0}')`);
+    await pool.query(`INSERT INTO statuses (id, data) VALUES ('pk_ed1_a', '{"id":"pk_ed1_a","projectId":"pk_ed1","name":"Yapılacak","cat":"todo","ord":0}'),
+      ('pk_ed1_b', '{"id":"pk_ed1_b","projectId":"pk_ed1","name":"bitti","cat":"inprogress","ord":4}')`);
+    const seq0 = Number((await pool.query('SELECT max(seq) n FROM changes')).rows[0].n);
+    assert.ok(await ensureDoneColumns(pool) >= 2);                // önceki testlerin kolonsuz projeleri de
+    const d1 = (await cols('pk_ed1')).filter(s => s.cat === 'done'), d2 = (await cols('pk_ed2')).filter(s => s.cat === 'done');
+    assert.deepEqual(d1.map(s => [s.name, s.ord, s.wip]), [['Tamamlandı', 5, 0]]);
+    assert.deepEqual(d2.map(s => [s.name, s.ord]), [['Bitti', 0]]);
+    assert.ok(/^st_bitti_[0-9a-f]{16}$/.test(d1[0].id) && d1[0].id !== d2[0].id);
+    const ch = (await pool.query(`SELECT record_id FROM changes WHERE seq > $1 AND collection='statuses'`, [seq0])).rows.map(r => r.record_id).sort();
+    assert.ok(ch.includes(d1[0].id) && ch.includes(d2[0].id));
+    assert.equal(Number((await pool.query(`SELECT count(*) n FROM projects p WHERE NOT EXISTS
+      (SELECT 1 FROM statuses s WHERE s.project_id = p.id AND s.category = 'done')`)).rows[0].n), 0);
+    assert.equal(await ensureDoneColumns(pool), 0);
+    /* Bitti'si olan projelere dokunmaz */
+    assert.equal((await cols('pk1')).filter(s => s.cat === 'done').length, 1);
+    /* istemci yeni kolonu görür; Bitti kolonu silinemez */
+    assert.ok((await A.state()).json.data.statuses.some(s => s.id === d2[0].id));
+    conflict(await A.sync([D('statuses', d2[0].id)]), 'Projenin son kolonu silinemez');
+    conflict(await A.sync([D('statuses', d1[0].id)]), 'Projede en az bir Bitti kolonu kalmalı');
+  });
+
+  test('geçiş 012: başka kolonda görünen tamamlanmış iş Bitti kolonuna (doneFrom kalkar), geçmiş + changes; tekrar çalıştırılabilir', async () => {
+    const fs = await import('node:fs/promises');
+    const sql = await fs.readFile(new globalThis.URL('../server/migrations/012_bitti_kolonu.sql', import.meta.url), 'utf8');
+    ok(await A.sync([P('pk_mg', {}), ...flow('pk_mg'), P('pk_mg2', {}), ...flow('pk_mg2'),
+      I('i_mg1', 'pk_mg', 'pk_mg_c', { doneFrom: 'pk_mg_a', doneAt: '2026-11-01' }),       // Yapılacak altında görünüyordu
+      I('i_mg2', 'pk_mg', 'pk_mg_c', { doneFrom: 'pk_mg_b' }),                              // Devam ediyor altında
+      I('i_mg3', 'pk_mg', 'pk_mg_c'),                                                       // zaten Bitti'de
+      I('i_mg4', 'pk_mg', 'pk_mg_a', { doneFrom: 'pk_mg_b' }),                              // tamamlanmamış: dokunulmaz
+      I('i_mg5', 'pk_mg', 'pk_mg_c', { doneFrom: 'pk_mg2_a' }),                             // başka projenin kolonu: dokunulmaz
+      I('i_mg6', 'pk_mg', 'pk_mg_c', { doneFrom: 'yok_kolon' })]));                         // silinmiş kolon: dokunulmaz
+    const v1 = (await pool.query(`SELECT version FROM issues WHERE id='i_mg1'`)).rows[0].version;
+    const seq0 = Number((await pool.query('SELECT max(seq) n FROM changes')).rows[0].n);
+    const run = async () => { const c = await pool.connect(); try { await c.query('BEGIN'); await c.query(sql); await c.query('COMMIT'); } finally { c.release(); } };
+    await run();
+    const i1 = await row('issues', 'i_mg1'), i2 = await row('issues', 'i_mg2');
+    assert.ok(!('doneFrom' in i1) && !('doneFrom' in i2));
+    assert.equal(i1.statusId, 'pk_mg_c'); assert.equal(i1.doneAt, '2026-11-01'); assert.equal(i1.summary, 'i_mg1');
+    assert.equal((await pool.query(`SELECT version FROM issues WHERE id='i_mg1'`)).rows[0].version, v1 + 1);
+    assert.equal((await row('issues', 'i_mg4')).doneFrom, 'pk_mg_b');
+    assert.equal((await row('issues', 'i_mg5')).doneFrom, 'pk_mg2_a');
+    assert.equal((await row('issues', 'i_mg6')).doneFrom, 'yok_kolon');
+    const hist = (await pool.query(`SELECT data FROM history WHERE issue_id = ANY($1) ORDER BY issue_id`, [['i_mg1', 'i_mg2', 'i_mg3', 'i_mg4']])).rows.map(r => r.data);
+    assert.deepEqual(hist.map(h => [h.issueId, h.field, h.from, h.to, h.userId]),
+      [['i_mg1', 'Pano kolonu', 'Yapılacak', 'Bitti', null], ['i_mg2', 'Pano kolonu', 'Devam ediyor', 'Bitti', null]]);
+    assert.ok(hist.every(h => typeof h.at === 'number' && Math.abs(h.at - Date.now()) < 60000));
+    const ch = (await pool.query(`SELECT collection, record_id FROM changes WHERE seq > $1 ORDER BY seq`, [seq0])).rows.map(r => r.collection + ':' + r.record_id);
+    assert.deepEqual(ch.filter(x => x.startsWith('issues:')).sort(), ['issues:i_mg1', 'issues:i_mg2']);
+    assert.equal(ch.filter(x => x.startsWith('history:')).length, 2);
+    /* açık istemci /api/changes ile alır */
+    const st = (await A.state()).json.data;
+    assert.ok(!('doneFrom' in st.issues.find(i => i.id === 'i_mg1')) && st.history.some(h => h.issueId === 'i_mg2' && h.field === 'Pano kolonu'));
+    /* tekrar: değişiklik yok */
+    const seq1 = Number((await pool.query('SELECT max(seq) n FROM changes')).rows[0].n);
+    await run();
+    assert.equal(Number((await pool.query('SELECT max(seq) n FROM changes')).rows[0].n), seq1);
+    assert.equal((await pool.query(`SELECT count(*) n FROM history WHERE issue_id = ANY($1)`, [['i_mg1', 'i_mg2']])).rows[0].n, '2');
+    /* migrate() 012'yi bir kez uygular; daha küçük numaralı (sonradan gelen) dosya da atlanmaz */
+    assert.equal((await pool.query(`SELECT count(*) n FROM schema_migrations WHERE id='012_bitti_kolonu.sql'`)).rows[0].n, '1');
+    await pool.query(`DELETE FROM schema_migrations WHERE id='007_posta_yanit.sql'`);
+    await migrate(pool);
+    assert.equal((await pool.query(`SELECT count(*) n FROM schema_migrations WHERE id='007_posta_yanit.sql'`)).rows[0].n, '1');
   });
 
   test('şablon uygulama (yeniden adlandır + kategori + fazlaları taşıyıp sil) tek gönderimde kabul', async () => {
@@ -2050,6 +2133,7 @@ describe('geçmiş ve yorum koruması', { skip: !URL && 'TEST_DATABASE_URL yok' 
     ok(await A.sync([
       { c: 'projects', id: 'ph1', op: 'put', data: { name: 'Geçmiş', key: 'GEC', counter: 0 } },
       { c: 'statuses', id: 'ph1_a', op: 'put', data: { projectId: 'ph1', name: 'Yapılacak', cat: 'todo', ord: 0 } },
+      { c: 'statuses', id: 'ph1_bt', op: 'put', data: { projectId: 'ph1', name: 'Bitti', cat: 'done', ord: 9 } },
       I('ih1'), I('ih2'),
     ]));
   });
@@ -2182,10 +2266,11 @@ describe('geçmiş ve yorum koruması', { skip: !URL && 'TEST_DATABASE_URL yok' 
     ok(await A.sync([
       { c: 'projects', id: 'ph2', op: 'put', data: { name: 'Silinecek', key: 'SLN', counter: 0 } },
       { c: 'statuses', id: 'ph2_a', op: 'put', data: { projectId: 'ph2', name: 'Yapılacak', cat: 'todo', ord: 0 } },
+      { c: 'statuses', id: 'ph2_bt', op: 'put', data: { projectId: 'ph2', name: 'Bitti', cat: 'done', ord: 9 } },
       { c: 'issues', id: 'ih_p2', op: 'put', data: { projectId: 'ph2', summary: 'x', statusId: 'ph2_a' } },
     ]));
     ok(await M.sync([H('hh_p2', { issueId: 'ih_p2', at: Date.now() }), C('ch_p2', { issueId: 'ih_p2' })]));
-    ok(await A.sync([D('comments', 'ch_p2'), D('history', 'hh_p2'), D('issues', 'ih_p2'), D('statuses', 'ph2_a'), D('projects', 'ph2')]));
+    ok(await A.sync([D('comments', 'ch_p2'), D('history', 'hh_p2'), D('issues', 'ih_p2'), D('statuses', 'ph2_a'), D('statuses', 'ph2_bt'), D('projects', 'ph2')]));
     for (const [t, id] of [['projects', 'ph2'], ['issues', 'ih_p2'], ['history', 'hh_p2'], ['comments', 'ch_p2']]) assert.equal(await row(t, id), undefined, id);
   });
 
@@ -2305,7 +2390,9 @@ describe('talep eden', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
       { c: 'projects', id: 'p_tl', op: 'put', data: { name: 'Destek', key: 'DST', counter: 0, workspaceId: 'ws1', template: 'talep' } },
       { c: 'projects', id: 'p_tg', op: 'put', data: { name: 'Genel iş', key: 'TGN', counter: 0, workspaceId: 'ws1', customerId: 'c_tl1' } },
       { c: 'statuses', id: 'p_tl_s0', op: 'put', data: { projectId: 'p_tl', name: 'Yeni', cat: 'todo', ord: 0 } },
+      { c: 'statuses', id: 'p_tl_bt', op: 'put', data: { projectId: 'p_tl', name: 'Bitti', cat: 'done', ord: 9 } },
       { c: 'statuses', id: 'p_tg_s0', op: 'put', data: { projectId: 'p_tg', name: 'Yapılacak', cat: 'todo', ord: 0 } },
+      { c: 'statuses', id: 'p_tg_bt', op: 'put', data: { projectId: 'p_tg', name: 'Bitti', cat: 'done', ord: 9 } },
     ]));
   });
 
@@ -2581,6 +2668,7 @@ describe('posta kutuları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
       ...[['Yeni', 'todo'], ['İnceleniyor', 'inprogress'], ['Talep edenden yanıt bekleniyor', 'inprogress'], ['Çözüldü', 'done']].map(([n, c], i) =>
         ({ c: 'statuses', id: `p_mx_s${i}`, op: 'put', data: { projectId: 'p_mx', name: n, cat: c, ord: i } })),
       { c: 'statuses', id: 'p_my_s0', op: 'put', data: { projectId: 'p_my', name: 'Yapılacak', cat: 'todo', ord: 0 } },
+      { c: 'statuses', id: 'p_my_bt', op: 'put', data: { projectId: 'p_my', name: 'Bitti', cat: 'done', ord: 9 } },
     ]));
   });
   after(() => { mail?.setMailFetch(null); for (const k of ENV) { if (saved[k] === undefined) delete process.env[k]; else process.env[k] = saved[k]; } });
@@ -2903,8 +2991,10 @@ describe('e-postayla yanıt', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
       { c: 'workspaces', id: 'ws_ey', op: 'put', data: { name: 'Destek alanı', members: [{ userId: 'u_eym', role: 'member' }, { userId: 'u_eyw', role: 'viewer' }] } },
       { c: 'projects', id: 'p_ey', op: 'put', data: { name: 'EY destek', key: 'EY', counter: 0, workspaceId: 'ws_ey', template: 'talep' } },
       { c: 'statuses', id: 'p_ey_s0', op: 'put', data: { projectId: 'p_ey', name: 'Yeni', cat: 'todo', ord: 0 } },
+      { c: 'statuses', id: 'p_ey_bt', op: 'put', data: { projectId: 'p_ey', name: 'Bitti', cat: 'done', ord: 9 } },
       { c: 'projects', id: 'p_ey2', op: 'put', data: { name: 'EY iç', key: 'EYI', counter: 0, workspaceId: 'ws_ey' } },
       { c: 'statuses', id: 'p_ey2_s0', op: 'put', data: { projectId: 'p_ey2', name: 'Yeni', cat: 'todo', ord: 0 } },
+      { c: 'statuses', id: 'p_ey2_bt', op: 'put', data: { projectId: 'p_ey2', name: 'Bitti', cat: 'done', ord: 9 } },
       { c: 'issues', id: 'i_eyelle', op: 'put', data: { projectId: 'p_ey2', key: 'EYI-1', summary: 'Elle açılan iş', statusId: 'p_ey2_s0' } },
     ]));
     await pool.query('DELETE FROM mail_rules');
@@ -3331,8 +3421,9 @@ describe('alan rolleri', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     /* Genel (ws1) üyesiz: alanda olmayan genel Üye iş açar, kolon/proje değiştirir (proje üye listesi boşsa); genel İzleyici yazamaz. */
     ok(await C.X.sync([iss('i_rl1', 'p1', { statusId: 'p1_s0' })]));
     ok(await C.A.sync([put('projects', 'p_rl', { name: 'Eski alan', key: 'RLE', workspaceId: 'ws1' }),
-      put('statuses', 'p_rl_s0', { projectId: 'p_rl', name: 'Yapılacak', cat: 'todo', ord: 0 })]));
-    ok(await C.X.sync([put('statuses', 'p_rl_s1', { projectId: 'p_rl', name: 'Bitti', cat: 'done', ord: 1 })]));
+      put('statuses', 'p_rl_s0', { projectId: 'p_rl', name: 'Yapılacak', cat: 'todo', ord: 0 }),
+      put('statuses', 'p_rl_s9', { projectId: 'p_rl', name: 'Bitti', cat: 'done', ord: 9 })]));
+    ok(await C.X.sync([put('statuses', 'p_rl_s1', { projectId: 'p_rl', name: 'Testte', cat: 'inprogress', ord: 1 })]));
     const pl = await row('projects', 'p_rl');
     ok(await C.X.sync([put('projects', 'p_rl', { ...pl, name: 'Eski alan (Üye)' }, pl)]));
     rej(await C.G.sync([iss('i_rl2', 'p_rl', { statusId: 'p_rl_s0' })]), 'salt okunur kullanıcı');
@@ -3399,7 +3490,9 @@ describe('okuma süzmesi', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
       put('projects', 'poa', { name: 'Okuma A projesi', key: 'POA', counter: 0, workspaceId: 'ws_oa' }),
       put('projects', 'pob', { name: 'Okuma B projesi', key: 'POB', counter: 0, workspaceId: 'ws_ob' }),
       put('statuses', 'poa_s0', { projectId: 'poa', name: 'Yapılacak', cat: 'todo', ord: 0 }),
+      put('statuses', 'poa_s9', { projectId: 'poa', name: 'Bitti', cat: 'done', ord: 9 }),
       put('statuses', 'pob_s0', { projectId: 'pob', name: 'Yapılacak', cat: 'todo', ord: 0 }),
+      put('statuses', 'pob_s9', { projectId: 'pob', name: 'Bitti', cat: 'done', ord: 9 }),
       put('sprints', 'sp_ob', { projectId: 'pob', name: 'S1', state: 'future' }),
       put('issues', 'i_oa1', { projectId: 'poa', key: 'POA-1', summary: 'görünen', statusId: 'poa_s0' }),
       put('issues', 'i_ob1', { projectId: 'pob', key: 'POB-1', summary: 'gizli iş', statusId: 'pob_s0' }),
