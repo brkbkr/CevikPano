@@ -118,6 +118,32 @@ const P1 = 'p_pm' + R, KEY = 'PM' + R.toUpperCase();
     sel: selectableProjects().some(p => p.id === a || p.id === b), data: DB.projects.some(p => p.id === a || p.id === b) }), [NP, P1]);
   ok('outsider: projects not in tree, selectors or data', !x1.tree && !x1.sel && !x1.data, JSON.stringify(x1));
 
+  /* ---- 5) Sistem → Varsayılan yetkiler: kendi ayarı olmayan projede etkili, olanda değil; yalnız sistem yöneticisi ---- */
+  await A.evaluate(() => { SYS_TAB = 'perms'; DB.ui.view = 'system'; render(); }); await sleep(800);
+  ok('system: default permission table shown to system admin', await A.evaluate(() => !!document.querySelector('[data-permtable="sys"]') && !!document.querySelector('#sysPermReset')));
+  await A.click('[data-permtable="sys"] tr[data-permrow="project.settings"] [data-pr="member"]'); await sleep(600); await flush(A);
+  const sp = await A.evaluate(async () => (await API.get('/api/state')).data.perms);
+  ok('system: default saved sparsely on server', sp?.member?.['project.settings'] === true && Object.keys(sp.member).length === 1, JSON.stringify(sp));
+  await Yp.evaluate(pid => openProjPerms(pid), P1); await sleep(1500);
+  await Yp.evaluate(() => reloadState()); await sleep(500);
+  await Yp.evaluate(pid => openProjPerms(pid), P1); await sleep(300);
+  ok('project tab follows the new default (Üye ✓, not marked changed)', await Yp.evaluate(() => {
+    const c = document.querySelector('[data-permtable="proj"] tr[data-permrow="project.settings"] [data-pr="member"]'); return c?.checked && !c.closest('tr').classList.contains('chg'); }));
+  await Yp.click('[data-permtable="proj"] tr[data-permrow="project.settings"] [data-pr="member"]'); await sleep(300); await flush(Yp);
+  ok('member: default applies to project without own value, not to project with own value (poll)', await waitFor(Mp, ([a, b]) =>
+    canDesign(DB.projects.find(p => p.id === b)) && !canDesign(DB.projects.find(p => p.id === a)), [P1, NP]) >= 0);
+  ok('member: server rejects writing the default', await Mp.evaluate(async () => (await API.post('/api/sync', { changes: [{ c: '_settings', id: 'perms', op: 'put',
+    data: { v: 1, member: { 'project.columns': true } } }] })).rejected?.[0]?.reason === 'Bu değişiklik için yönetici yetkisi gerekli'));
+  await A.evaluate(() => { SYS_TAB = 'perms'; render(); }); await sleep(600);
+  await A.screenshot({ path: SS + 'sistem.png', fullPage: true });
+  await A.click('#sysPermReset'); await sleep(500); await flush(A);
+  ok('system: factory reset', await A.evaluate(async () => { const p = (await API.get('/api/state')).data.perms; return !Object.keys(p?.member || {}).length && !Object.keys(p?.viewer || {}).length; }));
+  await Yp.evaluate(async pid => { await reloadState(); const p = DB.projects.find(x => x.id === pid); p.perms = {}; save(); await flushAll(); }, P1);
+  /* masaüstü görüntüsü: Yetkiler sekmesinin üstü (kişiler) */
+  await Yp.evaluate(pid => openProjPerms(pid), P1); await sleep(400);
+  await Yp.evaluate(() => document.querySelector('[data-permstab]')?.scrollIntoView({ block: 'start' })); await sleep(200);
+  await Yp.screenshot({ path: SS + 'kisiler.png' });
+
   /* ---- 6) 390 px: Yetkiler sekmesi kart görünümü, yatay kaydırma yok ---- */
   const Ym = await mk('mobile', { width: 390, height: 844 }); await login(Ym, 'pmy' + R, 'PmYon123456!');
   await Ym.evaluate(pid => openProjPerms(pid), P1); await sleep(500);

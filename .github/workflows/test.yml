@@ -85,7 +85,7 @@ jobs:
         run: node test/e2e/posta.cjs
       - name: Pano iyileştirmeleri testi (hızlı kart ekleme, alt işler panoda, sprint yetkisi ve süresi)
         run: node test/e2e/pano-iyilestirme.cjs
-      - name: Çalışma alanı üyelikleri ve rolleri testi (alan sayfası, menü, yetkiler)
+      - name: Alan yöneticileri ve proje rolleri testi (alan penceresi ve sayfası, kullanıcı penceresinden proje rolü, canlı yenileme)
         run: node test/e2e/alan-rolleri.cjs
       - name: Okuma süzmesi testi (erişimi olmayan alanın verisi gelmez, üyelikte canlı yenileme)
         run: node test/e2e/okuma-suzme.cjs
