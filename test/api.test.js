@@ -4,7 +4,7 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createPool, migrate, MISC_COLLECTIONS } from '../server/db.js';
-import { bootstrap } from '../server/store.js';
+import { bootstrap, REPORT_WS_FORBIDDEN } from '../server/store.js';
 import { createApp } from '../server/app.js';
 
 const URL = process.env.TEST_DATABASE_URL;
@@ -4677,34 +4677,52 @@ describe('kayıtlı raporlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => 
     assert.equal(await row('r_k1c'), undefined);
   });
 
-  test('görünürlük: kişisel rapor yalnız sahibine (ve sistem yöneticisine); paylaşılan rapor kapsamında rolü olana', async () => {
-    ok(await C.U.sync([rp('r_k2'), rp('r_k3', { vis: 'shared', scope: { kind: 'ws', id: 'ws_kra' } }),
+  test('görünürlük: kişisel rapor yalnız sahibine (ve sistem yöneticisine); paylaşılan proje raporu projede rolü olana, alan raporu yalnız alan yöneticisine', async () => {
+    /* r_k3: Ayşe'nin kişisel alan raporu (alan yöneticisi değil; kendisi görür). r_k3a: sistem yöneticisinin alanla paylaştığı rapor. */
+    ok(await C.U.sync([rp('r_k2'), rp('r_k3', { scope: { kind: 'ws', id: 'ws_kra' } }),
       rp('r_k4', { vis: 'shared', scope: { kind: 'project', id: 'p_kra' } })]));
-    ok(await C.A.sync([rp('r_k5', { vis: 'shared', scope: { kind: 'all' } })]));
-    ok(await C.B.sync([rp('r_kb', { vis: 'shared', scope: { kind: 'project', id: 'p_krb' } }), rp('r_kbw', { vis: 'shared', scope: { kind: 'ws', id: 'ws_krb' } })]));
+    ok(await C.A.sync([rp('r_k5', { vis: 'shared', scope: { kind: 'all' } }), rp('r_k3a', { vis: 'shared', scope: { kind: 'ws', id: 'ws_kra' } })]));
+    ok(await C.B.sync([rp('r_kb', { vis: 'shared', scope: { kind: 'project', id: 'p_krb' } })]));
+    ok(await C.W.sync([rp('r_kbw', { vis: 'shared', scope: { kind: 'ws', id: 'ws_krb' } })]));
     const u = await ids(C.U), b = await ids(C.B), v = await ids(C.V), a = await ids(C.A), w = await ids(C.W);
     for (const id of ['r_k1', 'r_k2', 'r_k3', 'r_k4', 'r_k5']) assert.ok(u.includes(id), 'sahip görmüyor ' + id);
     assert.ok(!u.includes('r_kb') && !u.includes('r_kbw'), 'başka alanın paylaşılan raporu sızdı');
-    /* Bora: ws_kra'da yalnız p_kra2'de rolü var → alan kapsamlı rapor görünür, p_kra kapsamlı ve kişisel olanlar görünmez. */
-    assert.ok(b.includes('r_k3'), 'alanda projesi olan alan raporunu görmüyor');
-    for (const id of ['r_k1', 'r_k2', 'r_k4']) assert.ok(!b.includes(id), 'sızdı ' + id);
-    assert.ok(b.includes('r_k5'));                                   // tüm sistemle paylaşılan herkese
-    assert.ok(v.includes('r_k3') && v.includes('r_k4') && !v.includes('r_k2'));   // projede İzleyici: paylaşılanı okur
+    /* Alanda projede rolü olmak alan raporuna yetmez: yalnız alan yöneticisi görür. */
+    assert.ok(!u.includes('r_k3a'), 'alan yöneticisi olmayan alan raporunu görüyor');
+    /* Bora: ws_kra'da yalnız p_kra2'de, ws_krb'de p_krb'de rolü var; alan yöneticisi değil → alan raporlarını görmez. */
+    for (const id of ['r_k1', 'r_k2', 'r_k3', 'r_k3a', 'r_k4', 'r_kbw']) assert.ok(!b.includes(id), 'sızdı ' + id);
+    assert.ok(b.includes('r_k5') && b.includes('r_kb'));             // tüm sistemle paylaşılan herkese
+    assert.ok(v.includes('r_k4') && !v.includes('r_k3a') && !v.includes('r_k2'));   // projede İzleyici: paylaşılan proje raporunu okur
     /* Alan yöneticisi (projede rolü yok): alanın ve alandaki projenin raporunu görür, başka alanınkini görmez. */
-    assert.ok(w.includes('r_kb') && w.includes('r_kbw') && !w.includes('r_k3') && !w.includes('r_k4'), JSON.stringify(w));
-    for (const id of ['r_k1', 'r_k2', 'r_k3', 'r_k4', 'r_k5', 'r_kb']) assert.ok(a.includes(id));
+    assert.ok(w.includes('r_kb') && w.includes('r_kbw') && !w.includes('r_k3a') && !w.includes('r_k4'), JSON.stringify(w));
+    for (const id of ['r_k1', 'r_k2', 'r_k3', 'r_k3a', 'r_k4', 'r_k5', 'r_kb', 'r_kbw']) assert.ok(a.includes(id));
+    /* Alan yöneticisi yapılınca alan raporu görünür, yöneticilikten çıkınca kaybolur. */
+    const wsb = (await pool.query(`SELECT data FROM workspaces WHERE id='ws_krb'`)).rows[0].data;
+    ok(await C.A.sync([put('workspaces', 'ws_krb', { ...wsb, admins: ['u_krw', 'u_krb'] }, wsb)]));
+    assert.ok((await ids(C.B)).includes('r_kbw'), 'alan yöneticisi alan raporunu görmüyor');
+    const wsb2 = (await pool.query(`SELECT data FROM workspaces WHERE id='ws_krb'`)).rows[0].data;
+    ok(await C.A.sync([put('workspaces', 'ws_krb', { ...wsb2, admins: ['u_krw'] }, wsb2)]));
+    assert.ok(!(await ids(C.B)).includes('r_kbw'), 'yöneticilikten çıkan alan raporunu hâlâ görüyor');
     /* Değişiklik akışı: başkasının kişisel raporu gitmez; paylaşımdan çıkan rapor silme bildirimiyle gider. */
     const s0 = await seq();
     ok(await C.U.sync([rp('r_k6')]));
-    const d = await row('r_k3');
-    ok(await C.U.sync([put('reports', 'r_k3', { ...d, vis: 'private' }, d)]));
+    const d = await row('r_k4');
+    ok(await C.U.sync([put('reports', 'r_k4', { ...d, vis: 'private' }, d)]));
     const ch = (await C.V.req('GET', `/api/changes?since=${s0}`)).json.items.filter(i => i.c === 'reports');
     /* Görünmeyen rapor yalnız kimlikli silme bildirimi olarak gider (diğer silme bildirimleri gibi; içerik yok). */
     assert.ok(!ch.some(i => i.id === 'r_k6' && (i.op !== 'del' || i.data !== undefined)), 'kişisel rapor akışta sızdı');
-    const k3 = ch.find(i => i.id === 'r_k3');
-    assert.equal(k3?.op, 'del'); assert.equal(k3.data, undefined);
-    assert.ok(!(await ids(C.V)).includes('r_k3'));
-    ok(await C.U.sync([put('reports', 'r_k3', d, { ...d, vis: 'private' })]));
+    const k4 = ch.find(i => i.id === 'r_k4');
+    assert.equal(k4?.op, 'del'); assert.equal(k4.data, undefined);
+    assert.ok(!(await ids(C.V)).includes('r_k4'));
+    ok(await C.U.sync([put('reports', 'r_k4', d, { ...d, vis: 'private' })]));
+    /* Alan raporu da akışta alan yöneticisi olmayana gitmez. */
+    const s2 = await seq();
+    const k3a = await row('r_k3a');
+    ok(await C.A.sync([put('reports', 'r_k3a', { ...k3a, name: 'Alan raporu güncel' }, k3a)]));
+    for (const k of [C.U, C.B]) {
+      const it = (await k.req('GET', `/api/changes?since=${s2}`)).json.items.filter(i => i.c === 'reports' && i.id === 'r_k3a');
+      assert.ok(!it.some(i => i.op === 'put' || i.data !== undefined), JSON.stringify(it));
+    }
     /* Erişimi olmayan projeye bağlı paylaşılan rapor akışta da gitmez. */
     const s1 = await seq();
     const kb = await row('r_kb');
@@ -4716,17 +4734,25 @@ describe('kayıtlı raporlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => 
     const roles = { ...p.roles }; delete roles.u_krv;
     ok(await C.A.sync([put('projects', 'p_kra', { ...p, roles }, p)]));
     const v2 = await ids(C.V);
-    assert.ok(!v2.includes('r_k4') && !v2.includes('r_k3'), JSON.stringify(v2));
+    assert.ok(!v2.includes('r_k4'), JSON.stringify(v2));
     await addRoles(C.A, 'p_kra', { u_krv: 'viewer' });
     assert.ok((await ids(C.V)).includes('r_k4'));
   });
 
-  test('paylaşma: proje kapsamında rol, alan kapsamında alan yöneticisi ya da alanda bir projede rol; tüm sistem yalnız sistem yöneticisi; izleyici yalnız kendine', async () => {
-    rej(await C.U.sync([rp('r_k7', { vis: 'shared', scope: { kind: 'ws', id: 'ws_krb' } })]), 'Bu çalışma alanında rolünüz yok');
+  test('paylaşma: proje kapsamında rol, alan kapsamında yalnız alan yöneticisi; tüm sistem yalnız sistem yöneticisi; izleyici yalnız kendine', async () => {
+    rej(await C.U.sync([rp('r_k7', { vis: 'shared', scope: { kind: 'ws', id: 'ws_krb' } })]), REPORT_WS_FORBIDDEN);
     rej(await C.U.sync([rp('r_k7', { vis: 'shared', scope: { kind: 'project', id: 'p_krb' } })]), NO_PROJECT);
-    /* Alanda başka projede rolü olmak o projeyle paylaşmaya yetmez. */
+    /* Alanda başka projede rolü olmak o projeyle de, alanla da paylaşmaya yetmez. */
     rej(await C.B.sync([rp('r_k7b', { vis: 'shared', scope: { kind: 'project', id: 'p_kra' } })]), NO_PROJECT);
-    ok(await C.B.sync([rp('r_k7b', { vis: 'shared', scope: { kind: 'ws', id: 'ws_kra' } })]));
+    rej(await C.B.sync([rp('r_k7b', { vis: 'shared', scope: { kind: 'ws', id: 'ws_kra' } })]), REPORT_WS_FORBIDDEN);
+    /* Kendi projesinin alanıyla da paylaşamaz (projede rol alan yöneticiliği değildir). */
+    rej(await C.U.sync([rp('r_k7', { vis: 'shared', scope: { kind: 'ws', id: 'ws_kra' } })]), REPORT_WS_FORBIDDEN);
+    /* Alan yöneticisi olmayanın kişisel alan raporu: sahibi görür ve düzenler ama paylaşamaz. */
+    const k3 = await row('r_k3');
+    ok(await C.U.sync([put('reports', 'r_k3', { ...k3, name: 'Kişisel alan raporu' }, k3)]));
+    const k3b = await row('r_k3');
+    rej(await C.U.sync([put('reports', 'r_k3', { ...k3b, vis: 'shared' }, k3b)]), REPORT_WS_FORBIDDEN);
+    assert.equal((await row('r_k3')).vis, 'private');
     rej(await C.U.sync([rp('r_k7', { vis: 'shared', scope: { kind: 'all' } })]), /yalnızca sistem yöneticisi/);
     rej(await C.U.sync([rp('r_k7', { vis: 'shared', scope: { kind: 'project', id: 'p_yok' } })]), 'Raporun kapsamı bulunamadı');
     rej(await C.U.sync([rp('r_k7', { vis: 'shared', scope: { kind: 'ws', id: 'ws_yok' } })]), 'Raporun kapsamı bulunamadı');

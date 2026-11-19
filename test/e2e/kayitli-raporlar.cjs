@@ -3,7 +3,8 @@
 // demo veri (seed-demo) + 005. Test kendi kullanıcılarını, alanını, projesini ve işlerini açar; diğer testlerden sonra da çalışır.
 // Kapsam: kapsam seçici (Tüm sistem / Çalışma alanı / Proje), ölçü (saat / iş sayısı / puan) ve çubuk grafik; raporu kaydet,
 // listede gör, aç (ayar geri gelir), düzenle (ad, görünürlük), değişikliği kaydet, kopyala, sil; paylaşılan rapor kapsamına
-// erişimi olmayana görünmez, alana eklenince görünür ve salt okunur; hazır rapordan "Kopyala ve düzenle"; proje sekmesinde
+// erişimi olmayana görünmez, alana eklenince görünür ve salt okunur; alan kapsamı yalnız alan yöneticisine (kişisel eski alan
+// raporu sahibince açılır, paylaşılamaz); hazır rapordan "Kopyala ve düzenle"; proje sekmesinde
 // kapsam kilitli; XSS (rapor adı ve açıklaması); mobilde liste taşmaz.
 const { chromium } = require('playwright');
 const BASE = process.env.BASE_URL || 'http://localhost:3100/';
@@ -72,11 +73,43 @@ const RNAME = 'Proje saatleri ' + XSS, RDESC = 'Açıklama ' + XSS;
   const pAll = await pv(M);
   ok('Tüm sistem: member sees only accessible projects (no hidden workspace projects)', pAll.scope.includes(PID)
     && await M.evaluate(sc => sc.every(id => projVisible(DB.projects.find(p => p.id === id))), pAll.scope));
+  /* Alan kapsamı yalnız alan yöneticisine: projede rolü olmak yetmez → seçenek kapalı. */
+  ok('not workspace admin: "Çalışma alanı" scope disabled, no workspace listed', await M.evaluate(() => document.querySelector('[data-grsk="ws"]').disabled && grWsIds().length === 0));
+  /* Daha önce kaydedilmiş kişisel alan raporu: sahibi görür ve açar, paylaşamaz. */
+  const RW = 'r_krw' + R;
+  r = await sync(M, [put('reports', RW, { name: 'Eski alan raporu ' + R, vis: 'private', scope: { kind: 'ws', id: WS },
+    cfg: { tab: 'sure', row: 'customer', col: 'user', ms: 'hours', ch: 'table', per: 'month', month: MON, f: {} } })]);
+  ok('personal workspace report saved by non-admin', r.rejected.length === 0, JSON.stringify(r.rejected));
+  await M.evaluate(() => reloadState()); await sleep(600);
+  await gr(M, 'liste');
+  await M.click(`[data-grsec="mine"] .acts [data-gropen="${RW}"]`); await sleep(500);
+  ok('own personal workspace report opens with its scope (own data, 6,5 h)', await M.evaluate(ws => grF().sk === 'ws' && grF().sid === ws && GR.last.grand === 6.5
+    && document.querySelector('[data-grsid]')?.value === ws, WS));
+  await M.click('[data-grsaveas]'); await sleep(300);
+  ok('non-admin: share option disabled for workspace scope', await M.evaluate(() => document.querySelector('input[name="grs_v"][value="shared"]').disabled));
+  await M.evaluate(() => closeModal()); await sleep(150);
+  const rws = await M.evaluate(async id => { const x = DB.reports.find(r => r.id === id); return API.post('/api/sync', { changes: [{ c: 'reports', id, op: 'put', data: { ...x, vis: 'shared' }, base: x }] }); }, RW);
+  ok('server: non-admin cannot share the workspace report', rws.applied === 0 && /alan yöneticisi/.test(rws.rejected[0]?.reason || ''), JSON.stringify(rws));
+  await M.click('[data-grunload]'); await sleep(200);
+  /* Alan yöneticisi yapılınca alan kapsamı açılır; listede yalnız yönettiği alan. */
+  const wsr = await A.evaluate(async id => (await API.get('/api/state')).data.workspaces.find(x => x.id === id), WS);
+  r = await sync(A, [{ c: 'workspaces', id: WS, op: 'put', data: { ...wsr, admins: [U1] }, base: wsr }]);
+  ok('admin makes Ayşe workspace admin', r.rejected.length === 0, JSON.stringify(r.rejected));
+  await M.evaluate(() => reloadState()); await sleep(600);
+  await gr(M, 'sure', { month: MON });
   await M.click('[data-grsk="ws"]'); await sleep(300);
+  ok('workspace admin: scope picker lists only managed workspaces', await M.evaluate(ws => [...document.querySelectorAll('[data-grsid] option')].map(o => o.value).join() === ws, WS));
   await M.selectOption('[data-grsid]', WS); await sleep(300);
   const pWs = await pv(M);
   ok('Çalışma alanı scope: only projects of that workspace, total 6,5 h', pWs.scope.join() === PID && pWs.total === 6.5, JSON.stringify(pWs));
   ok('crumb shows the scope name', await M.evaluate(() => /^Rapor alanı/.test(document.getElementById('crumb').textContent)));
+  await M.click('[data-grsaveas]'); await sleep(300);
+  ok('workspace admin: share option enabled for workspace scope', await M.evaluate(() => !document.querySelector('input[name="grs_v"][value="shared"]').disabled));
+  const WNAME = 'Alan raporu ' + R;
+  await M.fill('#grs_n', WNAME); await M.check('input[name="grs_v"][value="shared"]'); await M.click('#grs_ok'); await sleep(400); await flush(M); await sleep(300);
+  const wrep = (await srvReports(M)).find(x => x.ownerId === U1 && x.name === WNAME);
+  ok('workspace report shared on server', !!wrep && wrep.vis === 'shared' && wrep.scope.kind === 'ws' && wrep.scope.id === WS, JSON.stringify(wrep));
+  await M.click('[data-grunload]'); await sleep(200);
   await M.click('[data-grsk="project"]'); await sleep(300);
   await M.selectOption('[data-grsid]', PID); await sleep(300);
   const pP = await pv(M);
@@ -167,6 +200,8 @@ const RNAME = 'Proje saatleri ' + XSS, RDESC = 'Açıklama ' + XSS;
   ok('after joining project: listed under Paylaşılan, no edit/delete', await B.evaluate(id => !!document.querySelector(`[data-grsec="shared"] [data-grri="${id}"]`)
     && !document.querySelector(`[data-gredit="${id}"]`) && !document.querySelector(`[data-grdel="${id}"]`), rep.id));
   ok('private copy of the owner still invisible', !(await srvReports(B)).some(x => x.id === tc.id));
+  ok('project role in the workspace: workspace-shared report invisible', !(await srvReports(B)).some(x => x.id === wrep.id || x.id === RW)
+    && await B.evaluate(ids => !(DB.reports || []).some(x => ids.includes(x.id)), [wrep.id, RW]));
   await B.click(`[data-grsec="shared"] .acts [data-gropen="${rep.id}"]`); await sleep(500);
   ok('other user opens shared report: same config, own data', await B.evaluate(pid => grF().sk === 'project' && grF().sid === pid && GR.last.rowK === 'status' && GR.last.grand === 6.5
     && !document.querySelector('[data-grsave]'), PID));
@@ -195,7 +230,7 @@ const RNAME = 'Proje saatleri ' + XSS, RDESC = 'Açıklama ' + XSS;
   ok('XSS: no script ran', !(await M.evaluate(() => window.__xss)) && !(await B.evaluate(() => window.__xss)) && !(await MM.evaluate(() => window.__xss)));
 
   /* temizlik: raporlar (diğer testler etkilenmesin) */
-  await A.evaluate(async ids => API.post('/api/sync', { changes: ids.map(id => ({ c: 'reports', id, op: 'del' })) }), [rep.id, tc.id]);
+  await A.evaluate(async ids => API.post('/api/sync', { changes: ids.map(id => ({ c: 'reports', id, op: 'del' })) }), [rep.id, tc.id, wrep.id, RW]);
 
   console.log(errs.length ? errs.join('\n') : 'no page errors / alerts');
   await b.close();

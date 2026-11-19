@@ -8827,7 +8827,8 @@ function grCtx() {
   /* Erişilemeyen (silinen, üyelikten çıkılan) kapsam: genel ekranda Tüm sisteme döner; proje sekmesi zaten seçili projede. */
   if (!grInProj() && grSk(f) !== 'all') {
     const b = grBase();
-    if (grSk(f) === 'ws' ? !grWsOk(f.sid, b) : !b.some(p => p.id === f.sid)) { delete f.sk; delete f.sid; }
+    /* Alan kapsamı açık kalır: kişinin daha önce kaydettiği kişisel alan raporu, alan yöneticisi olmasa da kendi projeleriyle açılır. */
+    if (grSk(f) === 'ws' ? !(grWsOk(f.sid) || (wsById(f.sid) && b.some(p => wsOf(p) === f.sid))) : !b.some(p => p.id === f.sid)) { delete f.sk; delete f.sid; }
   } else if (!grInProj() && (f.sk != null || f.sid != null) && grSk(f) === 'all') { delete f.sk; delete f.sid; }
   if (f.ms && !GR_MEASURES.some(m => m[0] === f.ms)) delete f.ms;
   if (f.ch && !GR_CHARTS.some(m => m[0] === f.ch)) delete f.ch;
@@ -9036,14 +9037,16 @@ function grScopeRow(f, sk) {
   if (grInProj()) return `<div class="gr-frow gr-scrow"><span class="gr-sclb">Kapsam</span>
     <span class="gr-sclock" data-grsclock>${ic('lock')}<b>${esc(grScopeName('project', f.sid))}</b><span>bu projeye kilitli</span></span></div>`;
   const base = grBase();
-  const wsIds = [...new Set(base.map(wsOf))].filter(id => wsById(id));
+  const wsIds = grWsIds(base);
+  /* Açık kişisel alan raporunun alanı (yöneticisi olunmasa da) seçili kalsın diye listede gösterilir. */
+  if (sk === 'ws' && !wsIds.includes(f.sid) && wsById(f.sid)) wsIds.push(f.sid);
   const wsOpts = wsIds.map(id => [id, wsById(id).name]).sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'tr'));
   const pOpts = base.slice().sort((a, b) => String(a.key).localeCompare(String(b.key), 'tr')).map(p => [p.id, `${p.key} — ${p.name}${p.archived ? ' (arşivli)' : ''}`]);
   const seg = [['all', 'Tüm sistem', 'globe'], ['ws', 'Çalışma alanı', 'layers'], ['project', 'Proje', 'folder']];
   const opts = sk === 'ws' ? wsOpts : sk === 'project' ? pOpts : null;
   return `<div class="gr-frow gr-scrow"><span class="gr-sclb" id="grScL">Kapsam</span>
     <div class="cu-seg gr-scseg" role="radiogroup" aria-labelledby="grScL">${seg.map(([k, l, icn]) =>
-      `<button type="button" role="radio" data-grsk="${k}" aria-checked="${sk === k}">${ic(icn)}${l}</button>`).join('')}</div>
+      `<button type="button" role="radio" data-grsk="${k}" aria-checked="${sk === k}"${k === 'ws' && !wsIds.length ? ' disabled title="Yalnız alan yöneticisi olduğun çalışma alanları seçilebilir"' : ''}>${ic(icn)}${l}</button>`).join('')}</div>
     ${opts ? `<label class="gr-fs on gr-scsel"><span class="lb">${sk === 'ws' ? 'Alan' : 'Proje'}</span><select class="inp" data-grsid aria-label="${sk === 'ws' ? 'Kapsamdaki çalışma alanı' : 'Kapsamdaki proje'}">${opts.map(([v, t]) =>
       `<option value="${esc(v)}" ${f.sid === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label>` : ''}
     <span class="gr-fhint">${ic('info')}Yalnız erişebildiğin projelerin verisi</span></div>`;
@@ -9116,8 +9119,10 @@ function grNoteRecent(id) {
   const r = Array.isArray(DB.ui.grRecent) ? DB.ui.grRecent : [];
   DB.ui.grRecent = [id, ...r.filter(x => x !== id && typeof x === 'string')].slice(0, 8);
 }
-/* Alan kapsamı (yetki-v2, sunucudaki reportVisible ile aynı): alan yöneticisi ya da alanda rolü olduğu bir proje. */
-const grWsOk = (id, base = grBase()) => !!wsById(id) && (isAdmin() || isWsAdmin(CU(), wsById(id)) || base.some(p => wsOf(p) === id));
+/* Alan kapsamı (sunucudaki reportVisible / checkReport ile aynı): yalnız alan yöneticisi ve sistem yöneticisi. */
+const grWsOk = id => !!wsById(id) && (isAdmin() || isWsAdmin(CU(), wsById(id)));
+/* Kapsam seçicideki alanlar: erişilebilen projelerin alanlarından yönetebildikleri. */
+const grWsIds = (base = grBase()) => [...new Set(base.map(wsOf))].filter(grWsOk);
 const grScopeOk = sc => isAdmin() || (sc.kind === 'ws' ? grWsOk(sc.id) : sc.kind === 'project' ? grBase().some(p => p.id === sc.id) : false);
 const grScopeOf = f => grSk(f) === 'all' ? { kind: 'all' } : { kind: grSk(f), id: f.sid };
 const grScopeIc = k => k === 'ws' ? 'layers' : k === 'project' ? 'folder' : 'globe';
@@ -9532,7 +9537,7 @@ function wireGr() {
     if ((b = q('[data-grsk]'))) return grSet(f => {
       const k = b.dataset.grsk, base = grBase();
       delete f.ws; delete f.proj; GR.cell = null;
-      if (k === 'ws') { const ids = [...new Set(base.map(wsOf))].filter(id => wsById(id)); const pick = ids.includes(f.sid) ? f.sid : ids.includes(DB.ui.workspace) ? DB.ui.workspace : P() && ids.includes(wsOf(P())) ? wsOf(P()) : ids[0];
+      if (k === 'ws') { const ids = grWsIds(base); const pick = ids.includes(f.sid) ? f.sid : ids.includes(DB.ui.workspace) ? DB.ui.workspace : P() && ids.includes(wsOf(P())) ? wsOf(P()) : ids[0];
         if (pick) { f.sk = 'ws'; f.sid = pick; } else { delete f.sk; delete f.sid; } }
       else if (k === 'project') { const pick = base.some(p => p.id === f.sid) ? f.sid : base.some(p => p.id === DB.ui.project) ? DB.ui.project : base[0]?.id;
         if (pick) { f.sk = 'project'; f.sid = pick; } else { delete f.sk; delete f.sid; } }
