@@ -8830,9 +8830,16 @@ function wireUsers() {
    Bölüm 10: BENİM İŞLERİM • PROJELER • ÜYELİK
    ============================================================ */
 
-/* Projeye üye olan aktif kişiler. Üyelik tanımsızsa herkes üyedir. */
-const memsOf = p => (p?.members?.length ? DB.users.filter(u => p.members.includes(u.id)) : DB.users)
-  .filter(u => u.active && !u.system);
+/* Projenin atanabilir (aktif) kişileri. Üyeli alanda alanın Yönetici/Üye rolündeki kişileri (sahip dahil, izleyici
+   hariç; proje üye listesi değil — sunucudaki store.js assignable ile aynı). Eski (üyesiz) alanda projenin üye listesi;
+   liste tanımsızsa herkes. */
+const wsMembersOf = w => DB.users.filter(u => u.active && !u.system
+  && (wsOwner(w) === u.id || w.members.some(m => m && m.userId === u.id)));
+const memsOf = p => {
+  const w = p ? wsById(wsOf(p)) : null;
+  if (w && !wsLegacy(w)) return wsMembersOf(w).filter(u => wsAtLeast(wsRole(u, w), 'member'));
+  return (p?.members?.length ? DB.users.filter(u => p.members.includes(u.id)) : DB.users).filter(u => u.active && !u.system);
+};
 const projUsers = () => memsOf(P());
 const isMember = (p, id = SESSION) => (id === SESSION && isSuper()) || !p?.members?.length || p.members.includes(id);
 
