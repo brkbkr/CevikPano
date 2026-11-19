@@ -1,4 +1,4 @@
-// Pano iyileştirmeleri tarayıcı testi: hızlı kart ekleme (tek satır + çipler), alt işler panoda kart,
+// Pano iyileştirmeleri tarayıcı testi: hızlı kart ekleme v2 (büyük başlık + ızgara: tip, öncelik, atanan, tarihler, tahmin), alt işler panoda kart,
 // sprint başlat/tamamla yetkisi ve proje sprint süresi.
 // Ön koşullar regresyon.cjs ile aynı: boş veritabanı, sunucu ADMIN_PASSWORD=admin12345 DEFAULT_USER_PASSWORD=Baslangic123
 // PORT=3100, demo veri (node scripts/seed-demo.mjs http://localhost:3100 test/fixtures/demo.json).
@@ -72,70 +72,147 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
   await A.reload(); await sleep(1500);
   const [S0, S1] = seed.st;
 
-  /* ===== 1) hızlı kart ekleme ===== */
+  /* ===== 1) hızlı kart ekleme (v2: büyük başlık + iki sütunlu ızgara, docs/tasarim/hizli-kart-v2) ===== */
   await go(A, 'board');
   await A.click(`[data-qa="${S0}"]`); await sleep(300);
-  const shape = await A.evaluate(() => ({
+  const R = s => { const r = document.querySelector(s)?.getBoundingClientRect(); return r ? { t: Math.round(r.top), l: Math.round(r.left), w: Math.round(r.width), h: Math.round(r.height) } : null; };
+  const shape = await A.evaluate(R0 => { const R = eval(R0); return {
     selects: document.querySelectorAll('.qadd select').length,
-    old: ['#qa_b', '#qa_bt', '#qa_e', '#qa_st', '#qa_du', '#qa_dd', '#qa_ok', '.qa-hint'].filter(s => document.querySelector(s)).length,
-    chips: ['#qa_t', '#qa_a', '#qa_p', '#qa_d', '#qa_more'].filter(s => document.querySelector(s)).length,
-    inputs: [...document.querySelectorAll('.qadd input:not([type=date])')].length,
-    row: new Set(['#qa_t', '#qa_a', '#qa_p', '#qa_d', '#qa_more'].map(s => Math.round(document.querySelector(s)?.getBoundingClientRect().top))).size === 1,
+    old: ['#qa_b', '#qa_bt', '#qa_st', '#qa_du', '#qa_dd', '#qa_ok', '.qa-hint', '.qa-chips', '#qa_e'].filter(s => document.querySelector(s)).length,
+    fields: ['#qa_s', '#qa_t', '#qa_p', '#qa_a', '#qa_sd', '#qa_d', '#qa_est', '#qa_more', '#qa_x', '#qa_add'].filter(s => document.querySelector(s)).length,
+    title: document.querySelector('#qa_s')?.tagName,
+    t: R('#qa_t'), p: R('#qa_p'), a: R('#qa_a'), sd: R('#qa_sd'), d: R('#qa_d'), grid: R('.qa2-grid'),
+    names: [document.querySelector('#qa_t .tx').textContent.trim(), document.querySelector('#qa_p').textContent.trim(), document.querySelector('#qa_a .tx').textContent.trim()],
+    want: [TYPE[DB.ui.qa.type][2], PRI[DB.ui.qa.priority][1], user(DB.ui.qa.assignee)?.name || 'Atanmamış'],
+    unit: document.querySelector('#qa_unit')?.textContent, more: document.querySelector('#qa_more')?.textContent.trim(),
+    btns: [document.querySelector('#qa_x')?.textContent.trim(), document.querySelector('#qa_add')?.textContent.trim()],
     focus: document.activeElement?.id,
-  }));
-  ok('quick add: single title input, no selects / old fields', shape.selects === 0 && shape.old === 0 && shape.inputs === 1, JSON.stringify(shape));
-  ok('quick add: chips (type, assignee, priority, due, more) on one row', shape.chips === 5 && shape.row, JSON.stringify(shape));
+  }; }, R.toString());
+  ok('quick add v2: textarea title + grid fields, no selects / old chips', shape.selects === 0 && shape.old === 0 && shape.fields === 10 && shape.title === 'TEXTAREA', JSON.stringify(shape));
+  ok('quick add v2: Tip·Öncelik and Başlangıç·Bitiş side by side, Atanan full row',
+    shape.t.t === shape.p.t && shape.p.l > shape.t.l && shape.sd.t === shape.d.t && shape.d.l > shape.sd.l
+    && shape.a.t > shape.t.t && shape.a.w >= shape.grid.w - 2 && shape.sd.t > shape.a.t, JSON.stringify(shape));
+  ok('quick add v2: selectors show value names', shape.names[0] === shape.want[0] && shape.names[1] === shape.want[1] && shape.names[2] === shape.want[2], JSON.stringify([shape.names, shape.want]));
+  ok('quick add v2: "Tüm alanlar…", Vazgeç, Ekle', shape.more === 'Tüm alanlar…' && shape.btns[0] === 'Vazgeç' && shape.btns[1] === 'Ekle', JSON.stringify(shape));
+  ok('quick add v2: agile project estimate unit is "puan"', shape.unit === 'puan', shape.unit);
   ok('quick add: title focused on open', shape.focus === 'qa_s', shape.focus);
+  // başlık büyür: en çok 2 satır
+  const h1 = await A.evaluate(() => document.querySelector('#qa_s').getBoundingClientRect().height);
+  await A.fill('#qa_s', 'Çok uzun bir başlık '.repeat(4)); await A.dispatchEvent('#qa_s', 'input'); await sleep(100);
+  const h2 = await A.evaluate(() => document.querySelector('#qa_s').getBoundingClientRect().height);
+  await A.fill('#qa_s', 'Çok uzun bir başlık '.repeat(12)); await A.dispatchEvent('#qa_s', 'input'); await sleep(100);
+  const h3 = await A.evaluate(() => { const t = document.querySelector('#qa_s'), lh = parseFloat(getComputedStyle(t).lineHeight);
+    return { h: t.getBoundingClientRect().height, lh, nl: t.value.includes('\n') }; });
+  ok('title grows to 2 lines, then stays at 2 lines', h2 > h1 + 8 && Math.abs(h3.h - h2) <= 2 && h3.h <= 2 * h3.lh + 8, `${h1} ${h2} ${JSON.stringify(h3)}`);
+  await A.fill('#qa_s', ''); await A.dispatchEvent('#qa_s', 'input');
 
-  // çipler: tip, öncelik (Acil), atanan (ben), bitiş (Bugün)
+  // seçiciler: tip, öncelik (Acil), atanan
   const pick = async (chip, v) => { await A.click(chip); await sleep(200); const has = await A.evaluate(v => !!document.querySelector(`.qm [data-qv="${v}"]`), v);
     if (has) await A.click(`.qm [data-qv="${v}"]`); await sleep(250); return has; };
-  const env = await A.evaluate(() => ({ me: ME.id, today: TODAY, types: qaTypes(), acil: PRI[1][1] }));
+  const env = await A.evaluate(() => ({ me: ME.id, today: TODAY, wk: iso(addD(new Date(), 7)), types: qaTypes(), acil: PRI[1][1],
+    wd: workdaysBetween(TODAY, iso(addD(new Date(), 7))) }));
   const typ = env.types.find(t => t !== 'task') || env.types[0];
   ok('type menu has option', await pick('#qa_t', typ), typ);
   ok('priority menu has 4 options', await A.evaluate(() => { document.querySelector('#qa_p').click(); const n = document.querySelectorAll('.qm .qm-opt').length; closeQuick(false); return n; }) === 4);
   ok('priority pick', await pick('#qa_p', '1'));
   ok('assignee menu (#8 person menu) pick', await pick('#qa_a', MID));
-  ok('due menu pick "Bugün"', await pick('#qa_d', env.today));
-  const chipsNow = await A.evaluate(() => ({ p: document.querySelector('#qa_p').textContent.trim(), d: document.querySelector('#qa_d').textContent.trim(),
-    a: document.querySelector('#qa_a').getAttribute('aria-label'), t: document.querySelector('#qa_t').getAttribute('aria-label') }));
-  ok('chips show chosen values', chipsNow.p.includes(env.acil) && chipsNow.d === 'Bugün' && !chipsNow.a.includes('Atanmamış'), JSON.stringify(chipsNow));
+  const selNow = await A.evaluate(() => ({ p: document.querySelector('#qa_p').textContent.trim(), a: document.querySelector('#qa_a .tx').textContent.trim(),
+    t: document.querySelector('#qa_t .tx').textContent.trim(), tn: TYPE[DB.ui.qa.type][2] }));
+  ok('selectors show chosen names', selNow.p.includes(env.acil) && selNow.a === 'PI Üye Dışı' && selNow.t === selNow.tn, JSON.stringify(selNow));
 
+  // tarih doğrulaması: bitiş başlangıçtan önce → hata metni + Ekle pasif + Enter eklemez
+  ok('start menu pick "Haftaya"', await pick('#qa_sd', env.wk));
+  ok('due menu pick "Bugün"', await pick('#qa_d', env.today));
+  const bad = await A.evaluate(() => ({ err: document.querySelector('#qa_err').textContent.trim(), dis: document.querySelector('#qa_add').disabled,
+    rng: document.querySelector('#qa_rng').textContent.trim(), cls: document.querySelector('#qa_d').classList.contains('bad') }));
+  ok('due before start: error text, Ekle disabled, no summary', bad.err === 'Bitiş, başlangıçtan önce olamaz.' && bad.dis && !bad.rng && bad.cls, JSON.stringify(bad));
+  const nBefore = await A.evaluate(pid => DB.issues.filter(i => i.projectId === pid).length, PID);
+  await A.click('#qa_s'); await A.keyboard.type('PIQ hatalı tarih'); await A.keyboard.press('Enter'); await sleep(300);
+  ok('Enter does not add while dates invalid', await A.evaluate(([pid, n]) => DB.issues.filter(i => i.projectId === pid).length === n && document.querySelector('#qa_s').value === 'PIQ hatalı tarih', [PID, nBefore]));
+  await A.fill('#qa_s', '');
+  ok('start menu pick "Bugün"', await pick('#qa_sd', env.today));
+  ok('due menu pick "Haftaya"', await pick('#qa_d', env.wk));
+  const good = await A.evaluate(() => ({ err: document.querySelector('#qa_err').textContent.trim(), dis: document.querySelector('#qa_add').disabled,
+    rng: document.querySelector('#qa_rng').textContent.trim(), sd: document.querySelector('#qa_sd').textContent.trim() }));
+  ok('valid dates: summary "N iş günü", Ekle enabled', !good.err && !good.dis && good.rng.startsWith(env.wd + ' iş günü') && good.sd === 'Bugün', JSON.stringify(good) + ' wd=' + env.wd);
+
+  // tahmin (agile: puan): geçersiz → hata + pasif; geçerli → kartın puanı
+  await A.fill('#qa_est', '1001'); await sleep(100);
+  const estBad = await A.evaluate(() => ({ err: document.querySelector('#qa_err').textContent, dis: document.querySelector('#qa_add').disabled, foc: document.activeElement?.id }));
+  ok('estimate out of range: error, Ekle disabled, focus kept', /Puan 0 ile 1000/.test(estBad.err) && estBad.dis && estBad.foc === 'qa_est', JSON.stringify(estBad));
+  await A.fill('#qa_est', '3');
+  ok('estimate valid: error cleared', await A.evaluate(() => !document.querySelector('#qa_err').textContent && !document.querySelector('#qa_add').disabled));
+
+  // Enter ile art arda ekleme: form açık kalır, tarih/tahmin sıfırlanır, tip/atanan/öncelik hatırlanır
   await A.click('#qa_s'); await A.keyboard.type('PIQ ilk kart'); await A.keyboard.press('Enter'); await sleep(350);
-  const f1 = await A.evaluate(() => document.activeElement?.id);
+  const after1 = await A.evaluate(() => ({ f: document.activeElement?.id, v: document.querySelector('#qa_s')?.value, sd: document.querySelector('#qa_sd').textContent.trim(),
+    d: document.querySelector('#qa_d').textContent.trim(), est: document.querySelector('#qa_est').value, rng: document.querySelector('#qa_rng').textContent.trim(),
+    p: document.querySelector('#qa_p').textContent, q: { ...DB.ui.qa } }));
+  ok('after add: form open, dates and estimate reset', after1.f === 'qa_s' && after1.v === '' && after1.sd === 'Seçin' && after1.d === 'Seçin' && after1.est === '' && !after1.rng
+    && !after1.q.start && !after1.q.due && !after1.q.estimate, JSON.stringify(after1));
+  ok('choices remembered (type, assignee, priority)', after1.p.includes(env.acil) && after1.q.assignee === MID && after1.q.type === typ && after1.q.priority === 1, JSON.stringify(after1.q));
   await A.keyboard.type('PIQ ikinci kart'); await A.keyboard.press('Enter'); await sleep(350);
   const made = await A.evaluate(([pid, s0]) => DB.issues.filter(i => i.projectId === pid && /^PIQ /.test(i.summary))
-    .map(i => ({ s: i.summary, st: i.statusId === s0, p: i.priority, a: i.assignee, d: i.due, t: i.type })), [PID, S0]);
-  ok('Enter adds two cards in a row, cursor stays', made.length === 2 && f1 === 'qa_s' && await A.evaluate(() => document.activeElement?.id === 'qa_s' && document.querySelector('#qa_s').value === ''),
-    JSON.stringify(made) + ' focus=' + f1);
-  ok('cards get chip values (column, type, priority, assignee, due)', made.every(m => m.st && m.p === 1 && m.a === MID && m.d === env.today && m.t === typ), JSON.stringify(made));
+    .map(i => ({ s: i.summary, st: i.statusId === s0, p: i.priority, a: i.assignee, sd: i.start, d: i.due, t: i.type, pts: i.points, est: i.estimate })), [PID, S0]);
+  const m1 = made.find(m => m.s === 'PIQ ilk kart'), m2 = made.find(m => m.s === 'PIQ ikinci kart');
+  ok('Enter adds two cards in a row, cursor stays', made.length === 2 && await A.evaluate(() => document.activeElement?.id === 'qa_s' && document.querySelector('#qa_s').value === ''), JSON.stringify(made));
+  ok('cards get values (column, type, priority, assignee)', made.every(m => m.st && m.p === 1 && m.a === MID && m.t === typ), JSON.stringify(made));
+  ok('first card: start/due and points (agile: puan, no hours)', m1 && m1.sd === env.today && m1.d === env.wk && m1.pts === 3 && !m1.est, JSON.stringify(m1));
+  ok('second card: no dates, no estimate', m2 && !m2.sd && !m2.d && m2.pts == null && !m2.est, JSON.stringify(m2));
   ok('cards visible in column', await A.evaluate(s0 => [...document.querySelectorAll(`.col[data-status="${s0}"] .card .sum`)].filter(e => e.textContent.startsWith('PIQ')).length, S0) === 2);
-  ok('choices remembered (chips keep values after add)', (await A.evaluate(() => document.querySelector('#qa_p').textContent)).includes(env.acil));
+  await sleep(1200);
+  ok('server stored start/due/points', await A.evaluate(async ([pid, k]) => { const r = await API.get('/api/state'); const d = r.data || r;
+    const i = (d.issues || []).find(x => x.projectId === pid && x.summary === 'PIQ ilk kart'); return !!i && i.start === k.today && i.due === k.wk && i.points === 3; }, [PID, env]));
   await A.screenshot({ path: SS + 'qadd.png' });
   await A.keyboard.press('Escape'); await sleep(250);
   ok('Esc closes quick add', await A.evaluate(() => !document.querySelector('.qadd')));
+  await A.click(`[data-qa="${S0}"]`); await sleep(250);
+  await A.click('#qa_x'); await sleep(250);
+  ok('Vazgeç closes quick add', await A.evaluate(() => !document.querySelector('.qadd') && !DB.ui.qaOpen));
 
-  // Daha fazla…: tam form bu değerlerle
+  // Tüm alanlar…: tam form bu değerlerle (agile: puan)
   await A.click(`[data-qa="${S1}"]`); await sleep(300);
-  await A.fill('#qa_s', 'PIQ tam form'); await A.click('#qa_more'); await sleep(500);
+  await A.fill('#qa_s', 'PIQ tam form');
+  await pick('#qa_sd', env.today); await pick('#qa_d', env.wk); await A.fill('#qa_est', '5');
+  await A.click('#qa_more'); await sleep(500);
   const form = await A.evaluate(() => ({ sum: $('#f_sum')?.value, pri: $('#f_pri [aria-checked="true"]')?.dataset.pri, as: $('#f_as')?.value,
-    due: $('#f_due')?.value, st: $('#f_st')?.value, type: $('#f_type')?.value, qadd: !!document.querySelector('.qadd') }));
-  ok('"Daha fazla…" opens full form with values', form.sum === 'PIQ tam form' && form.pri === '1' && form.as === MID && form.due === env.today && form.st === S1 && form.type === typ && !form.qadd,
-    JSON.stringify(form));
+    start: $('#f_start')?.value, due: $('#f_due')?.value, pts: $('#f_pts')?.value, st: $('#f_st')?.value, type: $('#f_type')?.value, qadd: !!document.querySelector('.qadd') }));
+  ok('"Tüm alanlar…" opens full form with values (dates, points)', form.sum === 'PIQ tam form' && form.pri === '1' && form.as === MID && form.start === env.today
+    && form.due === env.wk && form.pts === '5' && form.st === S1 && form.type === typ && !form.qadd, JSON.stringify(form));
   await A.click('#doCreate'); await sleep(400);
-  ok('full form creates in chosen column', await A.evaluate(([pid, s1]) => DB.issues.some(i => i.projectId === pid && i.summary === 'PIQ tam form' && i.statusId === s1 && i.priority === 1), [PID, S1]));
+  ok('full form creates in chosen column', await A.evaluate(([pid, s1, k]) => DB.issues.some(i => i.projectId === pid && i.summary === 'PIQ tam form' && i.statusId === s1
+    && i.priority === 1 && i.start === k.today && i.due === k.wk && i.points === 5), [PID, S1, env]));
   // XSS: başlık metin olarak
   await A.click(`[data-qa="${S0}"]`); await sleep(200);
   await A.fill('#qa_s', '<img src=x onerror="window.__xss=1">'); await A.keyboard.press('Enter'); await sleep(400);
   ok('quick add title escaped', await A.evaluate(() => !window.__xss && !document.querySelector('.card .sum img')));
   await A.keyboard.press('Escape'); await sleep(200);
 
+  // pano projesi: tahmin saat (ondalık), Tüm alanlar süreyi taşır
+  await A.evaluate(() => { location.hash = 'home'; }); await sleep(250);
+  const PB = await A.evaluate(() => DB.projects.find(p => projType(p) === 'board' && canSeeProject(p) && statsOf(p.id).length)?.id);
+  await A.evaluate(pb => { DB.ui.project = pb; DB.board.scope = 'all'; DB.board.filterUser = ''; DB.board.filterType = ''; DB.board.q = ''; location.hash = 'board'; }, PB); await sleep(600);
+  const SB = await A.evaluate(() => stats()[0].id);
+  await A.click(`[data-qa="${SB}"]`); await sleep(300);
+  ok('board project: estimate unit is "saat"', await A.evaluate(() => document.querySelector('#qa_unit')?.textContent === 'saat' && /saat/.test(document.querySelector('#qa_est').getAttribute('aria-label'))));
+  await A.fill('#qa_est', 'abc'); await sleep(80);
+  ok('board project: invalid hours → error', await A.evaluate(() => /Tahmin 0 ile 1000 saat/.test(document.querySelector('#qa_err').textContent) && document.querySelector('#qa_add').disabled));
+  await A.fill('#qa_est', '1,5');
+  await A.fill('#qa_s', 'PIQ saatli'); await A.click('#qa_add'); await sleep(350);
+  ok('board project: Ekle adds with hours (1,5 → 1.5), no points', await A.evaluate(pb => { const i = DB.issues.find(x => x.projectId === pb && x.summary === 'PIQ saatli');
+    return !!i && i.estimate === 1.5 && i.remainingEst === 1.5 && i.points == null && !!document.querySelector('.qadd'); }, PB));
+  await A.fill('#qa_s', 'PIQ saat tam'); await A.fill('#qa_est', '2'); await A.click('#qa_more'); await sleep(500);
+  ok('board project: "Tüm alanlar…" carries hours', await A.evaluate(() => $('#f_est')?.value === '2h' && $('#f_sum').value === 'PIQ saat tam'));
+  await A.evaluate(() => closeModal()); await sleep(200);
+  await go(A, 'board');
+
   // mobil: dokunma hedefleri ≥44px + koyu tema
   const Mb = await mk('mobile', { width: 390, height: 844 }, 'dark'); await login(Mb, 'admin', 'admin12345');
   await go(Mb, 'board');
   await Mb.evaluate(s0 => { DB.ui.qaOpen = s0; render(); }, S0); await sleep(300);
-  const tgt = await Mb.evaluate(() => ['#qa_s', '#qa_t', '#qa_a', '#qa_p', '#qa_d', '#qa_more'].map(s => { const r = document.querySelector(s)?.getBoundingClientRect(); return r ? Math.min(r.height, r.width) : 0; }));
+  const tgt = await Mb.evaluate(() => ['#qa_s', '#qa_t', '#qa_a', '#qa_p', '#qa_sd', '#qa_d', '.qa2-num', '#qa_more', '#qa_x', '#qa_add'].map(s => { const r = document.querySelector(s)?.getBoundingClientRect(); return r ? Math.round(Math.min(r.height, r.width)) : 0; }));
   ok('mobile: quick add targets ≥44px', tgt.every(h => h >= 44), tgt.join());
+  ok('mobile: dark theme applied to form', await Mb.evaluate(() => { const c = getComputedStyle(document.querySelector('.qadd')).backgroundColor.match(/\d+/g).map(Number); return c[0] + c[1] + c[2] < 200; }));
   await Mb.screenshot({ path: SS + 'qadd_mobile_dark.png' });
   await Mb.evaluate(() => { DB.ui.qaOpen = null; render(); });
 

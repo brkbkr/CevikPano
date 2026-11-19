@@ -1069,27 +1069,59 @@ button.c-av::after{content:"";position:absolute;inset:-6px}
 .b-subs[aria-checked="true"] .b-sw{background:var(--accent)}
 .b-subs[aria-checked="true"] .b-sw::after{transform:translateX(12px)}
 
-/* hızlı kart ekleme (kolon başı): tek satır başlık + çipler */
-.qadd{border-radius:11px;padding:10px;gap:8px;border:1px solid color-mix(in srgb,var(--accent) 55%,var(--line));
+/* hızlı kart ekleme v2 (kolon başı): büyük başlık + iki sütunlu ızgara (docs/tasarim/hizli-kart-v2) */
+.qadd{border-radius:12px;padding:12px;gap:12px;border:1px solid color-mix(in srgb,var(--accent) 55%,var(--line));
   box-shadow:var(--shadow-sm),0 0 0 3px color-mix(in srgb,var(--accent) 12%,transparent)}
-.qadd .qa-in{height:36px;padding:0 10px;font-size:13.2px;font-weight:550;border-radius:8px}
-.qa-chips{display:flex;align-items:center;gap:2px;flex-wrap:nowrap;min-width:0}
-.qa-chip{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-width:32px;height:32px;padding:0 5px;flex-shrink:0;
-  border-radius:8px;border:1px solid transparent;background:none;color:var(--ink2);font-size:12px;font-weight:550;font-family:inherit;cursor:pointer}
-.qa-chip:hover{background:var(--surface2);border-color:var(--line)}
-.qa-chip:focus-visible{outline:none;box-shadow:var(--ring)}
-.qa-chip.open{background:var(--surface2);border-color:var(--line2)}
-.qa-chip .ti{width:18px;height:18px;border-radius:5px;font-size:10px}
-.qa-chip .c-av{width:22px;height:22px;font-size:9px}
-.qa-chip .prio{pointer-events:none}
-.qa-du svg.i{width:13px;height:13px}
-.qa-du.on{color:var(--accent-d)}
-.qa-dn{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
-.qa-more{color:var(--accent-d);margin-left:auto;padding:0 6px;white-space:nowrap}
+.qa2-title{width:100%;border:none;background:none;resize:none;padding:2px;font:inherit;font-size:15px;font-weight:600;line-height:1.4;
+  min-height:calc(1.4em + 4px);max-height:calc(2 * 1.4em + 4px);overflow-y:auto;color:var(--ink);border-radius:6px;display:block}
+.qa2-title::placeholder{color:var(--ink3);font-weight:500}
+.qa2-title:focus{outline:none}
+.qa2-sep{height:1px;background:var(--line);margin:0 -12px}
+.qa2-body{display:flex;flex-direction:column;gap:12px}
+.qa2-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px 8px}
+.qa2-f{display:flex;flex-direction:column;gap:4px;min-width:0;position:relative}
+.qa2-f > span:first-child,.qa2-f > label{font-size:11px;font-weight:600;color:var(--ink2)}
+.qa2-span{grid-column:1 / -1}
+.qa2-sel{display:flex;align-items:center;gap:7px;height:36px;padding:0 8px;border:1px solid var(--line2);border-radius:9px;background:var(--surface);
+  font:inherit;font-size:12.5px;font-weight:550;color:var(--ink);text-align:left;min-width:0;width:100%;cursor:pointer}
+.qa2-sel:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line2))}
+.qa2-sel:focus-visible{outline:none;box-shadow:var(--ring)}
+.qa2-sel.open{border-color:var(--accent)}
+.qa2-sel .tx{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qa2-sel .tx.ph{color:var(--ink3);font-weight:500}
+.qa2-sel svg.i{width:15px;height:15px;color:var(--meta);flex-shrink:0}
+.qa2-sel.on svg.i{color:var(--accent-d)}
+.qa2-sel.bad{border-color:var(--risk)}
+.qa2-sel .ti{width:18px;height:18px;border-radius:5px;font-size:10px;flex-shrink:0}
+.qa2-sel .c-av{width:20px;height:20px;font-size:8.5px;flex-shrink:0}
+.qa2-sel .prio{pointer-events:none;flex-shrink:0}
+.qa2-sel .prio svg.i{color:inherit;width:13px;height:13px}
+.qa-dn{position:absolute;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none}
+.qa2-num{display:flex;align-items:center;height:36px;border:1px solid var(--line2);border-radius:9px;background:var(--surface);padding:0 8px;gap:6px}
+.qa2-num:focus-within{box-shadow:var(--ring);border-color:var(--accent)}
+.qa2-num.bad{border-color:var(--risk)}
+.qa2-num input{border:none;background:none;width:100%;min-width:0;font-family:var(--mono);font-size:13px;font-weight:600;outline:none;padding:0;color:var(--ink)}
+.qa2-num .u{font-size:12px;color:var(--ink2);font-weight:550}
+.qa2-num svg.i{color:var(--meta);width:15px;height:15px;flex-shrink:0}
+.qa2-range{font-size:11.5px;color:var(--ink2);display:flex;align-items:flex-end;padding-bottom:9px;line-height:1.35;min-width:0}
+.qa2-range b{color:var(--ink)}
+.qa2-err{color:var(--risk);font-size:11.5px;display:flex;flex-direction:column;gap:3px}
+.qa2-err:empty{display:none}
+.qa2-err span{display:flex;align-items:center;gap:5px}
+.qa2-err svg.i{width:13px;height:13px;flex-shrink:0}
+.qa2-ft{display:flex;align-items:center;gap:6px}
+.qa2-ft .spacer{flex:1}
+.qa2-lnk{border:none;background:none;padding:0 2px;min-height:36px;font:inherit;font-size:12.5px;font-weight:550;color:var(--accent-d);cursor:pointer;white-space:nowrap}
+.qa2-lnk:hover{text-decoration:underline}
+.qa2-ft .btn{min-height:36px}
+.qa2-ft .qa2-ghost{border-color:transparent;background:none;color:var(--ink2)}
+.qa2-ft .qa2-ghost:hover{background:var(--surface2)}
+.qa2-ft .btn.pri:disabled{opacity:.55;cursor:not-allowed;filter:none}
+.qa2-hint{font-size:11.5px;color:var(--ink2);display:flex;gap:5px;align-items:center;flex-wrap:wrap}
 @media (max-width:900px),(pointer:coarse){
-  .qadd .qa-in{height:44px;font-size:16px}
-  .qa-chips{flex-wrap:wrap}
-  .qa-chip{min-width:44px;height:44px}
+  .qa2-title{font-size:16px;min-height:44px;padding:9px 2px;max-height:calc(2 * 1.4em + 18px)}
+  .qa2-sel,.qa2-num{height:44px}
+  .qa2-ft .btn,.qa2-lnk{min-height:44px}
   .c-par{min-height:32px;padding:0 9px}
 }
 
@@ -5784,13 +5816,13 @@ function newIssueForm(preset = {}, keep) {
         ${niCariField(pr, keep)}
         ${AGILE() ? `<div><div class="id-fl"><label for="f_sp">Sprint</label></div><select class="inp" id="f_sp"><option value="">Backlog</option>
           ${sprintsOf().filter(s => s.state !== 'closed').map(s => `<option value="${esc(s.id)}" ${sp === s.id ? 'selected' : ''}>${esc(s.name)}${s.state === 'active' ? ' · aktif' : ''}</option>`).join('')}</select></div>` : ''}
-        <div><div class="id-fl">Başlangıç</div>${dateField({ id: 'f_start', label: 'Başlangıç', clear: false })}</div>
+        <div><div class="id-fl">Başlangıç</div>${dateField({ id: 'f_start', label: 'Başlangıç', clear: false, value: keep ? '' : preset.start || '' })}</div>
         <div><div class="id-fl">Bitiş</div>${dateField({ id: 'f_due', label: 'Bitiş', clear: false, value: keep ? '' : preset.due || '' })}</div>
-        <div><div class="id-fl"><label for="f_est">Tahmin <span class="opt">(isteğe bağlı)</span></label></div><input class="inp" id="f_est" placeholder="4h" autocomplete="off">
+        <div><div class="id-fl"><label for="f_est">Tahmin <span class="opt">(isteğe bağlı)</span></label></div><input class="inp" id="f_est" placeholder="4h" autocomplete="off" value="${esc(!keep && preset.estimate ? fmtDur(preset.estimate) : '')}">
           <div class="id-hint">örn. 30m · 2h · 1d 4h</div></div>
         ${MOD('epic') ? `<div><div class="id-fl"><label for="f_ep">Epik <span class="opt">(isteğe bağlı)</span></label></div><select class="inp" id="f_ep"><option value="">Yok</option>
           ${epicsOf().map(e => `<option value="${esc(e.id)}" ${ep === e.id ? 'selected' : ''}>${esc(e.summary)}</option>`).join('')}</select></div>` : ''}
-        ${MOD('points') ? `<div><div class="id-fl"><label for="f_pts">Story point</label></div><input class="inp" id="f_pts" placeholder="—" inputmode="decimal"></div>` : ''}
+        ${MOD('points') || preset.points != null ? `<div><div class="id-fl"><label for="f_pts">Story point</label></div><input class="inp" id="f_pts" placeholder="—" inputmode="decimal" value="${esc(!keep && preset.points != null ? preset.points : '')}"></div>` : ''}
       </div>
       <button type="button" class="id-morebtn" id="f_moreBtn" aria-expanded="false" aria-controls="f_more">${ic('chevr')}<b>Daha fazla alan</b><span>${esc(moreN)}</span></button>
       <div id="f_more" hidden><div class="id-g2">
@@ -11711,35 +11743,82 @@ function ensureBilling() {
 }
 
 /* ============================================================
-   KOLON BAŞLIĞINDAN HIZLI KART EKLEME
-   Tek satır başlık (Enter ekler, imleç kalır, Esc kapatır) + çipler:
-   tip · atanan · öncelik · bitiş · "Daha fazla…" (tam form bu değerlerle).
-   Çip seçimleri yapışkandır: bir sonraki eklemede aynı değerle gelir.
+   KOLON BAŞLIĞINDAN HIZLI KART EKLEME (v2, docs/tasarim/hizli-kart-v2)
+   Büyük başlık (en çok 2 satır, Enter ekler ve form açık kalır, Esc kapatır) + iki sütunlu ızgara:
+   Tip · Öncelik, Atanan, Başlangıç · Bitiş, Tahmin (pano: saat, agile: puan) + süre özeti.
+   Tip/Atanan/Öncelik yapışkandır (DB.ui.qa); tarihler ve tahmin her eklemeden sonra sıfırlanır.
    ============================================================ */
 const qaTypes = () => ISSUE_TYPES().filter(t => t !== 'epic');
+const QA_EST_MAX = 1000;                                  // saat ya da puan üst sınırı (sunucu: puan ≤ 1000)
 function qaState() {
   const q = DB.ui.qa, ts = qaTypes();
   if (!ts.includes(q.type)) q.type = ts[0] || null;
   q.priority = lvl(q.priority || 3);
-  if (q.due && q.due < TODAY) q.due = '';             // geçmiş bitiş hatırlanmaz
+  q.start = day10(q.start); q.due = day10(q.due);
+  if (q.estimate == null || typeof q.estimate !== 'string') q.estimate = '';
   if (q.assignee && !memsOf(P()).some(u => u.id === q.assignee)) q.assignee = '';
   return q;
 }
+const qaResetVals = q => { q.start = ''; q.due = ''; q.estimate = ''; };
 const qaFri = () => { const d = new Date(), k = (5 - d.getDay() + 7) % 7; return iso(addD(d, k)); };
-function qaChips() {
+const qaPts = () => AGILE();                              // agile projede tahmin = puan
+/* "Bugün" / "Yarın" / "Cum 21 Kas" */
+const qaDay = s => { if (!s) return ''; if (s === TODAY) return 'Bugün'; if (s === iso(addD(new Date(), 1))) return 'Yarın';
+  const d = hmDay(s); return `${DAYS[(d.getDay() + 6) % 7]} ${d.getDate()} ${HM_MON[d.getMonth()]}`; };
+/* "19–21 Kasım" / "28 Kasım – 2 Aralık" / "30 Aralık 2026 – 2 Ocak 2027" */
+function qaRange(a, b) {
+  const x = hmDay(a), y = hmDay(b), M = m => MONTHS[m];
+  if (a === b) return `${x.getDate()} ${M(x.getMonth())}`;
+  if (x.getFullYear() !== y.getFullYear()) return `${x.getDate()} ${M(x.getMonth())} ${x.getFullYear()} – ${y.getDate()} ${M(y.getMonth())} ${y.getFullYear()}`;
+  if (x.getMonth() !== y.getMonth()) return `${x.getDate()} ${M(x.getMonth())} – ${y.getDate()} ${M(y.getMonth())}`;
+  return `${x.getDate()}–${y.getDate()} ${M(x.getMonth())}`;
+}
+/* Tahmin metni → sayı (boş: null, geçersiz: NaN). "1,5" kabul. */
+const qaNum = s => { const t = String(s ?? '').trim().replace(',', '.'); if (!t) return null;
+  return /^\d+(\.\d+)?$/.test(t) && +t <= QA_EST_MAX ? +t : NaN; };
+function qaErrors(q) {
+  const e = [];
+  if (q.start && q.due && q.due < q.start) e.push(['date', 'Bitiş, başlangıçtan önce olamaz.']);
+  if (Number.isNaN(qaNum(q.estimate))) e.push(['est', qaPts() ? `Puan 0 ile ${QA_EST_MAX} arasında bir sayı olmalı.` : `Tahmin 0 ile ${QA_EST_MAX} saat arasında bir sayı olmalı.`]);
+  return e;
+}
+function qaSel(id, label, inner, extra = '') {
+  return `<button type="button" class="qa2-sel${extra}" id="${id}" aria-haspopup="menu" aria-label="${label}">${inner}</button>`;
+}
+function qaGrid() {
   const q = qaState(), t = TYPE[q.type] || ['?', q.type, q.type], u = user(q.assignee), [pc, pn] = PRI[lvl(q.priority)];
-  return `<button type="button" class="qa-chip qa-ty" id="qa_t" aria-haspopup="menu" aria-label="Tip: ${esc(t[2])} (değiştir)" title="Tip: ${esc(t[2])}">${tIcon(q.type)}</button>
-    <button type="button" class="qa-chip qa-as" id="qa_a" aria-haspopup="menu" aria-label="Atanan: ${u ? esc(u.name) : 'Atanmamış'} (değiştir)" title="${u ? esc(u.name) : 'Atanmamış'}">${
-      u ? `<span class="c-av" style="background:${safeColor(u.color)}">${esc(u.ini || '?')}</span>` : `<span class="c-av none">${ic('userx')}</span>`}</button>
-    <button type="button" class="qa-chip qa-pr" id="qa_p" aria-haspopup="menu" aria-label="Öncelik: ${pn} (değiştir)" title="Öncelik: ${pn}"><span class="prio ${pc}">${ic(pc)}${pn}</span></button>
-    <button type="button" class="qa-chip qa-du${q.due ? ' on' : ''}" id="qa_d" aria-haspopup="menu" aria-label="Bitiş: ${q.due ? esc(fmtDLong(q.due)) : 'yok'} (değiştir)" title="Bitiş">${ic('cal')}<span>${q.due ? (q.due === TODAY ? 'Bugün' : esc(fmtD(q.due))) : 'Bitiş'}</span></button>
-    <input type="date" class="qa-dn" id="qa_dn" value="${esc(q.due || '')}" min="${TODAY}" tabindex="-1" aria-hidden="true">
-    <button type="button" class="qa-chip qa-more" id="qa_more" title="Tam yeni iş formunu bu değerlerle aç (kapatmak için Esc)">Daha fazla…</button>`;
+  const pts = qaPts(), err = qaErrors(q), bad = k => err.some(x => x[0] === k);
+  const dsel = (id, f, lbl) => qaSel(id, `${lbl}: ${q[f] ? esc(fmtDLong(q[f])) : 'seçilmedi'} (değiştir)`,
+    `${ic('cal')}<span class="tx${q[f] ? '' : ' ph'}">${q[f] ? esc(qaDay(q[f])) : 'Seçin'}</span>`, (q[f] ? ' on' : '') + (f === 'due' && bad('date') ? ' bad' : ''));
+  const n = q.start && q.due && !bad('date') ? workdaysBetween(q.start, q.due) : -1;
+  return `<div class="qa2-grid">
+      <div class="qa2-f"><span>Tip</span>${qaSel('qa_t', `Tip: ${esc(t[2])} (değiştir)`, `${tIcon(q.type)}<span class="tx">${esc(t[2])}</span>${ic('down')}`)}</div>
+      <div class="qa2-f"><span>Öncelik</span>${qaSel('qa_p', `Öncelik: ${pn} (değiştir)`, `<span class="prio ${pc}">${ic(pc)}${pn}</span><span class="tx"></span>${ic('down')}`)}</div>
+      <div class="qa2-f qa2-span"><span>Atanan</span>${qaSel('qa_a', `Atanan: ${u ? esc(u.name) : 'Atanmamış'} (değiştir)`,
+        (u ? `<span class="c-av" style="background:${safeColor(u.color)}">${esc(u.ini || '?')}</span><span class="tx">${esc(u.name)}</span>`
+           : `${ic('userx')}<span class="tx ph">Atanmamış</span>`) + ic('down'))}</div>
+      <div class="qa2-f"><span>Başlangıç</span>${dsel('qa_sd', 'start', 'Başlangıç')}
+        <input type="date" class="qa-dn" id="qa_sdn" value="${esc(q.start)}" tabindex="-1" aria-hidden="true"></div>
+      <div class="qa2-f"><span>Bitiş</span>${dsel('qa_d', 'due', 'Bitiş')}
+        <input type="date" class="qa-dn" id="qa_dn" value="${esc(q.due)}" ${q.start ? `min="${esc(q.start)}"` : ''} tabindex="-1" aria-hidden="true"></div>
+      <div class="qa2-f"><label for="qa_est">Tahmin</label><span class="qa2-num${bad('est') ? ' bad' : ''}">${ic(pts ? 'layers' : 'clock')}
+        <input id="qa_est" inputmode="decimal" autocomplete="off" placeholder="—" value="${esc(q.estimate)}" aria-label="Tahmin (${pts ? 'puan' : 'saat'})"
+          ${bad('est') ? 'aria-invalid="true"' : ''} aria-describedby="qa_err"><span class="u" id="qa_unit">${pts ? 'puan' : 'saat'}</span></span></div>
+      <div class="qa2-range" id="qa_rng" aria-live="polite">${n >= 0 ? `<span><b>${n ? n + ' iş günü' : 'İş günü yok'}</b><br>${esc(qaRange(q.start, q.due))}</span>` : ''}</div>
+      <div class="qa2-err qa2-span" id="qa_err" role="alert">${err.map(([, m]) => `<span>${ic('alert')}${esc(m)}</span>`).join('')}</div>
+    </div>
+    <div class="qa2-ft">
+      <button type="button" class="qa2-lnk" id="qa_more" title="Tam yeni iş formunu bu değerlerle aç">Tüm alanlar…</button><span class="spacer"></span>
+      <button type="button" class="btn qa2-ghost" id="qa_x">Vazgeç</button>
+      <button type="button" class="btn pri" id="qa_add" ${err.length ? 'disabled aria-disabled="true"' : ''}>Ekle</button>
+    </div>`;
 }
 function quickAddForm(sid) {
-  return `<div class="qadd" role="group" aria-label="Hızlı kart ekle">
-    <input class="inp qa-in" id="qa_s" maxlength="200" placeholder="Kart başlığı yazın, Enter ile ekleyin" aria-label="Kart başlığı (Enter ekler, Esc kapatır)" autocomplete="off">
-    <div class="qa-chips">${qaChips()}</div>
+  return `<div class="qadd qa2" role="group" aria-label="Hızlı kart ekle">
+    <textarea class="qa2-title" id="qa_s" rows="1" maxlength="200" placeholder="Kart başlığı yazın…" aria-label="Kart başlığı (Enter ekler, Esc kapatır)" autocomplete="off"></textarea>
+    <div class="qa2-sep"></div>
+    <div class="qa2-body">${qaGrid()}</div>
+    <div class="qa2-hint"><span class="kbd">Enter</span> ekler, form açık kalır · <span class="kbd">Esc</span> kapatır</div>
   </div>`;
 }
 
@@ -11747,15 +11826,32 @@ function wireQuickAdd() {
   $$('[data-qa]').forEach(b => b.onclick = e => {
     e.stopPropagation();
     DB.ui.qaOpen = DB.ui.qaOpen === b.dataset.qa ? null : b.dataset.qa;
+    qaResetVals(DB.ui.qa);
     render();
     $('#qa_s')?.focus();
   });
   const box = $('.qadd'); if (!box) return;
   const q = DB.ui.qa, pr = P();
-  const redraw = () => { box.querySelector('.qa-chips').innerHTML = qaChips(); wireChips(); };
+  const close = () => { DB.ui.qaOpen = null; qaResetVals(q); save(); render(); };
+  const redraw = () => { box.querySelector('.qa2-body').innerHTML = qaGrid(); wireGrid(); };
   const set = (k, v) => { q[k] = v; save(); redraw(); };
   const menu = (btn, o) => pmOpen({ btn, sel: '#' + btn.id, ...o });
-  function wireChips() {
+  /* Tahmin yazılırken ızgara yeniden çizilmez (imleç kaybolmasın): yalnız hata metni ve Ekle güncellenir. */
+  const check = () => {
+    const err = qaErrors(q), add = $('#qa_add'), est = $('#qa_est'), bad = err.some(x => x[0] === 'est');
+    $('#qa_err').innerHTML = err.map(([, m]) => `<span>${ic('alert')}${esc(m)}</span>`).join('');
+    add.disabled = !!err.length; add.toggleAttribute('aria-disabled', !!err.length);
+    est.closest('.qa2-num').classList.toggle('bad', bad); est.toggleAttribute('aria-invalid', bad);
+    return !err.length;
+  };
+  const dateMenu = (btn, f, title, inpSel) => {
+    const opts = [['Bugün', TODAY], ['Yarın', iso(addD(new Date(), 1))], ['Bu cuma', qaFri()], ['Haftaya', iso(addD(new Date(), 7))]];
+    menu(btn, { kind: 'due', title, list: () => opts.map(([l, d]) => pmOpt(d, q[f], ic('cal'), l, esc(fmtD(d)))).join('')
+      + pmOpt('__pick', '', ic('cal'), 'Tarih seç…') + (q[f] ? '<hr>' + pmOpt('', 'x', ic('x'), 'Temizle') : ''),
+      pick: v => { if (v !== '__pick') return set(f, v);
+        const inp = $(inpSel); try { inp.showPicker(); } catch (_) { inp.focus(); } } });
+  };
+  function wireGrid() {
     $('#qa_t').onclick = e => { e.stopPropagation(); menu(e.currentTarget, { kind: 'type', title: 'Tip',
       list: () => qaTypes().map(t => pmOpt(t, q.type, tIcon(t), esc(TYPE[t][2]))).join(''), pick: v => set('type', v) }); };
     $('#qa_a').onclick = e => { e.stopPropagation(); const fake = { projectId: pr?.id, assignee: q.assignee || '' };
@@ -11763,37 +11859,48 @@ function wireQuickAdd() {
         list: s => qmAsList(fake, s), pick: v => set('assignee', v || '') }); };
     $('#qa_p').onclick = e => { e.stopPropagation(); menu(e.currentTarget, { kind: 'pri', title: 'Öncelik',
       list: () => qmPriList({ priority: q.priority }), pick: v => set('priority', lvl(+v)) }); };
-    $('#qa_d').onclick = e => { e.stopPropagation();
-      const opts = [['Bugün', TODAY], ['Yarın', iso(addD(new Date(), 1))], ['Bu cuma', qaFri()], ['Haftaya', iso(addD(new Date(), 7))]];
-      menu(e.currentTarget, { kind: 'due', title: 'Bitiş', list: () => opts.map(([l, d]) => pmOpt(d, q.due, ic('cal'), l, esc(fmtD(d)))).join('')
-        + pmOpt('__pick', '', ic('cal'), 'Tarih seç…') + (q.due ? '<hr>' + pmOpt('', 'x', ic('x'), 'Bitiş yok') : ''),
-        pick: v => { if (v !== '__pick') return set('due', v);
-          const inp = $('#qa_dn'); try { inp.showPicker(); } catch (_) { inp.focus(); } } }); };
-    $('#qa_dn').onchange = e => set('due', e.target.value >= TODAY ? e.target.value : '');
+    $('#qa_sd').onclick = e => { e.stopPropagation(); dateMenu(e.currentTarget, 'start', 'Başlangıç', '#qa_sdn'); };
+    $('#qa_d').onclick = e => { e.stopPropagation(); dateMenu(e.currentTarget, 'due', 'Bitiş', '#qa_dn'); };
+    $('#qa_sdn').onchange = e => set('start', day10(e.target.value));
+    $('#qa_dn').onchange = e => set('due', day10(e.target.value));
+    const est = $('#qa_est');
+    est.oninput = () => { q.estimate = est.value; check(); };
+    est.onchange = () => save();
+    est.onkeydown = e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); add(); } };
     $('#qa_more').onclick = () => {
-      const summary = $('#qa_s').value.trim(), statusId = DB.ui.qaOpen;
-      DB.ui.qaOpen = null; save(); render();
-      newIssueForm({ summary, statusId, type: q.type, assignee: q.assignee || null, priority: q.priority, due: q.due || '' });
+      const summary = $('#qa_s').value.trim(), statusId = DB.ui.qaOpen, n = qaNum(q.estimate), pts = qaPts();
+      const v = { summary, statusId, type: q.type, assignee: q.assignee || null, priority: q.priority, start: q.start || '', due: q.due || '',
+        ...(Number.isFinite(n) ? (pts ? { points: n } : { estimate: n }) : {}) };
+      DB.ui.qaOpen = null; qaResetVals(q); save(); render();
+      newIssueForm(v);
     };
+    $('#qa_x').onclick = close;
+    $('#qa_add').onclick = () => add();
   }
-  wireChips();
+  wireGrid();
 
-  const add = () => {
-    const inp = $('#qa_s'), s = inp.value.trim();
-    if (!s) return inp.focus();
+  const title = $('#qa_s');
+  const grow = () => { title.style.height = 'auto'; title.style.height = title.scrollHeight + 'px'; };
+  title.oninput = () => { if (/[\r\n]/.test(title.value)) title.value = title.value.replace(/\s*[\r\n]+\s*/g, ' '); grow(); };
+  function add() {
+    const s = title.value.trim();
+    if (!s) return title.focus();
     if (!pr) return toast('Önce bir proje seçin');
     qaState();
+    if (!check()) return;
+    const n = qaNum(q.estimate), pts = qaPts();
     const it = createIssue(pr, { ...(q.type ? { type: q.type } : {}), summary: s, statusId: DB.ui.qaOpen, assignee: q.assignee || null, priority: q.priority,
-      sprintId: AGILE() ? (activeSprint()?.id || null) : null, due: q.due || '' }, pr.key);
+      sprintId: AGILE() ? (activeSprint()?.id || null) : null, start: q.start || '', due: q.due || '',
+      ...(n != null ? (pts ? { points: n } : { estimate: n, remainingEst: n }) : {}) }, pr.key);
+    qaResetVals(q);
     save(); render();
     $('#qa_s')?.focus();
     toast(it.key + ' eklendi');
-  };
-  $('#qa_s').onkeydown = e => {
-    if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); add(); }
-    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); DB.ui.qaOpen = null; render(); }
-  };
-  $('#qa_s').focus();
+  }
+  title.onkeydown = e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); add(); } };
+  box.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); } });
+  grow();
+  title.focus();
 }
 
 /* ============================================================

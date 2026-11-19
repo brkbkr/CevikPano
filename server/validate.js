@@ -6,6 +6,12 @@ const MAX_RECORD = 512 * 1024;
 const str = (v, max = 1000) => typeof v === 'string' && v.length <= max;
 const optStr = (v, max) => v == null || v === '' || str(v, max);
 const date = v => v == null || v === '' || (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v));
+/* Sıkı tarih (canlı yazmada değişen alan): tam 'YYYY-AA-GG' ve takvimde var olan gün. */
+const realDate = v => v == null || v === '' || (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
+  && !Number.isNaN(Date.parse(v + 'T00:00:00Z')) && new Date(v + 'T00:00:00Z').toISOString().slice(0, 10) === v);
+/* Canlı yazmada alan yeni mi / değişti mi (eski kayıt, içe aktarma ve geri yükleme gevşek kalır). */
+const changed = (d, opts, k) => !!opts.live && (!opts.cur || opts.cur[k] !== d[k]);
+export const ESTIMATE_MAX = 10000;   // saat
 
 const KEY_RE = /^[\p{L}\p{N}_-]{1,20}$/u;
 const ISSUE_KEY_RE = /^[\p{L}\p{N}_-]{1,20}-\d{1,9}$/u;
@@ -123,14 +129,20 @@ const RULES = {
   ],
   sprints: d => [[str(d.projectId, 200), 'Sprintin projesi yok'], [optStr(d.name, 200), 'Sprint adı çok uzun'],
     [d.plan == null || validPlan(d.plan), 'Geçersiz sprint planı']],
-  issues: d => [
+  issues: (d, opts) => [
     [str(d.projectId, 200), 'İşin projesi yok'],
     [optKey(d.key, ISSUE_KEY_RE), 'Geçersiz iş anahtarı'],
     [typeof d.summary === 'string' && d.summary.length <= 500, 'İş özeti gerekli (en fazla 500 karakter)'],
     [optStr(d.description, 100000), 'Açıklama çok uzun'],
     [date(d.due) && date(d.start), 'Geçersiz tarih'],
+    [(!changed(d, opts, 'start') || realDate(d.start)) && (!changed(d, opts, 'due') || realDate(d.due)),
+      'Tarih YYYY-AA-GG biçiminde geçerli bir gün olmalı'],
+    [!(changed(d, opts, 'start') || changed(d, opts, 'due')) || !d.start || !d.due || String(d.due) >= String(d.start),
+      'Bitiş, başlangıçtan önce olamaz'],
     [d.customerId == null || d.customerId === '' || validId(d.customerId), 'Geçersiz cari'],
     [d.estimate == null || (typeof d.estimate === 'number' && d.estimate >= 0), 'Tahmin negatif olamaz'],
+    [!changed(d, opts, 'estimate') || d.estimate == null || (Number.isFinite(d.estimate) && d.estimate <= ESTIMATE_MAX),
+      `Tahmin en fazla ${ESTIMATE_MAX} saat olabilir`],
     [d.priority == null || (Number.isInteger(d.priority) && d.priority >= 1 && d.priority <= 5), 'Öncelik 1 ile 5 arasında bir tamsayı olmalı'],
     [d.points == null || (typeof d.points === 'number' && Number.isFinite(d.points) && d.points >= 0 && d.points <= 1000), 'Puan 0 ile 1000 arasında bir sayı olmalı'],
     [d.color == null || d.color === '' || (typeof d.color === 'string' && HEX_RE.test(d.color)), 'Renk #RRGGBB biçiminde olmalı'],
