@@ -3229,4 +3229,22 @@ describe('genel tur düzeltmeleri', { skip: !URL && 'TEST_DATABASE_URL yok' }, (
     ok(await C.Y.sync([{ c: 'sprints', id: 'sp_g', op: 'del' }]));
   });
 
+  test('`_` ile başlayan koleksiyon istemciden yazılamaz (`_prefs`, `_settings` hariç); `_access` sinyali taklit edilemez', async () => {
+    const s0 = await seq();
+    const r = await C.X.sync([put('_access', 'u_gm', { x: 1 }), put('_gizli', 'a', { x: 1 }), { c: '_access', id: 'u_gm', op: 'del' }]);
+    assert.equal(r.json.applied, 0);
+    assert.deepEqual(r.json.rejected.map(x => x.reason), ['geçersiz koleksiyon', 'geçersiz koleksiyon', 'geçersiz koleksiyon']);
+    const ch = (await C.M.req('GET', `/api/changes?since=${s0}`)).json;
+    assert.ok(!ch.reload, JSON.stringify(ch));
+    assert.equal((await pool.query(`SELECT count(*) n FROM misc_records WHERE collection LIKE '\\_%'`)).rows[0].n, '0');
+    /* Eski sürümde yazılmış `_` kaydı durumda görünmez. */
+    await pool.query(`INSERT INTO misc_records (collection, id, data) VALUES ('_access','u_gm','{"id":"u_gm","x":1}')`);
+    assert.equal((await C.M.state()).json.data._access, undefined);
+    await pool.query(`DELETE FROM misc_records WHERE collection='_access'`);
+    /* Meşru adlar çalışır. */
+    ok(await C.X.sync([{ c: '_prefs', id: 'ui', op: 'put', data: { theme: 'dark' } }]));
+    ok(await C.A.sync([{ c: '_settings', id: 'gtAyar', op: 'put', data: { a: 1 } }]));
+    ok(await C.A.sync([{ c: '_settings', id: 'gtAyar', op: 'del' }]));
+  });
+
 });
