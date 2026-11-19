@@ -343,6 +343,8 @@ async function applyRecord(c, ctx, ch) {
     if (n !== data.counter) { data.counter = n; adjusted = true; }
   }
   if (ch.c === 'issues' && normalizePriority(data)) adjusted = true;
+  /* Sprint planı (başlatmadaki anlık görüntü) bir kez yazılır: alanı göndermeyen (eski) istemci onu silemez. */
+  if (ch.c === 'sprints' && cur?.plan != null && data.plan === undefined) { data.plan = cur.plan; adjusted = true; }
   if ((ch.c === 'projects' || ch.c === 'workspaces') && normalizeArchived(data)) adjusted = true;
   if (ch.c === 'customers' && normalizeCustomer(data)) adjusted = true;
   if (ch.c === 'workspaces' && enforceCreatedBy(data, cur, me)) adjusted = true;
@@ -415,6 +417,7 @@ async function applyRecord(c, ctx, ch) {
     await canManageSprint(c, me, ch.id, SPRINT_WEEKS_FORBIDDEN);
   if (ch.c === 'sprints') await checkSprintState(c, me, data, cur);
   if (ch.c === 'sprints') await checkSprintStart(c, data, cur);
+  if (ch.c === 'sprints') await checkSprintPlan(c, me, data, cur, ctx.system);
   if (ch.c === 'statuses') {
     if (cur) await canConfigure(c, me, cur.projectId);
     await canConfigure(c, me, data.projectId);
@@ -539,6 +542,19 @@ async function checkSprintStart(c, data, cur) {
   if (data.state !== 'active' || (cur?.state === 'active' && cur?.projectId === data.projectId)) return;
   const p = (await c.query('SELECT data FROM projects WHERE id=$1 FOR SHARE', [data.projectId])).rows[0]?.data;
   if (p?.type === 'board') throw new HttpError(400, 'Pano türündeki projede sprint başlatılamaz');
+}
+
+/* Sprint planı (`plan`: başlatma anındaki kapsam — sayı, puan, iş kimlikleri): yalnız sprint başlatılırken
+   (aktif olmayan → aktif) ve başlatabilen (canManageSprint) yazar; yazıldıktan sonra değişmez, silinmez.
+   İçe aktarma / geri yükleme (system) eski veriyi olduğu gibi yazar. */
+const SPRINT_PLAN_LOCKED = 'Sprintin başlangıç planı değiştirilemez';
+async function checkSprintPlan(c, me, data, cur, system) {
+  if (same(cur?.plan ?? null, data.plan ?? null)) return;
+  if (system) return;
+  if (cur?.plan != null) throw new HttpError(403, SPRINT_PLAN_LOCKED);
+  if (data.plan == null) return;
+  if (data.state !== 'active' || cur?.state === 'active') throw new HttpError(400, 'Sprint planı yalnızca sprint başlatılırken kaydedilir');
+  await canManageSprint(c, me, data.projectId);
 }
 
 const colStats = async (c, pid) => {

@@ -1897,6 +1897,40 @@ describe('proje türü ve kolonlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
     assert.deepEqual(reasons(await V.sync([SP('sp_y5', 'pk_bos', 'active')])), ['salt okunur kullanıcı']);
   });
 
+  /* Sprint performansı: başlatmadaki plan anlık görüntüsü yalnız başlatırken, başlatabilen yazar; sonra değişmez. */
+  test('sprint planı: yalnız başlatan alan Yöneticisi yazar, yalnız başlatırken; sonradan değiştirilemez/silinemez; geçersiz biçim 400', async () => {
+    const PLAN = { count: 2, points: 5, est: 8, ids: ['i_pl1', 'i_pl2'], at: 1763500000000 };
+    const LOCKED = 'Sprintin başlangıç planı değiştirilemez', ONLY_START = 'Sprint planı yalnızca sprint başlatılırken kaydedilir';
+    ok(await N.sync([SP('sp_pl1', 'pk_spy', 'future'), SP('sp_pl2', 'pk_spy', 'future')]));
+    assert.deepEqual(reasons(await N.sync([SP('sp_pl1', 'pk_spy', 'future', { plan: PLAN })])), [ONLY_START]);   // başlatmadan plan yok
+    assert.deepEqual(reasons(await N.sync([SP('sp_pl1', 'pk_spy', 'active', { plan: PLAN })])), [SPRINT_403]);  // Üye başlatamaz
+    for (const bad of [{ ...PLAN, count: 3 }, { ...PLAN, ids: ['i_pl1', 'i_pl1'] }, { ...PLAN, points: -1 }, { ...PLAN, ids: ['<x>', 'y'] },
+      { ...PLAN, extra: 1 }, [], 'plan'])
+      assert.deepEqual(reasons(await M.sync([SP('sp_pl1', 'pk_spy', 'active', { plan: bad })])), ['Geçersiz sprint planı'], JSON.stringify(bad));
+    assert.equal((await row('sprints', 'sp_pl1')).state, 'future');
+    ok(await M.sync([SP('sp_pl1', 'pk_spy', 'active', { plan: PLAN })]));
+    assert.deepEqual((await row('sprints', 'sp_pl1')).plan, PLAN);
+    /* planı göndermeyen (eski) istemcinin düzenlemesi planı silmez; sunucu korur ve bildirir */
+    const r = ok(await N.sync([SP('sp_pl1', 'pk_spy', 'active', { goal: 'yeni hedef' })]));
+    assert.ok(r.json.adjusted.some(x => x.c === 'sprints' && x.id === 'sp_pl1'));
+    assert.deepEqual((await row('sprints', 'sp_pl1')).plan, PLAN);
+    assert.equal((await row('sprints', 'sp_pl1')).goal, 'yeni hedef');
+    /* değiştirme ya da açıkça silme: sistem yöneticisi dahil herkese 403 */
+    for (const U of [N, M, A]) {
+      assert.deepEqual(reasons(await U.sync([SP('sp_pl1', 'pk_spy', 'active', { plan: { ...PLAN, count: 1, ids: ['i_pl1'] } })])), [LOCKED]);
+      assert.deepEqual(reasons(await U.sync([SP('sp_pl1', 'pk_spy', 'active', { plan: null })])), [LOCKED]);
+    }
+    /* tamamlama planı korur; kapalı sprintte de değişmez */
+    ok(await M.sync([SP('sp_pl1', 'pk_spy', 'closed', { plan: PLAN })]));
+    assert.deepEqual(reasons(await M.sync([SP('sp_pl1', 'pk_spy', 'closed', { plan: { ...PLAN, points: 99 } })])), [LOCKED]);
+    assert.deepEqual((await row('sprints', 'sp_pl1')).plan, PLAN);
+    /* planı olmadan başlamış (eski) sprinte sonradan plan eklenemez */
+    ok(await M.sync([SP('sp_pl2', 'pk_spy', 'active')]));
+    assert.deepEqual(reasons(await M.sync([SP('sp_pl2', 'pk_spy', 'active', { plan: PLAN })])), [ONLY_START]);
+    assert.equal((await row('sprints', 'sp_pl2')).plan, undefined);
+    ok(await M.sync([SP('sp_pl2', 'pk_spy', 'closed')]));
+  });
+
   test('sprint süresi: 1–8 tamsayı (boş = 1); geçersiz değer reddedilir; yalnız alan Yöneticisi değiştirir', async () => {
     const W = { type: 'agile', workspaceId: 'ws_ksp', members: ['u_admin', 'u_k_m', 'u_k_n'] };
     ok(await A.sync([P('pk_spw', W)]));
