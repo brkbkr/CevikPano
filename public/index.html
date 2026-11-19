@@ -1044,6 +1044,13 @@ button.c-av::after{content:"";position:absolute;inset:-6px}
 .as-goal svg.i{width:14px;height:14px;flex-shrink:0;color:var(--accent)}
 .as-prog{flex:1 1 240px;max-width:380px;display:flex;flex-direction:column;gap:6px}
 .as-pl{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--ink2)} .as-pl b{color:var(--ink)}
+.as-plan{font-size:11.5px;color:var(--ink3)} .as-plan b{color:var(--ink2)}
+.spf-tbl{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px;margin-top:10px}
+.spf-tbl th{font-family:var(--mono);font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;color:var(--ink3);text-align:right;padding:4px 4px;border-bottom:1px solid var(--line)}
+.spf-tbl td{text-align:right;padding:6px 4px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.spf-tbl th:first-child,.spf-tbl td:first-child{text-align:left;overflow-wrap:anywhere;width:32%}
+.spf-tbl small{display:block;color:var(--ink3);font-size:10.5px}
+.spf-na{display:inline-block;white-space:nowrap;margin-left:6px;font-size:10.5px;font-weight:600;padding:0 6px;border-radius:999px;border:1px dashed var(--line2);color:var(--ink3)}
 .as-empty{max-width:460px;margin:48px auto;text-align:center;padding:32px 24px;border:1px dashed var(--line2);border-radius:16px;background:var(--surface)}
 .as-eic{display:inline-grid;place-items:center;width:56px;height:56px;border-radius:16px;background:var(--accent-soft);color:var(--accent)}
 .as-eic svg.i{width:26px;height:26px}
@@ -4407,6 +4414,10 @@ function startSprint(id) {
   $('#doStart').onclick = () => {
     if (activeSprint()) { closeModal(); return toast('Zaten aktif bir sprint var. Önce onu tamamlayın.'); }
     s.state = 'active'; s.start = start; s.end = end;
+    /* Planlanan kapsamın anlık görüntüsü (sprint performansı); sunucu yalnız başlatırken yazdırır, sonra değişmez. */
+    const it = sprintStats(id).items;
+    if (!s.plan) s.plan = { count: it.length, points: it.reduce((a, i) => a + (i.points || 0), 0), est: it.reduce((a, i) => a + (i.estimate || 0), 0),
+      ids: it.map(i => i.id), at: Date.now() };
     closeModal(); save(); render(); toast(s.name + ' başlatıldı');
   };
   setTimeout(() => $('#doStart')?.focus(), 40);
@@ -4477,6 +4488,7 @@ function renderSprint() {
         <div class="as-pl"><span>İşler <b class="num">${st.done}/${st.n}</b></span><span>Saat <b class="num">${fmtDur(st.estDone)} / ${fmtDur(st.est)}</b></span></div>
         ${spBar(pct, 'done', 'Tamamlanan iş oranı')}
         ${st.est ? spBar(hp, 'hrs', 'Tamamlanan tahmin oranı') : ''}
+        ${spPlanLine(s)}
       </div>
       ${man ? `<button type="button" class="btn" data-spcomplete="${esc(s.id)}">${ic('checkc')}Sprinti tamamla</button>` : ''}
     </section>
@@ -4685,6 +4697,75 @@ function velocity() {
       <span style="color:var(--accent)">▬ <span style="color:var(--ink2)">Tamamlanan</span></span></div>`;
 }
 
+/* ============================ SPRINT PERFORMANSI ============================
+   Planlanan: başlatmadaki anlık görüntü (`s.plan`). Yoksa (eski sprint) "Sprint" geçmiş kayıtlarından tahmin:
+   başlangıç anında sprintte olan işler (geçmiş sprint adıyla tutulur; ad değiştiyse eksik kalabilir).
+   Eklenen: başlangıçtan sonra giren; tamamlanan: sprintte kalıp biten; taşınan: sprintten çıkan. */
+function sprintPerf(s) {
+  const pts = id => issue(id)?.points || 0;
+  const hist = DB.history.filter(h => h.field === 'Sprint' && (h.from === s.name || h.to === s.name));
+  const t0 = s.plan?.at || (s.start ? hmDay(s.start).getTime() - 12 * 36e5 : 0);
+  const cur = DB.issues.filter(i => i.sprintId === s.id && i.type !== 'epic');
+  const inNow = new Set(cur.map(i => i.id));
+  const hOf = id => hist.filter(h => h.issueId === id).sort((a, b) => a.at - b.at);
+  let planIds;
+  if (s.plan) planIds = new Set(s.plan.ids);
+  else {
+    planIds = new Set();
+    for (const id of new Set([...inNow, ...hist.map(h => h.issueId)])) {
+      const hs = hOf(id), before = hs.filter(h => h.at <= t0).pop();
+      if (before ? before.to === s.name : hs.length ? hs[0].from === s.name : inNow.has(id)) planIds.add(id);
+    }
+  }
+  const added = [...new Set([...inNow, ...hist.filter(h => h.to === s.name && h.at > t0).map(h => h.issueId)])].filter(id => !planIds.has(id));
+  const done = cur.filter(isDone).map(i => i.id);
+  const moved = [...planIds, ...added].filter(id => issue(id) && !inNow.has(id));
+  const scope = planIds.size + added.length;
+  return { has: !!s.plan,
+    plan: s.plan ? s.plan.count : planIds.size, planPts: s.plan ? s.plan.points : [...planIds].reduce((a, id) => a + pts(id), 0),
+    added: added.length, addedPts: added.reduce((a, id) => a + pts(id), 0),
+    done: done.length, donePts: done.reduce((a, id) => a + pts(id), 0), planDone: done.filter(id => planIds.has(id)).length,
+    moved: moved.length, rate: scope ? Math.round(done.length / scope * 100) : 0 };
+}
+/* Aktif sprint başlığı: planlanan vs şu ana kadar biten (canlı). */
+function spPlanLine(s) {
+  const f = sprintPerf(s);
+  return `<div class="as-pl as-plan" data-spplan>${f.has
+    ? `<span>Planlanan <b class="num">${f.plan} iş · ${f.planPts} puan</b>${f.added ? ` · +${f.added} eklendi` : ''}</span><span>Biten <b class="num">${f.planDone}/${f.plan}</b> planlanan</span>`
+    : `<span>Plan verisi yok</span><span>Biten <b class="num">${f.done}</b> iş</span>`}</div>`;
+}
+function sprintPerfPanel() {
+  const act = activeSprint();
+  const rows = sprintsOf().filter(s => s.state === 'closed').slice(-6).map(s => ({ s, f: sprintPerf(s) }));
+  const live = act ? (() => { const f = sprintPerf(act); return `<div class="stat" data-spflive>
+      <div><b>${f.has ? f.plan : '—'}</b><span>planlanan iş</span></div>
+      <div><b>${f.has ? f.planDone : f.done}</b><span>${f.has ? 'planlanandan biten' : 'biten iş'}</span></div>
+      <div><b>+${f.added}</b><span>sonradan eklenen</span></div>
+      <div><b>%${f.rate}</b><span>şu ana kadar</span></div></div>
+      <div class="sub">${esc(act.name)} · aktif${f.has ? '' : ' · plan verisi yok'}</div>`; })() : '';
+  if (!rows.length) return live + '<div class="empty">Henüz kapanmış sprint yok</div>';
+  const max = Math.max(...rows.map(r => Math.max(r.f.plan + r.f.added, r.f.done)), 1), W = 460, H = 170, bw = (W - 20) / rows.length;
+  const chart = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Sprint performansı: planlanan ve tamamlanan iş">
+    ${rows.map(({ s, f }, k) => {
+      const x = 10 + k * bw, ph = (f.plan / max) * (H - 40), ah = (f.added / max) * (H - 40), dh = (f.done / max) * (H - 40);
+      return `<rect x="${x + 6}" y="${H - 26 - ph}" width="${bw * .36}" height="${ph}" fill="var(--line2)" rx="2"><title>Planlanan ${f.plan}</title></rect>
+        ${ah ? `<rect x="${x + 6}" y="${H - 26 - ph - ah}" width="${bw * .36}" height="${ah}" fill="var(--over)" opacity=".7" rx="2"><title>Eklenen ${f.added}</title></rect>` : ''}
+        <rect x="${x + 6 + bw * .40}" y="${H - 26 - dh}" width="${bw * .36}" height="${dh}" fill="var(--accent)" rx="2"><title>Tamamlanan ${f.done}</title></rect>
+        <text x="${x + bw / 2}" y="${H - 12}" text-anchor="middle" font-size="9" font-family="var(--mono)" fill="var(--ink3)">${esc(s.name.replace(/^\S+\s/, ''))}</text>
+        <text x="${x + bw / 2}" y="${H - 32 - Math.max(ph + ah, dh)}" text-anchor="middle" font-size="9.5" font-family="var(--mono)" fill="var(--ink2)">${f.done}/${f.plan + f.added}</text>`;
+    }).join('')}</svg>
+    <div style="display:flex;gap:14px;font-size:11px;color:var(--ink3);margin-top:4px;flex-wrap:wrap">
+      <span style="color:var(--line2)">▬ <span style="color:var(--ink2)">Planlanan</span></span>
+      <span style="color:var(--over)">▬ <span style="color:var(--ink2)">Sonradan eklenen</span></span>
+      <span style="color:var(--accent)">▬ <span style="color:var(--ink2)">Tamamlanan</span></span></div>`;
+  const tbl = `<table class="spf-tbl" aria-label="Kapanmış sprintler: planlanan ve gerçekleşen"><thead><tr><th scope="col">Sprint</th><th scope="col" title="Başlangıçta planlanan">Plan</th>
+      <th scope="col" title="Sonradan eklenen">Eklenen</th><th scope="col" title="Tamamlanan">Biten</th><th scope="col" title="Sprintten taşınan">Taşınan</th><th scope="col" title="Tamamlanma oranı">Oran</th></tr></thead><tbody>
+    ${rows.slice().reverse().map(({ s, f }) => `<tr data-spf="${esc(s.id)}"><td>${esc(s.name)}${f.has ? '' : '<span class="spf-na" title="Sprint başlatılırken plan kaydedilmemiş; geçmişten tahmin edildi">plan verisi yok</span>'}</td>
+      <td>${f.has ? '' : '~'}${f.plan}<small>${f.planPts} puan</small></td><td>${f.added}<small>${f.addedPts} puan</small></td>
+      <td>${f.done}<small>${f.donePts} puan</small></td><td>${f.moved}</td><td><b>%${f.rate}</b></td></tr>`).join('')}</tbody></table>`;
+  return live + chart + tbl;
+}
+
 function renderReports() {
   const act = AGILE() ? activeSprint() : null;
   const items = AGILE()
@@ -4716,6 +4797,11 @@ function renderReports() {
     <section class="panel">
       <h3>Sprint hızı</h3><div class="sub">Taahhüt edilen ve tamamlanan puan</div>
       ${velocity()}
+    </section>
+
+    <section class="panel" id="spPerf">
+      <h3>Sprint performansı</h3><div class="sub">Planlanan ve gerçekleşen · son 6 kapanmış sprint · oran = tamamlanan / (planlanan + eklenen)</div>
+      ${sprintPerfPanel()}
     </section>` : ''}
 
     <section class="panel">
@@ -5051,6 +5137,7 @@ const holdBefore = recs => recs.map(([c, x]) => [c, JSON.parse(JSON.stringify(x)
 /* ---- açılış ve yenileme ---- */
 function openIssue(id) {
   const i = issue(id); if (!i) return;
+  noteRecentIssue(id);
   if (OPEN_ISSUE === id && $('#scrim.on .modal.id-dlg')) return refreshIssue(['all']);
   closeQuick(false); closeSub();
   ID_ED = null; ID_DERR = null; ID_SUB_AS = null; ID_MORE = 0; ID_DRAFT.cmt = ''; ID_DRAFT.open = false; ID_DRAFT.mail = false; ID_CEDIT = null;
@@ -7552,9 +7639,37 @@ const SHORTCUTS = [
   ['g sonra h/b/l/t/e/p/a/j', 'Benim işlerim · pano · backlog · çizelge · efor · rapor · arama · projeler'],
   ['w', 'Süre kaydet'], ['?', 'Bu liste'], ['Esc', 'Kapat'],
 ];
+/* Ekrana git kısayolları (viewAllowed ile süzülür; yetki sunucuda). Aynı ekranın genel "Git" girişi tekrarlanmaz. */
+function paletteJumps() {
+  const go = (v, after) => () => { DB.ui.view = v; save(); render(); if (after) setTimeout(after, 60); };
+  const j = [];
+  if (P() && viewAllowed('sprint')) {
+    j.push({ t: 'Git', n: 'Aktif sprinte git', v: 'sprint', run: go('sprint') });
+    j.push({ t: 'Git', n: 'Sprint raporu', run: go('reports', () => document.getElementById('spPerf')?.scrollIntoView({ block: 'start' })) });
+  }
+  j.push({ t: 'Git', n: 'Benim işlerim', v: 'home', run: go('home') });
+  j.push({ t: 'Git', n: 'Genel raporlar', v: 'greports', run: go('greports') });
+  if (viewAllowed('pool')) j.push({ t: 'Git', n: 'Talep havuzu', v: 'pool', run: go('pool') });
+  if (isAdmin()) {
+    if (viewAllowed('customers')) j.push({ t: 'Git', n: 'Cariler', v: 'customers', run: go('customers') });
+    if (viewAllowed('users')) j.push({ t: 'Git', n: 'Kullanıcılar', v: 'users', run: go('users') });
+    if (viewAllowed('system')) j.push({ t: 'Git', n: 'Posta kutuları', run: () => { SYS_TAB = 'mail'; go('system')(); } });
+  }
+  return j;
+}
+/* Son açılan 5 iş (kişisel; ui → user_prefs, sonraki gönderimle gider). */
+function noteRecentIssue(id) {
+  const r = Array.isArray(DB.ui.recentIss) ? DB.ui.recentIss : [];
+  if (r[0] !== id) DB.ui.recentIss = [id, ...r.filter(x => x !== id && typeof x === 'string')].slice(0, 5);
+}
 function palette() {
+  const jumps = paletteJumps(), jv = new Set(jumps.map(x => x.v).filter(Boolean));
+  const vis = i => i && (MOD('epic') || i.type !== 'epic');
+  const recent = (Array.isArray(DB.ui.recentIss) ? DB.ui.recentIss : []).map(issue).filter(vis).slice(0, 5);
   const items = [
-    ...Object.entries(VIEWS).filter(([v]) => viewAllowed(v) && v !== 'workspace').map(([v, o]) => ({ t: 'Git', n: viewTitle(v), run: () => { DB.ui.view = v; save(); render(); } })),
+    ...recent.map(i => ({ t: 'Son', n: `${i.key} ${i.summary}`, run: () => openIssue(i.id) })),
+    ...jumps,
+    ...Object.entries(VIEWS).filter(([v]) => viewAllowed(v) && v !== 'workspace' && !jv.has(v)).map(([v, o]) => ({ t: 'Git', n: viewTitle(v), run: () => { DB.ui.view = v; save(); render(); } })),
     { t: 'Eylem', n: 'Yeni iş oluştur', run: () => newIssueForm() },
     { t: 'Eylem', n: 'Süre kaydet', run: () => logWorkForm() },
     /* Yeni proje: alana proje açabilen (canNewProj: alan yöneticisi / sistem yöneticisi; eski alanda Üye) — sunucu kuralıyla aynı. */
@@ -7564,13 +7679,14 @@ function palette() {
     { t: 'Eylem', n: 'Otomasyon kuralı ekle', run: () => ruleForm() },
     { t: 'Eylem', n: 'Şimdi kaydet', run: () => flushSync().then(() => toast('Kaydedildi')) },
     ...(isAdmin() ? [
-      { t: 'Yönetim', n: 'Kullanıcılar', run: () => { location.hash = 'users'; } },
       { t: 'Yönetim', n: 'Sistem: yedekler ve veri', run: () => { location.hash = 'system'; } },
       { t: 'Yönetim', n: 'Veriyi dışa aktar (yedek indir)', run: () => $('#btnExport').click() },
     ] : []),
     ...(isAdmin() ? [{ t: 'Eylem', n: 'Yeni çalışma alanı', run: () => wsForm() }] : []),
     ...visibleWs().map(w => ({ t: 'Alan', n: w.name, run: () => pickWs(w.id) })),
     ...selectableProjects().map(p => ({ t: 'Proje', n: `${p.key} — ${p.name}`, run: () => { DB.ui.project = p.id; save(); boot(); } })),
+    ...selectableProjects().map(p => ({ t: 'Pano', n: `${p.name} panosu`, run: () => {
+      DB.ui.project = p.id; DB.ui.view = 'board'; save(); try { history.replaceState(null, '', '#board'); } catch (_) { } boot(); } })),
     ...DB.issues.filter(i => MOD('epic') || i.type !== 'epic').map(i => ({ t: i.key, n: i.summary, run: () => openIssue(i.id) })),
   ];
   openModal(`<div class="m-h" style="padding:8px 12px">

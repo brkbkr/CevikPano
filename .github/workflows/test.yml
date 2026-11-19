@@ -93,6 +93,8 @@ jobs:
         run: node test/e2e/kucuk-duzeltmeler.cjs
       - name: Genel tur düzeltmeleri testi (alan üyelerine atama, üye çipleri, alandan çıkarılınca açık pencere, taşıma menüsü)
         run: node test/e2e/genel-tur.cjs
+      - name: Sprint performansı ve komut paleti testi (plan anlık görüntüsü, planlanan / gerçekleşen, palet girişleri)
+        run: node test/e2e/sprint-performans.cjs
       - name: Sunucu günlüğü
         if: failure()
         run: cat server.log

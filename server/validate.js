@@ -18,6 +18,14 @@ const optKey = (v, re) => v == null || v === '' || (typeof v === 'string' && re.
    uid() (i_x7k2…), demo/varsayılan kimlikler (p1, u1, p1_s0, cf_mus, sp1) bu kalıba uyar. */
 export const ID_RE = /^[A-Za-z0-9_.:-]{1,200}$/;
 export const validId = v => typeof v === 'string' && ID_RE.test(v);
+/* Sprint planı: { count, points, est?, ids, at? } — yalnız bu anahtarlar; ids benzersiz iş kimlikleri, count = ids sayısı. */
+const PLAN_KEYS = new Set(['count', 'points', 'est', 'ids', 'at']);
+const nonNeg = v => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1e7;
+export const validPlan = p => !!p && typeof p === 'object' && !Array.isArray(p)
+  && Object.keys(p).every(k => PLAN_KEYS.has(k))
+  && Array.isArray(p.ids) && p.ids.length <= 2000 && p.ids.every(validId) && new Set(p.ids).size === p.ids.length
+  && Number.isInteger(p.count) && p.count === p.ids.length && nonNeg(p.points)
+  && (p.est == null || nonNeg(p.est)) && (p.at == null || (Number.isInteger(p.at) && p.at > 0));
 
 /* Prototip kirletmeye yol açabilecek anahtarları (iç içe dahil) siler; silinen sayısını döner. */
 const BAD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
@@ -113,7 +121,8 @@ const RULES = {
       `Kolon adı 1 ile ${COL_NAME_MAX} karakter arasında olmalı`],
     [d.cat == null || ['todo', 'inprogress', 'done'].includes(d.cat), 'Geçersiz durum kategorisi'],
   ],
-  sprints: d => [[str(d.projectId, 200), 'Sprintin projesi yok'], [optStr(d.name, 200), 'Sprint adı çok uzun']],
+  sprints: d => [[str(d.projectId, 200), 'Sprintin projesi yok'], [optStr(d.name, 200), 'Sprint adı çok uzun'],
+    [d.plan == null || validPlan(d.plan), 'Geçersiz sprint planı']],
   issues: d => [
     [str(d.projectId, 200), 'İşin projesi yok'],
     [optKey(d.key, ISSUE_KEY_RE), 'Geçersiz iş anahtarı'],
