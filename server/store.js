@@ -52,6 +52,7 @@ export async function readAll(db) {
        olabilir: tablodaki kayıtlarla çift görünmesin. */
     if (Object.hasOwn(TABLES, r.collection)) continue;
     if (reservedName(r.collection)) continue;          // __proto__ / constructor: data'nın prototipine dokunmasın
+    if (r.collection.startsWith('_')) continue;         // sunucuya ayrılmış ad (eski sürümde istemciden yazılmış `_access` vb.)
     (data[r.collection] ||= []).push(r.data);
   }
   for (const r of (await db.query('SELECT key, value FROM settings')).rows) data[r.key] = r.value;
@@ -156,6 +157,7 @@ export async function applyChanges(pool, me, changes, opts = {}) {
   }
 }
 
+const CLIENT_RESERVED = ['_prefs', '_settings'];
 async function applyOnce(pool, me, ordered, opts = {}) {
   const rejected = [], adjusted = [];
   let applied = 0;
@@ -187,6 +189,8 @@ async function applyOnce(pool, me, ordered, opts = {}) {
       if (ch.op === 'put' && !['_prefs', '_settings'].includes(ch.c)
           && (ch.data === null || typeof ch.data !== 'object' || Array.isArray(ch.data))) { reject('veri nesne olmalı'); continue; }
       if (IGNORED_KEYS.includes(ch.c) || ch.c === '_reload') continue;
+      /* `_` ile başlayan adlar sunucuya ayrılmış (`_access`, `_reload` sinyalleri); istemci yalnız `_prefs` ve `_settings` yazar. */
+      if (ch.c.startsWith('_') && !CLIENT_RESERVED.includes(ch.c)) { reject('geçersiz koleksiyon'); continue; }
       if (reservedName(ch.c)) { reject('geçersiz koleksiyon'); continue; }
 
       if (ch.c === '_prefs') {                       // herkes kendi tercihini yazar
