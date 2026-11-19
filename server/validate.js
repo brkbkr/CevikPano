@@ -18,6 +18,14 @@ const optKey = (v, re) => v == null || v === '' || (typeof v === 'string' && re.
    uid() (i_x7k2…), demo/varsayılan kimlikler (p1, u1, p1_s0, cf_mus, sp1) bu kalıba uyar. */
 export const ID_RE = /^[A-Za-z0-9_.:-]{1,200}$/;
 export const validId = v => typeof v === 'string' && ID_RE.test(v);
+/* Sprint planı: { count, points, est?, ids, at? } — yalnız bu anahtarlar; ids benzersiz iş kimlikleri, count = ids sayısı. */
+const PLAN_KEYS = new Set(['count', 'points', 'est', 'ids', 'at']);
+const nonNeg = v => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1e7;
+export const validPlan = p => !!p && typeof p === 'object' && !Array.isArray(p)
+  && Object.keys(p).every(k => PLAN_KEYS.has(k))
+  && Array.isArray(p.ids) && p.ids.length <= 2000 && p.ids.every(validId) && new Set(p.ids).size === p.ids.length
+  && Number.isInteger(p.count) && p.count === p.ids.length && nonNeg(p.points)
+  && (p.est == null || nonNeg(p.est)) && (p.at == null || (Number.isInteger(p.at) && p.at > 0));
 
 /* Prototip kirletmeye yol açabilecek anahtarları (iç içe dahil) siler; silinen sayısını döner. */
 const BAD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
@@ -33,15 +41,20 @@ export function stripBadKeys(v, depth = 0) {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const optEmail = v => v == null || v === '' || (typeof v === 'string' && v.length <= 200 && EMAIL_RE.test(v));
+/* Cari ve yetkili kişi e-postası mailto: bağlantısına basılır: canlı yazmada yeni/değişen adreste ? & " < > ve
+   boşluk yok (konu/gövde/alıcı parametresi enjeksiyonu). Değişmeyen eski adres ve içe aktarma/geri yükleme korunur. */
+const MAILTO_BAD = /[?&"<>\s]/;
+const cuEmail = (v, old, live) => optEmail(v) && (!live || v == null || v === '' || v === old || !MAILTO_BAD.test(v));
 export const CUSTOMER_KINDS = ['customer', 'supplier', 'both'];
 const TAX_NO_RE = /^\d{10,11}$/;
 const MAX_CONTACTS = 200;
 
 /* Yetkili kişiler: dizi; her biri güvenli kimlik ve ad taşır. İlk hata döner (yoksa boş). */
-function contactRules(list) {
+function contactRules(list, opts = {}) {
   if (list == null) return [];
   if (!Array.isArray(list) || list.length > MAX_CONTACTS) return [[false, `Yetkili kişiler en fazla ${MAX_CONTACTS} kişilik bir liste olmalı`]];
   const ids = new Set();
+  const prev = new Map((Array.isArray(opts.cur?.contacts) ? opts.cur.contacts : []).filter(x => x && typeof x === 'object').map(x => [x.id, x.email]));
   for (const p of list) {
     if (!p || typeof p !== 'object' || Array.isArray(p) || !validId(p.id)) return [[false, 'Yetkili kişinin kimliği geçersiz']];
     if (ids.has(p.id)) return [[false, 'Yetkili kişi kimlikleri tekil olmalı']];
@@ -49,7 +62,7 @@ function contactRules(list) {
     const checks = [
       [typeof p.name === 'string' && p.name.trim().length >= 1 && p.name.length <= 120, 'Yetkili kişinin adı gerekli (en fazla 120 karakter)'],
       [optStr(p.title, 120), 'Yetkili kişinin görevi en fazla 120 karakter'],
-      [optEmail(p.email), 'Yetkili kişinin e-posta adresi geçersiz'],
+      [cuEmail(p.email, prev.get(p.id), opts.live), 'Yetkili kişinin e-posta adresi geçersiz'],
       [optStr(p.phone, 30), 'Yetkili kişinin telefonu en fazla 30 karakter'],
     ];
     const bad = checks.find(([ok]) => !ok);
@@ -78,7 +91,7 @@ const RULES = {
       'Sprint süresi 1 ile 8 hafta arasında bir tamsayı olmalı'],
   ],
   /* Cariler (#11). İletilerde değer YOK: kişisel veri (T.C. kimlik no, e-posta) günlüğe/yanıta düşmesin. */
-  customers: d => [
+  customers: (d, opts) => [
     [typeof d.name === 'string' && d.name.trim().length >= 1 && d.name.length <= 200, 'Unvan gerekli (en fazla 200 karakter)'],
     [CUSTOMER_KINDS.includes(d.kind), 'Tür müşteri, tedarikçi ya da ikisi olmalı'],
     [optStr(d.shortName, 60), 'Kısa ad en fazla 60 karakter'],
@@ -86,11 +99,11 @@ const RULES = {
     [d.taxNo == null || d.taxNo === '' || (typeof d.taxNo === 'string' && TAX_NO_RE.test(d.taxNo)),
       'Vergi numarası 10 ya da 11 haneli olmalı'],
     [optStr(d.address, 500), 'Adres en fazla 500 karakter'],
-    [optEmail(d.email), 'E-posta adresi geçersiz'],
+    [cuEmail(d.email, opts.cur?.email, opts.live), 'E-posta adresi geçersiz'],
     [optStr(d.phone, 30), 'Telefon en fazla 30 karakter'],
     [optStr(d.notes, 2000), 'Notlar en fazla 2000 karakter'],
     [optBool(d.active), 'Durum (etkin) true ya da false olmalı'],
-    ...contactRules(d.contacts),
+    ...contactRules(d.contacts, opts),
   ],
   workspaces: d => [
     [str(d.name, 100) && d.name.trim().length >= 1 && d.name.trim().length <= 60,
@@ -108,7 +121,8 @@ const RULES = {
       `Kolon adı 1 ile ${COL_NAME_MAX} karakter arasında olmalı`],
     [d.cat == null || ['todo', 'inprogress', 'done'].includes(d.cat), 'Geçersiz durum kategorisi'],
   ],
-  sprints: d => [[str(d.projectId, 200), 'Sprintin projesi yok'], [optStr(d.name, 200), 'Sprint adı çok uzun']],
+  sprints: d => [[str(d.projectId, 200), 'Sprintin projesi yok'], [optStr(d.name, 200), 'Sprint adı çok uzun'],
+    [d.plan == null || validPlan(d.plan), 'Geçersiz sprint planı']],
   issues: d => [
     [str(d.projectId, 200), 'İşin projesi yok'],
     [optKey(d.key, ISSUE_KEY_RE), 'Geçersiz iş anahtarı'],
@@ -230,6 +244,19 @@ export function validateCfg(v) {
     && typeof t.letter === 'string' && t.letter.length <= 4
     && typeof t.color === 'string' && HEX_RE.test(t.color));
   if (!ok) throw new HttpError(400, 'Geçersiz iş tipi ayarı (kimlik, ad, harf ve #RRGGBB renk gerekli)');
+}
+
+/* Genel ayar `navDefault` (yönetici, herkes için varsayılan kenar çubuğu): { items: [{ id, visible }] }.
+   Kimlikler istemcideki NAV_MOVABLE ile aynı (bilinen, benzersiz); visible boolean; başka anahtar yok. */
+export const NAV_DEFAULT_IDS = ['recent', 'customers', 'reports', 'pool', 'users', 'system'];
+export function validateNavDefault(v) {
+  const ok = v != null && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).every(k => k === 'items')
+    && Array.isArray(v.items) && v.items.length <= NAV_DEFAULT_IDS.length
+    && v.items.every((x, i, a) => x && typeof x === 'object' && !Array.isArray(x)
+      && Object.keys(x).every(k => k === 'id' || k === 'visible')
+      && typeof x.id === 'string' && NAV_DEFAULT_IDS.includes(x.id) && typeof x.visible === 'boolean'
+      && a.findIndex(y => y && y.id === x.id) === i);
+  if (!ok) throw new HttpError(400, 'Geçersiz varsayılan menü (bilinen öğe kimlikleri, benzersiz, görünürlük true/false)');
 }
 
 /* opts: { live: true, cur } → /api/sync yazması (cur: veritabanındaki güncel hâl); içe aktarmada verilmez. */

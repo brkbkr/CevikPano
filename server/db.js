@@ -15,6 +15,12 @@ export const TABLES = {
   customers: 'customers',                           // 004_cariler.sql
 };
 
+/* İstemciden yazılabilen, tablosu olmayan (misc_records) koleksiyonlar: beyaz liste (Güv D1). Bugünkü ön yüzün
+   DB dizilerinin hepsi TABLES'ta (ya da users); bu yüzden liste boş. Ön yüze yeni bir dizi eklenirse ya buraya
+   yazılır ya da (kalıcıysa) geçiş dosyasıyla tablo açılıp TABLES'a eklenir. Tercih (PREF_KEYS) ve ayar adlarıyla
+   çakışan ad listede olsa da reddedilir (store.js miscAllowed). misc_records'taki eski kayıtlar okunmaya devam eder. */
+export const MISC_COLLECTIONS = [];
+
 /* Koleksiyonun tablosu (yalnız kendi anahtarı; `constructor` gibi kalıtılan adlar tablo sayılmaz). */
 export const tableOf = c => (typeof c === 'string' && Object.hasOwn(TABLES, c) ? TABLES[c] : undefined);
 
