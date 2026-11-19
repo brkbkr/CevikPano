@@ -4599,3 +4599,175 @@ describe('proje rolleri (yetki-v2)', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
     assert.equal(await row('projects', 'p_ytsil'), undefined);
   });
 });
+
+describe('kayıtlı raporlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  const reasons = r => r.json.rejected.map(x => x.reason);
+  const ok = r => { assert.equal(r.status, 200, JSON.stringify(r.json)); assert.deepEqual(r.json.rejected, []); return r; };
+  const rej = (r, msg) => { assert.equal(r.status, 200); assert.equal(r.json.applied, 0, JSON.stringify(r.json));
+    const got = reasons(r); assert.equal(got.length, 1, JSON.stringify(got)); if (msg instanceof RegExp) assert.match(got[0], msg); else assert.equal(got[0], msg); };
+  const row = async id => (await pool.query('SELECT data FROM reports WHERE id=$1', [id])).rows[0]?.data;
+  const put = (c, id, data, base) => ({ c, id, op: 'put', data, ...(base ? { base } : {}) });
+  const rp = (id, extra = {}) => put('reports', id, { name: 'Rapor ' + id, vis: 'private', scope: { kind: 'all' },
+    cfg: { tab: 'sure', row: 'customer', col: 'user', ms: 'hours', ch: 'table', per: 'rel', f: {} }, ...extra });
+  const ids = async k => ((await k.state()).json.data.reports || []).map(x => x.id);
+  const seq = async () => Number((await pool.query('SELECT coalesce(max(seq),0) AS s FROM changes')).rows[0].s);
+  const OWN = 'Raporu yalnızca sahibi ya da sistem yöneticisi değiştirebilir';
+  const C = {};
+  const newUser = async (id, username, role = 'member') => {
+    ok(await C.A.sync([put('users', id, { username, name: username, role, active: true })]));
+    const k = client(); await k.login(username, 'Start12345');
+    assert.equal((await k.req('POST', '/api/auth/password', { newPassword: 'RaporYeni12345' })).status, 200);
+    return k;
+  };
+
+  /* yetki-v2: erişim proje rolüyle (addRoles). ws_kra: p_kra (Ayşe Üye, İzci İzleyici), p_kra2 (Bora Üye);
+     ws_krb: p_krb (Bora Üye), alan yöneticisi Veli (projede rolü yok). */
+  before(async () => {
+    C.A = client(); await C.A.login('admin', 'test-admin-pw');
+    C.U = await newUser('u_kra', 'kr_ayse');
+    C.B = await newUser('u_krb', 'kr_bora');
+    C.V = await newUser('u_krv', 'kr_izci', 'viewer'); // genel izleyici
+    C.W = await newUser('u_krw', 'kr_veli');           // ws_krb alan yöneticisi
+    ok(await C.A.sync([
+      put('workspaces', 'ws_kra', { name: 'Rapor A' }),
+      put('workspaces', 'ws_krb', { name: 'Rapor B', admins: ['u_krw'] }),
+      put('projects', 'p_kra', { name: 'Rapor A projesi', key: 'KRA', counter: 0, workspaceId: 'ws_kra' }),
+      put('projects', 'p_kra2', { name: 'Rapor A ikinci', key: 'KRA2', counter: 0, workspaceId: 'ws_kra' }),
+      put('projects', 'p_krb', { name: 'Rapor B projesi', key: 'KRB', counter: 0, workspaceId: 'ws_krb' })]));
+    await addRoles(C.A, 'p_kra', { u_kra: 'member', u_krv: 'viewer' });
+    await addRoles(C.A, 'p_kra2', { u_krb: 'member' });
+    await addRoles(C.A, 'p_krb', { u_krb: 'member' });
+  });
+
+  test('sahip: oluşturan oturumdur (taklit edilemez); başkası değiştiremez/silemez; sistem yöneticisi değiştirir ve siler', async () => {
+    const r = ok(await C.U.sync([rp('r_k1', { ownerId: 'u_krb', name: 'Ayşe raporu' })]));
+    assert.ok(r.json.adjusted.some(x => x.id === 'r_k1'));
+    const d = await row('r_k1');
+    assert.equal(d.ownerId, 'u_kra');
+    /* Sahip değiştiremez (yönetici olmayan sahip de). */
+    ok(await C.U.sync([put('reports', 'r_k1', { ...d, ownerId: 'u_krb', name: 'Ayşe raporu 2' }, d)]));
+    assert.equal((await row('r_k1')).ownerId, 'u_kra');
+    assert.equal((await row('r_k1')).name, 'Ayşe raporu 2');
+    const d2 = await row('r_k1');
+    rej(await C.B.sync([put('reports', 'r_k1', { ...d2, name: 'Bora' }, d2)]), OWN);
+    rej(await C.B.sync([{ c: 'reports', id: 'r_k1', op: 'del' }]), OWN);
+    /* Aynı kimlikle "yeni" rapor yazarak başkasının raporu ele geçirilemez. */
+    rej(await C.B.sync([rp('r_k1')]), OWN);
+    ok(await C.A.sync([put('reports', 'r_k1', { ...d2, name: 'Yönetici düzeltti' }, d2)]));
+    assert.equal((await row('r_k1')).ownerId, 'u_kra');
+    ok(await C.U.sync([rp('r_k1b')]));
+    ok(await C.U.sync([{ c: 'reports', id: 'r_k1b', op: 'del' }]));
+    assert.equal(await row('r_k1b'), undefined);
+    ok(await C.U.sync([rp('r_k1c')]));
+    ok(await C.A.sync([{ c: 'reports', id: 'r_k1c', op: 'del' }]));
+    assert.equal(await row('r_k1c'), undefined);
+  });
+
+  test('görünürlük: kişisel rapor yalnız sahibine (ve sistem yöneticisine); paylaşılan rapor kapsamında rolü olana', async () => {
+    ok(await C.U.sync([rp('r_k2'), rp('r_k3', { vis: 'shared', scope: { kind: 'ws', id: 'ws_kra' } }),
+      rp('r_k4', { vis: 'shared', scope: { kind: 'project', id: 'p_kra' } })]));
+    ok(await C.A.sync([rp('r_k5', { vis: 'shared', scope: { kind: 'all' } })]));
+    ok(await C.B.sync([rp('r_kb', { vis: 'shared', scope: { kind: 'project', id: 'p_krb' } }), rp('r_kbw', { vis: 'shared', scope: { kind: 'ws', id: 'ws_krb' } })]));
+    const u = await ids(C.U), b = await ids(C.B), v = await ids(C.V), a = await ids(C.A), w = await ids(C.W);
+    for (const id of ['r_k1', 'r_k2', 'r_k3', 'r_k4', 'r_k5']) assert.ok(u.includes(id), 'sahip görmüyor ' + id);
+    assert.ok(!u.includes('r_kb') && !u.includes('r_kbw'), 'başka alanın paylaşılan raporu sızdı');
+    /* Bora: ws_kra'da yalnız p_kra2'de rolü var → alan kapsamlı rapor görünür, p_kra kapsamlı ve kişisel olanlar görünmez. */
+    assert.ok(b.includes('r_k3'), 'alanda projesi olan alan raporunu görmüyor');
+    for (const id of ['r_k1', 'r_k2', 'r_k4']) assert.ok(!b.includes(id), 'sızdı ' + id);
+    assert.ok(b.includes('r_k5'));                                   // tüm sistemle paylaşılan herkese
+    assert.ok(v.includes('r_k3') && v.includes('r_k4') && !v.includes('r_k2'));   // projede İzleyici: paylaşılanı okur
+    /* Alan yöneticisi (projede rolü yok): alanın ve alandaki projenin raporunu görür, başka alanınkini görmez. */
+    assert.ok(w.includes('r_kb') && w.includes('r_kbw') && !w.includes('r_k3') && !w.includes('r_k4'), JSON.stringify(w));
+    for (const id of ['r_k1', 'r_k2', 'r_k3', 'r_k4', 'r_k5', 'r_kb']) assert.ok(a.includes(id));
+    /* Değişiklik akışı: başkasının kişisel raporu gitmez; paylaşımdan çıkan rapor silme bildirimiyle gider. */
+    const s0 = await seq();
+    ok(await C.U.sync([rp('r_k6')]));
+    const d = await row('r_k3');
+    ok(await C.U.sync([put('reports', 'r_k3', { ...d, vis: 'private' }, d)]));
+    const ch = (await C.V.req('GET', `/api/changes?since=${s0}`)).json.items.filter(i => i.c === 'reports');
+    /* Görünmeyen rapor yalnız kimlikli silme bildirimi olarak gider (diğer silme bildirimleri gibi; içerik yok). */
+    assert.ok(!ch.some(i => i.id === 'r_k6' && (i.op !== 'del' || i.data !== undefined)), 'kişisel rapor akışta sızdı');
+    const k3 = ch.find(i => i.id === 'r_k3');
+    assert.equal(k3?.op, 'del'); assert.equal(k3.data, undefined);
+    assert.ok(!(await ids(C.V)).includes('r_k3'));
+    ok(await C.U.sync([put('reports', 'r_k3', d, { ...d, vis: 'private' })]));
+    /* Erişimi olmayan projeye bağlı paylaşılan rapor akışta da gitmez. */
+    const s1 = await seq();
+    const kb = await row('r_kb');
+    ok(await C.B.sync([put('reports', 'r_kb', { ...kb, name: 'B güncel' }, kb)]));
+    const chU = (await C.U.req('GET', `/api/changes?since=${s1}`)).json.items;
+    assert.ok(!chU.some(i => i.c === 'reports' && i.op === 'put'), JSON.stringify(chU));
+    /* Projeden çıkarılınca paylaşılan raporları görünmez; yeniden eklenince görünür. */
+    const p = (await pool.query(`SELECT data FROM projects WHERE id='p_kra'`)).rows[0].data;
+    const roles = { ...p.roles }; delete roles.u_krv;
+    ok(await C.A.sync([put('projects', 'p_kra', { ...p, roles }, p)]));
+    const v2 = await ids(C.V);
+    assert.ok(!v2.includes('r_k4') && !v2.includes('r_k3'), JSON.stringify(v2));
+    await addRoles(C.A, 'p_kra', { u_krv: 'viewer' });
+    assert.ok((await ids(C.V)).includes('r_k4'));
+  });
+
+  test('paylaşma: proje kapsamında rol, alan kapsamında alan yöneticisi ya da alanda bir projede rol; tüm sistem yalnız sistem yöneticisi; izleyici yalnız kendine', async () => {
+    rej(await C.U.sync([rp('r_k7', { vis: 'shared', scope: { kind: 'ws', id: 'ws_krb' } })]), 'Bu çalışma alanında rolünüz yok');
+    rej(await C.U.sync([rp('r_k7', { vis: 'shared', scope: { kind: 'project', id: 'p_krb' } })]), NO_PROJECT);
+    /* Alanda başka projede rolü olmak o projeyle paylaşmaya yetmez. */
+    rej(await C.B.sync([rp('r_k7b', { vis: 'shared', scope: { kind: 'project', id: 'p_kra' } })]), NO_PROJECT);
+    ok(await C.B.sync([rp('r_k7b', { vis: 'shared', scope: { kind: 'ws', id: 'ws_kra' } })]));
+    rej(await C.U.sync([rp('r_k7', { vis: 'shared', scope: { kind: 'all' } })]), /yalnızca sistem yöneticisi/);
+    rej(await C.U.sync([rp('r_k7', { vis: 'shared', scope: { kind: 'project', id: 'p_yok' } })]), 'Raporun kapsamı bulunamadı');
+    rej(await C.U.sync([rp('r_k7', { vis: 'shared', scope: { kind: 'ws', id: 'ws_yok' } })]), 'Raporun kapsamı bulunamadı');
+    /* Alan yöneticisi projede rolü olmasa da alanı ve alandaki projeyi paylaşır. */
+    ok(await C.W.sync([rp('r_kw1', { vis: 'shared', scope: { kind: 'ws', id: 'ws_krb' } }), rp('r_kw2', { vis: 'shared', scope: { kind: 'project', id: 'p_krb' } })]));
+    /* Kişisel raporun kapsamı serbest (yalnız ayardır; veri okuyanın erişimiyle hesaplanır). */
+    ok(await C.U.sync([rp('r_k7', { scope: { kind: 'project', id: 'p_krb' } })]));
+    /* Kişisel → paylaşılan geçişinde de denetlenir. */
+    const d = await row('r_k7');
+    rej(await C.U.sync([put('reports', 'r_k7', { ...d, vis: 'shared' }, d)]), NO_PROJECT);
+    ok(await C.V.sync([rp('r_kv', { scope: { kind: 'project', id: 'p_kra' } })]));
+    assert.equal((await row('r_kv')).ownerId, 'u_krv');
+    rej(await C.V.sync([rp('r_kv2', { vis: 'shared', scope: { kind: 'project', id: 'p_kra' } })]), /İzleyici raporu paylaşamaz/);
+    /* İzleyici hâlâ başka bir şey yazamaz. */
+    rej(await C.V.sync([put('filters', 'f_krv', { name: 'x', q: 'y' })]), 'salt okunur kullanıcı');
+  });
+
+  test('biçim: ad, bilinmeyen alan, kapsam, ölçü/boyut/grafik/dönem/süzgeç, boyut sınırı, kişi başı en çok 200 rapor', async () => {
+    const base = rp('r_kf').data;
+    const bad = async (patch, msg) => rej(await C.U.sync([put('reports', 'r_kf', { ...base, ...patch })]), msg);
+    await bad({ name: '  ' }, /Rapor adı gerekli/);
+    await bad({ name: 'x'.repeat(81) }, /Rapor adı gerekli/);
+    await bad({ desc: 'x'.repeat(301) }, /Açıklama en fazla/);
+    await bad({ html: '<b>' }, 'Rapor kaydında bilinmeyen alan var');
+    await bad({ vis: 'public' }, /Görünürlük/);
+    await bad({ scope: { kind: 'team' } }, /Rapor kapsamı geçersiz/);
+    await bad({ scope: { kind: 'ws' } }, /Rapor kapsamı geçersiz/);
+    await bad({ scope: { kind: 'project', id: '"><img>' } }, /Rapor kapsamı geçersiz/);
+    await bad({ scope: { kind: 'all', id: 'ws1' } }, /Rapor kapsamı geçersiz/);
+    for (const cfg of [{ ms: 'money' }, { ch: 'pie' }, { row: '<img src=x>' }, { col: 'cf:Büyük' }, { tab: 'x' }, { per: 'year' },
+      { month: '2026-13' }, { from: '2026-02-30' }, { f: { hack: 'x' } }, { f: { proj: 5 } }, { f: { cfv: 'x'.repeat(201) } }, { extra: 1 }, []])
+      await bad({ cfg: Array.isArray(cfg) ? cfg : { ...base.cfg, ...cfg } }, /Rapor ayarı geçersiz/);
+    await bad({ tpl: 'A-b' }, /Hazır rapor kimliği geçersiz/);
+    /* Alan sınırları içinde ama kaçışlı JSON'da 8 KB'yi aşan kayıt. */
+    await bad({ cfg: { ...base.cfg, f: Object.fromEntries(['ws', 'proj', 'cu', 'user', 'type', 'bill', 'cfk', 'cfv'].map(k => [k, '\u0001'.repeat(200)])) } },
+      'Rapor kaydı çok büyük');
+    await bad({ createdAt: 'dün' }, 'Rapor zamanı geçersiz');
+    ok(await C.U.sync([put('reports', 'r_kf', { ...base, tpl: 'turay', createdAt: Date.now(), desc: 'Açıklama',
+      cfg: { tab: 'sure', row: 'cf:ortam', col: '', ms: 'points', ch: 'bar', per: 'custom', from: '2026-01-01', to: '2026-03-31',
+        f: { ws: 'ws_kra', proj: 'p_kra', cu: '__none', user: '__unk', cfk: 'billType', cfv: 'Adam/Ay' } } })]));
+    /* Kişi başı sınır: 200. raporun ötesi reddedilir. */
+    const n = Number((await pool.query(`SELECT count(*) n FROM reports WHERE owner_id='u_krb'`)).rows[0].n);
+    ok(await C.B.sync(Array.from({ length: 200 - n }, (_, k) => rp('r_kmany' + k))));
+    rej(await C.B.sync([rp('r_kmore')]), /en fazla 200 rapor/);
+    ok(await C.B.sync([{ c: 'reports', id: 'r_kmany0', op: 'del' }]));
+    ok(await C.B.sync([rp('r_kmore')]));
+  });
+
+  test('011 tekrar çalışır, veri silmez; dışa aktarmada raporlar var', async () => {
+    const n = Number((await pool.query('SELECT count(*) n FROM reports')).rows[0].n);
+    const { readFile } = await import('node:fs/promises');
+    const sql = await readFile(new globalThis.URL('../server/migrations/011_kayitli_raporlar.sql', import.meta.url), 'utf8');
+    await pool.query(sql);
+    assert.equal(Number((await pool.query('SELECT count(*) n FROM reports')).rows[0].n), n);
+    const ex = (await C.A.req('GET', '/api/export')).json;
+    assert.ok(Array.isArray(ex.reports ?? ex.data?.reports), 'dışa aktarmada reports yok');
+  });
+});

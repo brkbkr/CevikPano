@@ -2980,6 +2980,106 @@ button.id-pv:hover{background:var(--surface);border-color:var(--line)}
 .gr-tpl button[aria-pressed="true"]{border-color:var(--accent);box-shadow:var(--ring)}
 .gr-tpl button[aria-pressed="true"] .ti{background:var(--accent-soft);color:var(--accent-d)}
 .gr-note{border-top:0;padding-top:0}
+/* ---- Kayıtlı raporlar: kapsam seçici, rapor çubuğu, ölçü/grafik, rapor listesi, kaydet penceresi (gr-) ---- */
+.gr-scrow{padding-bottom:10px;border-bottom:1px dashed var(--line)}
+.gr-sclb{font-size:12px;font-weight:650;color:var(--ink2);margin-right:2px}
+.gr-scseg button svg.i,.gr-chseg button svg.i{width:15px;height:15px}
+.gr-scsel{min-width:220px;max-width:340px}
+.gr-sclock{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;border-radius:9px;background:var(--accent-soft);color:var(--accent-d);font-size:13px;min-width:0}
+.gr-sclock b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gr-sclock span{color:var(--ink2);font-size:12px;white-space:nowrap}
+.gr-sclock svg.i{width:15px;height:15px;flex-shrink:0}
+.gr-rbar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-sm);flex-wrap:wrap}
+.gr-rbar.on{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.gr-rbar > .ic{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:var(--surface3);color:var(--ink2);flex-shrink:0}
+.gr-rbar.on > .ic{background:var(--accent-soft);color:var(--accent-d)}
+.gr-rbar > .ic svg.i{width:17px;height:17px}
+.gr-rbar .tx{min-width:0;display:flex;flex-direction:column}
+.gr-rbar .tx b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:520px}
+.gr-rbar .tx .s{font-size:12px;color:var(--meta);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gr-rbar .spacer{flex:1}
+.gr-dirty{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:999px;background:color-mix(in srgb,var(--over) 14%,transparent);color:var(--ink);font-size:12px;font-weight:600}
+.gr-dirty svg.i{width:14px;height:14px;color:var(--over)}
+.gr-msr select.inp{min-width:112px}
+.gr-chart .gr-card-h b{font-size:13px}
+.gr-bars{list-style:none;margin:0;padding:10px 12px;display:flex;flex-direction:column;gap:7px}
+.gr-bars li{display:grid;grid-template-columns:minmax(120px,220px) minmax(0,1fr) 84px;gap:10px;align-items:center;font-size:12.5px}
+.gr-bars .lb{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--ink)}
+.gr-bars .tr{height:14px;border-radius:5px;background:var(--track);overflow:hidden;display:block}
+.gr-bars .fill{display:flex;height:100%;min-width:2px}
+.gr-bars .fill i{display:block;height:100%}
+.gr-bars b{font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+.gr-leg{display:flex;flex-wrap:wrap;gap:6px 14px;padding:0 12px 12px;font-size:12px;color:var(--ink2)}
+.gr-leg span{display:inline-flex;align-items:center;gap:6px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gr-leg i{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.gr-rlbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.gr-rlbar .spacer{flex:1}
+.gr-rlbar .gr-fhint{margin-left:0}
+.gr-rlq{display:flex;align-items:center;gap:6px;height:38px;padding:0 4px 0 10px;border:1px solid var(--line2);border-radius:10px;background:var(--surface);min-width:260px;flex:0 1 380px}
+.gr-rlq svg.i{width:16px;height:16px;color:var(--meta);flex-shrink:0}
+.gr-rlq .inp{border:0;box-shadow:none;background:transparent;height:34px;flex:1;min-width:0}
+.gr-rlq:focus-within{box-shadow:var(--ring)}
+.gr-rlh{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:650;color:var(--ink)}
+.gr-rlh svg.i{width:16px;height:16px;color:var(--meta)}
+.gr-rrec{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.gr-rchips{display:flex;gap:6px;flex-wrap:wrap}
+.gr-rchip{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);font-size:12.5px;font-weight:600;color:var(--ink);max-width:260px}
+.gr-rchip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gr-rchip svg.i{width:14px;height:14px;color:var(--accent);flex-shrink:0}
+.gr-rchip:hover{border-color:var(--line2);background:var(--surface2)}
+.gr-rl{list-style:none;margin:0;padding:0}
+.gr-ri{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 12px;border-top:1px solid var(--line)}
+.gr-ri:first-child{border-top:0}
+.gr-ri[hidden]{display:none}
+.gr-ri > .ti{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:var(--surface3);color:var(--ink2)}
+.gr-ri > .ti.sh{background:var(--accent-soft);color:var(--accent-d)}
+.gr-ri > .ti svg.i{width:17px;height:17px}
+.gr-ri .tx{min-width:0;display:flex;flex-direction:column;gap:2px}
+.gr-rt{border:0;background:none;padding:0;text-align:left;font-size:13.5px;font-weight:650;color:var(--ink);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.gr-rt:hover{color:var(--accent-d);text-decoration:underline}
+.gr-ri .tx .s{font-size:12px;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gr-ri .meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px;font-size:11.5px;color:var(--meta)}
+.gr-bdg{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);font-size:11.5px;font-weight:550;color:var(--ink2);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gr-bdg svg.i{width:12px;height:12px;flex-shrink:0}
+.gr-bdg.sh{background:var(--accent-soft);border-color:transparent;color:var(--accent-d)}
+.gr-own{display:inline-flex;align-items:center;gap:5px}
+.gr-own .av{width:18px;height:18px;font-size:8.5px}
+.gr-ri .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.gr-ri .acts svg.i{width:13px;height:13px}
+.gr-rl-empty{padding:16px 14px;font-size:12.5px;color:var(--meta)}
+.gr-rls[hidden],.gr-rrec[hidden]{display:none}
+.gr-sdl-sc{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--surface2);font-size:13px}
+.gr-sdl-sc svg.i{width:15px;height:15px;color:var(--accent)}
+.gr-sdl-sc span{flex-basis:100%;font-size:11.5px;color:var(--meta)}
+.gr-sdl-rad{border:0;padding:0;margin:0 0 16px}
+.gr-sdl-rad legend{font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:6px;padding:0}
+.gr-sdl-rad label{display:flex;gap:10px;align-items:flex-start;padding:9px 11px;border:1px solid var(--line);border-radius:9px;margin-bottom:6px;cursor:pointer}
+.gr-sdl-rad label:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.ws-fld.gr-sdl-rad > label{justify-content:flex-start;align-items:flex-start;font-size:13px;font-weight:500;color:var(--ink)}
+.gr-sdl-rad label > span{flex:1;min-width:0}
+.gr-sdl-rad label.dis{opacity:.65;cursor:not-allowed}
+.gr-sdl-rad input{margin-top:3px}
+.gr-sdl-rad b{display:flex;align-items:center;gap:6px;font-size:13px}
+.gr-sdl-rad b svg.i{width:14px;height:14px;color:var(--meta)}
+.gr-sdl-rad small{display:block;font-size:11.5px;color:var(--meta);margin-top:2px}
+.rp-seg{margin:0 0 12px}
+.rp-seg button svg.i{width:15px;height:15px}
+.gr-inp .gr-tabs{margin:0 0 2px;padding:0;border-bottom:1px solid var(--line)}
+@media (max-width:767px){
+  .gr-scrow{flex-wrap:wrap!important}
+  .gr-scseg{flex:1 1 100%;overflow-x:auto}
+  .gr-scsel{flex:1 1 100%;max-width:none;min-width:0;height:44px}
+  .gr-rbar .tx b{max-width:60vw}
+  .gr-rbar .btn{height:44px}
+  .gr-bars li{grid-template-columns:minmax(0,1fr) 64px;gap:4px 8px}
+  .gr-bars .tr{grid-column:1 / -1;grid-row:2}
+  .gr-rlq{flex:1 1 100%;min-width:0;height:44px}
+  .gr-rlbar .gr-fhint{display:none}
+  .gr-ri{grid-template-columns:36px minmax(0,1fr)}
+  .gr-ri .acts{grid-column:1 / -1;justify-content:flex-start}
+  .gr-ri .acts .btn{height:40px}
+  .gr-msr,.gr-chseg{flex:1 1 auto}
+}
 .pf-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
 .pf-grid.has-form{grid-template-columns:minmax(0,1fr) 360px}
 .pf-col{display:flex;flex-direction:column;gap:14px;min-width:0}
@@ -3314,7 +3414,7 @@ async function flushSync() {
   syncing = (async () => {
     const now = holdMask(snapOf(DB));
     let ch = diffSnap(SNAP, now);
-    if (typeof canEditAny === 'function' && !canEditAny()) ch = ch.filter(x => x.c === '_prefs');
+    if (typeof canEditAny === 'function' && !canEditAny()) ch = ch.filter(x => x.c === '_prefs' || x.c === 'reports');
     else if (typeof isAdmin === 'function' && !isAdmin())
       /* Kolonlar (statuses) ve projeye özel alanlar süzülmez: alan yöneticisi de değiştirir, yetkiyi sunucu denetler (#12, 22b). */
       ch = ch.filter(x => !['rules', '_settings', 'customers'].includes(x.c) && !(x.c === 'fields' && !(x.data?.projectId || x.base?.projectId))
@@ -3899,7 +3999,7 @@ async function load() {
   if (ME.defaultPassword) DEFAULT_PW = ME.defaultPassword;
   const d = r.data || {};
   for (const k of ['users', 'projects', 'statuses', 'sprints', 'issues', 'worklogs', 'comments', 'history',
-                   'fields', 'rules', 'links', 'transitions', 'filters', 'workspaces', 'customers']) if (!Array.isArray(d[k])) d[k] = [];
+                   'fields', 'rules', 'links', 'transitions', 'filters', 'workspaces', 'customers', 'reports']) if (!Array.isArray(d[k])) d[k] = [];
   if (!d.cfg) d.cfg = { h: 8, d: 5, modules: { ...MODULE_DEFAULTS }, types: TYPE_DEFAULTS.map(t => ({ ...t })),
     defaultStatuses: STATUS_TEMPLATES.uyarlama[1].map(x => [...x]) };
   /* Sunucunun gördüğü hâl — kişisel tercihler varsayılanlardan ÖNCE alınır ki ilk kez kaydedilsin. */
@@ -5013,7 +5113,15 @@ function sprintPerfPanel() {
   return live + chart + tbl;
 }
 
+/* Proje içi Raporlar: "Proje özeti" (hazır paneller) | "Parametrik raporlar" (genel rapor motoru, kapsam bu projeye kilitli). */
 function renderReports() {
+  const param = DB.ui.rpTab === 'param';
+  const seg = `<div class="rp-seg" role="tablist" aria-label="Proje raporları"><div class="cu-seg">
+    <button type="button" role="tab" data-rptab="ozet" aria-checked="${!param}" aria-selected="${!param}">${ic('board')}Proje özeti</button>
+    <button type="button" role="tab" data-rptab="param" aria-checked="${param}" aria-selected="${param}">${ic('sliders')}Parametrik raporlar</button></div></div>`;
+  return seg + (param ? renderGr() : renderReportsSummary());
+}
+function renderReportsSummary() {
   const act = AGILE() ? activeSprint() : null;
   const items = AGILE()
     ? (act ? DB.issues.filter(i => i.sprintId === act.id) : [])
@@ -6484,7 +6592,7 @@ const VIEWS = {
   admin:     { s: 'proj',   t: 'Proje ayarları',    c: 'Yönetim',           r: renderAdmin,     tb: toolbarAdmin },
   users:     { s: 'global', t: 'Kullanıcılar',      c: 'Yönetim',           r: renderUsers,     tb: toolbarUsers },
   system:    { s: 'global', t: 'Sistem',            c: 'Yönetim',           r: renderSystem,    tb: toolbarSystem },
-  reports:   { s: 'proj',   t: 'Raporlar',          c: 'Takip',             r: renderReports,   tb: () => `<span style="color:var(--ink3);font-size:12px">Zaman çizelgesindeki hafta seçimi buradaki hesapları da belirler.</span>` },
+  reports:   { s: 'proj',   t: 'Raporlar',          c: 'Takip',             r: renderReports,   tb: () => DB.ui.rpTab === 'param' ? '' : `<span style="color:var(--ink3);font-size:12px">Zaman çizelgesindeki hafta seçimi buradaki hesapları da belirler.</span>` },
 };
 
 /* Proje sekmeleri, soldan sağa (docs/tasarim/gezinme). Hangisinin görüneceğine viewAllowed karar verir. */
@@ -6533,7 +6641,7 @@ function renderHead(v, pr) {
     $('#crumb').innerHTML = `<nav class="nv-crumb" aria-label="Konum"><a href="#projects" data-v="projects">${w ? wsBadge(w, 'sm') : ''}<span class="t">${esc(w?.name || '')}</span></a><span class="sep" aria-hidden="true">/</span><span class="key">${esc(pr.key)}</span></nav>`;
     $('#title').innerHTML = `<span class="t">${esc(pr.name)}</span>`;
   } else {
-    if (v === VIEWS.greports) { const sc = grScope(); $('#crumb').textContent = `Tüm projeler · ${sc.length} proje · ${new Set(sc.map(wsOf)).size} çalışma alanı`; }
+    if (v === VIEWS.greports) { const sc = grScope(), f = grF(), k = grSk(f); $('#crumb').textContent = `${k === 'all' ? 'Tüm projeler' : grScopeName(k, f.sid)} · ${sc.length} proje · ${new Set(sc.map(wsOf)).size} çalışma alanı`; }
     else $('#crumb').textContent = `${pr ? pr.key : wsById(DB.ui.workspace)?.name || 'ÇevikPano'} · ${v.c}`;
     $('#title').textContent = viewTitle(VIEWS[DB.ui.view] ? DB.ui.view : 'board');
   }
@@ -6953,6 +7061,7 @@ function ensureSchema() {
   DB.links   ||= [];
   DB.rules   ||= [];
   DB.filters ||= [];
+  DB.reports ||= [];
   DB.transitions ||= [];
   DB.issues.forEach(i => { i.cf ||= {}; if (!Array.isArray(i.labels)) i.labels = []; });
   ensureTypes();
@@ -8215,7 +8324,7 @@ function paletteJumps() {
   const j = [];
   if (P() && viewAllowed('sprint')) {
     j.push({ t: 'Git', n: 'Aktif sprinte git', v: 'sprint', run: go('sprint') });
-    j.push({ t: 'Git', n: 'Sprint raporu', run: go('reports', () => document.getElementById('spPerf')?.scrollIntoView({ block: 'start' })) });
+    j.push({ t: 'Git', n: 'Sprint raporu', run: () => { DB.ui.rpTab = 'ozet'; go('reports', () => document.getElementById('spPerf')?.scrollIntoView({ block: 'start' }))(); } });
   }
   j.push({ t: 'Git', n: 'Benim işlerim', v: 'home', run: go('home') });
   j.push({ t: 'Git', n: 'Genel raporlar', v: 'greports', run: go('greports') });
@@ -8593,12 +8702,29 @@ const GR = { cell: null, open: new Set(), sl: 0, sheet: false, last: null };
 const GR_FMT = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const grH = h => GR_FMT.format(Math.round((h || 0) * 100) / 100);
 const grR2 = h => Math.round((h || 0) * 100) / 100;
-const grTab = () => DB.ui.grTab === 'fatura' ? 'fatura' : 'sure';
-const grF = () => (DB.ui.grF && typeof DB.ui.grF === 'object' && !Array.isArray(DB.ui.grF)) ? DB.ui.grF : (DB.ui.grF = {});
-/* Adres: #raporlar/sure | #raporlar/fatura (başına "/" da kabul). Diğer ekranlar #görünüm. */
+/* Proje içi Raporlar sekmesinde "Parametrik raporlar": aynı motor, kapsam o projeye kilitli (süzgeçler DB.ui.grFP, sekme grTabP). */
+const grInProj = () => DB.ui.view === 'reports' && DB.ui.rpTab === 'param' && !!P();
+const grActive = () => DB.ui.view === 'greports' || grInProj();
+const GR_TABS = ['sure', 'fatura', 'liste'];
+const grTab = () => { const t = grInProj() ? DB.ui.grTabP : DB.ui.grTab; return GR_TABS.includes(t) ? t : 'sure'; };
+const grObj = k => (DB.ui[k] && typeof DB.ui[k] === 'object' && !Array.isArray(DB.ui[k])) ? DB.ui[k] : (DB.ui[k] = {});
+function grF() {
+  if (!grInProj()) return grObj('grF');
+  const f = grObj('grFP');
+  if (f.sk !== 'project' || f.sid !== DB.ui.project) { f.sk = 'project'; f.sid = DB.ui.project; delete f.ws; delete f.proj; }
+  return f;
+}
+/* Sekme değişimi: genel ekranda adres (#raporlar/…), proje sekmesinde yalnız tercih. */
+function grGoTab(tab) {
+  if (!GR_TABS.includes(tab)) tab = 'sure';
+  if (grInProj()) { DB.ui.grTabP = tab; save(); return render(); }
+  DB.ui.grTab = tab; save();
+  if (location.hash !== '#raporlar/' + tab) location.hash = 'raporlar/' + tab; else render();
+}
+/* Adres: #raporlar/sure | #raporlar/fatura | #raporlar/liste (başına "/" da kabul). Diğer ekranlar #görünüm. */
 function hashView(h = location.hash.slice(1)) {
   h = decodeURIComponent(String(h || '')).replace(/^\//, '');
-  const m = /^raporlar(?:\/(sure|fatura))?$/.exec(h);
+  const m = /^raporlar(?:\/(sure|fatura|liste))?$/.exec(h);
   if (m) { if (m[1]) DB.ui.grTab = m[1]; return 'greports'; }
   return Object.hasOwn(VIEWS, h) ? h : null;
 }
@@ -8614,8 +8740,22 @@ function grPeriod() {
   const last = new Date(+m.slice(0, 4), +m.slice(5, 7), 0);
   return { from: m + '-01', to: iso(last), label: monthName(m), month: m, file: m };
 }
-/* Görünüm kapsamındaki projeler (arşivliler dahil: geçmiş dönem etiketle görünür). */
-const grScope = () => isSuper() ? DB.projects.slice() : userProjects(CU()?.id).filter(projVisible);
+/* Görünüm kapsamındaki projeler (arşivliler dahil: geçmiş dönem etiketle görünür). Kapsam seçici (f.sk/f.sid):
+   Tüm sistem | Çalışma alanı | Proje; kişi yalnız erişebildiği projeleri görür (istemcideki veri zaten süzülmüş). */
+const grBase = () => isSuper() ? DB.projects.slice() : userProjects(CU()?.id).filter(projVisible);
+const grSk = f => (f.sk === 'ws' || f.sk === 'project') && typeof f.sid === 'string' && f.sid ? f.sk : 'all';
+function grScope() {
+  const f = grF(), b = grBase(), k = grSk(f);
+  if (k === 'ws') return b.filter(p => wsOf(p) === f.sid);
+  if (k === 'project') return b.filter(p => p.id === f.sid);
+  return b;
+}
+/* Kapsamın adı (başlık, kayıtlı rapor listesi). */
+function grScopeName(kind, id) {
+  if (kind === 'ws') return wsById(id)?.name || 'Erişilemeyen çalışma alanı';
+  if (kind === 'project') { const p = DB.projects.find(x => x.id === id); return p ? `${p.key} — ${p.name}` : 'Erişilemeyen proje'; }
+  return 'Tüm sistem';
+}
 const GR_NONE = '__none', GR_UNK = '__unk';
 const GR_FKEYS = ['ws', 'proj', 'cu', 'user', 'type', 'bill', 'cfv'];
 /* Parametrik proje alanları: raporlanabilir alan türleri (metin yalnız Excel ayrıntısında değil, hiç boyut değil). */
@@ -8632,13 +8772,21 @@ const GR_TEMPLATES = [
 
 /* Bağlam: bir kez kurulur (Map'ler), boyut anahtarları buradan okunur. */
 function grCtx() {
-  const scope = grScope(), f = grF();
+  const f = grF();
+  /* Erişilemeyen (silinen, üyelikten çıkılan) kapsam: genel ekranda Tüm sisteme döner; proje sekmesi zaten seçili projede. */
+  if (!grInProj() && grSk(f) !== 'all') {
+    const b = grBase();
+    if (grSk(f) === 'ws' ? !grWsOk(f.sid, b) : !b.some(p => p.id === f.sid)) { delete f.sk; delete f.sid; }
+  } else if (!grInProj() && (f.sk != null || f.sid != null) && grSk(f) === 'all') { delete f.sk; delete f.sid; }
+  if (f.ms && !GR_MEASURES.some(m => m[0] === f.ms)) delete f.ms;
+  if (f.ch && !GR_CHARTS.some(m => m[0] === f.ch)) delete f.ch;
+  const scope = grScope();
   const PM = new Map(), WS = new Map(), CUM = new Map(cuList().map(c => [c.id, c]));
   scope.forEach(p => { PM.set(p.id, p); WS.set(p.id, wsOf(p)); });
   /* alan seçiliyse proje listesi daralır; geçersiz proje seçimi temizlenir */
   if (f.ws && !scope.some(p => WS.get(p.id) === f.ws)) delete f.ws;
   if (f.proj && (!PM.has(f.proj) || (f.ws && WS.get(f.proj) !== f.ws))) delete f.proj;
-  if (f.user && f.user !== GR_UNK && !DB.users.some(u => u.id === f.user)) delete f.user;
+  if (f.user && f.user !== GR_UNK && f.user !== GR_NONE && !DB.users.some(u => u.id === f.user)) delete f.user;
   if (f.type && !TYPE[f.type]) delete f.type;
   if (f.bill && !BILLABLE.includes(f.bill)) delete f.bill;
   if (f.cu && f.cu !== GR_NONE && !CUM.has(f.cu)) delete f.cu;
@@ -8663,7 +8811,8 @@ function grCtx() {
   }
   if (f.cfk && f.cfk !== 'billType' && !FD.has(f.cfk)) delete f.cfk;
   if (!f.cfk) delete f.cfv;
-  return { scope, f, PM, WS, CUM, IM, UM, cuOfP, cuOfI, BON, FD, SM: new Map((DB.sprints || []).map(s => [s.id, s])) };
+  return { scope, f, PM, WS, CUM, IM, UM, cuOfP, cuOfI, BON, FD, SM: new Map((DB.sprints || []).map(s => [s.id, s])),
+    STM: new Map((DB.statuses || []).map(s => [s.id, s])) };
 }
 
 /* Boyutlar: Efor DIMS ile aynı anahtarlar; Cari (işin carisi, yoksa projenin) ve Çalışma alanı eklenir. */
@@ -8672,7 +8821,9 @@ function grDims(X) {
   const wk = d => { let v = WK.get(d); if (!v) { v = iso(monday(new Date(d))); WK.set(d, v); } return v; };
   const pName = id => { const p = X.PM.get(id); return p ? `${p.key} — ${p.name}` : '—'; };
   const D = {
-    user:     { l: 'Kişi', k: (w) => X.UM.has(w.userId) ? w.userId : GR_UNK, n: id => id === GR_UNK ? 'Bilinmeyen' : (X.UM.get(id)?.name || 'Bilinmeyen') },
+    /* İş sayısı / puan ölçüsünde kişi = atanan (atanmamış iş "Atanmamış"); saatte süre kaydının kişisi. */
+    user:     { l: 'Kişi', k: (w) => w.userId == null ? GR_NONE : X.UM.has(w.userId) ? w.userId : GR_UNK,
+                n: id => id === GR_NONE ? 'Atanmamış' : id === GR_UNK ? 'Bilinmeyen' : (X.UM.get(id)?.name || 'Bilinmeyen') },
     project:  { l: 'Proje', k: (w, i, p) => p.id, n: pName, tag: id => X.PM.get(id)?.archived ? 'arch' : '' },
     customer: { l: 'Cari', k: (w, i, p) => X.cuOfI(i, p), n: id => id === GR_NONE ? 'Cari bağlı değil' : (X.CUM.get(id)?.name || '—'),
                 tag: id => id !== GR_NONE && !cuActive(X.CUM.get(id)) ? 'pas' : '' },
@@ -8680,6 +8831,9 @@ function grDims(X) {
     month:    { l: 'Ay', k: w => w.date.slice(0, 7), n: m => monthName(m), time: true },
     week:     { l: 'Hafta', k: w => wk(w.date), n: d => trDate(d) + ' haftası', time: true },
     type:     { l: 'İş tipi', k: (w, i) => i.type, n: t => TYPE[t]?.[2] || '—' },
+    /* Durum: projeler arasında kolon adıyla birleşir. */
+    status:   { l: 'Durum', k: (w, i) => { const n = X.STM.get(i.statusId)?.name; return typeof n === 'string' && n.trim() ? n.trim() : GR_NONE; },
+                n: x => x === GR_NONE ? 'Durumsuz' : x },
     /* Faturalama boş ya da projede kapalıysa "Faturalanacak" (toplamlar değişmez); Fatura türü boş/kapalı → Belirtilmemiş. */
     billable: { l: 'Faturalama', g: 'preset', k: (w, i, p) => X.BON.get(p.id)?.billable === false ? BILLABLE[0] : billOf(i), n: x => x },
     billType: { l: 'Fatura türü', g: 'preset', k: (w, i, p) => (X.BON.get(p.id)?.billType !== false && i.billType) || GR_NONE, n: x => x === GR_NONE ? 'Belirtilmemiş' : x },
@@ -8699,8 +8853,18 @@ function grDims(X) {
 }
 
 /* TEK GEÇİŞ: dönem + süzgeç + kapsam; pivot hücreleri, satır/sütun toplamları ve cari/proje faturalama birlikte. */
+/* Ölçüler: saat süre kayıtlarından (dönem = kayıt tarihi); iş sayısı ve puan işlerden (dönem = işin oluşturulma tarihi). */
+const GR_MEASURES = [['hours', 'Saat', 'sa'], ['count', 'İş sayısı', 'iş'], ['points', 'Puan', 'puan']];
+const GR_CHARTS = [['table', 'Tablo', 'grid'], ['bar', 'Çubuk', 'reports']];
+const grMs = f => GR_MEASURES.some(m => m[0] === f.ms) && grTab() !== 'fatura' ? f.ms : 'hours';
+const GR_NFMT = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
+const grFmt = (ms, v) => ms === 'hours' ? grH(v) : GR_NFMT.format(Math.round((v || 0) * 10) / 10);
+const grUnit = ms => GR_MEASURES.find(m => m[0] === ms)?.[2] || 'sa';
+const grIDate = i => { const t = i?.created ?? i?.createdAt;
+  if (typeof t === 'number' && t > 0) return iso(new Date(t));
+  return typeof t === 'string' && /^\d{4}-\d{2}-\d{2}/.test(t) ? t.slice(0, 10) : null; };
 function grCompute() {
-  const X = grCtx(), f = X.f, per = grPeriod(), D = grDims(X);
+  const X = grCtx(), f = X.f, per = grPeriod(), D = grDims(X), ms = grMs(f);
   const rowK = D[f.row] ? f.row : 'customer';
   const colK = f.col === '' ? '' : (D[f.col] ? f.col : 'user');
   const rD = D[rowK], cD = colK ? D[colK] : null;
@@ -8708,22 +8872,27 @@ function grCompute() {
   let grand = 0;
   const F0 = BILLABLE[0];
   const cfD = f.cfk && f.cfv ? D[f.cfk] : null;
-  for (const w of DB.worklogs) {
+  /* Saat: her süre kaydı; iş sayısı/puan: her iş bir kez (kişi = atanan, tarih = oluşturulma). */
+  const IA = ms === 'hours' ? null : [...X.IM.values()], N = IA ? IA.length : DB.worklogs.length;
+  for (let n = 0; n < N; n++) {
+    let w, i;
+    if (IA) { i = IA[n]; w = { id: i.id, issueId: i.id, userId: i.assignee || null, date: grIDate(i), hours: 0 }; }
+    else { w = DB.worklogs[n]; i = X.IM.get(w.issueId); }
     const d = w.date;
     if (!d || d < per.from || d > per.to) continue;
-    const i = X.IM.get(w.issueId); if (!i) continue;
+    if (!i) continue;
     const p = X.PM.get(i.projectId); if (!p) continue;
     if (f.proj && p.id !== f.proj) continue;
     if (f.ws && X.WS.get(p.id) !== f.ws) continue;
-    if (f.user && (f.user === GR_UNK ? X.UM.has(w.userId) : w.userId !== f.user)) continue;
+    if (f.user && D.user.k(w) !== f.user) continue;
     if (f.type && i.type !== f.type) continue;
     const b = X.BON.get(p.id)?.billable === false ? F0 : billOf(i);   // kapalı Faturalama → Faturalanacak
     if (f.bill && b !== f.bill) continue;
     if (cfD && String(cfD.k(w, i, p) ?? GR_NONE) !== f.cfv) continue;
     const cu = X.cuOfP(p);
     if (f.cu && cu !== f.cu) continue;
-    const h = +w.hours || 0;
-    logs.push({ w, i, p, cu, b });
+    const h = ms === 'hours' ? (+w.hours || 0) : ms === 'points' ? (+i.points || 0) : 1;
+    logs.push({ w, i, p, cu, b, v: h });
     issues.add(i.id); projs.add(p.id);
     grand += h;
     const r = rD.k(w, i, p) ?? GR_NONE, c = cD ? (cD.k(w, i, p) ?? GR_NONE) : '';
@@ -8744,7 +8913,7 @@ function grCompute() {
     return (tot.get(b) - tot.get(a)) || String(Dm.n(a)).localeCompare(String(Dm.n(b)), 'tr');
   });
   const rows = order(rD, rT), cols = cD ? order(cD, cT) : [];
-  return { X, D, f, per, rowK, colK, rD, cD, cells, rT, cT, bill, logs, issues, projs, grand, rows, cols };
+  return { X, D, f, per, rowK, colK, rD, cD, cells, rT, cT, bill, logs, issues, projs, grand, rows, cols, ms };
 }
 
 /* ---- görünüm ---- */
@@ -8752,7 +8921,7 @@ function grTag(kind) {
   return kind === 'arch' ? `<span class="gr-tag">${ic('archive')}Arşivli</span>` : kind === 'pas' ? `<span class="gr-tag">${ic('pause')}Pasif</span>` : '';
 }
 function grDimLabel(Dm, k, id) {
-  if (k === 'user') return `<span class="gr-rn">${id === GR_UNK ? '<span class="gr-unk" aria-hidden="true">?</span>' : avat(id)}<span class="nm">${esc(Dm.n(id))}</span></span>`;
+  if (k === 'user') return `<span class="gr-rn">${id === GR_UNK ? '<span class="gr-unk" aria-hidden="true">?</span>' : id === GR_NONE ? '<span class="gr-unk" aria-hidden="true">–</span>' : avat(id)}<span class="nm">${esc(Dm.n(id))}</span></span>`;
   if (k === 'customer' && id === GR_NONE) return `<span class="gr-rn none">${ic('link')}<span class="nm">${esc(Dm.n(id))}</span></span>`;
   return `<span class="gr-rn"><span class="nm" title="${esc(Dm.n(id))}">${esc(Dm.n(id))}</span>${Dm.tag ? grTag(Dm.tag(id)) : ''}</span>`;
 }
@@ -8767,6 +8936,7 @@ function grFilterBar(R) {
   if (cuIds.has(GR_NONE)) cOpts.push([GR_NONE, 'Cari bağlı değil']);
   const uOpts = DB.users.filter(u => !u.system || isSuper()).map(u => [u.id, u.name]).sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'tr'));
   uOpts.push([GR_UNK, 'Bilinmeyen (silinmiş)']);
+  if (R.ms !== 'hours') uOpts.push([GR_NONE, 'Atanmamış']);
   const tOpts = Object.keys(TYPE).map(t => [t, TYPE[t][2]]);
   const bOpts = BILLABLE.map(b => [b, b]);
   /* Alan süzgeci (proje alanı + değer): Fatura türü ve kapsamdaki proje alanları. */
@@ -8784,7 +8954,9 @@ function grFilterBar(R) {
     type: t => TYPE[t]?.[2], bill: b => b, cfv: v => fdim?.n(v) };
   const LBL = { ws: 'Alan', proj: 'Proje', cu: 'Cari', user: 'Kişi', type: 'İş tipi', bill: 'Faturalama', cfv: fdim?.l || 'Alan' };
   const act = GR_FKEYS.filter(k => f[k]);
+  const sk = grSk(f);
   return `<section class="gr-fbar ${GR.sheet ? 'open' : ''}" aria-label="Süzgeçler">
+    ${grScopeRow(f, sk)}
     <div class="gr-frow">
       <div class="cu-seg gr-seg-per" role="radiogroup" aria-label="Dönem türü">
         <button type="button" role="radio" data-grrange="month" aria-checked="${!custom}">Ay</button>
@@ -8796,7 +8968,7 @@ function grFilterBar(R) {
       <span class="gr-fhint">${ic('lock')}Süzgeçler sana özel hatırlanır</span>
     </div>
     <div class="gr-fgrid">
-      ${sel('ws', 'Alan', 'Tümü', wsOpts)}${sel('proj', 'Proje', 'Tümü', pOpts)}${sel('cu', 'Cari', 'Tümü', cOpts)}
+      ${sk === 'all' ? sel('ws', 'Alan', 'Tümü', wsOpts) : ''}${sk === 'project' ? '' : sel('proj', 'Proje', 'Tümü', pOpts)}${sel('cu', 'Cari', 'Tümü', cOpts)}
       ${sel('user', 'Kişi', 'Herkes', uOpts)}${sel('type', 'İş tipi', 'Tümü', tOpts)}${sel('bill', 'Faturalama', 'Tümü', bOpts)}
       <label class="gr-fs ${f.cfk ? 'on' : ''}"><span class="lb">Proje alanı</span><select class="inp" data-grcfk aria-label="Proje alanı süzgeci"><option value="">Seçin</option>${kOpts.map(([v, t]) =>
         `<option value="${esc(v)}" ${f.cfk === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label>
@@ -8807,23 +8979,44 @@ function grFilterBar(R) {
       <button type="button" class="btn ghost gr-clear" data-grclear>Süzgeçleri temizle</button></div>` : ''}
   </section>`;
 }
+/* Kapsam seçici: Tüm sistem / Çalışma alanı / Proje (+ hangisi). Proje sekmesinde kilitli: o proje. */
+function grScopeRow(f, sk) {
+  if (grInProj()) return `<div class="gr-frow gr-scrow"><span class="gr-sclb">Kapsam</span>
+    <span class="gr-sclock" data-grsclock>${ic('lock')}<b>${esc(grScopeName('project', f.sid))}</b><span>bu projeye kilitli</span></span></div>`;
+  const base = grBase();
+  const wsIds = [...new Set(base.map(wsOf))].filter(id => wsById(id));
+  const wsOpts = wsIds.map(id => [id, wsById(id).name]).sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'tr'));
+  const pOpts = base.slice().sort((a, b) => String(a.key).localeCompare(String(b.key), 'tr')).map(p => [p.id, `${p.key} — ${p.name}${p.archived ? ' (arşivli)' : ''}`]);
+  const seg = [['all', 'Tüm sistem', 'globe'], ['ws', 'Çalışma alanı', 'layers'], ['project', 'Proje', 'folder']];
+  const opts = sk === 'ws' ? wsOpts : sk === 'project' ? pOpts : null;
+  return `<div class="gr-frow gr-scrow"><span class="gr-sclb" id="grScL">Kapsam</span>
+    <div class="cu-seg gr-scseg" role="radiogroup" aria-labelledby="grScL">${seg.map(([k, l, icn]) =>
+      `<button type="button" role="radio" data-grsk="${k}" aria-checked="${sk === k}">${ic(icn)}${l}</button>`).join('')}</div>
+    ${opts ? `<label class="gr-fs on gr-scsel"><span class="lb">${sk === 'ws' ? 'Alan' : 'Proje'}</span><select class="inp" data-grsid aria-label="${sk === 'ws' ? 'Kapsamdaki çalışma alanı' : 'Kapsamdaki proje'}">${opts.map(([v, t]) =>
+      `<option value="${esc(v)}" ${f.sid === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label>` : ''}
+    <span class="gr-fhint">${ic('info')}Yalnız erişebildiğin projelerin verisi</span></div>`;
+}
 const grKpi = (icn, l, v, s, unit = 'sa') => `<div class="gr-kpi"><span class="ic">${ic(icn)}</span><span class="tx"><span class="l">${l}</span><b>${v}${unit ? `<small>${unit}</small>` : ''}</b>${s ? `<span class="s">${s}</span>` : ''}</span></div>`;
-function grEmpty() {
-  return `<section class="gr-card hm-empty gr-empty" data-grempty><span class="hm-empty-ic">${ic('clock')}</span><h3>Bu süzgeçlerle süre kaydı yok</h3>
+function grEmpty(R) {
+  return `<section class="gr-card hm-empty gr-empty" data-grempty><span class="hm-empty-ic">${ic('clock')}</span><h3>${R && R.ms !== 'hours' ? 'Bu süzgeçlerle iş yok' : 'Bu süzgeçlerle süre kaydı yok'}</h3>
     <p>Dönemi değiştir ya da süzgeçleri kaldır.</p><div class="acts"><button type="button" class="btn" data-grclear>${ic('x')}Süzgeçleri temizle</button>
     <button type="button" class="btn gr-xls" data-grxls>${ic('issues')}Excel'e aktar</button></div></section>`;
 }
 
 function renderGr() {
   const t0 = performance.now();
-  const R = grCompute(), tab = grTab();
+  const tab = grTab(), inP = grInProj();
+  /* Genel ekranda sekmeler adres bağlantısı (#raporlar/…); proje sekmesinde düğme (adres proje ekranında kalır). */
+  const TABS = [['sure', 'clock', 'Özet tablo'], ['fatura', 'issues', 'Faturalanabilir saat'], ['liste', 'list', 'Kayıtlı raporlar']];
+  const tabs = `<div class="gr-tabs" role="tablist" aria-label="${inP ? 'Proje raporları' : 'Genel raporlar'}">${TABS.map(([k, icn, l]) => inP
+    ? `<button type="button" class="gr-tab" role="tab" id="grtab-${k}" data-grgo="${k}" aria-selected="${tab === k}" aria-controls="grPanel" tabindex="${tab === k ? 0 : -1}">${ic(icn)}${l}</button>`
+    : `<a href="#raporlar/${k}" class="gr-tab" role="tab" id="grtab-${k}" aria-selected="${tab === k}" aria-controls="grPanel" tabindex="${tab === k ? 0 : -1}">${ic(icn)}${l}</a>`).join('')}</div>`;
+  if (tab === 'liste') return `<div class="gr ${inP ? 'gr-inp' : ''}">${tabs}<div id="grPanel" role="tabpanel" aria-labelledby="grtab-liste" class="gr-panel">${grList()}</div></div>`;
+  const R = grCompute();
   GR.last = R;
-  const tabs = `<div class="gr-tabs" role="tablist" aria-label="Genel raporlar">
-    <a href="#raporlar/sure" class="gr-tab" role="tab" id="grtab-sure" aria-selected="${tab === 'sure'}" aria-controls="grPanel" tabindex="${tab === 'sure' ? 0 : -1}">${ic('clock')}Süre</a>
-    <a href="#raporlar/fatura" class="gr-tab" role="tab" id="grtab-fatura" aria-selected="${tab === 'fatura'}" aria-controls="grPanel" tabindex="${tab === 'fatura' ? 0 : -1}">${ic('issues')}Faturalanabilir saat</a></div>`;
-  const body = !R.logs.length ? grEmpty() : tab === 'fatura' ? grFatura(R) : grSure(R);
+  const body = !R.logs.length ? grEmpty(R) : tab === 'fatura' ? grFatura(R) : grSure(R);
   GR.ms = performance.now() - t0;
-  return `<div class="gr" data-grms="${GR.ms.toFixed(1)}">${tabs}<div id="grPanel" role="tabpanel" aria-labelledby="grtab-${tab}" class="gr-panel">${grTplBar(R)}${grFilterBar(R)}${body}</div></div>`;
+  return `<div class="gr ${inP ? 'gr-inp' : ''}" data-grms="${GR.ms.toFixed(1)}">${tabs}<div id="grPanel" role="tabpanel" aria-labelledby="grtab-${tab}" class="gr-panel">${grRBar()}${grTplBar(R)}${grFilterBar(R)}${body}</div></div>`;
 }
 const grTplOn = (t, R) => t.tab ? grTab() === t.tab
   : grTab() === 'sure' && (t.row === 'cf:' ? String(R.rowK).startsWith('cf:') : R.rowK === t.row) && R.colK === t.col;
@@ -8832,27 +9025,259 @@ function grTplBar(R) {
     <div class="gr-tpl" role="toolbar" aria-labelledby="grTplH">${GR_TEMPLATES.map(t => `<button type="button" data-grtpl="${t.id}" aria-pressed="${grTplOn(t, R)}">
       <span class="ti">${ic(t.icon)}</span><span class="tx"><b>${esc(t.l)}</b><span class="s">${esc(t.s)}</span></span></button>`).join('')}</div></section>`;
 }
-function grTpl(id) {
-  const t = GR_TEMPLATES.find(x => x.id === id); if (!t) return;
-  const R = GR.last || grCompute(), f = grF();
+function grTpl(id, o = {}) {
+  const t = GR_TEMPLATES.find(x => x.id === id); if (!t) return false;
+  const R = grCompute(), f = grF();
   if (!t.tab) {
     let row = t.row;
     if (row === 'cf:') {
       row = String(R.rowK).startsWith('cf:') ? R.rowK : Object.keys(R.D).find(k => k.startsWith('cf:'));
-      if (!row) return toast('Raporlanabilir proje alanı yok: projeye seçim, evet/hayır ya da kişi türünde bir alan ekleyin', { warn: true });
+      if (!row) { toast('Raporlanabilir proje alanı yok: projeye seçim, evet/hayır ya da kişi türünde bir alan ekleyin', { warn: true }); return false; }
     }
     f.row = row; f.col = t.col;
+    delete f.ms;                                       // hazır raporlar saat üzerinden
   }
   GR.cell = null;
-  const tab = t.tab || 'sure';
-  DB.ui.grTab = tab; save();
-  if (location.hash !== '#raporlar/' + tab) location.hash = 'raporlar/' + tab; else render();
-  setTimeout(() => { $(`[data-grtpl="${id}"]`)?.focus(); if (t.row === 'cf:') $('[data-grdim="row"]')?.focus(); }, 60);
+  /* Hazır rapor açılınca kayıtlı rapordan çıkılır (kayıtlı rapor sessizce değişmesin). */
+  grSetCur(null); grNoteRecent('tpl:' + id);
+  grGoTab(t.tab || 'sure');
+  if (!o.quiet) setTimeout(() => { $(`[data-grtpl="${id}"]`)?.focus(); if (t.row === 'cf:') $('[data-grdim="row"]')?.focus(); }, 60);
+  return true;
+}
+
+/* ============ Kayıtlı raporlar (DB.reports → reports tablosu, 011) ============
+   Kayıt: { id, name, desc?, ownerId, vis: 'private'|'shared', scope: { kind: 'all'|'ws'|'project', id? }, cfg, tpl?, createdAt, updatedAt }.
+   cfg süzgeç nesnesinin (grF) kaydedilebilir kısmıdır: { tab, row, col, ms, ch, per: 'rel'|'month'|'custom', month, from, to, f }.
+   Yetki ve okuma süzmesi sunucuda (store.js checkReport/reportVisible); buradaki denetimler yalnız kullanıcı deneyimi içindir.
+   Açık rapor kişisel tercihte (DB.ui.grCur; proje sekmesinde grCurP), son açılanlar DB.ui.grRecent. */
+const GR_SAVE_F = ['ws', 'proj', 'cu', 'user', 'type', 'bill', 'cfk', 'cfv'];
+const GR_DIM_RE = /^(cf:[a-z0-9_]{1,30}|[A-Za-z]{1,20})$/;
+const grReports = () => (DB.reports || []).filter(r => r && typeof r.id === 'string' && typeof r.name === 'string');
+const grRep = id => grReports().find(r => r.id === id);
+const grCanEdit = r => !!r && (isAdmin() || r.ownerId === CU()?.id);
+const grCurKey = () => grInProj() ? 'grCurP' : 'grCur';
+const grCurRep = () => { const id = DB.ui[grCurKey()]; return typeof id === 'string' ? grRep(id) : undefined; };
+function grSetCur(id) { if (id) DB.ui[grCurKey()] = id; else delete DB.ui[grCurKey()]; }
+function grNoteRecent(id) {
+  const r = Array.isArray(DB.ui.grRecent) ? DB.ui.grRecent : [];
+  DB.ui.grRecent = [id, ...r.filter(x => x !== id && typeof x === 'string')].slice(0, 8);
+}
+/* Alan kapsamı (yetki-v2, sunucudaki reportVisible ile aynı): alan yöneticisi ya da alanda rolü olduğu bir proje. */
+const grWsOk = (id, base = grBase()) => !!wsById(id) && (isAdmin() || isWsAdmin(CU(), wsById(id)) || base.some(p => wsOf(p) === id));
+const grScopeOk = sc => isAdmin() || (sc.kind === 'ws' ? grWsOk(sc.id) : sc.kind === 'project' ? grBase().some(p => p.id === sc.id) : false);
+const grScopeOf = f => grSk(f) === 'all' ? { kind: 'all' } : { kind: grSk(f), id: f.sid };
+const grScopeIc = k => k === 'ws' ? 'layers' : k === 'project' ? 'folder' : 'globe';
+/* Geçerli ayar → kayıt biçimi (perMode 'rel': ay seçiliyse ve içinde bulunulan aysa göreli dönem). */
+function grCfgOf(f, tab, perMode) {
+  const cfg = { tab: tab === 'fatura' ? 'fatura' : 'sure', ms: GR_MEASURES.some(m => m[0] === f.ms) ? f.ms : 'hours',
+    ch: GR_CHARTS.some(m => m[0] === f.ch) ? f.ch : 'table' };
+  if (GR_DIM_RE.test(f.row || '')) cfg.row = f.row;
+  if (f.col === '' || GR_DIM_RE.test(f.col || '')) cfg.col = f.col;
+  const mon = /^\d{4}-(0[1-9]|1[0-2])$/.test(f.month || '') ? f.month : TODAY.slice(0, 7);
+  if (f.range === 'custom' && /^\d{4}-\d{2}-\d{2}$/.test(f.from || '') && /^\d{4}-\d{2}-\d{2}$/.test(f.to || '')) Object.assign(cfg, { per: 'custom', from: f.from, to: f.to });
+  else if (perMode === 'rel' && mon === TODAY.slice(0, 7)) cfg.per = 'rel';
+  else Object.assign(cfg, { per: 'month', month: mon });
+  const ff = {};
+  for (const k of GR_SAVE_F) if (typeof f[k] === 'string' && f[k] && f[k].length <= 200 && !(grInProj() && (k === 'ws' || k === 'proj'))) ff[k] = f[k];
+  cfg.f = ff;
+  return cfg;
+}
+/* Kayıtlı ayarı geçerli süzgeç nesnesine uygular (proje sekmesinde kapsam kilitli kalır). */
+function grApply(cfg, scope) {
+  const f = grF(), inP = grInProj();
+  for (const k of Object.keys(f)) if (!(inP && (k === 'sk' || k === 'sid'))) delete f[k];
+  if (!inP && scope && scope.kind !== 'all' && typeof scope.id === 'string') { f.sk = scope.kind; f.sid = scope.id; }
+  if (cfg.row) f.row = cfg.row;
+  if (cfg.col != null) f.col = cfg.col;
+  if (cfg.ms && cfg.ms !== 'hours') f.ms = cfg.ms;
+  if (cfg.ch && cfg.ch !== 'table') f.ch = cfg.ch;
+  if (cfg.per === 'custom' && cfg.from && cfg.to) Object.assign(f, { range: 'custom', from: cfg.from, to: cfg.to });
+  else f.month = cfg.per === 'month' && cfg.month ? cfg.month : TODAY.slice(0, 7);
+  for (const [k, v] of Object.entries(cfg.f || {})) if (GR_SAVE_F.includes(k) && typeof v === 'string' && !(inP && (k === 'ws' || k === 'proj'))) f[k] = v;
+}
+const grSameScope = (a, b) => (a?.kind || 'all') === (b?.kind || 'all') && ((a?.kind || 'all') === 'all' || a.id === b.id);
+function grDirty(r) {
+  if (!r?.cfg) return false;
+  const f = grF();
+  return cj(grCfgOf(f, grTab(), r.cfg.per === 'rel' ? 'rel' : 'fix')) !== cj(r.cfg) || (!grInProj() && !grSameScope(grScopeOf(f), r.scope));
+}
+function grOpen(id) {
+  if (typeof id !== 'string') return;
+  if (id.startsWith('tpl:')) return grTpl(id.slice(4));
+  const r = grRep(id); if (!r) return toast('Rapor bulunamadı ya da artık erişiminiz yok', { warn: true });
+  grApply(r.cfg || {}, r.scope);
+  grSetCur(r.id); grNoteRecent(r.id); GR.cell = null;
+  grGoTab(r.cfg?.tab === 'fatura' ? 'fatura' : 'sure');
+}
+function grRepMeta(r) {
+  const me = CU()?.id, own = r.ownerId === me ? '' : ` · ${esc(user(r.ownerId)?.name || 'Bilinmeyen')}`;
+  return `${r.vis === 'shared' ? 'Paylaşılan' : 'Yalnız ben'} · ${esc(grScopeName(r.scope?.kind, r.scope?.id))}${own}`;
+}
+/* Rapor çubuğu: açık kayıtlı rapor (ad, değişiklik, Kaydet / Farklı kaydet) ya da "Raporu kaydet". */
+function grRBar() {
+  const r = grCurRep(), dirty = !!r && grDirty(r), can = grCanEdit(r);
+  return `<section class="gr-rbar ${r ? 'on' : ''}" aria-label="Kayıtlı rapor" data-grrbar="${r ? esc(r.id) : ''}">
+    <span class="ic">${ic(r ? 'star' : 'save')}</span>
+    <div class="tx"><b id="grRName">${r ? esc(r.name) : 'Kaydedilmemiş rapor'}</b><span class="s">${r ? grRepMeta(r) : 'Kapsamı, boyutları, ölçüyü, süzgeçleri ve dönemi adıyla kaydet.'}</span></div>
+    ${dirty ? `<span class="gr-dirty" data-grdirty>${ic('info')}Kaydedilmemiş değişiklik</span>` : ''}
+    <span class="spacer"></span>
+    ${r && can && dirty ? `<button type="button" class="btn pri" data-grsave>${ic('save')}Kaydet</button>` : ''}
+    <button type="button" class="btn ${r ? '' : 'pri'}" data-grsaveas>${ic(r ? 'copy' : 'save')}${r ? 'Farklı kaydet' : 'Raporu kaydet'}</button>
+    ${r ? `<button type="button" class="iconbtn" data-grunload aria-label="Kayıtlı rapordan çık" title="Kayıtlı rapordan çık">${ic('x')}</button>` : ''}
+  </section>`;
+}
+function grSaveCur() {
+  const r = grCurRep(); if (!r) return;
+  if (!grCanEdit(r)) return toast('Raporu yalnızca sahibi ya da sistem yöneticisi değiştirebilir', { warn: true });
+  const f = grF(), sc = grInProj() ? r.scope : grScopeOf(f);
+  if (r.vis === 'shared' && sc.kind === 'all' && !isAdmin())
+    return toast('Paylaşılan raporun kapsamı Tüm sistem olamaz: kapsamı seç ya da "Farklı kaydet" ile kişisel kaydet', { warn: true });
+  r.cfg = grCfgOf(f, grTab(), r.cfg?.per === 'rel' ? 'rel' : 'fix');
+  r.scope = sc; r.updatedAt = Date.now();
+  save(); render(); toast('Rapor güncellendi');
+}
+/* Kaydet / düzenle penceresi. mode: 'new' (geçerli ayardan; tpl: hazır rapordan kopya), 'edit' (ad, açıklama, görünürlük). */
+function grSaveDlg(mode, id, tpl) {
+  const r = id ? grRep(id) : null;
+  if (mode === 'edit' && !r) return toast('Rapor bulunamadı');
+  if (mode === 'edit' && !grCanEdit(r)) return toast('Raporu yalnızca sahibi ya da sistem yöneticisi değiştirebilir', { warn: true });
+  const f = grF(), scope = mode === 'edit' ? r.scope : grInProj() ? { kind: 'project', id: DB.ui.project } : grScopeOf(f);
+  const sl = grScopeName(scope.kind, scope.id), viewer = role() === 'viewer';
+  const canShare = !viewer && grScopeOk(scope);
+  const shareL = scope.kind === 'all' ? 'Herkesle paylaş (tüm sistem)' : scope.kind === 'ws' ? `“${sl}” çalışma alanıyla paylaş` : `“${sl}” projesiyle paylaş`;
+  const vis = r?.vis === 'shared' && canShare && mode === 'edit' ? 'shared' : 'private';
+  const per = grPeriod(), custom = f.range === 'custom' && f.from && f.to, thisMon = !custom && per.month === TODAY.slice(0, 7);
+  const tp = tpl ? GR_TEMPLATES.find(t => t.id === tpl) : null;
+  const name0 = mode === 'edit' ? r.name : tp ? `${tp.l} (kopya)` : r ? `${r.name} (kopya)`.slice(0, 80) : '';
+  openModal(`<div class="m-h"><b id="grs_t">${mode === 'edit' ? 'Raporu düzenle' : tp ? 'Hazır raporu kopyala' : 'Raporu kaydet'}</b><button class="x" data-close aria-label="Kapat">×</button></div>
+    <div class="ws-b gr-sdl">
+      <div class="ws-fld" id="grs_nf"><label for="grs_n">Ad <span class="ws-cnt" id="grs_nc">${name0.length}/80</span></label>
+        <input class="inp" id="grs_n" maxlength="80" value="${esc(name0)}" autocomplete="off" placeholder="Örn. Aylık cari saatleri" aria-describedby="grs_ne">
+        <div class="ws-err" id="grs_ne" aria-live="polite"></div></div>
+      <div class="ws-fld"><label for="grs_d">Açıklama <span class="opt">isteğe bağlı · en fazla 300</span></label>
+        <textarea class="inp" id="grs_d" rows="2" maxlength="300" placeholder="Bu rapor neyi gösteriyor?">${esc(mode === 'edit' ? r.desc || '' : tp ? tp.s : '')}</textarea></div>
+      <div class="ws-fld"><div class="lb">Kapsam</div><div class="gr-sdl-sc" data-grssc>${ic(grScopeIc(scope.kind))}<b>${esc(sl)}</b>
+        <span>${mode === 'edit' ? 'Kapsamı değiştirmek için raporu açıp ayarla ve kaydet' : 'Raporu açan herkes yalnız erişebildiği veriyi görür'}</span></div></div>
+      <fieldset class="ws-fld gr-sdl-rad"><legend class="lb">Görünürlük</legend>
+        <label><input type="radio" name="grs_v" value="private" ${vis === 'private' ? 'checked' : ''}><span><b>${ic('lock')}Yalnız ben</b><small>Rapor listende “Benim raporlarım”da durur.</small></span></label>
+        <label class="${canShare ? '' : 'dis'}"><input type="radio" name="grs_v" value="shared" ${vis === 'shared' ? 'checked' : ''} ${canShare ? '' : 'disabled'}><span><b>${ic('users')}${esc(shareL)}</b><small>${canShare
+          ? 'Kapsamına erişebilen herkes listesinde görür ve açar; değiştirmek ve silmek sende kalır.'
+          : viewer ? 'İzleyici raporu paylaşamaz.' : scope.kind === 'all' ? 'Tüm sistemle yalnızca sistem yöneticisi paylaşır: paylaşmak için kapsam olarak çalışma alanı ya da proje seç.'
+          : 'Bu kapsamda rolün yok: yalnız rolün olan proje ya da alanla paylaşabilirsin.'}</small></span></label></fieldset>
+      ${mode === 'edit' ? '' : `<fieldset class="ws-fld gr-sdl-rad"><legend class="lb">Dönem</legend>
+        ${thisMon ? `<label><input type="radio" name="grs_p" value="rel" checked><span><b>${ic('recent')}Her açılışta içinde bulunulan ay</b><small>Göreli dönem: rapor hep güncel ayı gösterir.</small></span></label>` : ''}
+        <label><input type="radio" name="grs_p" value="fix" ${thisMon ? '' : 'checked'}><span><b>${ic('cal')}Sabit: ${esc(per.label)}</b><small>Rapor hep bu dönemi gösterir.</small></span></label></fieldset>`}
+    </div>
+    <div class="m-f"><button class="btn" data-close>Vazgeç</button><button class="btn pri" id="grs_ok">${ic('save')}Kaydet</button></div>`, 'narrow ws-dlg');
+  wsDialog('grs_t');
+  const inp = $('#grs_n');
+  const setErr = msg => { $('#grs_ne').innerHTML = msg ? ic('alert') + esc(msg) : ''; $('#grs_nf').classList.toggle('has-err', !!msg); inp.setAttribute('aria-invalid', msg ? 'true' : 'false'); };
+  inp.oninput = () => { $('#grs_nc').textContent = `${inp.value.length}/80`; if (inp.value.trim()) setErr(''); };
+  const submit = () => {
+    const name = inp.value.trim().replace(/\s+/g, ' ');
+    if (!name || name.length > 80) { setErr('Rapor adı gerekli (en fazla 80 karakter)'); return inp.focus(); }
+    const desc = $('#grs_d').value.trim().slice(0, 300);
+    const v = $('input[name="grs_v"]:checked')?.value === 'shared' && canShare ? 'shared' : 'private';
+    DB.reports ||= [];
+    if (mode === 'edit') {
+      Object.assign(r, { name, vis: v, updatedAt: Date.now() });
+      if (desc) r.desc = desc; else delete r.desc;
+      save(); closeModal(); render(); return toast('Rapor güncellendi');
+    }
+    const now = Date.now(), rec = { id: uid('rp'), name, ownerId: CU().id, vis: v, scope: { ...scope },
+      cfg: grCfgOf(f, grTab(), $('input[name="grs_p"]:checked')?.value === 'rel' ? 'rel' : 'fix'), createdAt: now, updatedAt: now };
+    if (desc) rec.desc = desc;
+    if (tp) rec.tpl = tp.id;
+    DB.reports.push(rec);
+    grSetCur(rec.id); grNoteRecent(rec.id);
+    save(); closeModal(); render(); toast(v === 'shared' ? 'Rapor kaydedildi ve paylaşıldı' : 'Rapor kaydedildi');
+  };
+  $('#grs_ok').onclick = submit;
+  inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); submit(); } };
+}
+/* Kopyala: kişisel kopya (paylaşım kopyalanmaz). Hazır rapor: şablon uygulanır, ad sorulur. */
+function grCopy(id) {
+  if (typeof id === 'string' && id.startsWith('tpl:')) {
+    if (!grTpl(id.slice(4), { quiet: true })) return;
+    return grSaveDlg('new', null, id.slice(4));
+  }
+  const r = grRep(id); if (!r) return;
+  const now = Date.now(), rec = { ...JSON.parse(JSON.stringify(r)), id: uid('rp'), name: `${r.name} (kopya)`.slice(0, 80), ownerId: CU().id,
+    vis: 'private', createdAt: now, updatedAt: now };
+  (DB.reports ||= []).push(rec);
+  save(); render(); toast(`Kopya oluşturuldu: ${rec.name}`);
+  setTimeout(() => $(`[data-grri="${CSS.escape(rec.id)}"] [data-gropen]`)?.focus(), 60);
+}
+function grDel(id) {
+  const r = grRep(id); if (!r) return;
+  if (!grCanEdit(r)) return toast('Raporu yalnızca sahibi ya da sistem yöneticisi silebilir', { warn: true });
+  if (!confirm(`“${r.name}” raporu silinsin mi?${r.vis === 'shared' ? '\n\nPaylaşılan rapor herkesin listesinden kalkar.' : ''}`)) return;
+  DB.reports = (DB.reports || []).filter(x => x.id !== id);
+  for (const k of ['grCur', 'grCurP']) if (DB.ui[k] === id) delete DB.ui[k];
+  if (Array.isArray(DB.ui.grRecent)) DB.ui.grRecent = DB.ui.grRecent.filter(x => x !== id);
+  save(); render(); toast('Rapor silindi');
+}
+/* Rapor listesi: son açılanlar, hazır, benim, paylaşılan; arama. Proje sekmesinde o projeye uyan raporlar (tüm sistem,
+   projenin alanı ya da proje kapsamlı) — açıldığında kapsam yine projeye kilitli. */
+function grList() {
+  const me = CU()?.id, inP = grInProj(), pr = P();
+  const fit = r => !inP || (r.scope?.kind || 'all') === 'all' || (r.scope.kind === 'project' && r.scope.id === pr.id) || (r.scope.kind === 'ws' && r.scope.id === wsOf(pr));
+  const all = grReports().filter(fit);
+  const byName = (a, b) => String(a.name).localeCompare(String(b.name), 'tr');
+  const mine = all.filter(r => r.ownerId === me).sort(byName);
+  const shared = all.filter(r => r.ownerId !== me && r.vis === 'shared').sort(byName);
+  const lc = x => String(x || '').toLocaleLowerCase('tr');
+  const when = t => typeof t === 'number' ? new Date(t).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+  const tplRow = t => `<li class="gr-ri tpl" data-grri="tpl:${t.id}" data-grq="${esc(lc(t.l + ' ' + t.s))}">
+      <span class="ti">${ic(t.icon)}</span>
+      <div class="tx"><button type="button" class="gr-rt" data-gropen="tpl:${t.id}">${esc(t.l)}</button><span class="s">${esc(t.s)}</span>
+        <span class="meta"><span class="gr-bdg">${ic('lock')}Hazır · salt okunur</span><span class="gr-bdg" title="Kapsam, süzgeçler ve dönem açan kişiden gelir">${ic('sliders')}Parametrik</span></span></div>
+      <div class="acts"><button type="button" class="btn sm" data-gropen="tpl:${t.id}">Aç</button>
+        <button type="button" class="btn sm" data-grcopy="tpl:${t.id}">${ic('copy')}Kopyala ve düzenle</button></div></li>`;
+  const repRow = r => { const can = grCanEdit(r), sc = r.scope || { kind: 'all' };
+    return `<li class="gr-ri" data-grri="${esc(r.id)}" data-grq="${esc(lc(r.name + ' ' + (r.desc || '')))}">
+      <span class="ti ${r.vis === 'shared' ? 'sh' : ''}">${ic(r.vis === 'shared' ? 'users' : 'star')}</span>
+      <div class="tx"><button type="button" class="gr-rt" data-gropen="${esc(r.id)}">${esc(r.name)}</button>${r.desc ? `<span class="s">${esc(r.desc)}</span>` : ''}
+        <span class="meta"><span class="gr-bdg">${ic(grScopeIc(sc.kind))}${esc(grScopeName(sc.kind, sc.id))}</span>
+          <span class="gr-bdg ${r.vis === 'shared' ? 'sh' : ''}">${ic(r.vis === 'shared' ? 'users' : 'lock')}${r.vis === 'shared' ? 'Paylaşılan' : 'Yalnız ben'}</span>
+          ${r.ownerId !== me ? `<span class="gr-own">${user(r.ownerId) ? avat(r.ownerId) : ''}${esc(user(r.ownerId)?.name || 'Bilinmeyen')}</span>` : ''}
+          ${r.updatedAt ? `<span class="gr-when">${esc(when(r.updatedAt))}</span>` : ''}</span></div>
+      <div class="acts"><button type="button" class="btn sm" data-gropen="${esc(r.id)}">Aç</button>
+        ${can ? `<button type="button" class="btn sm" data-gredit="${esc(r.id)}">${ic('pencil')}Düzenle</button>` : ''}
+        <button type="button" class="btn sm" data-grcopy="${esc(r.id)}">${ic('copy')}Kopyala</button>
+        ${can ? `<button type="button" class="btn sm danger" data-grdel="${esc(r.id)}" aria-label="${esc(r.name)}: sil">${ic('trash')}Sil</button>` : ''}</div></li>`; };
+  const recent = (Array.isArray(DB.ui.grRecent) ? DB.ui.grRecent : []).map(id => typeof id !== 'string' ? null
+    : id.startsWith('tpl:') ? (t => t && { id, name: t.l, icon: t.icon })(GR_TEMPLATES.find(t => 'tpl:' + t.id === id))
+    : (r => r && { id, name: r.name, icon: r.vis === 'shared' ? 'users' : 'star' })(all.find(r => r.id === id))).filter(Boolean).slice(0, 5);
+  const sec = (k, icn, h, n, body, empty) => `<section class="gr-card gr-rls" data-grsec="${k}" aria-labelledby="grh-${k}">
+      <div class="gr-card-h"><span class="gr-rlh" id="grh-${k}">${ic(icn)}${h}</span><span class="meta"><b>${n}</b> rapor</span></div>
+      ${n ? `<ul class="gr-rl">${body}</ul>` : `<div class="gr-rl-empty">${empty}</div>`}</section>`;
+  return `<div class="gr-rlbar"><label class="gr-rlq">${ic('search')}<input class="inp" type="search" id="grQ" placeholder="Raporlarda ara" aria-label="Raporlarda ara" autocomplete="off"></label>
+      <span class="spacer"></span><span class="gr-fhint">${ic('info')}${inP ? `Bu projeye uyan raporlar · kapsam ${esc(pr.key)} projesine kilitli açılır` : 'Raporlar yalnız ayardır: herkes erişebildiği veriyi görür'}</span>
+      <button type="button" class="btn pri" data-grnew>${ic('plus')}Yeni rapor</button></div>
+    ${recent.length ? `<section class="gr-rrec" aria-labelledby="grh-rec"><span class="gr-rlh" id="grh-rec">${ic('recent')}Son açılanlar</span>
+      <div class="gr-rchips">${recent.map(x => `<button type="button" class="gr-rchip" data-gropen="${esc(x.id)}">${ic(x.icon)}<span>${esc(x.name)}</span></button>`).join('')}</div></section>` : ''}
+    ${sec('tpl', 'zap', 'Hazır raporlar', GR_TEMPLATES.length, GR_TEMPLATES.map(tplRow).join(''), '')}
+    ${sec('mine', 'star', 'Benim raporlarım', mine.length, mine.map(repRow).join(''), `Henüz kaydettiğin rapor yok. “Özet tablo” sekmesinde kapsamı, boyutları ve süzgeçleri seç, sonra “Raporu kaydet”e bas.`)}
+    ${sec('shared', 'users', 'Paylaşılan', shared.length, shared.map(repRow).join(''), 'Seninle paylaşılan rapor yok. Paylaşılan raporu yalnız kapsamına (çalışma alanı ya da proje) erişebilenler görür.')}
+    <div class="gr-rl-empty gr-rl-none" id="grQNone" hidden>Aramayla eşleşen rapor yok.</div>`;
+}
+function grFilterList(q) {
+  q = String(q || '').trim().toLocaleLowerCase('tr');
+  let any = false;
+  $$('#view .gr-rls').forEach(s => {
+    let n = 0;
+    s.querySelectorAll('.gr-ri').forEach(li => { const on = !q || li.dataset.grq.includes(q); li.hidden = !on; if (on) n++; });
+    s.hidden = !!q && !n; if (n) any = true;
+  });
+  const rr = $('#view .gr-rrec'); if (rr) rr.hidden = !!q;
+  const none = $('#grQNone'); if (none) none.hidden = !q || any;
 }
 
 function grSure(R) {
-  const { rD, cD, rows, cols, cells, rT, cT, grand, rowK, colK, D } = R;
-  const dims = Object.entries(D);
+  const { rD, cD, rows, cols, cells, rT, cT, grand, rowK, colK, D, ms } = R;
+  const dims = Object.entries(D), fmt = v => grFmt(ms, v), unit = grUnit(ms), hrs = ms === 'hours';
+  const unitW = hrs ? 'saat' : ms === 'points' ? 'puan' : 'iş';
   let max = 0;
   if (cD) cells.forEach(m => m.forEach(v => { if (v > max) max = v; })); else rT.forEach(v => { if (v > max) max = v; });
   const heat = v => v && max ? `background:color-mix(in srgb,var(--gr-heat) ${(v / max * 12).toFixed(1)}%,transparent)` : '';
@@ -8860,65 +9285,99 @@ function grSure(R) {
   const btn = (r, c, v, cls = '') => {
     const on = !!cs && cs.r === String(r) && cs.c === String(c);
     return `<button type="button" class="gr-c ${v ? '' : 'z'} ${cls}" data-grr="${esc(r)}" data-grc="${esc(c)}" aria-pressed="${on}" ${cls ? '' : `style="${heat(v)}"`}
-      aria-label="${esc(r === '*' ? 'Toplam' : rD.n(r))}${c === '*' || !cD ? '' : ' × ' + esc(cD.n(c))}: ${grH(v)} saat" ${v ? '' : 'disabled'}>${v ? grH(v) : '·'}</button>`;
+      aria-label="${esc(r === '*' ? 'Toplam' : rD.n(r))}${c === '*' || !cD ? '' : ' × ' + esc(cD.n(c))}: ${fmt(v)} ${unitW}" ${v ? '' : 'disabled'}>${v ? fmt(v) : '·'}</button>`;
   };
   const opt = (sel, none) => (none ? `<option value="" ${sel === '' ? 'selected' : ''}>Yok</option>` : '')
     + GR_DIM_GROUPS.map(([g, gl]) => { const ds = dims.filter(([, o]) => (o.g || 'base') === g);
       return ds.length ? `<optgroup label="${gl}">${ds.map(([k, o]) => `<option value="${esc(k)}" ${sel === k ? 'selected' : ''}>${esc(o.l)}</option>`).join('')}</optgroup>` : ''; }).join('');
   const fieldDim = [rowK, colK].some(k => k === 'billType' || k === 'billable' || String(k).startsWith('cf:'));
+  const uAv = c => c === GR_UNK ? '<span class="gr-unk" aria-hidden="true">?</span>' : c === GR_NONE ? '<span class="gr-unk" aria-hidden="true">–</span>' : avat(c);
   const head = `<tr><th class="rh dimh" scope="col">${esc(rD.l)}${cD ? `<span>/</span>${esc(cD.l)}` : ''}</th>
-    ${cols.map(c => `<th scope="col" title="${esc(cD.n(c))}"><span class="ph">${colK === 'user' ? (c === GR_UNK ? '<span class="gr-unk" aria-hidden="true">?</span>' : avat(c)) : ''}${esc(cD.n(c))}${cD.tag ? grTag(cD.tag(c)) : ''}</span></th>`).join('')}
+    ${cols.map(c => `<th scope="col" title="${esc(cD.n(c))}"><span class="ph">${colK === 'user' ? uAv(c) : ''}${esc(cD.n(c))}${cD.tag ? grTag(cD.tag(c)) : ''}</span></th>`).join('')}
     <th scope="col" class="tot">Toplam</th></tr>`;
   const body = rows.map(r => `<tr><th scope="row" class="rh">${grDimLabel(rD, rowK, r)}</th>
     ${cols.map(c => `<td>${btn(r, c, cells.get(r)?.get(c) || 0)}</td>`).join('')}
     <td class="tot">${btn(r, '*', rT.get(r), 'b')}</td></tr>`).join('');
   const foot = `<tr><th scope="row" class="rh">Toplam</th>${cols.map(c => `<td>${btn('*', c, cT.get(c), 'b')}</td>`).join('')}
     <td class="tot grand">${btn('*', '*', grand, 'b')}</td></tr>`;
-  const nP = R.projs.size;
-  return `<div class="gr-kpis">${grKpi('clock', 'Toplam süre', `<span data-grtotal="${grR2(grand)}">${grH(grand)}</span>`)}
+  const nP = R.projs.size, ch = R.f.ch === 'bar' ? 'bar' : 'table';
+  const kpis = hrs ? `${grKpi('clock', 'Toplam süre', `<span data-grtotal="${grR2(grand)}">${grH(grand)}</span>`)}
       ${grKpi('cal', 'Adam-gün', grH(grand / H_PER_DAY), `${H_PER_DAY} saatlik gün`, '')}
       ${grKpi('issues', 'Kayıt', R.logs.length.toLocaleString('tr-TR'), '', '')}
-      ${grKpi('tag', 'İş', R.issues.size.toLocaleString('tr-TR'), `${nP} projede`, '')}</div>
-    <section class="gr-card" aria-label="Süre tablosu">
+      ${grKpi('tag', 'İş', R.issues.size.toLocaleString('tr-TR'), `${nP} projede`, '')}`
+    : `${grKpi(ms === 'points' ? 'star' : 'issues', ms === 'points' ? 'Toplam puan' : 'İş sayısı', `<span data-grtotal="${grR2(grand)}">${fmt(grand)}</span>`, 'oluşturulma tarihi dönemde', '')}
+      ${grKpi('tag', 'İş', R.issues.size.toLocaleString('tr-TR'), `${nP} projede`, '')}
+      ${grKpi('users', 'Atanmamış', R.logs.filter(x => !x.w.userId).length.toLocaleString('tr-TR'), 'iş', '')}
+      ${grKpi('reports', ms === 'points' ? 'İş başına puan' : 'Puanlı iş', ms === 'points' ? grFmt('points', R.issues.size ? grand / R.issues.size : 0) : R.logs.filter(x => +x.i.points > 0).length.toLocaleString('tr-TR'), '', '')}`;
+  return `<div class="gr-kpis">${kpis}</div>
+    ${ch === 'bar' ? grChart(R) : ''}
+    <section class="gr-card" aria-label="${hrs ? 'Süre tablosu' : 'Özet tablo'}">
       <div class="gr-card-h"><div class="gr-dims">
         <label class="gr-dim">Satır<select class="inp" data-grdim="row">${opt(rowK)}</select></label>
         <button type="button" class="gr-swap" data-grswap aria-label="Satır ve sütunu değiştir" title="Satır ve sütunu değiştir" ${cD ? '' : 'disabled'}>${ic('swap')}</button>
         <label class="gr-dim">Sütun<select class="inp" data-grdim="col">${opt(colK, true)}</select></label></div>
+        <label class="gr-dim gr-msr">Ölçü<select class="inp" data-grmeasure aria-label="Ölçü">${GR_MEASURES.map(([k, l]) => `<option value="${k}" ${ms === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+        <div class="cu-seg gr-chseg" role="radiogroup" aria-label="Grafik türü">${GR_CHARTS.map(([k, l, icn]) =>
+          `<button type="button" role="radio" data-grch="${k}" aria-checked="${ch === k}">${ic(icn)}${l}</button>`).join('')}</div>
         <span class="meta"><b>${rows.length}</b> ${esc(rD.l.toLocaleLowerCase('tr'))}${cD ? ` × <b>${cols.length}</b> ${esc(cD.l.toLocaleLowerCase('tr'))}` : ''} · ${esc(R.per.label)}</span>
         <span class="spacer"></span>
         <button type="button" class="btn gr-xls" data-grxls>${ic('issues')}Excel'e aktar</button></div>
       <div class="gr-pv-wrap" id="grPvWrap"><table class="gr-pv" id="grPv"><thead>${head}</thead><tbody>${body}</tbody><tfoot>${foot}</tfoot></table></div>
-      <div class="gr-foot">${ic('info')}Bir hücreye tıkla ya da Enter'a bas: o kesitin süre kayıtları altta açılır.</div>
+      <div class="gr-foot">${ic('info')}${hrs ? 'Bir hücreye tıkla ya da Enter\'a bas: o kesitin süre kayıtları altta açılır.'
+        : `Bir hücreye tıkla: o kesitin işleri altta açılır. ${ms === 'points' ? 'Puan' : 'İş sayısı'}nda dönem işin oluşturulma tarihidir, kişi atanandır.`}</div>
       ${fieldDim ? `<div class="gr-foot gr-note" data-grnote>${ic('info')}"Belirtilmemiş": alanı boş işler ve alanın kapalı olduğu projeler. Faturalama boş ya da kapalıysa "Faturalanacak" sayılır.</div>` : ''}
     </section>${grDrill(R)}`;
+}
+
+/* Çubuk grafik: satır toplamları (ilk 12); sütun boyutu varsa ilk 6 sütun yığılır, kalanı "Diğer". Renkler sabit palet. */
+const GR_PAL = ['#2563EB', '#16A34A', '#F59E0B', '#DC2626', '#7C3AED', '#0891B2', '#94A3B8'];
+function grChart(R) {
+  const { rows, cols, cells, rT, rD, cD, ms } = R, top = rows.slice(0, 12), fmt = v => grFmt(ms, v);
+  const max = Math.max(0, ...top.map(r => rT.get(r) || 0)) || 1;
+  const segC = cD ? cols.slice(0, 6) : [], other = cD && cols.length > 6;
+  const bar = r => {
+    const tot = rT.get(r) || 0, rest = tot - segC.reduce((a, c) => a + (cells.get(r)?.get(c) || 0), 0);
+    const segs = cD ? [...segC.map((c, k) => [cD.n(c), cells.get(r)?.get(c) || 0, GR_PAL[k]]), ...(other && rest > 0.0001 ? [['Diğer', rest, GR_PAL[6]]] : [])]
+      : [[rD.l, tot, GR_PAL[0]]];
+    return `<li><span class="lb" title="${esc(rD.n(r))}">${esc(rD.n(r))}</span>
+      <span class="tr" role="img" aria-label="${esc(rD.n(r))}: ${fmt(tot)} ${grUnit(ms)}"><span class="fill" style="width:${(tot / max * 100).toFixed(2)}%">${segs.filter(x => x[1] > 0).map(x =>
+        `<i style="flex:${x[1]};background:${safeColor(x[2])}" title="${esc(x[0])}: ${fmt(x[1])}"></i>`).join('')}</span></span><b>${fmt(tot)}</b></li>`;
+  };
+  const legend = cD ? `<div class="gr-leg">${[...segC.map((c, k) => [cD.n(c), GR_PAL[k]]), ...(other ? [['Diğer', GR_PAL[6]]] : [])].map(([n, c]) =>
+    `<span><i style="background:${safeColor(c)}"></i>${esc(n)}</span>`).join('')}</div>` : '';
+  return `<section class="gr-card gr-chart" id="grChart" aria-labelledby="grChT">
+    <div class="gr-card-h"><b id="grChT">${esc(rD.l)}${cD ? ' × ' + esc(cD.l) : ''}</b><span class="meta">${rows.length > 12 ? `İlk 12 / ${rows.length} satır` : `${rows.length} satır`} · ${grUnit(ms)}</span></div>
+    <ul class="gr-bars">${top.map(bar).join('')}</ul>${legend}</section>`;
 }
 
 const GR_DRILL_MAX = 500;
 function grDrill(R) {
   const cs = GR.cell; if (!cs) return '';
-  const { rD, cD } = R;
+  const { rD, cD, ms } = R, hrs = ms === 'hours', fmt = v => grFmt(ms, v);
   const list = R.logs.filter(x => (cs.r === '*' || String(rD.k(x.w, x.i, x.p) ?? GR_NONE) === cs.r)
     && (cs.c === '*' || !cD || String(cD.k(x.w, x.i, x.p) ?? GR_NONE) === cs.c));
   if (!list.length) { GR.cell = null; return ''; }
   list.sort((a, b) => a.w.date.localeCompare(b.w.date) || String(a.i.key).localeCompare(String(b.i.key)));
-  const tot = list.reduce((a, x) => a + (+x.w.hours || 0), 0);
+  const tot = list.reduce((a, x) => a + (+x.v || 0), 0);
   const cellV = cs.r === '*' && cs.c === '*' ? R.grand : cs.c === '*' || !cD ? R.rT.get(cs.r) : cs.r === '*' ? R.cT.get(cs.c) : R.cells.get(cs.r)?.get(cs.c);
   const same = grR2(cellV) === grR2(tot);
   const ttl = [cs.r === '*' ? 'Tüm ' + rD.l.toLocaleLowerCase('tr') : rD.n(cs.r), cD && cs.c !== '*' ? cD.n(cs.c) : ''].filter(Boolean);
   const nI = new Set(list.map(x => x.i.id)).size;
   const shown = list.slice(0, GR_DRILL_MAX);
+  const who = id => id == null ? '<span class="gr-unk" aria-hidden="true">–</span>Atanmamış'
+    : `${R.X.UM.has(id) ? avat(id) : '<span class="gr-unk" aria-hidden="true">?</span>'}${esc(R.X.UM.get(id)?.name || 'Bilinmeyen')}`;
   return `<section class="gr-card gr-drill" id="grDrill" aria-labelledby="grDrT">
     <div class="gr-card-h"><div class="gr-dt"><b id="grDrT">${ttl.map(esc).join(' <span class="x">×</span> ')}</b>
-      <span class="s">${esc(R.per.label)} · ${list.length} kayıt · ${nI} iş</span></div>
-      <span class="gr-dsum" data-grdsum="${grR2(tot)}">${grH(tot)}<small>sa</small></span>
-      <button type="button" class="iconbtn gr-close" data-grclose aria-label="Kayıt listesini kapat">${ic('x')}</button></div>
-    <table class="gr-dl"><thead><tr><th>Tarih</th><th>Kişi</th><th>İş</th><th>Açıklama</th><th class="r">Saat</th></tr></thead>
-    <tbody>${shown.map(({ w, i }) => `<tr><td class="d">${trDate(w.date)}</td>
-      <td class="p"><span class="who">${R.X.UM.has(w.userId) ? avat(w.userId) : '<span class="gr-unk" aria-hidden="true">?</span>'}${esc(R.X.UM.get(w.userId)?.name || 'Bilinmeyen')}</span></td>
+      <span class="s">${esc(R.per.label)} · ${hrs ? `${list.length} kayıt · ` : ''}${nI} iş</span></div>
+      <span class="gr-dsum" data-grdsum="${grR2(tot)}">${fmt(tot)}<small>${grUnit(ms)}</small></span>
+      <button type="button" class="iconbtn gr-close" data-grclose aria-label="${hrs ? 'Kayıt' : 'İş'} listesini kapat">${ic('x')}</button></div>
+    <table class="gr-dl"><thead><tr><th>${hrs ? 'Tarih' : 'Oluşturulma'}</th><th>${hrs ? 'Kişi' : 'Atanan'}</th><th>İş</th><th>${hrs ? 'Açıklama' : 'Durum'}</th><th class="r">${hrs ? 'Saat' : ms === 'points' ? 'Puan' : 'İş'}</th></tr></thead>
+    <tbody>${shown.map(({ w, i, v }) => `<tr><td class="d">${trDate(w.date)}</td>
+      <td class="p"><span class="who">${who(w.userId)}</span></td>
       <td class="i"><span class="gr-is"><button type="button" class="gr-key" data-open="${esc(i.id)}">${esc(i.key)}</button><span>${esc(i.summary)}</span></span></td>
-      <td class="a">${esc(w.comment || '')}</td><td class="h r">${grH(w.hours)}</td></tr>`).join('')}</tbody>
-    <tfoot><tr><td class="lbl">Toplam</td><td class="sp" colspan="3">${list.length > GR_DRILL_MAX ? `İlk ${GR_DRILL_MAX} kayıt gösteriliyor; tümü Excel'de.` : ''}</td>
-      <td class="h r">${same ? `<span class="eq">${ic('check')}hücreyle aynı</span>` : ''}${grH(tot)}</td></tr></tfoot></table></section>`;
+      <td class="a">${esc(hrs ? w.comment || '' : R.X.STM.get(i.statusId)?.name || '')}</td><td class="h r">${fmt(v)}</td></tr>`).join('')}</tbody>
+    <tfoot><tr><td class="lbl">Toplam</td><td class="sp" colspan="3">${list.length > GR_DRILL_MAX ? `İlk ${GR_DRILL_MAX} ${hrs ? 'kayıt' : 'iş'} gösteriliyor; tümü Excel'de.` : ''}</td>
+      <td class="h r">${same ? `<span class="eq">${ic('check')}hücreyle aynı</span>` : ''}${fmt(tot)}</td></tr></tfoot></table></section>`;
 }
 
 /* Faturalanabilir saat: cari başına Faturalanacak / Faturalanmayacak / Toplam / Oran; "Cari bağlı değil" en altta. */
@@ -8964,12 +9423,14 @@ function grFatura(R) {
 /* ---- Excel: "Özet" (ekrandaki tablo + üstte dönem/süzgeçler) ve "Detay" (her kayıt) ---- */
 function grExcel() {
   const R = grCompute(), tab = grTab();
-  if (!R.logs.length) return toast('Aktarılacak süre kaydı yok: bu süzgeçlerle süre kaydı bulunmuyor', { warn: true });
-  const X = R.X, f = R.f;
+  if (!R.logs.length) return toast(R.ms === 'hours' ? 'Aktarılacak süre kaydı yok: bu süzgeçlerle süre kaydı bulunmuyor' : 'Aktarılacak iş yok: bu süzgeçlerle iş bulunmuyor', { warn: true });
+  const X = R.X, f = R.f, hrs = R.ms === 'hours', mL = GR_MEASURES.find(m => m[0] === R.ms)[1];
   const LBL = { ws: 'Alan', proj: 'Proje', cu: 'Cari', user: 'Kişi', type: 'İş tipi', bill: 'Faturalama', cfv: R.D[f.cfk]?.l || 'Alan' };
   const val = { ws: id => wsById(id)?.name, proj: id => X.PM.get(id)?.name, cu: id => id === GR_NONE ? 'Cari bağlı değil' : X.CUM.get(id)?.name,
-    user: id => id === GR_UNK ? 'Bilinmeyen' : X.UM.get(id)?.name, type: t => TYPE[t]?.[2], bill: b => b, cfv: v => R.D[f.cfk]?.n(v) };
-  const top = [[tab === 'fatura' ? 'Genel rapor — Faturalanabilir saat' : 'Genel rapor — Süre'], ['Dönem', R.per.label],
+    user: id => id === GR_UNK ? 'Bilinmeyen' : id === GR_NONE ? 'Atanmamış' : X.UM.get(id)?.name, type: t => TYPE[t]?.[2], bill: b => b, cfv: v => R.D[f.cfk]?.n(v) };
+  const cur = grCurRep(), sk = grSk(f);
+  const top = [[(cur ? cur.name + ' — ' : '') + (tab === 'fatura' ? 'Genel rapor — Faturalanabilir saat' : hrs ? 'Genel rapor — Süre' : 'Genel rapor — ' + mL)],
+    ['Kapsam', sk === 'all' ? 'Tüm sistem' : grScopeName(sk, f.sid)], ['Dönem', R.per.label + (hrs ? '' : ' (işin oluşturulma tarihi)')],
     ['Süzgeçler', GR_FKEYS.filter(k => f[k]).map(k => `${LBL[k]}: ${val[k](f[k]) || '—'}`).join(' · ') || 'Yok'], []];
   let sum;
   if (tab === 'fatura') {
@@ -8989,14 +9450,15 @@ function grExcel() {
   /* Seçili proje alanı boyutları (satır/sütun) ayrıntıda Saat'ten sonra sütun olur. */
   const cfx = [...new Set([R.rowK, R.colK].filter(k => String(k).startsWith('cf:') && R.D[k]))];
   const tv = (w, i, p) => { const v = R.D.billType.k(w, i, p); return v === GR_NONE ? '' : v; };
-  const detail = [['Cari', 'Alan', 'Proje', 'Tarih', 'Kişi', 'İş', 'Açıklama', 'Tür', 'Faturalama', 'Saat', ...cfx.map(k => R.D[k].l)],
-    ...det.map(({ w, i, p, cu, b }) => [cu === GR_NONE ? 'Cari bağlı değil' : (X.CUM.get(cu)?.name || ''), wsById(X.WS.get(p.id))?.name || '',
-      p.name, trDate(w.date), X.UM.get(w.userId)?.name || 'Bilinmeyen', `${i.key} — ${i.summary}`, w.comment?.trim() || '',
-      tv(w, i, p), b, grR2(w.hours), ...cfx.map(k => { const v = R.D[k].k(w, i, p); return v === GR_NONE ? '' : R.D[k].n(v); })]),
+  const detail = [['Cari', 'Alan', 'Proje', hrs ? 'Tarih' : 'Oluşturulma', hrs ? 'Kişi' : 'Atanan', 'İş', hrs ? 'Açıklama' : 'Durum', 'Tür', 'Faturalama', hrs ? 'Saat' : mL, ...cfx.map(k => R.D[k].l)],
+    ...det.map(({ w, i, p, cu, b, v: val }) => [cu === GR_NONE ? 'Cari bağlı değil' : (X.CUM.get(cu)?.name || ''), wsById(X.WS.get(p.id))?.name || '',
+      p.name, trDate(w.date), w.userId == null ? 'Atanmamış' : X.UM.get(w.userId)?.name || 'Bilinmeyen', `${i.key} — ${i.summary}`,
+      hrs ? w.comment?.trim() || '' : X.STM.get(i.statusId)?.name || '',
+      tv(w, i, p), b, grR2(val), ...cfx.map(k => { const v = R.D[k].k(w, i, p); return v === GR_NONE ? '' : R.D[k].n(v); })]),
     ['', '', '', '', '', '', '', '', 'TOPLAM', grR2(R.grand)]];
   const blob = makeXlsx([{ name: 'Özet', rows: sum, widths: [34, 16, 16, 16, 16, 12] },
     { name: 'Detay', rows: detail, widths: [26, 18, 24, 12, 20, 36, 40, 12, 16, 10] }]);
-  download(blob, `genel-rapor-${tab}-${R.per.file}.xlsx`);
+  download(blob, `genel-rapor-${tab}${hrs ? '' : '-' + R.ms}-${R.per.file}.xlsx`);
   toast('Excel dosyası hazırlandı');
 }
 
@@ -9005,9 +9467,30 @@ function grSet(fn) { fn(grF()); save(); render(); }
 function wireGr() {
   const v = $('#view');
   v.addEventListener('click', e => {
-    if (DB.ui.view !== 'greports') return;
     const t = e.target, q = s => t.closest(s);
     let b;
+    /* Proje içi Raporlar: "Proje özeti" | "Parametrik raporlar" */
+    if (DB.ui.view === 'reports' && (b = q('[data-rptab]'))) { DB.ui.rpTab = b.dataset.rptab === 'param' ? 'param' : 'ozet'; GR.cell = null; save(); return render(); }
+    if (!grActive()) return;
+    if ((b = q('[data-grgo]'))) { GR.cell = null; return grGoTab(b.dataset.grgo); }
+    if ((b = q('[data-grsk]'))) return grSet(f => {
+      const k = b.dataset.grsk, base = grBase();
+      delete f.ws; delete f.proj; GR.cell = null;
+      if (k === 'ws') { const ids = [...new Set(base.map(wsOf))].filter(id => wsById(id)); const pick = ids.includes(f.sid) ? f.sid : ids.includes(DB.ui.workspace) ? DB.ui.workspace : P() && ids.includes(wsOf(P())) ? wsOf(P()) : ids[0];
+        if (pick) { f.sk = 'ws'; f.sid = pick; } else { delete f.sk; delete f.sid; } }
+      else if (k === 'project') { const pick = base.some(p => p.id === f.sid) ? f.sid : base.some(p => p.id === DB.ui.project) ? DB.ui.project : base[0]?.id;
+        if (pick) { f.sk = 'project'; f.sid = pick; } else { delete f.sk; delete f.sid; } }
+      else { delete f.sk; delete f.sid; }
+    });
+    if ((b = q('[data-grch]'))) return grSet(f => { if (b.dataset.grch === 'bar') f.ch = 'bar'; else delete f.ch; });
+    if (q('[data-grsaveas]')) return grSaveDlg('new', grCurRep()?.id);
+    if (q('[data-grsave]')) return grSaveCur();
+    if (q('[data-grunload]')) { grSetCur(null); save(); return render(); }
+    if (q('[data-grnew]')) { grSetCur(null); GR.cell = null; return grGoTab('sure'); }
+    if ((b = q('[data-gropen]'))) return grOpen(b.dataset.gropen);
+    if ((b = q('[data-gredit]'))) return grSaveDlg('edit', b.dataset.gredit);
+    if ((b = q('[data-grcopy]'))) return grCopy(b.dataset.grcopy);
+    if ((b = q('[data-grdel]'))) return grDel(b.dataset.grdel);
     if ((b = q('[data-grrange]'))) return grSet(f => { f.range = b.dataset.grrange; if (f.range === 'custom' && !f.from) { const p = grPeriod(); f.from = p.from; f.to = p.to; } });
     if ((b = q('[data-grm]'))) return grSet(f => { const n = +b.dataset.grm; f.month = n ? shiftMonth(grPeriod().month || TODAY.slice(0, 7), n) : TODAY.slice(0, 7); });
     if ((b = q('[data-grx]'))) return grSet(f => { delete f[b.dataset.grx]; if (b.dataset.grx === 'cfv') delete f.cfk; });
@@ -9026,9 +9509,12 @@ function wireGr() {
       if (!same) $('#grDrill')?.scrollIntoView({ block: 'nearest' });
     }
   });
+  v.addEventListener('input', e => { if (grActive() && e.target.id === 'grQ') grFilterList(e.target.value); });
   v.addEventListener('change', e => {
-    if (DB.ui.view !== 'greports') return;
+    if (!grActive()) return;
     const t = e.target;
+    if (t.matches('[data-grsid]')) return grSet(f => { if (t.value) f.sid = t.value; delete f.ws; delete f.proj; GR.cell = null; });
+    if (t.matches('[data-grmeasure]')) return grSet(f => { if (t.value && t.value !== 'hours') f.ms = t.value; else delete f.ms; if (f.user === GR_NONE) delete f.user; GR.cell = null; });
     if (t.dataset.grf) return grSet(f => { if (t.value) f[t.dataset.grf] = t.value; else delete f[t.dataset.grf]; GR.cell = null; });
     if (t.dataset.grd) return grSet(f => { if (t.value) f[t.dataset.grd] = t.value; });
     if (t.matches('[data-grcfk]')) return grSet(f => { if (t.value) f.cfk = t.value; else delete f.cfk; delete f.cfv; GR.cell = null; });
@@ -13751,7 +14237,7 @@ function renderSystem() {
 }
 const KIND_TR = { auto: 'Otomatik', manual: 'Elle', 'pre-import': 'İçe aktarma öncesi', 'pre-restore': 'Geri yükleme öncesi' };
 const COL_TR = { issues: 'İş', projects: 'Proje', users: 'Kullanıcı', comments: 'Yorum', worklogs: 'Süre kaydı', sprints: 'Sprint',
-  statuses: 'Durum', fields: 'Özel alan', rules: 'Otomasyon', links: 'Bağlantı', filters: 'Filtre' };
+  statuses: 'Durum', fields: 'Özel alan', rules: 'Otomasyon', links: 'Bağlantı', filters: 'Filtre', reports: 'Rapor' };
 const fmtSize = b => b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
 const fmtWhen = t => new Date(t).toLocaleString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
