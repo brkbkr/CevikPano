@@ -54,7 +54,9 @@ const ID = { B: 'cu_b' + RUN, C: 'cu_c' + RUN, D: 'cu_d' + RUN, X: 'cu_x' + RUN 
       { c: 'users', id: V, op: 'put', data: { username: 'cuv' + R, name: 'Cari İzleyici ' + R, role: 'viewer', active: true, ini: 'Cİ', color: '#64748B' } },
     ] });
     await reloadState();
-    const p = DB.projects.find(x => x.id === 'p1'); p.members = [...new Set([...(p.members || []), M, V])];
+    /* yetki-v2: üye p1/p2'ye proje rolüyle eklenir; projeye cari bağlamak proje ayarıdır (Üye'ye bu adımda açılır). */
+    for (const pid of ['p1', 'p2']) { const p = DB.projects.find(x => x.id === pid); p.roles = { ...(p.roles || {}), [M]: 'member', [V]: 'viewer' };
+      p.members = [...new Set([...(p.members || []), M, V])]; p.perms = { member: { 'project.settings': true } }; }
     save(); await flushAll();
   }, [RUN, M, V]);
   const Mb = await mk('member'); await login(Mb, 'cum' + RUN, 'Baslangic123', 'CariUye12345!');
@@ -214,6 +216,7 @@ const ID = { B: 'cu_b' + RUN, C: 'cu_c' + RUN, D: 'cu_d' + RUN, X: 'cu_x' + RUN 
   const mRej = await Mb.evaluate(async d => { const p = { ...DB.projects.find(x => x.id === 'p2'), customerId: d };
     return (await API.post('/api/sync', { changes: [{ c: 'projects', id: 'p2', op: 'put', data: p }] })).rejected; }, ID.D);
   ok('server: passive customer cannot be linked', mRej?.[0]?.reason === 'Pasif cari projeye bağlanamaz', JSON.stringify(mRej));
+  await A.evaluate(async () => { await reloadState(); for (const pid of ['p1', 'p2']) DB.projects.find(x => x.id === pid).perms = {}; save(); await flushAll(); });
 
   // 9) kart özeti (iş düzeyi cari bağı sayılır): süreler efor raporuyla aynı hesap, açık iş tıklaması aynı sayıyı verir
   await A.evaluate(() => reloadState()); await sleep(300);
