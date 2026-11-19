@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
 import { TABLES, PREF_KEYS, IGNORED_KEYS, MISC_COLLECTIONS, tx, tableOf, reservedName } from './db.js';
 import { HttpError, cj, same, merge3, isAdminRole } from './util.js';
-import { validate, PROJECT_TYPES, normalizePriority, normalizeArchived, normalizeCustomer, normalizeHistory, validId, validateCfg, validateNavDefault, stripBadKeys, HIST_TEXT_MAX } from './validate.js';
+import { validate, PROJECT_TYPES, normalizePriority, normalizeArchived, normalizeCustomer, normalizeHistory, validId, validateCfg, validateNavDefault, validateModules, stripBadKeys, HIST_TEXT_MAX } from './validate.js';
 import { notifyForIssue, notifyForComment } from './notify.js';
 
 export { HttpError };
@@ -143,7 +143,8 @@ export async function applyChanges(pool, me, changes, opts = {}) {
      projenin kolonları dizide önce gelse de doğru sırayla yazılır; silinen kolonun işleri aynı gönderimde
      taşındıysa silme onlardan sonra denetlenir. Geçmiş, yorum ve bağlantılar işlerden sonra (B2): yeni işin geçmişi
      işi bulur; iş silmeyle birlikte gönderilen geçmiş/yorum silmeleri cascade'den sonra "kayıt yok" olur. */
-  const rank = ch => (ch?.c === 'users' ? 0
+  /* Modül ayarı (Cariler aç/kapat) en önce: aynı gönderimdeki cari yazmaları yeni ayara göre denetlenir. */
+  const rank = ch => (ch?.c === 'users' || (ch?.c === '_settings' && ch?.id === 'modules') ? 0
     : ['workspaces', 'customers'].includes(ch?.c) && ch?.op === 'put' ? 1
     : ch?.c === 'projects' && ch?.op === 'put' ? 2
     : ch?.c === 'statuses' && ch?.op === 'del' ? 5
@@ -268,6 +269,9 @@ async function applyRecord(c, ctx, ch) {
     : await c.query('SELECT data FROM misc_records WHERE collection=$1 AND id=$2 FOR UPDATE', [ch.c, ch.id]);
   const cur = sel.rows[0]?.data;
   const meAdmin = isAdminRole(me.role);
+  /* Cariler modülü kapalıyken cari ve cari özel alanı yazılmaz (veri durur; açılınca her şey geri gelir). */
+  if ((ch.c === 'customers' || (ch.c === 'fields' && (cur?.scope === 'customer' || ch.data?.scope === 'customer')))
+      && await customersOff(c, ctx)) throw new HttpError(409, CUSTOMERS_OFF);
   /* Erişim/salt okunur denetimi önce (kayda özgü kurallardan önce); yeni hâl ayrıca yazmadan önce denetlenir. */
   if (!ctx.system) await checkScope(c, me, ch.c, undefined, cur ?? (ch.op === 'put' ? ch.data : undefined), true);
 
@@ -955,10 +959,25 @@ async function checkFieldKey(c, id, data, cur) {
   }
   if (typeof data.key !== 'string' || !data.key || (cur && cur.key === data.key)) return;
   await c.query('SELECT pg_advisory_xact_lock($1, hashtext($2))', [FIELD_KEY_LOCK, 'key:' + data.key]);
+  /* Cari alanları (scope 'customer') kendi aralarında tekil; iş alanlarının anahtarlarıyla çakışmaz. Cari alanı eski
+     sürümden gizlensin diye hidden:true taşır; bu yüzden 005 gizlemesi istisnası yalnız iş alanlarında. */
+  const sc = data.scope === 'customer' ? 'customer' : 'issue';
   const clash = await c.query(`SELECT 1 FROM fields WHERE field_key=$1 AND id<>$2
-      AND NOT (coalesce(data->>'hidden','') = 'true' AND data->>'bind' IS NULL)
-      AND ($3::text IS NULL OR coalesce(project_id,'') = '' OR project_id = $3) LIMIT 1`, [data.key, id, pid]);
+      AND coalesce(data->>'scope', 'issue') = $4
+      AND ($4 = 'customer' OR (NOT (coalesce(data->>'hidden','') = 'true' AND data->>'bind' IS NULL)
+        AND ($3::text IS NULL OR coalesce(project_id,'') = '' OR project_id = $3))) LIMIT 1`, [data.key, id, pid, sc]);
   if (clash.rowCount) throw new HttpError(409, FIELD_KEY_TAKEN);
+}
+
+/* ---- Cariler modülü (Sistem → Modüller; settings.modules.customers === false → kapalı) ----
+   Kapalıyken cari kaydı, yetkili kişi ve cari özel alanı yazılmaz; okuma süzülmez (veri silinmez). Talep şablonlu
+   projede "Talep eden" zorunluluğu da kalkar (seçici arayüzde yok). Gönderim içinde bir kez okunur. */
+export const CUSTOMERS_OFF = 'Cariler modülü kapalı';
+async function customersOff(c, ctx) {
+  if (ctx && ctx.cuOff !== undefined) return ctx.cuOff;
+  const off = (await c.query(`SELECT value->'customers' AS v FROM settings WHERE key='modules'`)).rows[0]?.v === false;
+  if (ctx) ctx.cuOff = off;
+  return off;
 }
 
 /* ---- cariler (#11) ----
@@ -1062,7 +1081,7 @@ async function checkRequester(c, data, cur, system = false) {
   if (!r) {
     if (system) return;                              // e-postadan: "Talep eden bekleniyor" etiketiyle havuza
     const tpl = (await c.query(`SELECT data->>'template' AS t FROM projects WHERE id=$1`, [data.projectId])).rows[0]?.t;
-    if (tpl === 'talep') throw new HttpError(400, REQUESTER_REQUIRED);
+    if (tpl === 'talep' && !(await customersOff(c))) throw new HttpError(400, REQUESTER_REQUIRED);
     return;
   }
   const row = (await c.query('SELECT active, data FROM customers WHERE id=$1 FOR SHARE', [r.customerId])).rows[0];
@@ -1088,6 +1107,7 @@ export async function addContact(pool, me, customerId, body) {
     if (v) p[k] = v;
   }
   return tx(pool, async c => {
+    if (await customersOff(c)) throw new HttpError(409, CUSTOMERS_OFF);
     const row = (await c.query('SELECT data, active FROM customers WHERE id=$1 FOR UPDATE', [customerId])).rows[0];
     if (!row) throw new HttpError(404, 'Cari bulunamadı. Yöneticinize cari ekletin.');
     if (!row.active) throw new HttpError(400, 'Pasif cariye kişi eklenemez');
@@ -1199,6 +1219,7 @@ async function applySetting(c, ctx, ch) {
     throw new HttpError(400, 'geçersiz ayar anahtarı');
   if (ch.op === 'put' && JSON.stringify(ch.data).length > 512 * 1024) throw new HttpError(400, 'Ayar çok büyük');
   const cur = (await c.query('SELECT value FROM settings WHERE key=$1 FOR UPDATE', [ch.id])).rows[0]?.value;
+  if (ch.id === 'modules') delete ctx.cuOff;          // aynı gönderimdeki sonraki cari yazmaları yeni ayarı görsün
   if (ch.op === 'del') return (await c.query('DELETE FROM settings WHERE key=$1', [ch.id])).rowCount > 0;
   let val = ch.data;
   if (cur !== undefined && ch.base !== undefined && !same(cur, ch.base)
@@ -1208,6 +1229,7 @@ async function applySetting(c, ctx, ch) {
   }
   if (ch.id === 'cfg') validateCfg(val);
   if (ch.id === 'navDefault') validateNavDefault(val);
+  if (ch.id === 'modules') validateModules(val);
   if (cur !== undefined && same(cur, val)) return false;
   await c.query(
     `INSERT INTO settings AS s (key, value, updated_by) VALUES ($1, $2::jsonb, $3)

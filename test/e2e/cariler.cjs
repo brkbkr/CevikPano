@@ -7,6 +7,16 @@
 const { chromium } = require('playwright');
 const BASE = process.env.BASE_URL || 'http://localhost:3100/'; const SS = require('os').tmpdir() + '/pano_cu_';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+/* Eski 11 haneli vergi no (T.C. kimlik no) artık arayüzden ve canlı yazmayla girilmez: eski kaydı veritabanına doğrudan
+   yazarız (DATABASE_URL, CI'daki sunucuyla aynı). Değişiklik akışına da düşer (yoklama görür). */
+async function legacyTax(id, tx) {
+  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL gerekli (eski 11 haneli vergi no kaydı için)');
+  const { Client } = require('pg'); const db = new Client({ connectionString: process.env.DATABASE_URL }); await db.connect();
+  try {
+    await db.query(`UPDATE customers SET data = data || jsonb_build_object('taxNo', $2::text), version = version + 1 WHERE id = $1`, [id, tx]);
+    await db.query(`INSERT INTO changes (collection, record_id, op) VALUES ('customers', $1, 'put')`, [id]);
+  } finally { await db.end(); }
+}
 let FAILS = 0;
 const ok = (name, cond, extra = '') => { if (!cond) FAILS++; console.log((cond ? 'PASS ' : 'FAIL ') + name + (extra ? ' — ' + extra : '')); };
 const RUN = Date.now().toString(36).slice(-5);            // tekrar çalıştırmada çakışmasın
@@ -87,7 +97,9 @@ const ID = { B: 'cu_b' + RUN, C: 'cu_c' + RUN, D: 'cu_d' + RUN, X: 'cu_x' + RUN 
     act: document.getElementById('cu_act')?.getAttribute('aria-checked'), role: document.querySelector('#scrim .modal')?.getAttribute('role'),
     hint: document.getElementById('cu_no_h')?.textContent || '' }));
   ok('new customer dialog: title, active by default, no delete, KVKK hint', nf.t === 'Yeni cari' && !nf.del && nf.act === 'true' && nf.role === 'dialog'
-    && /Kişisel veya hassas bilgi yazmayın/.test(nf.hint), JSON.stringify(nf));
+    && /Kişisel veya hassas bilgi yazmayın/.test(nf.hint) && !/T\.C\./.test(nf.hint), JSON.stringify(nf));
+  ok('no TCKN input/label in form: tax no is 10-digit VKN', await A.evaluate(() => { const t = document.querySelector('#scrim .modal').textContent;
+    return !/TCKN|T\.C\. kimlik/i.test(t) && document.getElementById('cu_vn_h')?.textContent === '10 hane VKN' && !document.getElementById('cu_vn_old'); }));
   await A.click('#cu_ok'); await sleep(150);
   ok('required: Unvan + Tür warnings under fields, dialog stays open', await errText(A, 'cu_n_e') === 'Unvan gerekli' && await errText(A, 'cu_k_e') === 'Tür seçin'
     && await A.evaluate(() => document.activeElement.id === 'cu_n' && document.getElementById('cu_n').getAttribute('aria-invalid') === 'true'));
@@ -101,7 +113,10 @@ const ID = { B: 'cu_b' + RUN, C: 'cu_c' + RUN, D: 'cu_d' + RUN, X: 'cu_x' + RUN 
     && await A.evaluate(() => /Ad zorunlu/.test(document.querySelector('[data-ctrow="1"]')?.textContent || '')) && await A.isVisible('#cu_ok'));
   await A.fill('#cu_vn', '123 456 789');
   await A.click('#cu_ok'); await sleep(100);
-  ok('9-digit tax no rejected', await errText(A, 'cu_vn_e') === 'Vergi numarası 10 ya da 11 haneli olmalı');
+  ok('9-digit tax no rejected', await errText(A, 'cu_vn_e') === 'Vergi numarası 10 haneli olmalı');
+  await A.fill('#cu_vn', '1234 567 8901');
+  await A.click('#cu_ok'); await sleep(100);
+  ok('11-digit tax no (TCKN) rejected in client', await errText(A, 'cu_vn_e') === 'Vergi numarası 10 haneli olmalı');
   await A.fill('#cu_vn', `${TAX_A.slice(0, 3)} ${TAX_A.slice(3, 6)}-${TAX_A.slice(6)}`);
   await A.fill('#cu_m', 'info@ornek-sirket.example'); await A.fill('#ct_1_name', 'Murat Örnek');
   await A.fill('#cu_no', 'Yıllık bakım sözleşmesi.');
@@ -118,15 +133,20 @@ const ID = { B: 'cu_b' + RUN, C: 'cu_c' + RUN, D: 'cu_d' + RUN, X: 'cu_x' + RUN 
       { c: 'customers', id: ID.B, op: 'put', data: { name: `Deneme Tedarik ${R} A.Ş.`, kind: 'supplier', taxNo: TB, active: true, contacts: [] } },
       { c: 'customers', id: ID.C, op: 'put', data: { name: `Test İkisi Ticaret ${R}`, kind: 'both', active: true, contacts: [] } },
       { c: 'customers', id: ID.D, op: 'put', data: { name: `Eski Pasif Firma ${R}`, kind: 'customer', active: false, contacts: [] } },
-      { c: 'customers', id: ID.X, op: 'put', data: { name: `${XSS} Mali Müşavir ${R}`, shortName: XSS, kind: 'supplier', taxNo: TCX, active: true,
+      { c: 'customers', id: ID.X, op: 'put', data: { name: `${XSS} Mali Müşavir ${R}`, shortName: XSS, kind: 'supplier', active: true,
         notes: XSS, contacts: [{ id: 'ct_x' + R, name: XSS, email: 'x@ornek.example' }] } },
     ];
     for (let k = 0; k < 500; k++) ch.push({ c: 'customers', id: `cu_t${R}_${k}`, op: 'put', data: { name: `Toplu Cari ${R} ${k}`, kind: k % 2 ? 'customer' : 'supplier',
       active: true, contacts: [{ id: `ct_t${R}_${k}`, name: `Kişi ${k}`, email: `kisi${k}@toplu.example` }] } });
     const r = await API.post('/api/sync', { changes: ch });
     if (r.rejected?.length) throw new Error(JSON.stringify(r.rejected[0]));
-    await reloadState();
+    /* canlı yazmada 11 hane reddedilir (yalnız kimlik ve ileti, değer yok) */
+    const t = await API.post('/api/sync', { changes: [{ c: 'customers', id: ID.X + 'tc', op: 'put', data: { name: 'TC', kind: 'customer', taxNo: TCX } }] });
+    window.__tcRej = t.rejected?.[0]?.reason;
   }, [RUN, ID, TAX_B, TC_X, XSS]);
+  ok('server rejects new 11-digit tax no', await A.evaluate(() => window.__tcRej === 'Vergi numarası 10 haneli olmalı'));
+  await legacyTax(ID.X, TC_X);
+  await A.evaluate(() => reloadState());
   await view(A, 'customers');
 
   // 4) liste: sıralama, süzgeçler, pasif rozeti
@@ -274,7 +294,11 @@ const ID = { B: 'cu_b' + RUN, C: 'cu_c' + RUN, D: 'cu_d' + RUN, X: 'cu_x' + RUN 
   ok('viewer: no "Cari ekle"', await Vb.evaluate(() => !document.querySelector('[data-cunew]')));
   await Vb.evaluate(id => openCustomer(id), ID.X); await sleep(250);
   const vm = await Vb.evaluate(t => ({ tx: document.getElementById('cu_tx')?.textContent || '', leak: JSON.stringify(DB.customers).includes(t), ro: !document.getElementById('cu_n') }), TC_X);
-  ok('viewer: 11-digit tax no masked (from server), never in client data', vm.tx.startsWith('*********' + TC_X.slice(-2)) && /İzleyiciye maskeli/.test(vm.tx) && !vm.leak && vm.ro, JSON.stringify(vm));
+  const vRaw = await Vb.evaluate(id => DB.customers.find(c => c.id === id)?.taxNo, ID.X);
+  ok('viewer: 11-digit tax no masked from server, not shown on card, never in client data', vRaw === '*********' + TC_X.slice(-2) && vm.tx === '—' && !vm.leak && vm.ro, JSON.stringify({ vm, vRaw }));
+  await Mb.evaluate(() => reloadState()); await Mb.evaluate(id => openCustomer(id), ID.X); await sleep(200);
+  ok('member: old 11-digit value not shown on read-only card', await Mb.evaluate(t => document.getElementById('cu_tx')?.textContent === '—' && !document.querySelector('#scrim .modal').textContent.includes(t), TC_X));
+  await Mb.evaluate(() => closeModal());
   await Vb.evaluate(() => closeModal());
   const vPut = await Vb.evaluate(async id => (await API.post('/api/sync', { changes: [{ c: 'customers', id, op: 'put', data: { name: 'İzleyici', kind: 'customer', active: true } }] })).rejected, ID.B);
   ok('server rejects viewer write', vPut?.length === 1);
@@ -284,6 +308,17 @@ const ID = { B: 'cu_b' + RUN, C: 'cu_c' + RUN, D: 'cu_d' + RUN, X: 'cu_x' + RUN 
   ok('viewer: polled change still masked', vPoll >= 0 && await Vb.evaluate(([id, t]) => !JSON.stringify(DB.customers).includes(t) && DB.customers.find(c => c.id === id).taxNo.startsWith('*'), [ID.X, TC_X]));
   await view(Vb, 'projects');
   ok('viewer: project card shows customer as link (no select)', await Vb.evaluate(id => !document.querySelector('[data-pcust]') && !!document.querySelector(`.cu-plink a[data-cuopen="${id}"]`), idA));
+
+  // 12b) eski 11 haneli vergi no: yöneticide salt okunur "eski kayıt"; formdan değişmeden kaydedilir (silinmez)
+  await view(A, 'customers'); await setQ(A, 'Mali Müşavir ' + RUN);
+  ok('admin list: old 11-digit value with "eski kayıt" tag', await A.evaluate(([id, t]) => { const r = document.querySelector(`#cuList tr[data-cuopen="${id}"] td.c-tx`);
+    return !!r && r.textContent.includes(t) && /eski kayıt/.test(r.textContent) && !/TCKN/.test(r.textContent); }, [ID.X, TC_X]));
+  await A.evaluate(id => openCustomer(id), ID.X); await sleep(200);
+  const of = await A.evaluate(() => ({ v: document.getElementById('cu_vn')?.value, old: document.getElementById('cu_vn_old')?.textContent || '' }));
+  ok('admin form: tax input empty, old value read-only below', of.v === '' && of.old.includes(TC_X) && /Eski kayıt \(salt okunur\)/.test(of.old), JSON.stringify(of));
+  await A.fill('#cu_p', '0232 555 00 12'); await A.click('#cu_ok'); await sleep(200); await flush(A);
+  ok('saving form keeps old 11-digit value on server', await (async () => { const d = await srv(A, 'customers', ID.X); return d?.taxNo === TC_X && d.phone === '0232 555 00 12'; })());
+  await setQ(A, '');
 
   // 13) "Pasife al": bağlar korunur, proje kartında "(Pasif)"
   await A.evaluate(id => openCustomer(id), idA); await sleep(200);

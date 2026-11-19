@@ -300,6 +300,27 @@ const FN = 'Sahne ' + XSS, OPT2 = '<b>Kalın</b>' + XSS;
   const mo = await AM.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth, n: document.querySelectorAll('[data-grtpl]').length }));
   ok('mobile 390px: report templates scroll inside bar (no page overflow)', mo.n === 5 && mo.sw <= mo.cw + 1, JSON.stringify(mo));
 
+  /* ---------------- cari alanları (scope 'customer') iş alanlarına karışmaz; Cariler kapalıyken "Cari" hazır alanı yok ---------------- */
+  const CFC = 'f_pac' + R;
+  await A.evaluate(async ([id, r]) => { const x = await API.post('/api/sync', { changes: [{ c: 'fields', id, op: 'put',
+    data: { scope: 'customer', key: 'pac_' + r, name: 'Cari sektörü ' + r, type: 'select', options: ['A', 'B'], hidden: true, onList: true } }] });
+    if (x.rejected?.length) throw new Error(JSON.stringify(x.rejected)); await reloadState(); }, [CFC, R]);
+  await fieldsTab(A);
+  const cx = await A.evaluate(([id, pid]) => ({ tab: !document.querySelector(`[data-pfrow="${id}"]`) && !document.getElementById('pfTab').textContent.includes('Cari sektörü'),
+    live: !liveFields().some(f => f.id === id), forIssue: !fieldsFor().some(f => f.id === id),
+    rep: (() => { DB.ui.project = pid; const X = grCtx(); return ![...X.FD.values()].some(d => d.glob?.id === id); })() }), [CFC, PID]);
+  ok('customer-scope field not in project Alanlar tab, issue fields or report dimensions', cx.tab && cx.live && cx.forIssue && cx.rep, JSON.stringify(cx));
+  await A.evaluate(() => { newIssueForm(); }); await sleep(250);
+  ok('customer-scope field not in new issue form', await A.evaluate(id => !document.querySelector(`#scrim [data-cf="${id}"]`), CFC));
+  await A.evaluate(() => closeModal());
+  const off = await A.evaluate(() => { const keep = DB.modules; DB.modules = { customers: false }; render();
+    const rows = [...document.querySelectorAll('#pfTab [data-pfrow]')].map(r => r.dataset.pfrow), D = grDims(grCtx());
+    const r = { rows, cari: bindOn(DB.ui.project, 'customerId'), dim: 'customer' in D, sub: document.querySelector('#pfTab .pf-blk .sub')?.textContent };
+    DB.modules = keep; render(); r.back = [...document.querySelectorAll('#pfTab [data-pfrow]')].some(x => x.dataset.pfrow === 'b:customerId'); return r; });
+  ok('module off: "Cari" preset hidden in Alanlar and reports, back when on', !off.rows.includes('b:customerId') && off.rows.includes('b:billable') && !off.cari && !off.dim
+    && off.sub === 'Faturalama için' && off.back, JSON.stringify(off));
+  await A.evaluate(async id => { await API.post('/api/sync', { changes: [{ c: 'fields', id, op: 'del' }] }); await reloadState(); }, CFC);
+
   /* ---------------- demo veri: değerler yine aynı ---------------- */
   const demo1 = await demoVals();
   ok('demo: billing values preserved at the end', JSON.stringify(demo1) === JSON.stringify(demo0));

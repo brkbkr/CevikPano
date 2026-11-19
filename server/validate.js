@@ -50,7 +50,11 @@ const optEmail = v => v == null || v === '' || (typeof v === 'string' && v.lengt
 const MAILTO_BAD = /[?&"<>\s]/;
 const cuEmail = (v, old, live) => optEmail(v) && (!live || v == null || v === '' || v === old || !MAILTO_BAD.test(v));
 export const CUSTOMER_KINDS = ['customer', 'supplier', 'both'];
+/* Vergi no: yeni ya da değişen değer 10 haneli VKN (canlı yazma). Eski 11 haneli kayıt (T.C. kimlik no) silinmez:
+   değişmeden kaydedilebilir, içe aktarma/geri yükleme de kabul eder; izleyiciye maskeli gider (store.js maskCustomer). */
 const TAX_NO_RE = /^\d{10,11}$/;
+const VKN_RE = /^\d{10}$/;
+export const TAX_NO_MSG = 'Vergi numarası 10 haneli olmalı';
 const MAX_CONTACTS = 200;
 
 /* Yetkili kişiler: dizi; her biri güvenli kimlik ve ad taşır. İlk hata döner (yoksa boş). */
@@ -84,6 +88,10 @@ export const PROJECT_TEMPLATES = ['kanban', 'scrum', 'gorev', 'uyarlama', 'talep
 /* Proje alanları (parametrik alanlar). Hazır alanlar (bind) değerini işin yerleşik özelliğinde tutar:
    billable → issues.data.billable, billType → billType, customerId → customerId. Anahtar ve tür bind'e sabittir. */
 export const FIELD_TYPES = ['text', 'number', 'select', 'date', 'user', 'checkbox', 'cari'];
+/* Alan kapsamı: 'issue' (yok = iş alanı, eski kayıtlar) ya da 'customer' (cari özel alanı: genel, hazır alan değil,
+   yalnız sistem yöneticisi tanımlar — projesiz alan store.js checkScope'ta yöneticiye kalır). */
+export const FIELD_SCOPES = ['issue', 'customer'];
+export const CUSTOMER_FIELD_TYPES = ['text', 'number', 'date', 'select', 'checkbox'];
 export const FIELD_BINDS = { billable: { key: 'fatura', type: 'select' }, billType: { key: 'faturaturu', type: 'select' },
   customerId: { key: 'cari', type: 'cari' } };
 export const BILLABLE_OPTIONS = ['Faturalanacak', 'Faturalanmayacak'];
@@ -121,13 +129,15 @@ const RULES = {
     [CUSTOMER_KINDS.includes(d.kind), 'Tür müşteri, tedarikçi ya da ikisi olmalı'],
     [optStr(d.shortName, 60), 'Kısa ad en fazla 60 karakter'],
     [optStr(d.taxOffice, 100), 'Vergi dairesi en fazla 100 karakter'],
-    [d.taxNo == null || d.taxNo === '' || (typeof d.taxNo === 'string' && TAX_NO_RE.test(d.taxNo)),
-      'Vergi numarası 10 ya da 11 haneli olmalı'],
+    [d.taxNo == null || d.taxNo === '' || (typeof d.taxNo === 'string' && TAX_NO_RE.test(d.taxNo)), TAX_NO_MSG],
+    [!changed(d, opts, 'taxNo') || d.taxNo == null || d.taxNo === '' || VKN_RE.test(d.taxNo), TAX_NO_MSG],
     [optStr(d.address, 500), 'Adres en fazla 500 karakter'],
     [cuEmail(d.email, opts.cur?.email, opts.live), 'E-posta adresi geçersiz'],
     [optStr(d.phone, 30), 'Telefon en fazla 30 karakter'],
     [optStr(d.notes, 2000), 'Notlar en fazla 2000 karakter'],
     [optBool(d.active), 'Durum (etkin) true ya da false olmalı'],
+    /* Cari özel alanları (fields.scope = 'customer'): değerler customers.data.cf'de, işlerdeki cf ile aynı biçim. */
+    [!changed(d, opts, 'cf') || cfOk(d.cf), 'Cari alan değerleri geçersiz (en fazla 200 alan; değer metin, sayı ya da evet/hayır)'],
     ...contactRules(d.contacts, opts),
   ],
   workspaces: d => [
@@ -183,7 +193,11 @@ const RULES = {
       [!changed(d, opts, 'name') || (typeof d.name === 'string' && d.name.trim().length >= 1 && d.name.length <= 60), 'Alan adı gerekli (en fazla 60 karakter)'],
       [!changed(d, opts, 'key') || (typeof d.key === 'string' && FIELD_KEY_RE.test(d.key)), 'Alan anahtarı yalnız küçük harf, rakam ve _ içerebilir (en fazla 30)'],
       [!changed(d, opts, 'type') || FIELD_TYPES.includes(d.type), 'Geçersiz alan türü'],
-      [!changed(d, opts, 'scope') || d.scope == null || d.scope === 'issue', 'Geçersiz alan kapsamı'],
+      [!changed(d, opts, 'scope') || d.scope == null || FIELD_SCOPES.includes(d.scope), 'Geçersiz alan kapsamı'],
+      [!opts.live || d.scope !== 'customer' || ((d.projectId == null || d.projectId === '') && b == null),
+        'Cari alanı tüm carilerde geçerlidir; projeye ya da hazır alana bağlanamaz'],
+      [!opts.live || d.scope !== 'customer' || !changed(d, opts, 'type') || CUSTOMER_FIELD_TYPES.includes(d.type),
+        'Cari alanının türü metin, sayı, tarih, seçim ya da evet/hayır olmalı'],
       [d.projectId == null || d.projectId === '' || validId(d.projectId), 'Geçersiz proje'],
       [!changed(d, opts, 'options') || optionsOk(d.options), `Seçenekler en fazla ${MAX_FIELD_OPTIONS} tekil metin olmalı (her biri 1–100 karakter)`],
       [!changed(d, opts, 'def') || defOk(d.def), 'Varsayılan değer geçersiz'],
@@ -315,6 +329,15 @@ export function validateNavDefault(v) {
       && typeof x.id === 'string' && NAV_DEFAULT_IDS.includes(x.id) && typeof x.visible === 'boolean'
       && a.findIndex(y => y && y.id === x.id) === i);
   if (!ok) throw new HttpError(400, 'Geçersiz varsayılan menü (bilinen öğe kimlikleri, benzersiz, görünürlük true/false)');
+}
+
+/* Genel ayar `modules` (yönetici, Sistem → Modüller): { customers?: boolean }. Yok/true = açık; false = Cariler modülü
+   kapalı (veri silinmez; sunucu cari yazmalarını reddeder, store.js customersOff). Başka anahtar yok. */
+export const MODULE_KEYS = ['customers'];
+export function validateModules(v) {
+  const ok = v != null && typeof v === 'object' && !Array.isArray(v)
+    && Object.entries(v).every(([k, x]) => MODULE_KEYS.includes(k) && typeof x === 'boolean');
+  if (!ok) throw new HttpError(400, 'Geçersiz modül ayarı (yalnız customers: true/false)');
 }
 
 /* opts: { live: true, cur } → /api/sync yazması (cur: veritabanındaki güncel hâl); içe aktarmada verilmez. */
