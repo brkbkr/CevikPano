@@ -50,9 +50,9 @@ const RNAME = 'Proje saatleri ' + XSS, RDESC = 'Açıklama ' + XSS;
     put('users', U1, { username: N1, name: 'Rapor Ayşe ' + R, role: 'member', active: true }),
     put('users', U2, { username: N2, name: 'Rapor Bora ' + R, role: 'member', active: true })]);
   r = await sync(A, [
-    put('workspaces', WS, { name: 'Rapor alanı ' + R, color: '#2563EB', members: [{ userId: U1, role: 'member' }] }),
-    /* İstemcinin şema tamamlayıcısı (ensureProjects) bir şey yazmasın: kod, arşiv ve üye listesi dolu (Üye proje kaydını yazamaz). */
-    put('projects', PID, { name: 'Rapor projesi', key: KEY, code: KEY, counter: 3, archived: false, workspaceId: WS, members: [U1, U2] }),
+    put('workspaces', WS, { name: 'Rapor alanı ' + R, color: '#2563EB' }),
+    /* yetki-v2: erişim proje rolüyle (Bora henüz projede yok). İstemcinin şema tamamlayıcısı bir şey yazmasın: kod ve arşiv dolu. */
+    put('projects', PID, { name: 'Rapor projesi', key: KEY, code: KEY, counter: 3, archived: false, workspaceId: WS, roles: { [U1]: 'member' } }),
     put('statuses', PID + '_s0', { projectId: PID, name: 'Yapılacak', cat: 'todo', ord: 0 }),
     put('statuses', PID + '_s1', { projectId: PID, name: 'Bitti', cat: 'done', ord: 1 }),
     put('issues', PID + '_i1', { projectId: PID, key: KEY + '-1', summary: 'Birinci', statusId: PID + '_s0', type: 'task', points: 3, assignee: U1, created: at('2025-04-02') }),
@@ -158,12 +158,13 @@ const RNAME = 'Proje saatleri ' + XSS, RDESC = 'Açıklama ' + XSS;
     && !(await srvReports(B)).some(x => x.id === rep.id));
   await gr(B, 'liste');
   ok('no access: not listed', await B.evaluate(id => !document.querySelector(`[data-grri="${id}"]`), rep.id));
-  /* alana eklenince görünür (salt okunur: düzenle/sil yok) */
-  const w = await A.evaluate(async id => (await API.get('/api/state')).data.workspaces.find(x => x.id === id), WS);
-  r = await sync(A, [{ c: 'workspaces', id: WS, op: 'put', data: { ...w, members: [...w.members, { userId: U2, role: 'viewer' }] }, base: w }]);
+  /* projeye İzleyici olarak eklenince görünür (salt okunur: düzenle/sil yok) */
+  const w = await A.evaluate(async id => (await API.get('/api/state')).data.projects.find(x => x.id === id), PID);
+  r = await sync(A, [{ c: 'projects', id: PID, op: 'put', data: { ...w, roles: { ...w.roles, [U2]: 'viewer' } }, base: w }]);
+  ok('admin adds Bora to the project as viewer', r.rejected.length === 0, JSON.stringify(r.rejected));
   await B.evaluate(() => reloadState()); await sleep(600);
   await gr(B, 'liste');
-  ok('after joining workspace: listed under Paylaşılan, no edit/delete', await B.evaluate(id => !!document.querySelector(`[data-grsec="shared"] [data-grri="${id}"]`)
+  ok('after joining project: listed under Paylaşılan, no edit/delete', await B.evaluate(id => !!document.querySelector(`[data-grsec="shared"] [data-grri="${id}"]`)
     && !document.querySelector(`[data-gredit="${id}"]`) && !document.querySelector(`[data-grdel="${id}"]`), rep.id));
   ok('private copy of the owner still invisible', !(await srvReports(B)).some(x => x.id === tc.id));
   await B.click(`[data-grsec="shared"] .acts [data-gropen="${rep.id}"]`); await sleep(500);
