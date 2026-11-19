@@ -143,12 +143,14 @@ export async function applyChanges(pool, me, changes, opts = {}) {
      projenin kolonları dizide önce gelse de doğru sırayla yazılır; silinen kolonun işleri aynı gönderimde
      taşındıysa silme onlardan sonra denetlenir. Geçmiş, yorum ve bağlantılar işlerden sonra (B2): yeni işin geçmişi
      işi bulur; iş silmeyle birlikte gönderilen geçmiş/yorum silmeleri cascade'den sonra "kayıt yok" olur. */
-  /* Modül ayarı (Cariler aç/kapat) en önce: aynı gönderimdeki cari yazmaları yeni ayara göre denetlenir. */
+  /* Modül ayarı (Cariler aç/kapat) en önce: aynı gönderimdeki cari yazmaları yeni ayara göre denetlenir.
+     Süre kaydı ve geçişler de işlerden sonra (bağlı kaydın işi var olmalı: checkParent). Proje silme proje grubunda:
+     bağlı kayıtları sunucu siler (cascadeProjectDelete); aynı gönderimdeki alt kayıt silmeleri sonra "çöpte" diye geçer. */
   const rank = ch => (ch?.c === 'users' || (ch?.c === '_settings' && ch?.id === 'modules') ? 0
     : ['workspaces', 'customers'].includes(ch?.c) && ch?.op === 'put' ? 1
-    : ch?.c === 'projects' && ch?.op === 'put' ? 2
+    : ch?.c === 'projects' ? 2
     : ch?.c === 'statuses' && ch?.op === 'del' ? 5
-    : ['history', 'comments', 'links'].includes(ch?.c) ? 4 : 3);
+    : ['history', 'comments', 'links', 'worklogs', 'transitions'].includes(ch?.c) ? 4 : 3);
   const ordered = changes.map((ch, i) => [rank(ch), i, ch]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
   /* Kilitlenme (40P01) ya da serileştirme hatası (40001): işlem bir kez yeniden denenir. */
   for (let attempt = 0; ; attempt++) {
@@ -275,6 +277,9 @@ async function applyRecord(c, ctx, ch) {
       && await customersOff(c, ctx)) throw new HttpError(409, CUSTOMERS_OFF);
   /* Erişim/salt okunur denetimi önce (kayda özgü kurallardan önce); yeni hâl ayrıca yazmadan önce denetlenir. */
   if (!ctx.system) await checkScope(c, ctx, ch.c, cur, ch.op === 'put' ? ch.data : undefined, true);
+  /* Bağlı kaydın projesi/işi var olmalı; silinmiş projenin kimliği yeniden açılamaz (O-1). Sistem yolu gevşek. */
+  if (!ctx.system && ch.op === 'put') await checkParent(c, ctx, ch.c, ch.data, cur);
+  if (!ctx.system && ch.c === 'projects' && ch.op === 'put' && !cur) await checkProjectIdFree(c, ctx, ch.id);
 
   if (ch.c === 'worklogs' && !meAdmin) {
     const owner = ch.op === 'del' ? cur?.userId : (cur?.userId ?? ch.data?.userId);
@@ -287,7 +292,7 @@ async function applyRecord(c, ctx, ch) {
   /* Başkasının ya da yazarı olmayan eski yorum: değiştirme/silme yalnız yönetici. Kayıt yoksa silme zaten etkisiz. */
   if (ch.c === 'comments' && !meAdmin && cur && cur.userId !== me.id) throw new HttpError(403, COMMENT_FORBIDDEN);
   if (ch.c === 'history') {
-    if (ch.op === 'del') { if (!cur) return false; throw new HttpError(403, HIST_LOCKED); }
+    if (ch.op === 'del') { if (!cur) return goneDel(c, ctx, ch.c, ch.id); throw new HttpError(403, HIST_LOCKED); }
     if (cur) {
       const inc = { ...ch.data, id: ch.id };
       normalizeHistory(inc);
@@ -302,9 +307,10 @@ async function applyRecord(c, ctx, ch) {
   }
 
   if (ch.op === 'del') {
-    if (!cur) return false;
+    if (!cur) return goneDel(c, ctx, ch.c, ch.id);
     if (!ctx.system) await checkScope(c, ctx, ch.c, cur, undefined);
     if (ch.c === 'issues') await cascadeIssueDelete(c, ctx, ch.id);
+    if (ch.c === 'projects') await cascadeProjectDelete(c, ctx, ch.id);
     if (ch.c === 'workspaces') await checkWorkspaceDelete(c, ch.id);
     if (ch.c === 'sprints' && cur.state === 'active') await canManageSprint(c, ctx, cur.projectId);
     if (ch.c === 'statuses') {
@@ -758,7 +764,16 @@ export function scopeData(data, me) {
   const issueOk = id => ok.has(id);
   for (const col of SCOPED_READ)
     if (Array.isArray(data[col])) data[col] = data[col].filter(d => recordVisible(col, d, scope, issueOk));
+  if (Array.isArray(data.workspaces)) data.workspaces = data.workspaces.map(w => wsForReader(w, me));
   return data;
+}
+/* Alan kaydındaki eski üye listesi (members: kişi ve eski alan rolü) yalnız alan yöneticisine gider (D-2). admins'i
+   olmayan eski alanda yöneticiler üye listesinden hesaplandığı için admins okuyana hesaplanmış olarak yazılır. */
+function wsForReader(w, me) {
+  if (!w || typeof w !== 'object' || !Object.hasOwn(w, 'members') || isWsAdmin(me, w)) return w;
+  const { members: _m, ...rest } = w;
+  if (!Array.isArray(rest.admins)) { const o = wsOwner(w); rest.admins = wsAdminIds(w).filter(x => x !== o); }
+  return rest;
 }
 /* Değişiklik akışı: yalnız görünen kayıtların güncel hâli gider; silme bildirimleri (yalnız kimlik) olduğu gibi. */
 async function scopeItems(db, me, items) {
@@ -775,7 +790,8 @@ async function scopeItems(db, me, items) {
   if (list.length) for (const r of (await db.query('SELECT id, project_id FROM issues WHERE id = ANY($1)', [list])).rows)
     if (scope.proj.has(r.project_id)) ok.add(r.id);
   /* Görünmez olan rapor (paylaşımdan çıkarıldı) silme bildirimiyle gider: önceden alan istemcide kalmasın. */
-  return items.flatMap(i => i.op !== 'put' || recordVisible(i.c, i.data, scope, id => ok.has(id)) ? [i]
+  return items.flatMap(i => i.op !== 'put' || recordVisible(i.c, i.data, scope, id => ok.has(id))
+    ? [i.op === 'put' && i.c === 'workspaces' ? { ...i, data: wsForReader(i.data, me) } : i]
     : i.c === 'reports' ? [{ c: i.c, id: i.id, op: 'del', seq: i.seq }] : []);
 }
 /* Erişim kümesi değişti: ilgili kullanıcıya (ya da '*' herkese) tam yeniden yükleme sinyali. */
@@ -857,6 +873,16 @@ export async function visibleProjectIds(db, me) {
   return buildScope(me, (await db.query('SELECT data FROM workspaces')).rows.map(r => r.data),
     (await db.query('SELECT data FROM projects')).rows.map(r => r.data)).proj;
 }
+/* Çevrim içi listesi (app.js): kişinin görebildiği iş kimlikleri; sistem yöneticisinde null (hepsi). */
+export async function visibleIssueIds(db, me, ids) {
+  if (!me || isAdminRole(me.role)) return null;
+  const list = [...new Set(ids)].filter(x => typeof x === 'string' && x);
+  if (!list.length) return new Set();
+  const rows = (await db.query('SELECT id, project_id FROM issues WHERE id = ANY($1)', [list])).rows;
+  if (!rows.length) return new Set();
+  const proj = await visibleProjectIds(db, me);
+  return new Set(rows.filter(r => proj.has(r.project_id)).map(r => r.id));
+}
 /* Yalnız sayaç (iş anahtarı) değişen proje kaydı: işi açan Üye de yazar. */
 const onlyCounter = (a, b) => same({ ...a, counter: 0 }, { ...b, counter: 0 });
 
@@ -872,10 +898,13 @@ async function checkScope(c, ctx, col, cur, data, early = false) {
   if (!WS_SCOPED.includes(col) || col === 'workspaces' || isAdminRole(me.role)) return;
   if (early) {
     if (col === 'projects') { if (cur && !(await roleIn(c, me, cur))) throw new HttpError(403, NO_ACCESS); return; }
-    const d = cur ?? data;
-    if (!d || (col === 'fields' && !d.projectId)) return;
-    const p = await recProj(c, col, d);
-    if (p && !(await roleIn(c, me, p))) throw new HttpError(403, NO_ACCESS);
+    /* Güncel kayıt ve (bağı değişen) yeni hâl: gizli projeye taşıma da olmayan ebeveyne bağlama (checkParent) gibi erken
+       ve aynı iletiyle reddedilir (D-3). */
+    for (const d of cur && data ? [cur, data] : [cur ?? data]) {
+      if (!d || (col === 'fields' && !d.projectId)) continue;
+      const p = await recProj(c, col, d);
+      if (p && !(await roleIn(c, me, p))) throw new HttpError(403, NO_ACCESS);
+    }
     return;
   }
   if (col === 'statuses') return;                            // kolon yetkisi canConfigure'da
@@ -897,6 +926,46 @@ async function checkScope(c, ctx, col, cur, data, early = false) {
     return;
   }
   for (const d of [cur, data]) if (d) await needPerm(c, ctx, await recProj(c, col, d), ...ISSUE_PERMS[col]);
+}
+
+/* ---- bağlı kayıt ve silinmiş kimlik (O-1, D-3) ----
+   Yeni bağlı kayıtta (ya da bağı değişince) projesi/işi var olmalı. Projeyi göremeyen için olmayan ebeveyn de gizli
+   ebeveynle aynı yanıtı alır (403 NO_ACCESS; kayıt var/yok sızmasın); sistem yöneticisine 400. Sistem yolu (posta) ve
+   içe aktarma (replaceAll) bu denetimden geçmez. Satır kilidi alınmaz (iş anahtarı ve harcanan süre ebeveyni FOR UPDATE
+   kilitler; paylaşımlı kilit eşzamanlı yazmada kilitlenmeye yol açardı). Yorum, geçmiş ve bağlantı ayrıca FOR SHARE ile
+   denetlenir; silinmiş projenin kimliği yeniden açılamadığından yarışta kalan yetim kayıt kimseye açılmaz. */
+export const PARENT_MISSING = 'Bağlı kayıt bulunamadı';
+const PARENT_REF = { statuses: ['projectId'], sprints: ['projectId'], issues: ['projectId'], fields: ['projectId'],
+  rules: ['projectId'], worklogs: ['issueId'], comments: ['issueId'], history: ['issueId'], transitions: ['issueId'],
+  links: ['from', 'to'] };
+const SELF_PARENT_CHECK = ['history', 'comments', 'links'];
+async function checkParent(c, ctx, col, data, cur) {
+  const keys = PARENT_REF[col];
+  if (!keys || !data || typeof data !== 'object') return;
+  /* Geçmiş, yorum ve bağlantı yöneticiye kendi iletisiyle sonra (FOR SHARE) denetlenir. */
+  if (isAdminRole(ctx.me.role) && SELF_PARENT_CHECK.includes(col)) return;
+  const table = keys[0] === 'projectId' ? 'projects' : 'issues';
+  for (const k of keys) {
+    const v = data[k];
+    if (cur && cur[k] === v) continue;                        // yalnız yeni kayıtta ya da bağı değişince
+    if ((col === 'fields' || col === 'rules') && (v == null || v === '')) continue;   // genel alan / kural
+    if (v == null && col !== 'transitions') continue;         // eksik bağ: kaydın kendi doğrulaması reddeder
+    if (typeof v === 'string' && v && (await c.query(`SELECT 1 FROM ${table} WHERE id=$1`, [v])).rowCount) continue;
+    throw isAdminRole(ctx.me.role) ? new HttpError(400, PARENT_MISSING) : new HttpError(403, NO_ACCESS);
+  }
+}
+/* Silinmiş (çöpteki) projenin kimliğiyle yeni proje açılamaz: çöpten geri yükleme yolu (backup.js) bu denetimden geçmez. */
+export const PROJECT_ID_USED = 'Bu proje kimliği silinmiş bir projeye ait; çöp kutusundan geri yükleyin';
+async function checkProjectIdFree(c, ctx, id) {
+  if (!(await c.query(`SELECT 1 FROM deleted_records WHERE collection='projects' AND record_id=$1 LIMIT 1`, [id])).rowCount) return;
+  throw isAdminRole(ctx.me.role) ? new HttpError(409, PROJECT_ID_USED) : new HttpError(403, NO_ACCESS);
+}
+/* Olmayan kaydı silme: projeye bağlı koleksiyonlarda, sistem yöneticisi olmayana var olan gizli kayıtla aynı yanıt
+   (D-3). Çöpteki kayıt (eşzamanlı silme, proje/iş silmenin cascade'i, aynı gönderimdeki alt kayıt silmesi) sessizce geçer. */
+async function goneDel(c, ctx, col, id) {
+  if (ctx.system || isAdminRole(ctx.me.role) || !WS_SCOPED.includes(col) || col === 'workspaces') return false;
+  if ((await c.query('SELECT 1 FROM deleted_records WHERE collection=$1 AND record_id=$2 LIMIT 1', [col, id])).rowCount) return false;
+  throw new HttpError(403, NO_ACCESS);
 }
 
 /* Proje kaydı. Yeni: sistem yöneticisi, hedef alanın yöneticisi; yöneticisi olmayan alanda (Genel gibi) genel rolü Üye
@@ -946,23 +1015,23 @@ async function checkProjectMove(c, me, cur, data) {
 }
 
 /* Alan yöneticileri (admins): biçim, tekil, var olan etkin kullanıcı; sahip listede tutulmaz (her zaman yönetici).
-   admins göndermeyen istemcide güncel liste korunur; eski istemci yalnız eski üye listesini (members) değiştirdiyse
-   liste oradaki Yöneticilerden yeniden hesaplanır. Yeni alanda verilmezse üye listesinden. Değiştiyse true. */
+   admins göndermeyen istemcide güncel liste korunur. Eski istemcinin değiştirdiği üye listesi (members) yöneticileri
+   değiştirmez (D-1): yalnız eski biçimde saklanır. admins'i olmayan eski alanda üye listesi değişirse yöneticiler
+   güncel (değişiklik öncesi) listeden dondurulur. Yeni alanda verilmezse üye listesinden. Değiştiyse true. */
 async function enforceWsAdmins(c, me, data, cur) {
   if (cur ? !(isAdminRole(me.role) || isWsAdmin(me, cur)) : !isAdminRole(me.role)) return false;
   const before = data.admins;
-  const fromMembers = () => [...new Set((Array.isArray(data.members) ? data.members : [])
+  const adminsOf = mem => [...new Set((Array.isArray(mem) ? mem : [])
     .filter(m => m && m.role === 'admin' && typeof m.userId === 'string').map(m => m.userId))];
   if (data.admins == null) {
-    if (Array.isArray(cur?.admins) && same(cur.members ?? null, data.members ?? null)) data.admins = cur.admins;
-    else if (Array.isArray(cur?.admins) || fromMembers().length) data.admins = fromMembers();
+    if (Array.isArray(cur?.admins)) data.admins = cur.admins;
+    else if (cur && !same(cur.members ?? null, data.members ?? null)) data.admins = adminsOf(cur.members);
+    else if (!cur && adminsOf(data.members).length) data.admins = adminsOf(data.members);
     else { delete data.admins; return before !== undefined; }   // yöneticisiz eski biçim: alan eklenmez (wsAdminIds üye listesine bakar)
   } else if (!Array.isArray(data.admins)) throw new HttpError(400, 'Alan yöneticileri dizi olmalı');
-  else if (Array.isArray(cur?.admins) && same(cur.admins, data.admins) && !same(cur.members ?? null, data.members ?? null))
-    data.admins = fromMembers();
   const owner = wsOwner(data);
   data.admins = data.admins.filter(x => x !== owner);
-  const old = new Set(Array.isArray(cur?.admins) ? cur.admins : []);
+  const old = new Set(Array.isArray(cur?.admins) ? cur.admins : adminsOf(cur?.members));
   const fresh = [...new Set(data.admins.filter(x => !old.has(x)))];
   if (fresh.length) {
     if (!fresh.every(validId)) throw new HttpError(400, 'Alan yöneticileri geçersiz (tekil kişi kimlikleri, en fazla 1000)');
@@ -1343,23 +1412,43 @@ export function mergeContacts(base, mine, theirs) {
 
 /* İş silinince yorumları, süre kayıtları, geçmişi ve bağlantıları da çöp kutusuna gider
    (aynı batch → birlikte geri yüklenir); alt işlerin ve epik çocuklarının bağı kopar. */
-async function cascadeIssueDelete(c, ctx, id) {
+async function moveToTrash(c, ctx, table, where, params) {
   const { me, batch } = ctx;
-  const move = async (table, where, params) => {
-    const rows = (await c.query(`DELETE FROM ${table} WHERE ${where} RETURNING id, data`, params)).rows;
-    for (const r of rows) {
-      await c.query(`INSERT INTO deleted_records (collection, record_id, data, batch_id, deleted_by)
-        VALUES ($1,$2,$3::jsonb,$4,$5)`, [table, r.id, JSON.stringify(r.data), batch, me.id]);
-      await logChange(c, table, r.id, 'del', me.id, batch);
-    }
-  };
-  for (const t of ISSUE_CHILDREN) await move(t, 'issue_id = $1', [id]);
-  await move('links', 'from_issue = $1 OR to_issue = $1', [id]);
+  const rows = (await c.query(`DELETE FROM ${table} WHERE ${where} RETURNING id, data`, params)).rows;
+  for (const r of rows) {
+    await c.query(`INSERT INTO deleted_records (collection, record_id, data, batch_id, deleted_by)
+      VALUES ($1,$2,$3::jsonb,$4,$5)`, [table, r.id, JSON.stringify(r.data), batch, me.id]);
+    await logChange(c, table, r.id, 'del', me.id, batch);
+  }
+}
+/* Silinen işlere (ids) bağlı, silinmeyen işlerin üst iş / epik bağı kopar. */
+async function unlinkIssues(c, ctx, ids) {
+  const { me, batch } = ctx;
   for (const [col, key] of [['parent_id', 'parentId'], ['epic_id', 'epicId']]) {
     const rows = (await c.query(`UPDATE issues SET data = jsonb_set(data, '{${key}}', 'null'::jsonb), version = version + 1,
-      updated_at = now() WHERE ${col} = $1 RETURNING id`, [id])).rows;
+      updated_at = now() WHERE ${col} = ANY($1) AND NOT (id = ANY($1)) RETURNING id`, [ids])).rows;
     for (const r of rows) { await logChange(c, 'issues', r.id, 'put', me.id, batch); ctx.adjusted.push({ c: 'issues', id: r.id }); }
   }
+}
+async function cascadeIssueDelete(c, ctx, id) {
+  for (const t of ISSUE_CHILDREN) await moveToTrash(c, ctx, t, 'issue_id = $1', [id]);
+  await moveToTrash(c, ctx, 'links', 'from_issue = $1 OR to_issue = $1', [id]);
+  await unlinkIssues(c, ctx, [id]);
+}
+/* Proje silinince bağlı kayıtlar (işler ve onların yorum, süre, geçmiş, geçiş ve bağlantıları; kolonlar, sprintler,
+   projeye özel alanlar ve kurallar) aynı batch'le çöp kutusuna gider: proje ile birlikte geri yüklenir, istemci ne
+   gönderirse göndersin (ham API, yarım silme) yetim kayıt kalmaz (O-1). Yetki proje silme yetkisidir (checkScope). */
+const PROJECT_CHILDREN = ['statuses', 'sprints', 'fields', 'rules'];
+async function cascadeProjectDelete(c, ctx, pid) {
+  await lockColumns(c, ctx, [pid]);
+  const ids = (await c.query('SELECT id FROM issues WHERE project_id=$1 ORDER BY id FOR UPDATE', [pid])).rows.map(r => r.id);
+  if (ids.length) {
+    for (const t of ISSUE_CHILDREN) await moveToTrash(c, ctx, t, 'issue_id = ANY($1)', [ids]);
+    await moveToTrash(c, ctx, 'links', 'from_issue = ANY($1) OR to_issue = ANY($1)', [ids]);
+    await unlinkIssues(c, ctx, ids);
+    await moveToTrash(c, ctx, 'issues', 'id = ANY($1)', [ids]);
+  }
+  for (const t of PROJECT_CHILDREN) await moveToTrash(c, ctx, t, 'project_id = $1', [pid]);
 }
 
 async function recomputeSpent(c, ctx, iid) {
