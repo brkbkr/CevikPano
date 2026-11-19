@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
 import { TABLES, PREF_KEYS, IGNORED_KEYS, MISC_COLLECTIONS, tx, tableOf, reservedName } from './db.js';
 import { HttpError, cj, same, merge3, isAdminRole } from './util.js';
-import { validate, PROJECT_TYPES, normalizePriority, normalizeArchived, normalizeCustomer, normalizeHistory, validId, validateCfg, stripBadKeys, HIST_TEXT_MAX } from './validate.js';
+import { validate, PROJECT_TYPES, normalizePriority, normalizeArchived, normalizeCustomer, normalizeHistory, validId, validateCfg, validateNavDefault, stripBadKeys, HIST_TEXT_MAX } from './validate.js';
 import { notifyForIssue, notifyForComment } from './notify.js';
 
 export { HttpError };
@@ -1182,6 +1182,7 @@ async function applySetting(c, ctx, ch) {
     ctx.adjusted.push({ c: '_settings', id: ch.id });
   }
   if (ch.id === 'cfg') validateCfg(val);
+  if (ch.id === 'navDefault') validateNavDefault(val);
   if (cur !== undefined && same(cur, val)) return false;
   await c.query(
     `INSERT INTO settings AS s (key, value, updated_by) VALUES ($1, $2::jsonb, $3)
