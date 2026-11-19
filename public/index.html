@@ -5726,7 +5726,7 @@ function sprintForm(id) {
       </div>
       ${s ? '' : `<div class="id-hint sp-note">${ic('backlog')}Oluşturduktan sonra backlog'dan işleri sprinte sürükleyin.</div>`}
     </div>
-    <div class="m-f">${s ? `<button type="button" class="btn danger" data-delsprint="${esc(s.id)}">Sil</button>` : ''}
+    <div class="m-f">${s && (s.state !== 'active' || canManageProject(pr)) ? `<button type="button" class="btn danger" data-delsprint="${esc(s.id)}">Sil</button>` : ''}
       <span class="spacer"></span><button type="button" class="btn" data-close>Vazgeç</button>
       <button type="button" class="btn pri" id="doSprint">${ic(s ? 'check' : 'plus')}${s ? 'Kaydet' : 'Sprint oluştur'}</button></div>`, 'id-m narrow sp-m id-trap');
   spDlg('spFormT');

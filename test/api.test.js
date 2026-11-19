@@ -3211,4 +3211,22 @@ describe('genel tur düzeltmeleri', { skip: !URL && 'TEST_DATABASE_URL yok' }, (
     ok(await C.A.sync([put('projects', 'pg2', { ...p, workspaceId: 'ws_g2' }, p)]));
   });
 
+  test('aktif sprint: geri çekme, tamamlama ve silme yalnız alan yöneticisi; aktif olmayanı Üye siler', async () => {
+    ok(await C.Y.sync([put('sprints', 'sp_g', { projectId: 'pg1', name: 'S', state: 'active' }),
+      put('sprints', 'sp_gf', { projectId: 'pg1', name: 'S2', state: 'future' })]));
+    const s = await row('sprints', 'sp_g');
+    const F = 'Sprinti yalnızca alan yöneticisi başlatıp bitirebilir';
+    rej(await C.M.sync([put('sprints', 'sp_g', { ...s, state: 'future' }, s)]), F);
+    rej(await C.M.sync([put('sprints', 'sp_g', { ...s, state: 'closed' }, s)]), F);
+    rej(await C.M.sync([{ c: 'sprints', id: 'sp_g', op: 'del' }]), 'Aktif sprinti yalnızca alan yöneticisi silebilir');
+    assert.equal((await row('sprints', 'sp_g')).state, 'active');
+    /* Aktif sprintin adını Üye değiştirir; aktif olmayan sprinti siler. */
+    ok(await C.M.sync([put('sprints', 'sp_g', { ...s, name: 'S yeni' }, s)]));
+    ok(await C.M.sync([{ c: 'sprints', id: 'sp_gf', op: 'del' }]));
+    const s2 = await row('sprints', 'sp_g');
+    ok(await C.Y.sync([put('sprints', 'sp_g', { ...s2, state: 'future' }, s2)]));
+    ok(await C.Y.sync([put('sprints', 'sp_g', { ...s2, state: 'active' })]));
+    ok(await C.Y.sync([{ c: 'sprints', id: 'sp_g', op: 'del' }]));
+  });
+
 });

@@ -284,6 +284,7 @@ async function applyRecord(c, ctx, ch) {
     await checkScope(c, me, ch.c, cur, undefined);
     if (ch.c === 'issues') await cascadeIssueDelete(c, ctx, ch.id);
     if (ch.c === 'workspaces') await checkWorkspaceDelete(c, ch.id);
+    if (ch.c === 'sprints' && cur.state === 'active') await canManageSprint(c, me, cur.projectId, SPRINT_DELETE_FORBIDDEN);
     if (ch.c === 'statuses') {
       await canConfigure(c, me, cur.projectId);
       await lockColumns(c, ctx, [cur.projectId]);
@@ -492,6 +493,7 @@ async function checkProjectType(c, me, id, data, cur) {
    projenin sprint süresi: projenin alanında Yönetici (wsRole === 'admin'; sistem yöneticisi ve alan sahibi dahil).
    Üye listesi tanımsız eski alanda yalnız sistem yöneticisi. İstemcideki canManageProject ile aynı. */
 const SPRINT_FORBIDDEN = 'Sprinti yalnızca alan yöneticisi başlatıp bitirebilir';
+const SPRINT_DELETE_FORBIDDEN = 'Aktif sprinti yalnızca alan yöneticisi silebilir';
 const SPRINT_WEEKS_FORBIDDEN = 'Sprint süresini yalnızca alan yöneticisi değiştirebilir';
 async function canManageSprint(c, me, pid, forbidden = SPRINT_FORBIDDEN) {
   if (isAdminRole(me.role)) return;
@@ -502,7 +504,9 @@ async function canManageSprint(c, me, pid, forbidden = SPRINT_FORBIDDEN) {
 async function checkSprintState(c, me, data, cur) {
   if (data.state === 'active' && (cur?.state !== 'active' || cur?.projectId !== data.projectId))
     await canManageSprint(c, me, data.projectId);
-  if (cur?.state === 'active' && data.state === 'closed') await canManageSprint(c, me, cur.projectId);
+  /* Aktif sprintten her çıkış (tamamlama, geri çekme, başka projeye taşıma) alan yöneticisinde. */
+  if (cur?.state === 'active' && (data.state !== 'active' || cur.projectId !== data.projectId))
+    await canManageSprint(c, me, cur.projectId);
 }
 
 /* Türü açıkça Pano (type === 'board') olan projede sprint başlatılamaz (aktif olan ya da projesi değişen
