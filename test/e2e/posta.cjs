@@ -139,11 +139,13 @@ const XSS = '<img src=x onerror="window.__xss=1">';
   ok('yapılandırılmamış: "E-postayla yanıtla" düğmesi yok', !(await A.$('#mailCmt')));
   ok('sunucu durumu: available=false', await A.evaluate(async id => (await API.get('/api/mail/reply/' + id)).available === false, IE));
   /* durum taklit: bağlı kutu; alıcı ve konu sunucudan (XSS denemesiyle) */
-  let replyGets = 0, replyPost = null, replyStatus = 200;
+  let replyGets = 0, replyPost = null, replyStatus = 200; const replyPosts = [];
   await A.route('**/api/mail/reply/**', async r => {
     if (r.request().method() === 'GET') { replyGets++; return r.fulfill({ status: 200, contentType: 'application/json',
       body: JSON.stringify({ available: true, to: 'ayse' + XSS + '@musteri.test', subject: 'Re: E-postadan gelen ' + XSS, provider: 'google' }) }); }
-    replyPost = JSON.parse(r.request().postData() || '{}');
+    replyPost = JSON.parse(r.request().postData() || '{}'); replyPosts.push(replyPost);
+    if (replyStatus === 500 || replyStatus === 'bekle') return r.fulfill({ status: replyStatus === 500 ? 500 : 409, contentType: 'application/json',
+      body: JSON.stringify({ error: replyStatus === 500 ? 'Sunucu hatası' : 'Bu yanıt zaten gönderiliyor; birkaç saniye sonra yeniden deneyin' }) });
     return replyStatus === 200 ? r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, to: 'ayse@musteri.test', subject: 'Re: x', commentId: 'c_x', recorded: true }) })
       : r.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: 'Posta kutusunu yeniden bağlayın (Sistem → Posta kutuları): gönderme izni yok ya da bağlantının süresi doldu' }) });
   });
@@ -157,8 +159,26 @@ const XSS = '<img src=x onerror="window.__xss=1">';
   ok('alıcı/konu HTML olarak basılmaz (XSS yok)', !(await A.evaluate(() => window.__xss)) && !(await A.$('#mailTo img')));
   await A.fill('#newCmt', 'Merhaba,\nsorununuz çözüldü.');
   await A.click('#sendMail'); await sleep(900);
-  ok('gönderim: istemci yalnız metni yollar (alıcı/konu yok)', replyPost && JSON.stringify(Object.keys(replyPost)) === '["body"]' && replyPost.body === 'Merhaba,\nsorununuz çözüldü.', JSON.stringify(replyPost));
+  ok('gönderim: istemci yalnız metni ve istek kimliğini yollar (alıcı/konu yok)', replyPost && JSON.stringify(Object.keys(replyPost)) === '["body","requestId"]'
+    && replyPost.body === 'Merhaba,\nsorununuz çözüldü.' && /^[0-9a-f]{32}$/.test(replyPost.requestId), JSON.stringify(replyPost));
+  const rid0 = replyPost.requestId;
   ok('gönderim sonrası bildirim ve kutu sıfırlanır', /E-postayla yanıtlandı/.test(await txt(A, '#toast')) && !(await A.$('#sendMail')) && await A.evaluate(() => !$('#newCmt').value), await txt(A, '#toast'));
+  /* çift gönderim önleme: hata sonrası aynı metinle yeniden deneme aynı istek kimliğini yollar; metin değişince yeni kimlik */
+  replyStatus = 500; replyPosts.length = 0;
+  await A.click('#mailCmt'); await sleep(200);
+  await A.fill('#newCmt', 'yeniden deneme'); await A.click('#sendMail'); await sleep(700);
+  ok('500: metin ve düğme korunur', await A.isVisible('#sendMail') && await A.evaluate(() => $('#newCmt').value === 'yeniden deneme'));
+  await A.click('#sendMail'); await sleep(700);
+  replyStatus = 'bekle';
+  await A.click('#sendMail'); await sleep(700);
+  ok('"zaten gönderiliyor" (409): düğme kalkmaz, metin korunur', /zaten gönderiliyor/.test(await txt(A, '#toast')) && await A.isVisible('#sendMail')
+    && await A.evaluate(() => $('#newCmt').value === 'yeniden deneme'), await txt(A, '#toast'));
+  replyStatus = 500;
+  await A.fill('#newCmt', 'yeniden deneme 2'); await A.click('#sendMail'); await sleep(700);
+  const ids = replyPosts.map(x => x.requestId);
+  ok('yeniden denemede aynı istek kimliği, metin değişince yeni kimlik (önceki gönderimden de farklı)', ids.length === 4 && ids[0] === ids[1] && ids[1] === ids[2]
+    && ids[3] !== ids[0] && ids[0] !== rid0 && ids.every(x => /^[0-9a-f]{32}$/.test(x)), JSON.stringify(ids));
+  await A.click('#cmtNo'); await sleep(200);
   /* 409: anlaşılır hata, düğme gizlenir */
   replyStatus = 409; replyPost = null;
   await A.click('#mailCmt'); await sleep(200);

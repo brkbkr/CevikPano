@@ -2036,6 +2036,31 @@ describe('proje türü ve kolonlar', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
     ok(await M.sync([SP('sp_pl2', 'pk_spy', 'closed')]));
   });
 
+  /* Güvenlik (düşük): aktif sprint silinip aynı kimlikle yeniden başlatılarak plan yeniden yazılamaz. */
+  test('sprint planı: silinmiş sprint kimliğiyle yeniden başlatmada plan yazılamaz (sistem yöneticisi dahil); planına dokunmadan yeniden oluşturma serbest', async () => {
+    const PLAN = { count: 1, points: 3, est: 2, ids: ['i_pl3'], at: 1763500000000 };
+    const LOCKED = 'Sprintin başlangıç planı değiştirilemez';
+    ok(await M.sync([SP('sp_pl3', 'pk_spy', 'active', { plan: PLAN })]));
+    ok(await M.sync([{ c: 'sprints', id: 'sp_pl3', op: 'del' }]));
+    assert.equal(await row('sprints', 'sp_pl3'), undefined);
+    for (const U of [M, A]) {
+      assert.deepEqual(reasons(await U.sync([SP('sp_pl3', 'pk_spy', 'active', { plan: { count: 0, points: 500, ids: [] } })])), [LOCKED]);
+      assert.deepEqual(reasons(await U.sync([SP('sp_pl3', 'pk_spy', 'future')])), []);                       // plansız yeniden oluşturma
+      assert.deepEqual(reasons(await U.sync([SP('sp_pl3', 'pk_spy', 'active', { plan: PLAN })])), [LOCKED]);  // future → active de olmaz
+      ok(await U.sync([{ c: 'sprints', id: 'sp_pl3', op: 'del' }]));
+    }
+    assert.equal(await row('sprints', 'sp_pl3'), undefined);
+    /* hiç başlamamış (gelecek) sprint silinip aynı kimlikle yeniden oluşturulursa normal başlatılır; yeni kimlik etkilenmez */
+    ok(await M.sync([SP('sp_pl4', 'pk_spy', 'future')]));
+    ok(await M.sync([{ c: 'sprints', id: 'sp_pl4', op: 'del' }]));
+    ok(await M.sync([SP('sp_pl4', 'pk_spy', 'future')]));
+    ok(await M.sync([SP('sp_pl4', 'pk_spy', 'active', { plan: PLAN })]));
+    assert.deepEqual((await row('sprints', 'sp_pl4')).plan, PLAN);
+    ok(await M.sync([SP('sp_pl4', 'pk_spy', 'closed', { plan: PLAN })]));
+    ok(await M.sync([SP('sp_pl5', 'pk_spy', 'active', { plan: PLAN })]));
+    ok(await M.sync([SP('sp_pl5', 'pk_spy', 'closed', { plan: PLAN })]));
+  });
+
   test('sprint süresi: 1–8 tamsayı (boş = 1); geçersiz değer reddedilir; yalnız alan Yöneticisi değiştirir', async () => {
     const W = { type: 'agile', workspaceId: 'ws_ksp', members: ['u_admin', 'u_k_m', 'u_k_n'] };
     ok(await A.sync([P('pk_spw', W)]));
@@ -2951,7 +2976,7 @@ describe('e-postayla yanıt', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     assert.equal(await mail.processMessage(pool, accG, mail.parseGmail(gm('gy1', 'th_EY1', {
       From: 'Ayşe Talep <Ayse@Musteri-ey.test>', To: 'destek@ey.test', Subject: 'Yazıcım bozuldu', 'Message-ID': '<ilk1@musteri-ey.test>',
       References: '<eski0@musteri-ey.test>' }, 'Merhaba, yazıcı çalışmıyor.'))), 'issue');
-    assert.equal(await mail.processMessage(pool, accM, mail.parseGraph({ id: 'AAMk/ey1==', internetMessageId: '<o1@kisi-ey.test>', subject: 'Outlook talebi EY',
+    assert.equal(await mail.processMessage(pool, accM, mail.parseGraph({ id: 'AAMk-ey1_==', internetMessageId: '<o1@kisi-ey.test>', subject: 'Outlook talebi EY',
       from: { emailAddress: { name: 'Dış', address: 'dis@kisi-ey.test' } }, toRecipients: [{ emailAddress: { address: 'talep@ey.test' } }],
       receivedDateTime: new Date().toISOString(), body: { contentType: 'text', content: 'Outlook gövde' } })), 'issue');
     IG = await issueOf('Yazıcım bozuldu'); IO = await issueOf('Outlook talebi EY');
@@ -3095,6 +3120,16 @@ describe('e-postayla yanıt', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     route(/gmail\.googleapis\.com\/gmail\/v1\/users\/me\/messages\/send$/, () => J(403, { error: { code: 403, message: 'Request had insufficient authentication scopes.' } }));
     let r = await reply(M, IG.id, { body: 'kapsamsız' });
     assert.equal(r.status, 409); assert.equal(r.json.error, mail.RECONNECT_MSG);
+    /* 401/403: kutu "yeniden bağlanın" durumuna geçer, yöneticiye bildirim gider; sonraki istek sağlayıcıya gitmez */
+    assert.equal((await pool.query(`SELECT status FROM mail_accounts WHERE id='mb_eyg'`)).rows[0].status, 'reconnect');
+    assert.ok((await pool.query(`SELECT 1 FROM notifications WHERE kind='mail' AND meta->>'address'='destek@ey.test' AND meta->>'reason'='reconnect'`)).rowCount);
+    assert.deepEqual((await M.req('GET', `/api/mail/reply/${IG.id}`)).json, { available: false, reason: mail.RECONNECT_MSG });
+    await pool.query(`UPDATE mail_accounts SET status='ok', last_error=NULL WHERE id='mb_eyg'`);
+    route(/gmail\.googleapis\.com\/gmail\/v1\/users\/me\/messages\/send$/, () => J(401, { error: { code: 401, message: 'Invalid Credentials' } }));
+    r = await reply(M, IG.id, { body: 'süresi dolmuş jeton' });
+    assert.equal(r.status, 409); assert.equal(r.json.error, mail.RECONNECT_MSG);
+    assert.equal((await pool.query(`SELECT status FROM mail_accounts WHERE id='mb_eyg'`)).rows[0].status, 'reconnect');
+    await pool.query(`UPDATE mail_accounts SET status='ok', last_error=NULL WHERE id='mb_eyg'`);
     route(/gmail\.googleapis\.com\/gmail\/v1\/users\/me\/messages\/send$/, () => J(500, { error: { message: 'iç' } }));
     r = await reply(M, IG.id, { body: 'sağlayıcı hatası' });
     assert.equal(r.status, 424); assert.match(r.json.error, /E-posta gönderilemedi/);
@@ -3105,23 +3140,24 @@ describe('e-postayla yanıt', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     assert.equal(r.status, 409); assert.equal(r.json.error, mail.RECONNECT_MSG);
     assert.equal((await pool.query(`SELECT count(*)::int AS n FROM comments WHERE issue_id IN ($1,$2)`, [IG.id, IO.id])).rows[0].n, cm0);
     await pool.query(`UPDATE mail_accounts SET access_expires_at=now() + interval '1 hour' WHERE id='mb_eym'`);
-    assert.equal((await pool.query(`SELECT status FROM mail_accounts WHERE id='mb_eym'`)).rows[0].status, 'ok');
+    assert.equal((await pool.query(`SELECT status FROM mail_accounts WHERE id='mb_eym'`)).rows[0].status, 'reconnect');
+    await pool.query(`UPDATE mail_accounts SET status='ok', last_error=NULL WHERE id IN ('mb_eym','mb_eyg')`);
   });
 
   test('Outlook: createReply → düz metin + sunucunun alıcısı → send; taşınmış iletide internetMessageId ile bulunur', async () => {
     mail.resetReplyLimit();
     let patch = null;
     route(/graph\.microsoft\.com\/v1\.0\/me\/messages\/[^/]+\/createReply$/, u =>
-      (u.pathname === '/v1.0/me/messages/AAMk%2Fey1%3D%3D/createReply' || u.pathname === '/v1.0/me/messages/YENI%2Fid/createReply'
-        ? J(201, { id: 'TASLAK/1', internetMessageId: '<taslak1@ey.test>' }) : J(404, { error: { code: 'ErrorItemNotFound' } })));
+      (u.pathname === '/v1.0/me/messages/AAMk-ey1_%3D%3D/createReply' || u.pathname === '/v1.0/me/messages/YENI-id/createReply'
+        ? J(201, { id: 'TASLAK-1', internetMessageId: '<taslak1@ey.test>' }) : J(404, { error: { code: 'ErrorItemNotFound' } })));
     route(/graph\.microsoft\.com\/v1\.0\/me\/messages\/[^/]+$/, (_u, opt) => { if (opt.method === 'PATCH') patch = JSON.parse(opt.body); return J(200, {}); });
     route(/graph\.microsoft\.com\/v1\.0\/me\/messages\/[^/]+\/send$/, () => J(202));
-    route(/graph\.microsoft\.com\/v1\.0\/me\/messages$/, u => J(200, { value: /o1@kisi-ey\.test/.test(u.searchParams.get('$filter')) ? [{ id: 'YENI/id' }] : [] }));
+    route(/graph\.microsoft\.com\/v1\.0\/me\/messages$/, u => J(200, { value: /o1@kisi-ey\.test/.test(u.searchParams.get('$filter')) ? [{ id: 'YENI-id' }] : [] }));
     let r = await reply(M, IO.id, { body: 'Outlook yanıtı' });
     assert.equal(r.status, 200, JSON.stringify(r.json));
     assert.deepEqual(patch, { subject: `Re: Outlook talebi EY [${IO.data.key}]`, body: { contentType: 'text', content: 'Outlook yanıtı' },
       toRecipients: [{ emailAddress: { address: 'dis@kisi-ey.test' } }], ccRecipients: [], bccRecipients: [] });
-    assert.ok(calls.some(c => c.path === 'https://graph.microsoft.com/v1.0/me/messages/TASLAK%2F1/send' && c.method === 'POST'));
+    assert.ok(calls.some(c => c.path === 'https://graph.microsoft.com/v1.0/me/messages/TASLAK-1/send' && c.method === 'POST'));
     assert.equal((await pool.query(`SELECT count(*)::int AS n FROM mail_messages WHERE message_id='<taslak1@ey.test>' AND direction='out' AND issue_id=$1`, [IO.id])).rows[0].n, 1);
     /* ileti başka klasöre taşınmış (kimlik değişmiş): internetMessageId ile aranır */
     await pool.query(`UPDATE mail_messages SET provider_msg_id='ESKI-id' WHERE issue_id=$1 AND direction='in'`, [IO.id]);
@@ -3169,6 +3205,149 @@ describe('e-postayla yanıt', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     const c = await X.req('POST', '/api/sync', { system: true,
       changes: [{ c: 'comments', id: 'c_eysahte', op: 'put', system: true, data: { issueId: IG.id, body: 'sızma', system: true } }] });
     assert.deepEqual(c.json.rejected.map(x => x.reason), ['Bu çalışma alanına erişiminiz yok']);
+  });
+
+  /* ---- güvenlik (düşük) bulguları ---- */
+  const accRow = async id => (await pool.query(`SELECT * FROM mail_accounts WHERE id=$1`, [id])).rows[0];
+  const commentsOf = async iid => (await pool.query(`SELECT count(*)::int AS n FROM comments WHERE issue_id=$1`, [iid])).rows[0].n;
+  let IG2;
+
+  test('hız sınırı: posta kutusu ve iş başına toplam sınır (farklı kullanıcılar da aşamaz)', async () => {
+    mail.resetReplyLimit();
+    const accG = await accRow('mb_eyg');
+    assert.equal(await mail.processMessage(pool, accG, mail.parseGmail(gm('gy_lim', 'th_LIM', {
+      From: 'limit@musteri-ey.test', To: 'destek@ey.test', Subject: 'Sınır talebi', 'Message-ID': '<lim1@musteri-ey.test>' }, 'gövde'))), 'issue');
+    IG2 = await issueOf('Sınır talebi');
+    assert.deepEqual([mail.REPLY_LIMITS.user.max, mail.REPLY_LIMITS.account.max, mail.REPLY_LIMITS.issue.max], [10, 100, 20]);
+    assert.deepEqual([mail.REPLY_LIMITS.account.windowMs, mail.REPLY_LIMITS.issue.windowMs], [3600e3, 3600e3]);
+    const keep = { a: mail.REPLY_LIMITS.account.max, i: mail.REPLY_LIMITS.issue.max };
+    mail.REPLY_LIMITS.account.max = 4; mail.REPLY_LIMITS.issue.max = 3;
+    try {
+      for (const [k, body] of [[M, 'bir'], [M, 'iki'], [A, 'üç']]) assert.equal((await reply(k, IG.id, { body })).status, 200, body);
+      const n = sent().length;
+      let r = await reply(A, IG.id, { body: 'dört' });
+      assert.equal(r.status, 429); assert.match(r.json.error, /Bu işe saatlik e-posta yanıtı sınırına ulaşıldı/);
+      assert.equal(sent().length, n);
+      assert.equal((await reply(M, IG2.id, { body: 'başka iş' })).status, 200);                      // kutuda 4. gönderim
+      r = await reply(A, IG2.id, { body: 'kutu dolu' });
+      assert.equal(r.status, 429); assert.match(r.json.error, /Bu posta kutusundan saatlik e-posta yanıtı sınırına ulaşıldı/);
+      assert.equal(sent().length, n + 1);
+    } finally { mail.REPLY_LIMITS.account.max = keep.a; mail.REPLY_LIMITS.issue.max = keep.i; mail.resetReplyLimit(); }
+  });
+
+  test('alıcı yalnız işi oluşturan özgün ileti: elle açılmış işe "[ANAHTAR]" konulu dış ileti alıcı olamaz', async () => {
+    mail.resetReplyLimit();
+    const accG = await accRow('mb_eyg');
+    assert.equal(await mail.processMessage(pool, accG, mail.parseGmail(gm('gy_sz1', 'th_SZ1', {
+      From: 'saldirgan@kotu-ey.test', To: 'destek@ey.test', Subject: 'Re: [EYI-1] bilgi', 'Message-ID': '<sz1@kotu-ey.test>' }, 'merhaba'))), 'comment');
+    assert.equal((await pool.query(`SELECT count(*)::int AS n FROM mail_messages WHERE issue_id='i_eyelle' AND direction='in'`)).rows[0].n, 1);
+    const n = sent().length;
+    assert.deepEqual((await M.req('GET', '/api/mail/reply/i_eyelle')).json, { available: false, reason: 'Bu iş bir e-postadan oluşmadı' });
+    let r = await reply(M, 'i_eyelle', { body: 'dışarıya' });
+    assert.equal(r.status, 409); assert.equal(r.json.error, 'Bu iş bir e-postadan oluşmadı');
+    /* iş kaydında kaynak e-posta olarak işaretlense bile özgün ileti (comment_id IS NULL) yoksa alıcı yok */
+    const cur = (await pool.query(`SELECT data FROM issues WHERE id='i_eyelle'`)).rows[0].data;
+    ok(await A.sync([{ c: 'issues', id: 'i_eyelle', op: 'put', data: { ...cur, source: { kind: 'email', from: 'saldirgan@kotu-ey.test' } }, base: cur }]));
+    assert.equal((await pool.query(`SELECT data->'source'->>'kind' AS k FROM issues WHERE id='i_eyelle'`)).rows[0].k, 'email');
+    r = await reply(A, 'i_eyelle', { body: 'dışarıya 2' });
+    assert.equal(r.status, 409); assert.equal(r.json.error, 'Bu iş bir e-postadan oluşmadı');
+    assert.equal(sent().length, n);
+    /* e-postadan oluşmuş işte de zincire eklenen dış ileti alıcıyı değiştirmez */
+    assert.equal(await mail.processMessage(pool, accG, mail.parseGmail(gm('gy_sz2', 'th_SZ2', {
+      From: 'saldirgan@kotu-ey.test', To: 'destek@ey.test', Subject: `Re: [${IG.data.key}] ek`, 'Message-ID': '<sz2@kotu-ey.test>' }, 'ek'))), 'comment');
+    await pool.query(`UPDATE mail_messages SET id=-id WHERE message_id='<sz2@kotu-ey.test>'`);       // sıralamada öne geçsin
+    assert.equal((await M.req('GET', `/api/mail/reply/${IG.id}`)).json.to, 'ayse@musteri-ey.test');
+    r = await reply(M, IG.id, { body: 'özgün alıcıya' });
+    assert.equal(r.status, 200); assert.equal(r.json.to, 'ayse@musteri-ey.test');
+    assert.match(hdrs(mime(sent().at(-1))), /^To: ayse@musteri-ey\.test$/m);
+  });
+
+  test('çift gönderim: aynı istek kimliğiyle ikinci istek e-posta göndermez (ilk sonuç döner; sürerken 409)', async () => {
+    mail.resetReplyLimit();
+    for (const requestId of ['kisa', 5, 'a'.repeat(65), 'x y'.repeat(8), ''])
+      assert.equal((await reply(M, IG.id, { body: 'geçersiz kimlik', requestId })).status, 400, String(requestId));
+    const rid = 'rq_' + 'a1'.repeat(10), n = sent().length, c0 = await commentsOf(IG.id);
+    const r1 = await reply(M, IG.id, { body: 'tek sefer', requestId: rid });
+    assert.equal(r1.status, 200, JSON.stringify(r1.json)); assert.equal(r1.json.recorded, true);
+    const r2 = await reply(M, IG.id, { body: 'tek sefer', requestId: rid });
+    assert.equal(r2.status, 200);
+    assert.deepEqual(r2.json, { ...r1.json, duplicate: true });
+    assert.equal(sent().length, n + 1); assert.equal(await commentsOf(IG.id), c0 + 1);
+    /* aynı kimlik başka metinle 409; başka kullanıcı aynı kimlikle kendi isteğini gönderir (kimlik kullanıcıya bağlı) */
+    assert.equal((await reply(M, IG.id, { body: 'başka metin', requestId: rid })).status, 409);
+    assert.equal(sent().length, n + 1);
+    assert.equal((await reply(A, IG.id, { body: 'tek sefer', requestId: rid })).status, 200);
+    assert.equal(sent().length, n + 2);
+    /* eşzamanlı iki istek: yalnız biri gönderir, diğeri 409 "zaten gönderiliyor" */
+    route(/gmail\.googleapis\.com\/gmail\/v1\/users\/me\/messages\/send$/, async () => { await new Promise(r => setTimeout(r, 150)); return J(200, { id: 'gsent_es' }); });
+    const rid2 = 'rq_' + 'b2'.repeat(10);
+    const rs = await Promise.all([reply(M, IG.id, { body: 'eşzamanlı', requestId: rid2 }), reply(M, IG.id, { body: 'eşzamanlı', requestId: rid2 })]);
+    assert.deepEqual(rs.map(r => r.status).sort(), [200, 409]);
+    assert.equal(rs.find(r => r.status === 409).json.error, mail.REPLY_PENDING_MSG);
+    assert.equal(sent().length, n + 3);
+    /* gönderim başarısızsa (424) kimlik silinir: aynı kimlikle yeniden deneme gönderir */
+    route(/gmail\.googleapis\.com\/gmail\/v1\/users\/me\/messages\/send$/, () => J(500, { error: { message: 'iç' } }));
+    const rid3 = 'rq_' + 'c3'.repeat(10);
+    assert.equal((await reply(M, IG.id, { body: 'yeniden dene', requestId: rid3 })).status, 424);
+    routes.shift();
+    assert.equal((await reply(M, IG.id, { body: 'yeniden dene', requestId: rid3 })).status, 200);
+    assert.equal(sent().length, n + 5);
+    /* gönderim başarılı, kayıt adımı hata verdi (500): yeniden deneme e-postayı ikinci kez göndermez */
+    await pool.query(`CREATE OR REPLACE FUNCTION ey_kayit_hatasi() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'kayıt hatası'; END $$ LANGUAGE plpgsql`);
+    await pool.query(`CREATE TRIGGER ey_kayit_hatasi BEFORE INSERT ON mail_messages FOR EACH ROW WHEN (NEW.direction='out') EXECUTE FUNCTION ey_kayit_hatasi()`);
+    const rid4 = 'rq_' + 'd4'.repeat(10), c1 = await commentsOf(IG.id);
+    try {
+      const f = await reply(M, IG.id, { body: 'kayıt düşer', requestId: rid4 });
+      assert.equal(f.status, 500);
+      assert.equal(sent().length, n + 6);
+      const again = await reply(M, IG.id, { body: 'kayıt düşer', requestId: rid4 });
+      assert.equal(again.status, 200); assert.equal(again.json.duplicate, true); assert.equal(again.json.recorded, false);
+      assert.equal(again.json.to, 'ayse@musteri-ey.test');
+      assert.equal(sent().length, n + 6);
+      assert.equal(await commentsOf(IG.id), c1);
+    } finally {
+      await pool.query('DROP TRIGGER IF EXISTS ey_kayit_hatasi ON mail_messages');
+      await pool.query('DROP FUNCTION IF EXISTS ey_kayit_hatasi()');
+    }
+    /* istek kimliği göndermeyen (eski) istemci eskisi gibi çalışır */
+    assert.equal((await reply(M, IG.id, { body: 'kimliksiz' })).status, 200);
+    mail.resetReplyLimit();
+  });
+
+  test('bilgi notları: denetim karakterli adres uygun gösterilmez; ".." ya da "/" içeren sağlayıcı kimliği yola girmez', async () => {
+    mail.resetReplyLimit();
+    const set = (col, v, iid = IG.id) => pool.query(`UPDATE mail_messages SET ${col}=$2 WHERE issue_id=$1 AND direction='in' AND comment_id IS NULL`, [iid, v]);
+    for (const bad of ['ayse@musteri-ey.test\x1b', 'ay\x07se@musteri-ey.test', 'ayse@musteri-ey.test\x7f']) {
+      await set('from_addr', bad);
+      assert.deepEqual((await M.req('GET', `/api/mail/reply/${IG.id}`)).json, { available: false, reason: 'Talep edenin e-posta adresi geçersiz' }, JSON.stringify(bad));
+      assert.equal((await reply(M, IG.id, { body: 'denetim' })).status, 409);
+    }
+    await set('from_addr', 'ayse@musteri-ey.test');
+    /* Gmail: kötü kimlikle üst veri okunmaz, yine de threadId ile gönderilir */
+    const n = calls.length;
+    for (const pid of ['../../profile', 'a/b', '..']) {
+      await set('provider_msg_id', pid);
+      const r = await reply(M, IG.id, { body: 'kimlik ' + pid });
+      assert.equal(r.status, 200, JSON.stringify(r.json));
+      assert.equal(JSON.parse(sent().at(-1).body).threadId, 'th_EY1');
+    }
+    assert.ok(calls.slice(n).every(c => c.path === 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send'), JSON.stringify(calls.slice(n).map(c => c.path)));
+    await set('provider_msg_id', 'gy1');
+    /* Graph: kötü kimlik createReply yoluna girmez; internetMessageId ile aranır. Taslak kimliği kötüyse gönderilmez. */
+    await set('provider_msg_id', '../createReply', IO.id);
+    await set('message_id', '<o1@kisi-ey.test>', IO.id);
+    const m = calls.length;
+    let r = await reply(M, IO.id, { body: 'graph kimlik' });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    route(/graph\.microsoft\.com\/v1\.0\/me\/messages\/[^/]+\/createReply$/, () => J(201, { id: '..', internetMessageId: '<taslak9@ey.test>' }));
+    r = await reply(M, IO.id, { body: 'graph taslak' });
+    routes.shift();
+    assert.equal(r.status, 424);
+    const paths = calls.slice(m).map(c => c.path);
+    assert.ok(paths.every(p => !/\.\.|%2e|\/me\/createReply/i.test(p)), JSON.stringify(paths));
+    assert.ok(paths.includes('https://graph.microsoft.com/v1.0/me/messages/YENI-id/createReply'));
+    assert.equal(paths.filter(p => /\/send$/.test(p)).length, 1);
+    mail.resetReplyLimit();
   });
 });
 

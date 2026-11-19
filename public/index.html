@@ -5073,20 +5073,27 @@ function mailReplyOf(i) {
   return v && v !== 'bekle' && v.available ? v : null;
 }
 let MAIL_SENDING = false;
+/* Çift gönderim önleme: aynı iş + aynı metin için aynı istek kimliği; yeniden denemede sunucu e-postayı tekrar göndermez. */
+let MAIL_REQ = null;              // { sig, id }
+const mailReqId = sig => {
+  if (MAIL_REQ?.sig !== sig) MAIL_REQ = { sig, id: Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('') };
+  return MAIL_REQ.id;
+};
 async function idMailSend() {
   const i = curIssue(), el = $('#newCmt'), mr = mailReplyOf(i);
   if (!i || !el || !mr || MAIL_SENDING) return;
   const v = el.value.trim(); if (!v) return el.focus();
   MAIL_SENDING = true; const b = $('#sendMail'); if (b) b.disabled = true;
   try {
-    const r = await API.post('/api/mail/reply/' + encodeURIComponent(i.id), { body: v });
+    const r = await API.post('/api/mail/reply/' + encodeURIComponent(i.id), { body: v, requestId: mailReqId(i.id + '\n' + v) });
+    MAIL_REQ = null;
     ID_DRAFT.cmt = ''; ID_DRAFT.open = false; ID_DRAFT.mail = false;
     toast('E-postayla yanıtlandı: ' + (r?.to || mr.to));
     await poll();
     if (OPEN_ISSUE === i.id) refreshIssue(['act']);
   } catch (e) {
     toast(e.message || 'E-posta gönderilemedi');
-    if (e.status === 409) { MAILREPLY[i.id] = { available: false }; ID_DRAFT.mail = false; if (OPEN_ISSUE === i.id) refreshIssue(['act']); }
+    if (e.status === 409 && !/zaten gönderiliyor|başka bir metinle/.test(e.message || '')) { MAILREPLY[i.id] = { available: false }; ID_DRAFT.mail = false; if (OPEN_ISSUE === i.id) refreshIssue(['act']); }
   } finally { MAIL_SENDING = false; const b2 = $('#sendMail'); if (b2) b2.disabled = false; }
 }
 const ID_PARTS = { head: 'idHead', title: 'idT', desc: 'idD', subs: 'idS', links: 'idL', act: 'idA', props: 'idSide' };
@@ -10921,7 +10928,8 @@ async function cuCsvDecode(file) {
   catch (_) { return new TextDecoder('windows-1254').decode(buf); }
 }
 /* Dışa aktarmada formül kaçışı için eklenen ' geri alınır (aynı dosya geri yüklenebilsin). */
-const cuCsvVal = v => { const s = String(v ?? '').trim(); return /^'[=+\-@]/.test(s) ? s.slice(1) : s; };
+const CU_FORMULA_RE = /^(\s*[=+\-@\uff1d\uff0b\uff0d\uff20]|[\t\r])/;
+const cuCsvVal = v => { const s = String(v ?? '').trim(); return s[0] === "'" && CU_FORMULA_RE.test(s.slice(1)) ? s.slice(1).trim() : s; };
 const CU_KIND_IN = { musteri: 'customer', customer: 'customer', alici: 'customer', tedarikci: 'supplier', supplier: 'supplier', satici: 'supplier',
   ikisi: 'both', both: 'both', 'her ikisi': 'both', 'musteri tedarikci': 'both', 'musteri ve tedarikci': 'both' };
 const CU_ACT_IN = { etkin: true, aktif: true, evet: true, e: true, '1': true, true: true, pasif: false, hayir: false, h: false, '0': false, false: false };
@@ -11124,10 +11132,11 @@ function cuCsvResult(res, stop) {
 }
 
 /* ---- dışa aktarma ---- */
-/* Excel'de formül olarak çalışmasın (CSV/formül enjeksiyonu): = + - @ (ve sekme / satır başı) ile başlayan hücreye ' eklenir. */
+/* Excel'de formül olarak çalışmasın (CSV/formül enjeksiyonu): = + - @ ya da tam genişlik ＝＋－＠ ile (baştaki boşluklardan
+   sonra da) başlayan, ya da sekme / satır başıyla başlayan hücreye ' eklenir. */
 const cuCsvCell = v => {
   let s = String(v ?? '');
-  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  if (CU_FORMULA_RE.test(s)) s = "'" + s;
   return /[;",\r\n]/.test(s) || s !== s.trim() ? `"${s.replace(/"/g, '""')}"` : s;
 };
 const cuCsvBlob = lines => new Blob(['﻿' + lines.map(l => l.map(cuCsvCell).join(';')).join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
