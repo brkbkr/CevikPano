@@ -52,13 +52,18 @@ const X = 'u_osx' + R, WS = 'ws_os' + R, PID = 'p_os' + R, IID = 'i_os' + R, KEY
   /* Gezinme hatasız: pano, benim işlerim, raporlar. */
   for (const v of ['home', 'greports', 'board', 'timesheet', 'reports']) { await P.evaluate(v => { location.hash = v; }, v); await sleep(600); }
 
-  /* Alana eklenince yenilemeden görünür. */
+  /* yetki-v2: alan üyeliği erişim vermez; projeye eklenince yenilemeden görünür. */
   r = await wsMembers(A, [{ userId: 'u_admin', role: 'admin' }, { userId: X, role: 'member' }]);
-  ok('admin adds outsider to workspace', r.rejected.length === 0, JSON.stringify(r.rejected));
+  await sleep(5000);
+  ok('outsider: workspace membership alone grants nothing', await P.evaluate(pid => !DB.projects.some(p => p.id === pid), PID));
+  const projRoles = async roles => { const p = await A.evaluate(async pid => (await API.get('/api/state')).data.projects.find(x => x.id === pid), PID);
+    return sync(A, [{ c: 'projects', id: PID, op: 'put', data: { ...p, roles }, base: p }]); };
+  r = await projRoles({ u_admin: 'admin', [X]: 'viewer' });
+  ok('admin adds outsider to the project', r.rejected.length === 0, JSON.stringify(r.rejected));
   ok('outsider: after being added, project + issue + comment arrive without page reload',
     await waitFor(P, ([pid, iid]) => DB.projects.some(p => p.id === pid) && DB.issues.some(i => i.id === iid) && DB.comments.some(c => c.issueId === iid), [PID, IID]));
-  /* Çıkarılınca kaybolur. */
-  r = await wsMembers(A, [{ userId: 'u_admin', role: 'admin' }]);
+  /* Projeden çıkarılınca kaybolur. */
+  r = await projRoles({ u_admin: 'admin' });
   ok('outsider: after removal, data disappears without page reload',
     await waitFor(P, ([pid, iid]) => !DB.projects.some(p => p.id === pid) && !DB.issues.some(i => i.id === iid) && !DB.comments.some(c => c.issueId === iid), [PID, IID]));
   await P.evaluate(() => { location.hash = 'board'; }); await sleep(800);

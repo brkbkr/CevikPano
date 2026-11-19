@@ -256,14 +256,15 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
   /* alan Üyesi (projenin üyesi de): düğme yok, sunucu reddeder */
   const M = await fresh('wsmember', MU, 'PiUye123456');
   await go(M, 'backlog');
-  const mv = await M.evaluate(pid => ({ box: !!document.querySelector(`[data-sprint="${pid}_sp"]`), start: document.querySelectorAll('[data-start],[data-spcomplete],#newSprint').length,
-    canMan: canManageProject(P()) }), PID);
-  ok('workspace member (project member too): sprint visible, no create/start/complete buttons', mv.box && mv.start === 0 && mv.canMan === false, JSON.stringify(mv));
+  /* yetki-v2: Üye sprint oluşturur (sprint.edit), başlatıp bitiremez (sprint.manage) */
+  const mv = await M.evaluate(pid => ({ box: !!document.querySelector(`[data-sprint="${pid}_sp"]`), start: document.querySelectorAll('[data-start],[data-spcomplete]').length,
+    nw: !!document.querySelector('#newSprint'), canMan: canManageProject(P()) }), PID);
+  ok('project member: sprint visible, create button, no start/complete buttons', mv.box && mv.start === 0 && mv.nw && mv.canMan === false, JSON.stringify(mv));
   await go(M, 'admin');
   ok('workspace member: no sprint length setting', await M.evaluate(() => !document.querySelector('#ptSprintW')));
   const srv = await M.evaluate(async pid => { const s = { ...DB.sprints.find(x => x.id === pid + '_sp'), state: 'active' };
     const r = await API.post('/api/sync', { changes: [{ c: 'sprints', id: s.id, op: 'put', data: s }] }); return (r.data?.rejected || r.rejected || []).map(x => x.reason); }, PID);
-  ok('workspace member: server rejects sprint start', srv.join() === 'Sprinti yalnızca alan yöneticisi başlatıp bitirebilir', srv.join());
+  ok('workspace member: server rejects sprint start', srv.join() === 'Bu projede "Sprint başlatma ve bitirme" yetkiniz yok', srv.join());
   const srvW = await M.evaluate(async pid => { const p = { ...DB.projects.find(x => x.id === pid), sprintWeeks: 4 };
     const r = await API.post('/api/sync', { changes: [{ c: 'projects', id: p.id, op: 'put', data: p }] }); return (r.data?.rejected || r.rejected || []).length; }, PID);
   ok('workspace member: server rejects sprint length change', srvW === 1, String(srvW));
@@ -279,7 +280,7 @@ const PID = 'p_pi' + RUN, KEY = 'PI' + RUN.toUpperCase().replace(/[^A-Z0-9]/g, '
   await go(Y, 'admin');
   const ya = await Y.evaluate(() => ({ tabs: [...document.querySelectorAll('#adminTabs [data-a]')].map(b => b.dataset.a), w: !!document.querySelector('#ptSprintW'),
     def: !!document.querySelector('#defFlow,#saveDefFlow'), cols: !!document.querySelector('#ptColsSet') }));
-  ok('workspace admin: project settings show only project-specific tabs: İş akışı + Alanlar (no general settings)', JSON.stringify(ya.tabs) === '["workflow","fields"]' && ya.w && !ya.def && ya.cols, JSON.stringify(ya));
+  ok('workspace admin: project settings show only project-specific tabs: İş akışı + Alanlar + Yetkiler (no general settings)', JSON.stringify(ya.tabs) === '["workflow","fields","perms"]' && ya.w && !ya.def && ya.cols, JSON.stringify(ya));
   await Y.selectOption('#ptSprintW', '3'); await sleep(1500);
   ok('workspace admin: sprint length saved on server', await Y.evaluate(async pid => (await API.get('/api/state')).data.projects.find(p => p.id === pid)?.sprintWeeks === 3, PID));
   await A.reload(); await sleep(1500); await go(A, 'admin');

@@ -45,6 +45,7 @@ const XSS = '<img src=x onerror="window.__xss=1">';
   /* Test verisi: ana iş (yorum, süre kaydı, bağlantı, 2 alt iş), boş iş, XSS'li iş, ham kimlikli eski geçmiş. */
   await A.evaluate(([ids, run, mid, vid, xss]) => {
     const pr = DB.projects.find(x => x.id === 'p1');
+    pr.roles = { ...(pr.roles || {}), [mid]: 'member', [vid]: 'viewer' };   // yetki-v2: projeye proje rolüyle
     pr.members = [...new Set([...(pr.members || []), mid, vid])];
     const st = statsOf('p1');
     const mkI = (id, n, extra) => ({ id, projectId: 'p1', key: `${pr.key}-${++pr.counter}`, type: 'task', summary: `KD-T${run} ${n}`, description: '',

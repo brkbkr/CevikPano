@@ -97,7 +97,7 @@ const FN = 'Sahne ' + XSS, OPT2 = '<b>Kalın</b>' + XSS;
   const YP = await mk('wsadmin'); await login(YP, 'pay' + R, 'Baslangic123', 'PaYon123456');
   await go(YP, 'admin');
   const tabsY = await YP.evaluate(() => [...document.querySelectorAll('#adminTabs [data-a]')].map(b => b.dataset.a));
-  ok('field admin: project settings show İş akışı + Alanlar tabs only', JSON.stringify(tabsY) === '["workflow","fields"]', JSON.stringify(tabsY));
+  ok('field admin: project settings show İş akışı + Alanlar + Yetkiler tabs only', JSON.stringify(tabsY) === '["workflow","fields","perms"]', JSON.stringify(tabsY));
   await YP.click('#adminTabs [data-a="fields"]'); await sleep(300);
   const t0 = await YP.evaluate(() => ({ rows: [...document.querySelectorAll('#pfTab [data-pfrow^="b:"]')].map(r => [r.dataset.pfrow, r.classList.contains('on')]),
     add: !!document.querySelector('#addField'), empty: !!document.querySelector('#pfTab .pf-empty') }));
@@ -140,7 +140,7 @@ const FN = 'Sahne ' + XSS, OPT2 = '<b>Kalın</b>' + XSS;
   const mt = await MP.evaluate(() => ({ tabs: [...document.querySelectorAll('#adminTabs [data-a]')].map(b => b.dataset.a), pf: !!document.querySelector('#pfTab') }));
   ok('member: no Alanlar tab, forced tab does not open it', !mt.tabs.includes('fields') && !mt.pf, JSON.stringify(mt));
   const mr = await MP.evaluate(async pid => (await API.post('/api/sync', { changes: [{ c: 'fields', id: 'f_m_' + pid, op: 'put', data: { projectId: pid, key: 'uyealan', name: 'Üye', type: 'text' } }] })), PID);
-  ok('member: server rejects project field (403 reason)', mr.applied === 0 && mr.rejected?.[0]?.reason === 'Bu değişiklik için yönetici yetkisi gerekli', JSON.stringify(mr));
+  ok('member: server rejects project field (403 reason)', mr.applied === 0 && mr.rejected?.[0]?.reason === 'Bu projede "Proje alanları" yetkiniz yok', JSON.stringify(mr));
 
   /* ---------------- 3) kartta (iş detayında) değer girme ---------------- */
   await go(MP, 'board');

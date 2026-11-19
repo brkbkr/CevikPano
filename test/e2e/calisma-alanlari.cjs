@@ -57,7 +57,8 @@ const WSA = `Alan A ${RUN} ${XSS}`;                       // 60 karakterin altı
       { c: 'users', id: NV, op: 'put', data: { username: 'wsnv' + R, name: 'Ws Projesiz İzl ' + R, role: 'viewer', active: true, ini: 'WZ', color: '#C2410C' } },
     ] });
     await reloadState();
-    ['p1', 'p2'].forEach(pid => { const p = DB.projects.find(x => x.id === pid); p.members = [...new Set([...(p.members || []), M, V])]; });
+    /* yetki-v2: kişiler projeye proje rolüyle eklenir */
+    ['p1', 'p2'].forEach(pid => { const p = DB.projects.find(x => x.id === pid); p.roles = { ...(p.roles || {}), [M]: 'member', [V]: 'viewer' }; p.members = [...new Set([...(p.members || []), M, V])]; });
     save(); await flushAll();
   }, [RUN, M, V, N, NV]);
 
@@ -154,9 +155,9 @@ const WSA = `Alan A ${RUN} ${XSS}`;                       // 60 karakterin altı
   ok('member: tree lists projects under their workspace', await Mb.evaluate(() => { const o = [...document.querySelectorAll('#nvp-ws1 [data-proj]')].map(x => x.dataset.proj);
     return o.includes('p1') && !o.includes('p2'); }));
   await Mb.click(`#wsTree [data-wstog="${wsA}"]`); await sleep(200);
-  /* 22b: alan adı alan sayfasını açar; üyeli alanda üye alanın tüm projelerini görür (p2 + yöneticinin yeni projesi) */
+  /* yetki-v2: alan adı alan sayfasını açar; üye yalnız eklendiği projeleri görür (p2; yöneticinin yeni projesi değil) */
   ok('member: opening the workspace row shows its page and projects', await Mb.evaluate(([id, np]) => document.querySelector(`#wsTree [data-wstog="${id}"]`).getAttribute('aria-expanded') === 'true'
-    && DB.ui.view === 'workspace' && [...document.querySelectorAll('#nvp-' + id + ' [data-proj]')].map(o => o.dataset.proj).sort().join() === ['p2', np].sort().join(), [wsA, np.id]));
+    && DB.ui.view === 'workspace' && [...document.querySelectorAll('#nvp-' + id + ' [data-proj]')].map(o => o.dataset.proj).sort().join() === ['p2'].join(), [wsA, np.id]));
   await Mb.click(`#nvp-${wsA} [data-proj="p2"]`); await sleep(300);
   ok('member: picking a project in another workspace switches workspace', await Mb.evaluate(id => DB.ui.workspace === id && DB.ui.project === 'p2'
     && document.querySelector('#wsTree [data-proj="p2"]')?.getAttribute('aria-current') === 'page', wsA));

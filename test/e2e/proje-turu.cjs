@@ -48,11 +48,14 @@ const PC = 'p_ptc' + RUN, PA = 'p_pta' + RUN;          // kolon testi projesi (P
       { c: 'users', id: V, op: 'put', data: { username: 'ptv' + R, name: 'Tür İzleyici ' + R, role: 'viewer', active: true, ini: 'Tİ', color: '#64748B' } },
     ] });
     await reloadState();
-    const p = DB.projects.find(x => x.id === 'p1'); p.members = [...new Set([...(p.members || []), M, V])];
+    const p = DB.projects.find(x => x.id === 'p1'); p.roles = { ...(p.roles || {}), [M]: 'member', [V]: 'viewer' }; p.members = [...new Set([...(p.members || []), M, V])];
     const used = new Set(DB.projects.map(x => x.code || x.key));
     const kc = projCode('Kolon Test ' + R, used); used.add(kc); const ka = projCode('Agile Test ' + R, used);
-    DB.projects.push({ id: PC, key: kc, code: kc, name: 'Kolon Test ' + R, lead: SESSION, counter: 0, members: [SESSION, M, V], archived: false, workspaceId: 'ws1' });
-    DB.projects.push({ id: PA, key: ka, code: ka, name: 'Agile Test ' + R, type: 'agile', lead: SESSION, counter: 0, members: [SESSION, M, V], archived: false, workspaceId: 'ws1' });
+    /* yetki-v2: Üye'ye kolon yetkisi bu projelerin yetki tablosundan açılır (varsayılanda kapalı). */
+    DB.projects.push({ id: PC, key: kc, code: kc, name: 'Kolon Test ' + R, lead: SESSION, counter: 0, members: [SESSION, M, V], roles: { [SESSION]: 'admin', [M]: 'member', [V]: 'viewer' },
+      perms: { member: { 'project.columns': true } }, archived: false, workspaceId: 'ws1' });
+    DB.projects.push({ id: PA, key: ka, code: ka, name: 'Agile Test ' + R, type: 'agile', lead: SESSION, counter: 0, members: [SESSION, M, V], roles: { [SESSION]: 'admin', [M]: 'member', [V]: 'viewer' },
+      perms: { member: { 'project.columns': true } }, archived: false, workspaceId: 'ws1' });
     [['Yapılacak', 'todo'], ['Geliştirmede', 'inprogress'], ['İncelemede', 'inprogress'], ['Testte', 'inprogress'], ['Bitti', 'done']]
       .forEach(([n, c], k) => DB.statuses.push({ id: `${PC}_s${k}`, projectId: PC, name: n, cat: c, wip: 0, ord: k }));
     [['Yapılacak', 'todo'], ['Devam ediyor', 'inprogress'], ['Bitti', 'done']]

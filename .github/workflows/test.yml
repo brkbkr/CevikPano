@@ -101,6 +101,8 @@ jobs:
         run: node test/e2e/varsayilan-menu.cjs
       - name: Parametrik proje alanları testi (Alanlar sekmesi ve yetki, hazır alan aç/kapat, kartta değer ve rozet, raporda alan boyutu ve hazır şablonlar, XSS)
         run: node test/e2e/parametrik-alanlar.cjs
+      - name: Proje yetkileri testi (Yetkiler sekmesi, kişi ve rol, yetki tablosu, yeni proje kişileri, varsayılan yetkiler, kullanıcı penceresi, mobil, XSS)
+        run: node test/e2e/yetkiler.cjs
       - name: Sunucu günlüğü
         if: failure()
         run: cat server.log

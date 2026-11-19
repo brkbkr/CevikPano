@@ -58,7 +58,7 @@ const LABELS = ['Pano', 'İş listesi', 'Zaman planı', 'Yol haritası', 'Zaman 
       { c: 'workspaces', id: WS2, op: 'put', data: { id: WS2, name: 'Altı Proje ' + R, color: '#047857', description: '' } },
     ] });
     await reloadState();
-    const p1 = DB.projects.find(x => x.id === 'p1'); p1.members = [...new Set([...(p1.members || []), M, V, D])];
+    const p1 = DB.projects.find(x => x.id === 'p1'); p1.roles = { ...(p1.roles || {}), [M]: 'member', [V]: 'viewer', [D]: 'member' }; p1.members = [...new Set([...(p1.members || []), M, V, D])];
     const used = new Set(DB.projects.map(x => x.code || x.key)); const k = projCode('Gezinme ' + R, used);
     DB.projects.push({ id: PX, key: k, code: k, name: PXN, lead: SESSION, counter: 0, members: [SESSION, M, V, D], archived: false, workspaceId: WS });
     [['Yapılacak', 'todo'], ['Devam ediyor', 'inprogress'], ['Bitti', 'done']]
@@ -344,7 +344,7 @@ const LABELS = ['Pano', 'İş listesi', 'Zaman planı', 'Yol haritası', 'Zaman 
   ok('A2: project deleted by someone else leaves the tree (poll)', tDel >= 0 && tDel <= 6000, tDel + ' ms');
   await Mp.evaluate(WS2 => { wsOpenSet(WS2, true); save(); renderRail(); }, WS2); await sleep(200);
   await go(Mp, P6[5], 'board');
-  await A.evaluate(async ([P, M]) => { const p = DB.projects.find(x => x.id === P); p.members = p.members.filter(x => x !== M); save(); await flushAll(); }, [P6[5], M]);
+  await A.evaluate(async ([P, M]) => { const p = DB.projects.find(x => x.id === P); const r = { ...p.roles }; delete r[M]; p.roles = r; p.members = p.members.filter(x => x !== M); save(); await flushAll(); }, [P6[5], M]);
   const tOut = await waitFor(Mp, pid => DB.ui.project !== pid && !!P() && !document.querySelector(`#wsTree [data-proj="${pid}"]`), P6[5], 9000).catch(() => -1);
   ok('A2: removed from the current project → falls back to another project', tOut >= 0, tOut + ' ms');
 
