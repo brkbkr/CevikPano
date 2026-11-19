@@ -648,7 +648,7 @@ export function buildMime({ from, to, subject, messageId, inReplyTo, references,
 async function replyContext(pool, me, issueId) {
   const acc0 = await issueAccess(pool, me, issueId);
   if (!acc0) throw new HttpError(404, 'İş bulunamadı');
-  if (!acc0.write) throw new HttpError(403, 'Bu işe e-postayla yanıt için Üye ya da Yönetici rolü gerekli');
+  if (!acc0.write) throw new HttpError(403, 'Bu projede "Yorum yazma" yetkiniz yok (e-postayla yanıt yorum ekler)');
   if (!pollingEnabled()) return { reason: mailConfigured() ? 'E-posta kapalı (sunucuda MAIL_ENABLED=true değil)' : NOT_CONFIGURED, issue: acc0.data };
   const src = (await pool.query(`SELECT * FROM mail_messages WHERE issue_id=$1 AND direction='in' AND from_addr IS NOT NULL
     ORDER BY (comment_id IS NULL) DESC, id LIMIT 1`, [issueId])).rows[0];
