@@ -667,7 +667,7 @@ export function buildMime({ from, to, subject, messageId, inReplyTo, references,
 async function replyContext(pool, me, issueId) {
   const acc0 = await issueAccess(pool, me, issueId);
   if (!acc0) throw new HttpError(404, 'İş bulunamadı');
-  if (!acc0.write) throw new HttpError(403, 'Bu işe e-postayla yanıt için Üye ya da Yönetici rolü gerekli');
+  if (!acc0.write) throw new HttpError(403, 'Bu projede "Yorum yazma" yetkiniz yok (e-postayla yanıt yorum ekler)');
   if (!pollingEnabled()) return { reason: mailConfigured() ? 'E-posta kapalı (sunucuda MAIL_ENABLED=true değil)' : NOT_CONFIGURED, issue: acc0.data };
   /* Alıcı yalnız işi oluşturan özgün ileti (comment_id IS NULL) ve işin kaynağı e-postaysa; sonradan "[ANAHTAR]" konusuyla
      zincire eklenen dış iletiler alıcı belirleyemez. */
