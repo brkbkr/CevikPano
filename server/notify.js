@@ -1,4 +1,5 @@
 /* Uygulama içi bildirimler. Kayıt yazılırken aynı işlemde üretilir. */
+import { visibleProjectIds } from './store.js';
 
 async function add(c, userId, kind, issueId, actorId, meta = {}) {
   if (!userId || userId === actorId) return;
@@ -38,7 +39,10 @@ export async function notifyForComment(c, me, data) {
     if (!mentioned.has(u)) await add(c, u, 'comment', issue.id, me.id, { excerpt });
 }
 
-export async function listNotifications(pool, userId, limit = 50) {
+/* me: oturumdaki kullanıcı. Erişimi olmayan (alandan çıkarılmış ya da hiç erişimi olmayan) işin bildirimi kalır ama
+   anahtar, başlık, proje ve meta (yorum özeti, durum) boş döner (okuma süzmesi 18 ile aynı kural). */
+export async function listNotifications(pool, me, limit = 50) {
+  const userId = me.id;
   const { rows } = await pool.query(
     `SELECT n.id, n.kind, n.issue_id, n.actor_id, n.meta, n.created_at, n.read_at,
             i.issue_key, i.summary, i.project_id, a.name AS actor_name
@@ -46,6 +50,10 @@ export async function listNotifications(pool, userId, limit = 50) {
        LEFT JOIN issues i ON i.id = n.issue_id
        LEFT JOIN users a ON a.id = n.actor_id
       WHERE n.user_id = $1 ORDER BY n.created_at DESC LIMIT $2`, [userId, limit]);
+  const seen = await visibleProjectIds(pool, me);
+  if (seen) for (const r of rows) if (r.issue_id && !seen.has(r.project_id)) {
+    r.issue_key = ''; r.summary = ''; r.project_id = null; r.meta = {};
+  }
   return rows;
 }
 
