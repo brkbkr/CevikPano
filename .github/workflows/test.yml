@@ -105,6 +105,8 @@ jobs:
         run: node test/e2e/yetkiler.cjs
       - name: Kayıtlı raporlar testi (kapsam seçici, ölçü ve grafik, kaydet / aç / düzenle / kopyala / sil, paylaşım görünürlüğü, hazır rapordan kopya, proje sekmesinde kilitli kapsam, XSS)
         run: node test/e2e/kayitli-raporlar.cjs
+      - name: Cariler modülü testi (Sistem → Modüller aç/kapat, kapalıyken menü/seçici/rapor/hazır alan/talep eden yok ve sunucu reddi, cari alanları form/liste/kart/CSV, VKN)
+        run: node test/e2e/cariler-modul.cjs
       - name: Sunucu günlüğü
         if: failure()
         run: cat server.log
