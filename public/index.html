@@ -9158,6 +9158,10 @@ const canNewProjAny = () => wsAll().some(w => canNewProj(w.id));
 /* Proje görünürlüğü: alanda rolü olmalı; eski alanda ayrıca projenin üye listesi (bugünkü davranış). Üyeli alanda
    erişimi alan üyeliği belirler (proje üye listesi ekip listesi olarak kalır). */
 const projVisible = p => { const w = wsById(wsOf(p)); return !!wsRole(CU(), w) && (!wsLegacy(w) || isMember(p)); };
+/* Projeyi alanlar arası taşıma: kaynak ve hedef alanın ikisinde de alan yöneticisi; eski (üyesiz) alan işin içindeyse
+   yalnız sistem yöneticisi. Sunucuda store.js → checkProjectMove. */
+const canMoveBetween = (a, b) => isAdmin() || [a, b].every(id => { const w = wsById(id); return !!w && !wsLegacy(w) && wsRole(CU(), w) === 'admin'; });
+const canMoveProj = p => !!p && canDesign(p) && canMoveBetween(wsOf(p), wsOf(p));
 /* Ad/renk/açıklama, üyeler ve arşiv: alan yöneticisi (sahip dahil) ya da sistem yöneticisi. */
 const canManageWs = w => !!w && wsRole(CU(), w) === 'admin';
 const wsSort = (a, b) => (a.id === WS_DEFAULT ? -1 : 0) - (b.id === WS_DEFAULT ? -1 : 0)
@@ -9692,9 +9696,9 @@ function wsDelete(id) {
 /* "Çalışma alanını değiştir": yalnız projenin workspaceId'si değişir; anahtarlar, sprintler, üyeler, süreler aynı. */
 function moveProjectForm(pid) {
   const p = DB.projects.find(x => x.id === pid); if (!p) return;
-  if (!canDesign(p)) return toast('Projeyi yalnızca alan yöneticisi taşıyabilir');
+  if (!canMoveProj(p)) return toast('Projeyi yalnızca alan yöneticisi taşıyabilir');
   const from = wsOf(p);
-  const act = visibleWs().filter(w => w.id === from || canNewProj(w.id)), arch = visibleWs(true);
+  const act = visibleWs().filter(w => w.id === from || (canNewProj(w.id) && canMoveBetween(from, w.id))), arch = visibleWs(true);
   if (!act.some(w => w.id === from) && !arch.some(w => w.id === from) && wsById(from)) (wsArchived(from) ? arch : act).push(wsById(from));
   let to = from;
   const opt = (w, dis) => { const n = DB.projects.filter(x => wsOf(x) === w.id && !x.archived).length;
@@ -10371,7 +10375,7 @@ function wsProjCard(p, arch) {
   const people = w && !wsLegacy(w) ? wsMembersOf(w) : DB.users.filter(u => u.active && !u.system);
   const items = [
     canEditCols(p) && !arch ? `<button type="button" class="ws-mi" role="menuitem" data-ptypedlg="${pid}">${ic('swap')}<span class="two">Türü değiştir…<span class="why">Şu an ${TYPE_LABEL[projType(p)]}</span></span></button>` : '',
-    canDesign(p) ? `<button type="button" class="ws-mi" role="menuitem" data-movproj="${pid}">${ic('move')}Çalışma alanını değiştir…</button>` : '',
+    canMoveProj(p) ? `<button type="button" class="ws-mi" role="menuitem" data-movproj="${pid}">${ic('move')}Çalışma alanını değiştir…</button>` : '',
     canDesign(p) ? `<button type="button" class="ws-mi" role="menuitem" data-arch="${pid}">${ic(p.archived ? 'unarchive' : 'archive')}${p.archived ? 'Yeniden etkinleştir' : 'Arşivle'}</button>` : '',
     isAdmin() ? `<div class="ws-hr" role="separator"></div><button type="button" class="ws-mi danger" role="menuitem" data-delproj="${pid}"
       ${DB.projects.length < 2 ? 'disabled title="Son proje silinemez"' : ''}>${ic('trash')}Projeyi sil</button>` : ''].join('');
