@@ -3183,8 +3183,30 @@ function tryRerender() {
 }
 
 async function reloadState() {
-  try { holdClear(); DB = await load(); ensureSchema(); ensureAccounts(); startApp(false); }
+  try {
+    const open = OPEN_ISSUE, prevProj = DB?.ui?.project, typed = modalTyped();
+    holdClear(); DB = await load(); ensureSchema(); ensureAccounts();
+    dropLostModal(open, prevProj, typed);
+    startApp(false);
+  }
   catch (e) { if (e.status === 401) sessionLost(); }
+}
+/* Açık pencerede kaydedilmemiş yazı var mı (değeri ilk hâlinden farklı metin alanı ya da açık düzenleme). */
+function modalTyped() {
+  const boxes = [...document.querySelectorAll('#scrim.on, #scrim2.on')];
+  if (!boxes.length) return false;
+  if (ID_ED || ID_CEDIT) return true;
+  return boxes.some(b => [...b.querySelectorAll('textarea, input')].some(e => !['checkbox', 'radio', 'button', 'submit', 'hidden'].includes(e.type)
+    && e.value !== e.defaultValue) || [...b.querySelectorAll('[contenteditable="true"]')].some(e => e.textContent.trim()));
+}
+/* Erişim değişince (18): artık görünmeyen işin ya da (iş açık değilken) seçili projenin açık penceresi kapanır;
+   veri ekranda kalmaz. Sunucu zaten yazmayı reddeder; yazılmış metin varsa kullanıcı uyarılır. */
+function dropLostModal(openId, prevProj, typed) {
+  if (!document.getElementById('scrim')?.classList.contains('on')) return;
+  const lost = openId ? !issue(openId) : !!prevProj && !DB.projects.some(p => p.id === prevProj);
+  if (!lost) return;
+  closeSub(); closeModal();
+  toast(typed ? 'Bu kayda erişiminiz kalmadı; yazdığınız metin kaydedilmedi' : 'Bu kayda erişiminiz kalmadı');
 }
 
 let LOST = null;
