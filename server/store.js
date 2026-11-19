@@ -139,13 +139,13 @@ export async function applyChanges(pool, me, changes, opts = {}) {
   /* Kararlı gruplama: kullanıcılar → çalışma alanı/cari kayıtları → proje kayıtları → diğerleri (silmeler
      dahil, gönderim sırasıyla) → en sonda kolon silmeleri. Yeni alan/cari ve ona bağlı yeni proje, yeni
      projenin kolonları dizide önce gelse de doğru sırayla yazılır; silinen kolonun işleri aynı gönderimde
-     taşındıysa silme onlardan sonra denetlenir. Geçmiş ve yorumlar işlerden sonra (B2): yeni işin geçmişi
+     taşındıysa silme onlardan sonra denetlenir. Geçmiş, yorum ve bağlantılar işlerden sonra (B2): yeni işin geçmişi
      işi bulur; iş silmeyle birlikte gönderilen geçmiş/yorum silmeleri cascade'den sonra "kayıt yok" olur. */
   const rank = ch => (ch?.c === 'users' ? 0
     : ['workspaces', 'customers'].includes(ch?.c) && ch?.op === 'put' ? 1
     : ch?.c === 'projects' && ch?.op === 'put' ? 2
     : ch?.c === 'statuses' && ch?.op === 'del' ? 5
-    : ['history', 'comments'].includes(ch?.c) ? 4 : 3);
+    : ['history', 'comments', 'links'].includes(ch?.c) ? 4 : 3);
   const ordered = changes.map((ch, i) => [rank(ch), i, ch]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
   /* Kilitlenme (40P01) ya da serileştirme hatası (40001): işlem bir kez yeniden denenir. */
   for (let attempt = 0; ; attempt++) {
@@ -411,6 +411,7 @@ async function applyRecord(c, ctx, ch) {
     if (!cur || colName(cur.name) !== colName(data.name) || cur.projectId !== data.projectId) ctx.colNamed.add(ch.id);
   }
   if (ch.c === 'customers') await checkCustomerTaxNo(c, ctx, ch.id, data, cur);
+  if (ch.c === 'links') await checkLinkEnds(c, me, data, cur);
 
   const json = JSON.stringify(data);
   if (table && !cur && CREATE_ONCE.includes(ch.c)) {
@@ -783,6 +784,18 @@ async function checkScope(c, me, col, cur, data, early = false) {
     const pid = ISSUE_SCOPED.includes(col) ? await issueProj(c, d.issueId)
       : col === 'links' ? await issueProj(c, d.from) : d.projectId;
     needMember(me, await wsOfProjectData(c, await projById(c, pid)));
+  }
+}
+
+/* Bağlantının iki ucu da var olan iş olmalı (yeni bağlantıda ya da ucu değişince); `from` ucunda en az Üye
+   (checkScope), `to` ucunda erişim (alanda herhangi bir rol). FOR SHARE: uç aynı anda silinirse yetim kalmasın. */
+async function checkLinkEnds(c, me, data, cur) {
+  if (cur && cur.from === data.from && cur.to === data.to) return;
+  for (const end of [data.from, data.to]) {
+    const pid = typeof end === 'string' && end
+      ? (await c.query('SELECT project_id FROM issues WHERE id=$1 FOR SHARE', [end])).rows[0]?.project_id : undefined;
+    if (pid === undefined) throw new HttpError(400, 'Bağlantının işi bulunamadı');
+    if (!isAdminRole(me.role) && !canAccess(me, await wsOfProjectData(c, await projById(c, pid)))) throw new HttpError(403, NO_ACCESS);
   }
 }
 

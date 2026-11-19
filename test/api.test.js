@@ -3247,4 +3247,17 @@ describe('genel tur düzeltmeleri', { skip: !URL && 'TEST_DATABASE_URL yok' }, (
     ok(await C.A.sync([{ c: '_settings', id: 'gtAyar', op: 'del' }]));
   });
 
+  test('bağlantı: iki uç da var olan iş; `to` ucuna erişim gerekir; aynı gönderimde işten önce gelen bağlantı da yazılır', async () => {
+    const E = 'Bağlantının işi bulunamadı';
+    rej(await C.X.sync([put('links', 'l_g0', { from: 'i_yok', to: 'i_g1', type: 'blocks' })]), E);
+    rej(await C.A.sync([put('links', 'l_g0', { from: 'i_yok', to: 'i_g1', type: 'blocks' })]), E);
+    rej(await C.M.sync([put('links', 'l_g1', { from: 'i_g1', to: 'i_yok', type: 'blocks' })]), E);
+    rej(await C.M.sync([put('links', 'l_g2', { from: 'i_g1', to: 'i_g3', type: 'blocks' })]), NO);   // ws_g3'te rolü yok
+    rej(await C.M.sync([put('links', 'l_g3', { from: 'i_g2', to: 'i_g1', type: 'blocks' })]), 'Bu çalışma alanında yalnızca görüntüleme yetkiniz var');
+    ok(await C.M.sync([put('links', 'l_g4', { from: 'i_g1', to: 'i_g2', type: 'relates' })]));         // ws_g2'de İzleyici: hedef olur
+    const l = await row('links', 'l_g4');
+    ok(await C.M.sync([put('links', 'l_g4', { ...l, type: 'blocks' }, l)]));
+    rej(await C.M.sync([put('links', 'l_g4', { ...l, to: 'i_g3' }, l)]), NO);
+    ok(await C.M.sync([put('links', 'l_g5', { from: 'i_g1', to: 'i_g1d', type: 'blocks' }), iss('i_g1d', 'pg1')]));
+  });
 });
