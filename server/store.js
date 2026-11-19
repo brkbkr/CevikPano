@@ -384,6 +384,7 @@ async function applyRecord(c, ctx, ch) {
   await checkScope(c, me, ch.c, cur, data);
   if (ch.c === 'workspaces') await checkWorkspace(c, me, ch.id, data, cur);
   if (ch.c === 'projects') await checkProjectWorkspace(c, data, cur);
+  if (ch.c === 'projects' && cur) await checkProjectMove(c, me, cur, data);
   if (ch.c === 'projects') await checkProjectCustomer(c, data, cur);
   if (ch.c === 'issues') await checkProjectCustomer(c, data, cur, 'Pasif cari işe bağlanamaz');
   if (ch.c === 'projects' && cur) await checkProjectType(c, me, ch.id, data, cur);
@@ -775,6 +776,17 @@ async function checkScope(c, me, col, cur, data, early = false) {
       : col === 'links' ? await issueProj(c, d.from) : d.projectId;
     needMember(me, await wsOfProjectData(c, await projById(c, pid)));
   }
+}
+
+/* Projeyi başka alana taşıma: kaynak ve hedef alanın ikisinde de alan yöneticisi; iki alandan biri üye listesi
+   tanımsız (eski) alansa yalnız sistem yöneticisi (eski alanın projesi herkesindir, tek kişi saklayamaz/açamaz).
+   İstemcideki canMoveProj ile aynı. */
+const MOVE_FORBIDDEN = 'Projeyi başka alana yalnızca iki alanın da yöneticisi taşıyabilir';
+async function checkProjectMove(c, me, cur, data) {
+  if (isAdminRole(me.role)) return;
+  const a = await wsOfProjectData(c, cur), b = await wsOfProjectData(c, data);
+  if ((a?.id ?? null) === (b?.id ?? null)) return;
+  for (const w of [a, b]) if (wsLegacy(w) || wsRole(me, w) !== 'admin') throw new HttpError(403, MOVE_FORBIDDEN);
 }
 
 /* Sahip: istemciden yalnız sistem yöneticisi belirler (açarken başka kişi seçebilir / sonradan devreder). */

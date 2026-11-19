@@ -947,7 +947,9 @@ describe('çalışma alanları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () =
     const p = (await row('projects', 'p_ts')).data;
     assert.equal(p.counter, 2);
     const s0 = (await U2.state()).json.seq;
-    const r = await U2.sync([{ c: 'projects', id: 'p_ts', op: 'put', base: p, data: { ...p, workspaceId: 'ws_a' } }]);
+    /* Eski (üyesiz) alandan taşıma yalnız sistem yöneticisi (güvenlik O1). */
+    assert.deepEqual(reasons(await U2.sync([{ c: 'projects', id: 'p_ts', op: 'put', base: p, data: { ...p, workspaceId: 'ws_a' } }])), ['Projeyi başka alana yalnızca iki alanın da yöneticisi taşıyabilir']);
+    const r = await A.sync([{ c: 'projects', id: 'p_ts', op: 'put', base: p, data: { ...p, workspaceId: 'ws_a' } }]);
     assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
     const after = (await row('projects', 'p_ts')).data;
     assert.deepEqual({ ...after, workspaceId: 'ws1' }, p);
@@ -959,7 +961,8 @@ describe('çalışma alanları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () =
     const r2 = await U1.sync([{ c: 'projects', id: 'p_alansiz', op: 'put', data: { name: 'Alansız', key: 'ALS' } }]);
     assert.equal(r2.json.applied, 1, JSON.stringify(r2.json.rejected));
     assert.equal((await row('projects', 'p_alansiz')).workspace_id, null);
-    const r3 = await U1.sync([{ c: 'projects', id: 'p_alansiz', op: 'put', data: { name: 'Alansız', key: 'ALS', workspaceId: 'ws_a' } }]);
+    assert.deepEqual(reasons(await U1.sync([{ c: 'projects', id: 'p_alansiz', op: 'put', data: { name: 'Alansız', key: 'ALS', workspaceId: 'ws_a' } }])), ['Projeyi başka alana yalnızca iki alanın da yöneticisi taşıyabilir']);
+    const r3 = await A.sync([{ c: 'projects', id: 'p_alansiz', op: 'put', data: { name: 'Alansız', key: 'ALS', workspaceId: 'ws_a' } }]);
     assert.equal(r3.json.applied, 1, JSON.stringify(r3.json.rejected));
   });
 
@@ -982,14 +985,14 @@ describe('çalışma alanları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () =
     const ap = (await row('projects', 'p_arsws')).data;
     r = await U2.sync([{ c: 'projects', id: 'p_arsws', op: 'put', base: ap, data: { ...ap, name: 'Yeni ad' } }]);
     assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
-    /* Arşivli alandan etkin bir alana taşınabilir. */
-    r = await U2.sync([{ c: 'projects', id: 'p_arsws', op: 'put', data: { ...ap, name: 'Yeni ad', workspaceId: 'ws1' } }]);
+    /* Arşivli alandan etkin bir alana taşınabilir (eski alanlar arasında: sistem yöneticisi). */
+    r = await A.sync([{ c: 'projects', id: 'p_arsws', op: 'put', data: { ...ap, name: 'Yeni ad', workspaceId: 'ws1' } }]);
     assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
   });
 
   test('taşıma: eşzamanlı düzenlemede alan ve ad birleşir; eski hâlle gelen değişiklik taşımayı geri almaz', async () => {
     const p = (await row('projects', 'p_ts')).data;          // ws_a
-    let r = await U1.sync([{ c: 'projects', id: 'p_ts', op: 'put', base: p, data: { ...p, workspaceId: 'ws_60' } }]);
+    let r = await A.sync([{ c: 'projects', id: 'p_ts', op: 'put', base: p, data: { ...p, workspaceId: 'ws_60' } }]);
     assert.equal(r.json.applied, 1, JSON.stringify(r.json.rejected));
     /* U2 taşımadan habersiz (base = eski hâl) adı değiştirir. */
     r = await U2.sync([{ c: 'projects', id: 'p_ts', op: 'put', base: p, data: { ...p, name: 'Taşınan 2' } }]);
@@ -3186,6 +3189,26 @@ describe('genel tur düzeltmeleri', { skip: !URL && 'TEST_DATABASE_URL yok' }, (
     const w2 = await row('workspaces', 'ws_g1');
     ok(await C.A.sync([put('workspaces', 'ws_g1', { ...w2, members: [...w2.members, { userId: 'u_gm', role: 'member' }] }, w2)]));
     assert.ok((await list(C.M)).some(x => x.summary === 'GİZLİ başlık'));
+  });
+
+  test('proje taşıma: iki alanda da alan yöneticisi gerekir; eski (üyesiz) alan işin içindeyse yalnız sistem yöneticisi', async () => {
+    let p = await row('projects', 'pg2');
+    rej(await C.M.sync([put('projects', 'pg2', { ...p, workspaceId: 'ws_g1' }, p)]), 'Bu değişiklik için alan yöneticisi yetkisi gerekli');
+    rej(await C.Y.sync([put('projects', 'pg2', { ...p, workspaceId: 'ws_g3' }, p)]), 'Bu değişiklik için alan yöneticisi yetkisi gerekli');
+    rej(await C.Y.sync([put('projects', 'pg2', { ...p, workspaceId: 'ws1' }, p)]), MV);
+    const pl = await row('projects', 'pgl');
+    rej(await C.Y.sync([put('projects', 'pgl', { ...pl, workspaceId: 'ws_g1' }, pl)]), MV);
+    rej(await C.X.sync([put('projects', 'pgl', { ...pl, workspaceId: 'ws_g1' }, pl)]), NO);
+    /* Alan değişmeyen düzenleme (eski alanda Üye) etkilenmez. */
+    ok(await C.X.sync([put('projects', 'pgl', { ...pl, name: 'GT eski (X)' }, pl)]));
+    assert.equal((await row('projects', 'pgl')).workspaceId, 'ws1');
+    ok(await C.Y.sync([put('projects', 'pg2', { ...p, workspaceId: 'ws_g1' }, p)]));
+    p = await row('projects', 'pg2');
+    ok(await C.Y.sync([put('projects', 'pg2', { ...p, workspaceId: 'ws_g2' }, p)]));
+    p = await row('projects', 'pg2');
+    ok(await C.A.sync([put('projects', 'pg2', { ...p, workspaceId: 'ws1' }, p)]));
+    p = await row('projects', 'pg2');
+    ok(await C.A.sync([put('projects', 'pg2', { ...p, workspaceId: 'ws_g2' }, p)]));
   });
 
 });
