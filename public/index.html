@@ -1044,7 +1044,7 @@ button.c-av::after{content:"";position:absolute;inset:-6px}
 .as-goal svg.i{width:14px;height:14px;flex-shrink:0;color:var(--accent)}
 .as-prog{flex:1 1 240px;max-width:380px;display:flex;flex-direction:column;gap:6px}
 .as-pl{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--ink2)} .as-pl b{color:var(--ink)}
-.as-plan{font-size:11.5px;color:var(--ink3)} .as-plan b{color:var(--ink2)}
+.as-plan{font-size:11.5px;color:var(--ink3);flex-wrap:wrap} .as-plan b{color:var(--ink2)}
 .spf-tbl{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px;margin-top:10px}
 .spf-tbl th{font-family:var(--mono);font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;color:var(--ink3);text-align:right;padding:4px 4px;border-bottom:1px solid var(--line)}
 .spf-tbl td{text-align:right;padding:6px 4px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
@@ -4719,11 +4719,13 @@ function velocity() {
 }
 
 /* ============================ SPRINT PERFORMANSI ============================
-   Planlanan: başlatmadaki anlık görüntü (`s.plan`). Yoksa (eski sprint) "Sprint" geçmiş kayıtlarından tahmin:
+   Planlanan: başlatmadaki anlık görüntü (`s.plan`). Yoksa (eski sprint) "Sprint" geçmiş kayıtlarından tahmin (~):
    başlangıç anında sprintte olan işler (geçmiş sprint adıyla tutulur; ad değiştiyse eksik kalabilir).
-   Eklenen: başlangıçtan sonra giren; tamamlanan: sprintte kalıp biten; taşınan: sprintten çıkan. */
+   Oran = planlanandan biten / planlanan (iş ve puan). Sonradan eklenen (başlangıçtan sonra giren) ve sonradan
+   eklenip biten ayrıca sayılır, orana girmez. Taşınan: sprintten çıkan (planlanan ya da eklenen). */
 function sprintPerf(s) {
-  const pts = id => issue(id)?.points || 0;
+  const pts = id => issue(id)?.points || 0, sum = ids => ids.reduce((a, id) => a + pts(id), 0);
+  const pct = (a, b) => b ? Math.round(a / b * 100) : null;
   const hist = DB.history.filter(h => h.field === 'Sprint' && (h.from === s.name || h.to === s.name));
   const t0 = s.plan?.at || (s.start ? hmDay(s.start).getTime() - 12 * 36e5 : 0);
   const cur = DB.issues.filter(i => i.sprintId === s.id && i.type !== 'epic');
@@ -4740,50 +4742,59 @@ function sprintPerf(s) {
   }
   const added = [...new Set([...inNow, ...hist.filter(h => h.to === s.name && h.at > t0).map(h => h.issueId)])].filter(id => !planIds.has(id));
   const done = cur.filter(isDone).map(i => i.id);
+  const planDone = done.filter(id => planIds.has(id)), addedDone = done.filter(id => !planIds.has(id));
   const moved = [...planIds, ...added].filter(id => issue(id) && !inNow.has(id));
-  const scope = planIds.size + added.length;
-  return { has: !!s.plan,
-    plan: s.plan ? s.plan.count : planIds.size, planPts: s.plan ? s.plan.points : [...planIds].reduce((a, id) => a + pts(id), 0),
-    added: added.length, addedPts: added.reduce((a, id) => a + pts(id), 0),
-    done: done.length, donePts: done.reduce((a, id) => a + pts(id), 0), planDone: done.filter(id => planIds.has(id)).length,
-    moved: moved.length, rate: scope ? Math.round(done.length / scope * 100) : 0 };
+  const plan = s.plan ? s.plan.count : planIds.size, planPts = s.plan ? s.plan.points : sum([...planIds]);
+  return { has: !!s.plan, plan, planPts,
+    planDone: planDone.length, planDonePts: sum(planDone),
+    added: added.length, addedPts: sum(added), addedDone: addedDone.length, addedDonePts: sum(addedDone),
+    moved: moved.length, rate: pct(planDone.length, plan), ptsRate: pct(sum(planDone), planPts) };
 }
-/* Aktif sprint başlığı: planlanan vs şu ana kadar biten (canlı). */
+const spPct = r => r == null ? '—' : '%' + r;
+/* Aktif sprint başlığı: planlanan vs planlanandan biten (canlı) + sonradan eklenen ayrı. */
 function spPlanLine(s) {
-  const f = sprintPerf(s);
-  return `<div class="as-pl as-plan" data-spplan>${f.has
-    ? `<span>Planlanan <b class="num">${f.plan} iş · ${f.planPts} puan</b>${f.added ? ` · +${f.added} eklendi` : ''}</span><span>Biten <b class="num">${f.planDone}/${f.plan}</b> planlanan</span>`
-    : `<span>Plan verisi yok</span><span>Biten <b class="num">${f.done}</b> iş</span>`}</div>`;
+  const f = sprintPerf(s), t = f.has ? '' : '~';
+  return `<div class="as-pl as-plan" data-spplan${f.has ? '' : ' title="Sprint başlatılırken plan kaydedilmemiş; geçmişten tahmin edildi"'}>
+    <span>Planlanan <b class="num">${t}${f.plan} iş · ${f.planPts} puan</b></span>
+    <span>Biten <b class="num">${f.planDone}/${t}${f.plan}</b> planlanan · <b class="num">${spPct(f.rate)}</b></span>
+    <span>Sonradan eklenen <b class="num">${f.added}</b> · biten <b class="num">${f.addedDone}</b></span></div>`;
 }
 function sprintPerfPanel() {
   const act = activeSprint();
   const rows = sprintsOf().filter(s => s.state === 'closed').slice(-6).map(s => ({ s, f: sprintPerf(s) }));
-  const live = act ? (() => { const f = sprintPerf(act); return `<div class="stat" data-spflive>
-      <div><b>${f.has ? f.plan : '—'}</b><span>planlanan iş</span></div>
-      <div><b>${f.has ? f.planDone : f.done}</b><span>${f.has ? 'planlanandan biten' : 'biten iş'}</span></div>
+  const live = act ? (() => { const f = sprintPerf(act), t = f.has ? '' : '~'; return `<div class="stat" data-spflive>
+      <div><b>${t}${f.plan}</b><span>planlanan iş</span></div>
+      <div><b>${f.planDone}</b><span>planlanandan biten</span></div>
+      <div><b>${spPct(f.rate)}</b><span>tamamlanma</span></div>
       <div><b>+${f.added}</b><span>sonradan eklenen</span></div>
-      <div><b>%${f.rate}</b><span>şu ana kadar</span></div></div>
-      <div class="sub">${esc(act.name)} · aktif${f.has ? '' : ' · plan verisi yok'}</div>`; })() : '';
+      <div><b>${f.addedDone}</b><span>eklenip biten</span></div></div>
+      <div class="sub">${esc(act.name)} · aktif · ${f.planDonePts}/${f.planPts} planlanan puan biten${f.has ? '' : ' · plan verisi yok, geçmişten tahmin'}</div>`; })() : '';
   if (!rows.length) return live + '<div class="empty">Henüz kapanmış sprint yok</div>';
-  const max = Math.max(...rows.map(r => Math.max(r.f.plan + r.f.added, r.f.done)), 1), W = 460, H = 170, bw = (W - 20) / rows.length;
-  const chart = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Sprint performansı: planlanan ve tamamlanan iş">
+  const max = Math.max(...rows.map(r => Math.max(r.f.plan + r.f.added, r.f.planDone + r.f.addedDone)), 1), W = 460, H = 170, bw = (W - 20) / rows.length;
+  const u = v => (v / max) * (H - 40);
+  /* Renk + desen: sonradan eklenen bölümler çizgili (renk ayrımı olmadan da seçilir). */
+  const hatch = (id, c) => `<pattern id="${id}" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="${c}"/><rect width="2" height="5" fill="var(--surface)" opacity=".6"/></pattern>`;
+  const sw = (fill, txt) => `<span style="display:inline-flex;align-items:center;gap:5px"><svg width="12" height="10" aria-hidden="true"><rect width="12" height="10" rx="2" fill="${fill}"/></svg><span style="color:var(--ink2)">${txt}</span></span>`;
+  const chart = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Sprint performansı: planlanan, planlanandan biten, sonradan eklenen ve sonradan eklenip biten iş">
+    <defs>${hatch('spfHA', 'var(--over)')}${hatch('spfHD', 'var(--accent)')}</defs>
     ${rows.map(({ s, f }, k) => {
-      const x = 10 + k * bw, ph = (f.plan / max) * (H - 40), ah = (f.added / max) * (H - 40), dh = (f.done / max) * (H - 40);
-      return `<rect x="${x + 6}" y="${H - 26 - ph}" width="${bw * .36}" height="${ph}" fill="var(--line2)" rx="2"><title>Planlanan ${f.plan}</title></rect>
-        ${ah ? `<rect x="${x + 6}" y="${H - 26 - ph - ah}" width="${bw * .36}" height="${ah}" fill="var(--over)" opacity=".7" rx="2"><title>Eklenen ${f.added}</title></rect>` : ''}
-        <rect x="${x + 6 + bw * .40}" y="${H - 26 - dh}" width="${bw * .36}" height="${dh}" fill="var(--accent)" rx="2"><title>Tamamlanan ${f.done}</title></rect>
+      const x = 10 + k * bw, ph = u(f.plan), ah = u(f.added), dh = u(f.planDone), eh = u(f.addedDone), x2 = x + 6 + bw * .40, w = bw * .36;
+      return `<rect x="${x + 6}" y="${H - 26 - ph}" width="${w}" height="${ph}" fill="var(--line2)" rx="2" data-bar="plan"><title>Planlanan ${f.plan}</title></rect>
+        ${ah ? `<rect x="${x + 6}" y="${H - 26 - ph - ah}" width="${w}" height="${ah}" fill="url(#spfHA)" rx="2" data-bar="added"><title>Sonradan eklenen ${f.added}</title></rect>` : ''}
+        ${dh ? `<rect x="${x2}" y="${H - 26 - dh}" width="${w}" height="${dh}" fill="var(--accent)" rx="2" data-bar="planDone"><title>Planlanandan biten ${f.planDone}</title></rect>` : ''}
+        ${eh ? `<rect x="${x2}" y="${H - 26 - dh - eh}" width="${w}" height="${eh}" fill="url(#spfHD)" rx="2" data-bar="addedDone"><title>Sonradan eklenip biten ${f.addedDone}</title></rect>` : ''}
         <text x="${x + bw / 2}" y="${H - 12}" text-anchor="middle" font-size="9" font-family="var(--mono)" fill="var(--ink3)">${esc(String(s.name || "").replace(/^\S+\s/, ''))}</text>
-        <text x="${x + bw / 2}" y="${H - 32 - Math.max(ph + ah, dh)}" text-anchor="middle" font-size="9.5" font-family="var(--mono)" fill="var(--ink2)">${f.done}/${f.plan + f.added}</text>`;
+        <text x="${x + bw / 2}" y="${H - 32 - Math.max(ph + ah, dh + eh)}" text-anchor="middle" font-size="9.5" font-family="var(--mono)" fill="var(--ink2)">${f.planDone}/${f.plan}${f.added ? ` +${f.addedDone}/${f.added}` : ''}</text>`;
     }).join('')}</svg>
-    <div style="display:flex;gap:14px;font-size:11px;color:var(--ink3);margin-top:4px;flex-wrap:wrap">
-      <span style="color:var(--line2)">▬ <span style="color:var(--ink2)">Planlanan</span></span>
-      <span style="color:var(--over)">▬ <span style="color:var(--ink2)">Sonradan eklenen</span></span>
-      <span style="color:var(--accent)">▬ <span style="color:var(--ink2)">Tamamlanan</span></span></div>`;
-  const tbl = `<table class="spf-tbl" aria-label="Kapanmış sprintler: planlanan ve gerçekleşen"><thead><tr><th scope="col">Sprint</th><th scope="col" title="Başlangıçta planlanan">Plan</th>
-      <th scope="col" title="Sonradan eklenen">Eklenen</th><th scope="col" title="Tamamlanan">Biten</th><th scope="col" title="Sprintten taşınan">Taşınan</th><th scope="col" title="Tamamlanma oranı">Oran</th></tr></thead><tbody>
+    <div style="display:flex;gap:6px 14px;font-size:11px;color:var(--ink3);margin-top:4px;flex-wrap:wrap">
+      ${sw('var(--line2)', 'Planlanan')}${sw('var(--accent)', 'Planlanandan biten')}${sw('url(#spfHA)', 'Sonradan eklenen')}${sw('url(#spfHD)', 'Sonradan eklenip biten')}</div>`;
+  const tbl = `<table class="spf-tbl" aria-label="Kapanmış sprintler: planlanan, biten, sonradan eklenen"><thead><tr><th scope="col">Sprint</th><th scope="col" title="Başlangıçta planlanan">Plan</th>
+      <th scope="col" title="Planlanandan biten">Biten</th><th scope="col" title="Tamamlanma oranı: planlanandan biten / planlanan (iş; altında puan)">Oran</th>
+      <th scope="col" title="Sonradan eklenen">Eklenen</th><th scope="col" title="Sonradan eklenip biten">Ekl. biten</th><th scope="col" title="Sprintten taşınan">Taşınan</th></tr></thead><tbody>
     ${rows.slice().reverse().map(({ s, f }) => `<tr data-spf="${esc(s.id)}"><td>${esc(s.name)}${f.has ? '' : '<span class="spf-na" title="Sprint başlatılırken plan kaydedilmemiş; geçmişten tahmin edildi">plan verisi yok</span>'}</td>
-      <td>${f.has ? '' : '~'}${f.plan}<small>${f.planPts} puan</small></td><td>${f.added}<small>${f.addedPts} puan</small></td>
-      <td>${f.done}<small>${f.donePts} puan</small></td><td>${f.moved}</td><td><b>%${f.rate}</b></td></tr>`).join('')}</tbody></table>`;
+      <td>${f.has ? '' : '~'}${f.plan}<small>${f.planPts} puan</small></td><td>${f.planDone}<small>${f.planDonePts} puan</small></td>
+      <td><b>${spPct(f.rate)}</b><small>${spPct(f.ptsRate)} puan</small></td>
+      <td>${f.added}<small>${f.addedPts} puan</small></td><td>${f.addedDone}<small>${f.addedDonePts} puan</small></td><td>${f.moved}</td></tr>`).join('')}</tbody></table>`;
   return live + chart + tbl;
 }
 
@@ -4821,7 +4832,7 @@ function renderReports() {
     </section>
 
     <section class="panel" id="spPerf">
-      <h3>Sprint performansı</h3><div class="sub">Planlanan ve gerçekleşen · son 6 kapanmış sprint · oran = tamamlanan / (planlanan + eklenen)</div>
+      <h3>Sprint performansı</h3><div class="sub">Planlanan ve gerçekleşen · son 6 kapanmış sprint · oran = planlanandan biten / planlanan; sonradan eklenen ve eklenip biten ayrı gösterilir, orana girmez</div>
       ${sprintPerfPanel()}
     </section>` : ''}
 
