@@ -9,8 +9,6 @@ const date = v => v == null || v === '' || (typeof v === 'string' && /^\d{4}-\d{
 /* Sıkı tarih (canlı yazmada değişen alan): tam 'YYYY-AA-GG' ve takvimde var olan gün. */
 const realDate = v => v == null || v === '' || (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
   && !Number.isNaN(Date.parse(v + 'T00:00:00Z')) && new Date(v + 'T00:00:00Z').toISOString().slice(0, 10) === v);
-/* Canlı yazmada alan yeni mi / değişti mi (eski kayıt, içe aktarma ve geri yükleme gevşek kalır). */
-const changed = (d, opts, k) => !!opts.live && (!opts.cur || opts.cur[k] !== d[k]);
 export const ESTIMATE_MAX = 10000;   // saat
 
 const KEY_RE = /^[\p{L}\p{N}_-]{1,20}$/u;
