@@ -5897,7 +5897,7 @@ function reqDetail(i, ed, rm, row, pb) {
   let h = rm === 'req' && !x ? `<div class="id-reqwarn" role="note">${ic('alert')}<span>Bu talepte talep eden yok.${ed ? ' Bir kişi seçin.' : ''}</span></div>` : '';
   h += row('Kişi', pb('requester', 'req', lab, 'Talep eden: ' + (reqName(i.requester) || 'Seçilmedi')));
   if (x) h += row('Cari', `<span class="id-pv ro" data-reqcust>${x.c ? esc(custShort(x.c)) : '<span class="muted">Silinmiş cari</span>'}</span>`);
-  if (x?.p?.email) h += row('E-posta', `<span class="id-pv ro"><a href="mailto:${esc(x.p.email)}">${esc(x.p.email)}</a></span>`);
+  if (x?.p?.email) h += row('E-posta', `<span class="id-pv ro"><a href="mailto:${esc(encodeURIComponent(x.p.email))}">${esc(x.p.email)}</a></span>`);
   if (x?.p?.phone) h += row('Telefon', `<span class="id-pv ro">${esc(x.p.phone)}</span>`);
   return h;
 }
@@ -9989,7 +9989,7 @@ function customerView(c) {
           ? `<span class="cu-mask"><span>${esc(tx)}</span><span class="why">${ic('lock')}İzleyiciye maskeli</span></span>` : esc(tx)}</dd>` : '<dd class="none">—</dd>'}
         <dt>Adres</dt>${dd(c.address)}
         <dt>Telefon</dt>${dd(c.phone)}
-        <dt>E-posta</dt>${c.email ? `<dd><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></dd>` : '<dd class="none">—</dd>'}
+        <dt>E-posta</dt>${c.email ? `<dd><a href="mailto:${esc(encodeURIComponent(c.email))}">${esc(c.email)}</a></dd>` : '<dd class="none">—</dd>'}
         <dt>Notlar</dt>${dd(c.notes)}
       </dl>
       <div class="cu-sech"><h3>${ic('users')}Yetkili kişiler <span class="n">${ct.length}</span></h3></div>

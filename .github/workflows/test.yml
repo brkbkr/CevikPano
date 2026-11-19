@@ -89,7 +89,7 @@ jobs:
         run: node test/e2e/alan-rolleri.cjs
       - name: Okuma süzmesi testi (erişimi olmayan alanın verisi gelmez, üyelikte canlı yenileme)
         run: node test/e2e/okuma-suzme.cjs
-      - name: Küçük düzeltmeler testi (sunucu meşgulde yeniden gönderim, komut paleti, cari e-postası, cari özeti)
+      - name: Küçük düzeltmeler testi (sunucu meşgulde yeniden gönderim, komut paleti, cari e-postası ve mailto kodlama, cari özeti)
         run: node test/e2e/kucuk-duzeltmeler.cjs
       - name: Genel tur düzeltmeleri testi (alan üyelerine atama, üye çipleri, alandan çıkarılınca açık pencere, taşıma menüsü)
         run: node test/e2e/genel-tur.cjs

@@ -1,5 +1,5 @@
 /* Uygulama içi bildirimler. Kayıt yazılırken aynı işlemde üretilir. */
-import { visibleProjectIds } from './store.js';
+import { visibleProjectIds, userSeesProject } from './store.js';
 
 async function add(c, userId, kind, issueId, actorId, meta = {}) {
   if (!userId || userId === actorId) return;
@@ -34,9 +34,11 @@ export async function notifyForComment(c, me, data) {
     const u = (await c.query('SELECT id FROM users WHERE lower(username)=lower($1)', [m[1]])).rows[0];
     if (u) mentioned.add(u.id);
   }
-  for (const u of mentioned) await add(c, u, 'mention', issue.id, me.id, { excerpt });
+  /* Yalnız işin alanına erişimi olan kişi bildirim alır (alandan çıkarılan / hiç erişimi olmayan @bahsetme almaz). */
+  const sees = async u => u !== me.id && await userSeesProject(c, u, issue.projectId);
+  for (const u of mentioned) if (await sees(u)) await add(c, u, 'mention', issue.id, me.id, { excerpt });
   for (const u of new Set([issue.assignee, issue.reporter].filter(Boolean)))
-    if (!mentioned.has(u)) await add(c, u, 'comment', issue.id, me.id, { excerpt });
+    if (!mentioned.has(u) && await sees(u)) await add(c, u, 'comment', issue.id, me.id, { excerpt });
 }
 
 /* me: oturumdaki kullanıcı. Erişimi olmayan (alandan çıkarılmış ya da hiç erişimi olmayan) işin bildirimi kalır ama

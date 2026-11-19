@@ -1,8 +1,8 @@
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
-import { TABLES, PREF_KEYS, IGNORED_KEYS, tx, tableOf, reservedName } from './db.js';
+import { TABLES, PREF_KEYS, IGNORED_KEYS, MISC_COLLECTIONS, tx, tableOf, reservedName } from './db.js';
 import { HttpError, cj, same, merge3, isAdminRole } from './util.js';
-import { validate, PROJECT_TYPES, normalizePriority, normalizeArchived, normalizeCustomer, normalizeHistory, validId, validateCfg, stripBadKeys } from './validate.js';
+import { validate, PROJECT_TYPES, normalizePriority, normalizeArchived, normalizeCustomer, normalizeHistory, validId, validateCfg, stripBadKeys, HIST_TEXT_MAX } from './validate.js';
 import { notifyForIssue, notifyForComment } from './notify.js';
 
 export { HttpError };
@@ -158,6 +158,11 @@ export async function applyChanges(pool, me, changes, opts = {}) {
 }
 
 const CLIENT_RESERVED = ['_prefs', '_settings'];
+/* misc koleksiyonu: beyaz listede ve tercih/ayar adıyla çakışmıyor (durumda `data.ui`/`data.cfg` dizi olmasın). */
+async function miscAllowed(c, name) {
+  if (!MISC_COLLECTIONS.includes(name) || PREF_KEYS.includes(name) || IGNORED_KEYS.includes(name)) return false;
+  return !(await c.query('SELECT 1 FROM settings WHERE key=$1', [name])).rowCount;
+}
 async function applyOnce(pool, me, ordered, opts = {}) {
   const rejected = [], adjusted = [];
   let applied = 0;
@@ -192,6 +197,10 @@ async function applyOnce(pool, me, ordered, opts = {}) {
       /* `_` ile başlayan adlar sunucuya ayrılmış (`_access`, `_reload` sinyalleri); istemci yalnız `_prefs` ve `_settings` yazar. */
       if (ch.c.startsWith('_') && !CLIENT_RESERVED.includes(ch.c)) { reject('geçersiz koleksiyon'); continue; }
       if (reservedName(ch.c)) { reject('geçersiz koleksiyon'); continue; }
+      /* Tablosu olmayan koleksiyon yalnız beyaz listedeyse (Güv D1): herkese giden rastgele dizi yazılamaz. */
+      if (!CLIENT_RESERVED.includes(ch.c) && ch.c !== 'users' && !tableOf(ch.c) && !(await miscAllowed(c, ch.c))) {
+        reject('geçersiz koleksiyon'); continue;
+      }
 
       if (ch.c === '_prefs') {                       // herkes kendi tercihini yazar
         if (!PREF_KEYS.includes(ch.id)) { reject('geçersiz tercih'); continue; }
@@ -432,6 +441,9 @@ async function applyRecord(c, ctx, ch) {
   /* Okuma süzmesi (18): üyelik ya da projenin alanı değişti → etkilenenler tam yeniden yükler. */
   if (ch.c === 'workspaces') await logAccess(c, ctx, wsAccessDiff(cur, data));
   if (ch.c === 'projects' && cur && projWsId(cur) !== projWsId(data)) await logAccess(c, ctx, ['*']);
+  /* Alandan çıkarılan (ya da projesi başka alana taşınan) atanan: alanda rolü kalmadıysa atama boşalır. */
+  if (ch.c === 'workspaces' && cur && wsAccessDiff(cur, data).length) await clearLostAssignees(c, ctx, data, await wsProjectIds(c, ch.id));
+  if (ch.c === 'projects' && cur && projWsId(cur) !== projWsId(data)) await clearLostAssignees(c, ctx, await wsOfProjectData(c, data), [ch.id]);
 
   if (ch.c === 'issues') { ctx.touchedIssues.add(ch.id); await notifyForIssue(c, me, data, cur); }
   if (ch.c === 'comments' && !cur) await notifyForComment(c, me, data);
@@ -511,6 +523,11 @@ async function checkSprintState(c, me, data, cur) {
     await canManageSprint(c, me, data.projectId);
   /* Aktif sprintten her çıkış (tamamlama, geri çekme, başka projeye taşıma) alan yöneticisinde. */
   if (cur?.state === 'active' && (data.state !== 'active' || cur.projectId !== data.projectId))
+    await canManageSprint(c, me, cur.projectId);
+  /* Kapalı duruma her geçiş (başlamamış sprint dahil; yeni kayıt da) ve kapalıdan her çıkış alan yöneticisinde. */
+  if (data.state === 'closed' && (cur?.state !== 'closed' || cur?.projectId !== data.projectId))
+    await canManageSprint(c, me, data.projectId);
+  if (cur?.state === 'closed' && (data.state !== 'closed' || cur.projectId !== data.projectId))
     await canManageSprint(c, me, cur.projectId);
 }
 
@@ -733,6 +750,38 @@ const projById = async (c, pid) => typeof pid === 'string' && pid
   ? (await c.query('SELECT data FROM projects WHERE id=$1', [pid])).rows[0]?.data : undefined;
 const issueProj = async (c, iid) => typeof iid === 'string' && iid
   ? (await c.query('SELECT project_id FROM issues WHERE id=$1', [iid])).rows[0]?.project_id : undefined;
+/* Alanın projeleri (alansız ya da olmayan alana bağlı proje Genel'de sayılır: wsOfProjectData ile aynı). */
+async function wsProjectIds(c, wsId) {
+  return (await c.query(`SELECT p.id FROM projects p WHERE coalesce(nullif(p.workspace_id, ''), $2) = $1
+      OR ($1 = $2 AND NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = p.workspace_id))`, [wsId, DEFAULT_WS])).rows.map(r => r.id);
+}
+/* Projelerin işlerinde alanda hiç rolü olmayan atananı boşaltır; işin geçmişine "Atanan → —" yazılır. Eski (üyesiz)
+   alanda herkesin rolü olduğundan bir şey yapmaz. Değişen işler değişiklik akışına ve `adjusted`'a düşer. */
+async function clearLostAssignees(c, ctx, ws, pids) {
+  if (!pids.length || wsLegacy(ws)) return;
+  const { me, batch } = ctx;
+  const rows = (await c.query(`SELECT i.id, i.data, u.id AS uid, u.role, u.name FROM issues i JOIN users u ON u.id = i.assignee_id
+      WHERE i.project_id = ANY($1) ORDER BY i.id FOR UPDATE OF i`, [pids])).rows;
+  for (const r of rows) {
+    if (wsRole({ id: r.uid, role: r.role }, ws) !== null) continue;
+    const now = Date.now();
+    await c.query('UPDATE issues SET data=$2::jsonb, version=version+1, updated_at=now(), updated_by=$3 WHERE id=$1',
+      [r.id, JSON.stringify({ ...r.data, assignee: null, updatedAt: now }), me.id]);
+    await logChange(c, 'issues', r.id, 'put', me.id, batch);
+    const h = { id: 'h_' + randomUUID().replace(/-/g, '').slice(0, 16), issueId: r.id, userId: me.id, at: now,
+      field: 'Atanan', from: String(r.name || r.uid).slice(0, HIST_TEXT_MAX), to: '—' };
+    await c.query('INSERT INTO history (id, data, updated_by) VALUES ($1, $2::jsonb, $3)', [h.id, JSON.stringify(h), me.id]);
+    await logChange(c, 'history', h.id, 'put', me.id, batch);
+    if (!ctx.adjusted.some(x => x.c === 'issues' && x.id === r.id)) ctx.adjusted.push({ c: 'issues', id: r.id });
+  }
+}
+/* Bildirim alıcısı (notify.js): kişinin projenin alanında herhangi bir rolü var mı (okuma süzmesiyle aynı kural). */
+export async function userSeesProject(c, userId, pid) {
+  const u = (await c.query('SELECT id, role FROM users WHERE id=$1', [userId])).rows[0];
+  if (!u) return false;
+  if (isAdminRole(u.role)) return true;
+  return canAccess(u, await wsOfProjectData(c, await projById(c, pid)));
+}
 /* Atanabilir kişi: üye listesi tanımsız (eski) alanda herkes (bugünkü davranış); üyeli alanda rolü Yönetici ya da Üye. */
 const ASSIGNEE_NO_ACCESS = 'Atanan kişinin bu çalışma alanında Üye ya da Yönetici rolü yok';
 async function assignable(c, u, pid) {
@@ -1072,6 +1121,13 @@ async function ensureIssueKey(c, ctx, data, cur) {
       data.key = `${prefix}-${n}`;
       changed = true;
     }
+  } else if (!cur && proj) {
+    /* Anahtarsız yeni iş (API ile): istemcideki gibi proje anahtarı + bir sonraki numara. */
+    const max = Number((await c.query(
+      `SELECT coalesce(max((substring(issue_key from '-(\\d+)$'))::int),0) AS m FROM issues WHERE project_id=$1`,
+      [pid])).rows[0].m);
+    data.key = `${proj.key || 'IS'}-${Math.max(max, Number(proj.counter) || 0) + 1}`;
+    changed = true;
   }
   /* Proje sayacını en büyük numaraya çek. */
   if (proj && num(data.key) > (Number(proj.counter) || 0)) {

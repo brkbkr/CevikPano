@@ -3,7 +3,7 @@
    Örnek: TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/pano_test npm test */
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { createPool, migrate } from '../server/db.js';
+import { createPool, migrate, MISC_COLLECTIONS } from '../server/db.js';
 import { bootstrap } from '../server/store.js';
 import { createApp } from '../server/app.js';
 
@@ -74,18 +74,18 @@ t('senkron: kayıt ekle/güncelle/sil ve değişiklik akışı', async () => {
   let r = await c.sync([
     { c: 'issues', id: 'i_t1', op: 'put', data: { projectId: 'p1', key: 'GEN-1', summary: 'İlk', statusId: 'p1_s0' } },
     { c: '_settings', id: 'cfg', op: 'put', data: { h: 8, d: 5 } },
-    { c: 'yeniDizi', id: 'x1', op: 'put', data: { a: 1 } },
+    { c: 'filters', id: 'x1', op: 'put', data: { a: 1 } },
   ]);
   assert.equal(r.json.applied, 3);
   /* Aynı veri tekrar gelirse değişiklik sayılmaz. */
   r = await c.sync([{ c: 'issues', id: 'i_t1', op: 'put', data: { projectId: 'p1', key: 'GEN-1', summary: 'İlk', statusId: 'p1_s0' } }]);
   assert.equal(r.json.applied, 0);
   const ch = (await c.req('GET', `/api/changes?since=${s0}`)).json;
-  assert.deepEqual(ch.items.map(i => i.c).sort(), ['_settings', 'issues', 'projects', 'yeniDizi']);   // projects: sayaç GEN-1'e çekildi
+  assert.deepEqual(ch.items.map(i => i.c).sort(), ['_settings', 'filters', 'issues', 'projects']);   // projects: sayaç GEN-1'e çekildi
   const st = (await c.state()).json.data;
   assert.equal(st.issues.find(i => i.id === 'i_t1').summary, 'İlk');
   assert.equal(st.cfg.h, 8);
-  assert.equal(st.yeniDizi[0].a, 1);
+  assert.equal(st.filters.find(f => f.id === 'x1').a, 1);
   /* İlişkisel sütunlar JSON'dan türetilir. */
   const row = (await pool.query(`SELECT project_id, issue_key, status_id FROM issues WHERE id='i_t1'`)).rows[0];
   assert.deepEqual(row, { project_id: 'p1', issue_key: 'GEN-1', status_id: 'p1_s0' });
@@ -335,7 +335,7 @@ t('güvenlik: kayıt kimliği beyaz listede; XSS yüklü kimlik reddedilir, mevc
   assert.ok(r.json.rejected.every(x => x.reason === 'geçersiz kimlik'), JSON.stringify(r.json.rejected));
   /* uid() ve demo/varsayılan kimlikler */
   const good = ['p1', 'u1', 'p1_s0', 'i_x7k2m9q', 'cf_mus', 'l1', 'r1', 'sp1', 'u_chnm5ai', 'a.b:c-D_9', 'x'.repeat(200)];
-  const r2 = await a.sync(good.map(id => ({ c: 'kimlikTesti', id, op: 'put', data: { a: 1 } })));
+  const r2 = await a.sync(good.map(id => ({ c: 'filters', id, op: 'put', data: { a: 1 } })));
   assert.equal(r2.json.applied, good.length, JSON.stringify(r2.json.rejected));
   assert.equal((await pool.query(`SELECT count(*) n FROM issues WHERE data::text LIKE '%onerror%'`)).rows[0].n, '0');
 });
@@ -1442,16 +1442,16 @@ describe('cariler', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
 
   test('veritabanı hatasında günlüğe yalnız kod/ileti/kısıt yazılır (detail yok)', async () => {
     await pool.query(`CREATE OR REPLACE FUNCTION pano_test_hata() RETURNS trigger LANGUAGE plpgsql AS $$
-      BEGIN IF NEW.collection = 'gunlukdeneme' THEN RAISE EXCEPTION 'deneme hatası' USING DETAIL = 'GIZLI-DETAY-12345678901'; END IF; RETURN NEW; END $$`);
-    await pool.query(`CREATE TRIGGER pano_test_hata BEFORE INSERT ON misc_records FOR EACH ROW EXECUTE FUNCTION pano_test_hata()`);
+      BEGIN IF NEW.id = 'gunlukdeneme' THEN RAISE EXCEPTION 'deneme hatası' USING DETAIL = 'GIZLI-DETAY-12345678901'; END IF; RETURN NEW; END $$`);
+    await pool.query(`CREATE TRIGGER pano_test_hata BEFORE INSERT ON filters FOR EACH ROW EXECUTE FUNCTION pano_test_hata()`);
     const orig = console.error, lines = [];
     console.error = (...a) => lines.push(a.map(x => (typeof x === 'string' ? x : JSON.stringify(x) + String(x?.stack || ''))).join(' '));
     try {
-      const r = await A.sync([{ c: 'gunlukdeneme', id: 'g1', op: 'put', data: { a: 1 } }]);
+      const r = await A.sync([{ c: 'filters', id: 'gunlukdeneme', op: 'put', data: { a: 1 } }]);
       assert.equal(r.status, 500); assert.equal(r.json.error, 'Sunucu hatası');
     } finally {
       console.error = orig;
-      await pool.query('DROP TRIGGER pano_test_hata ON misc_records; DROP FUNCTION pano_test_hata()');
+      await pool.query('DROP TRIGGER pano_test_hata ON filters; DROP FUNCTION pano_test_hata()');
     }
     const log = lines.join('\n');
     assert.match(log, /\[hata\]/); assert.match(log, /P0001/); assert.match(log, /deneme hatası/);
@@ -3259,5 +3259,158 @@ describe('genel tur düzeltmeleri', { skip: !URL && 'TEST_DATABASE_URL yok' }, (
     ok(await C.M.sync([put('links', 'l_g4', { ...l, type: 'blocks' }, l)]));
     rej(await C.M.sync([put('links', 'l_g4', { ...l, to: 'i_g3' }, l)]), NO);
     ok(await C.M.sync([put('links', 'l_g5', { from: 'i_g1', to: 'i_g1d', type: 'blocks' }), iss('i_g1d', 'pg1')]));
+  });
+});
+
+describe('düşük bulgular (güvenlik raporu)', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  const ok = r => { assert.equal(r.status, 200, JSON.stringify(r.json)); assert.deepEqual(r.json.rejected, []); return r; };
+  const rej = (r, reason) => { assert.equal(r.status, 200, JSON.stringify(r.json)); assert.deepEqual(r.json.rejected.map(x => x.reason), [reason]); };
+  const put = (c, id, data, base) => ({ c, id, op: 'put', data, ...(base ? { base } : {}) });
+  const row = async (table, id) => (await pool.query(`SELECT data FROM ${table} WHERE id=$1`, [id])).rows[0]?.data;
+  let N = 0;
+  const iss = (id, pid, extra = {}) => put('issues', id, { projectId: pid, key: `${pid.toUpperCase()}-${++N}`, summary: `iş ${id}`, statusId: `${pid}_s0`, ...extra });
+  const seq = async () => Number((await pool.query('SELECT coalesce(max(seq),0) AS s FROM changes')).rows[0].s);
+  const hist = async iid => (await pool.query(`SELECT data FROM history WHERE issue_id=$1 AND data->>'field'='Atanan' ORDER BY ord`, [iid])).rows.map(r => r.data);
+  const C = {};
+  const newUser = async (id, username, role = 'member') => {
+    ok(await C.A.sync([put('users', id, { username, name: 'Kişi ' + username, role, active: true })]));
+    const k = client(); await k.login(username, 'Start12345');
+    assert.equal((await k.req('POST', '/api/auth/password', { newPassword: 'DusukBul123' })).status, 200);
+    return k;
+  };
+  const setMembers = async (who, ws, fn) => { const w = await row('workspaces', ws); return who.sync([put('workspaces', ws, { ...w, members: fn(w.members || []) }, w)]); };
+
+  before(async () => {
+    C.A = client(); await C.A.login('admin', 'test-admin-pw');
+    C.Y = await newUser('u_dy', 'dyon');      // ws_d1, ws_d2: Yönetici
+    C.M = await newUser('u_dm', 'duye');      // ws_d1, ws_d2: Üye
+    C.K = await newUser('u_dk', 'dkisi');     // ws_d1: Üye (çıkarılacak); ws_d2'de yok
+    ok(await C.A.sync([
+      put('workspaces', 'ws_d1', { name: 'DB 1', members: [{ userId: 'u_dy', role: 'admin' }, { userId: 'u_dm', role: 'member' }, { userId: 'u_dk', role: 'member' }] }),
+      put('workspaces', 'ws_d2', { name: 'DB 2', members: [{ userId: 'u_dy', role: 'admin' }, { userId: 'u_dm', role: 'member' }] }),
+      put('workspaces', 'ws_d3', { name: 'DB 3 (eski)' }),
+      ...['pd1', 'pd2', 'pd3'].flatMap((id, n) => [
+        put('projects', id, { name: `DB proje ${id}`, key: id.toUpperCase(), counter: 0, workspaceId: ['ws_d1', 'ws_d2', 'ws_d3'][n] }),
+        put('statuses', `${id}_s0`, { projectId: id, name: 'Yapılacak', cat: 'todo', ord: 0 }),
+        put('statuses', `${id}_s1`, { projectId: id, name: 'Bitti', cat: 'done', ord: 1 })]),
+    ]));
+  });
+
+  test('alandan çıkarılan kişinin atandığı işler boşalır (geçmişe yazılır); rolü kalanlar ve sistem yöneticisi kalır', async () => {
+    ok(await C.Y.sync([iss('i_d1', 'pd1', { assignee: 'u_dk' }), iss('i_d2', 'pd1', { assignee: 'u_dm' }), iss('i_d3', 'pd1', { assignee: 'u_admin' })]));
+    const s0 = await seq();
+    const r = ok(await setMembers(C.Y, 'ws_d1', m => m.filter(x => x.userId !== 'u_dk')));
+    assert.ok(r.json.adjusted.some(x => x.c === 'issues' && x.id === 'i_d1'), JSON.stringify(r.json.adjusted));
+    assert.equal((await row('issues', 'i_d1')).assignee, null);
+    assert.equal((await row('issues', 'i_d2')).assignee, 'u_dm');
+    assert.equal((await row('issues', 'i_d3')).assignee, 'u_admin');
+    const h = await hist('i_d1');
+    assert.equal(h.length, 1); assert.equal(h[0].from, 'Kişi dkisi'); assert.equal(h[0].to, '—'); assert.equal(h[0].userId, 'u_dy');
+    /* Değişiklik akışı: işi ve geçmişi diğer üyeler alır. */
+    const items = (await C.M.req('GET', `/api/changes?since=${s0}`)).json.items;
+    assert.ok(items.some(i => i.c === 'issues' && i.id === 'i_d1' && i.data.assignee === null), JSON.stringify(items));
+    assert.ok(items.some(i => i.c === 'history' && i.data?.issueId === 'i_d1'));
+    /* Rolü düşürülen (İzleyici) kişi erişimini korur: ataması boşalmaz. */
+    ok(await setMembers(C.Y, 'ws_d1', m => [...m, { userId: 'u_dk', role: 'member' }]));
+    const i1 = await row('issues', 'i_d1');
+    ok(await C.Y.sync([put('issues', 'i_d1', { ...i1, assignee: 'u_dk' }, i1)]));
+    ok(await setMembers(C.Y, 'ws_d1', m => m.map(x => x.userId === 'u_dk' ? { ...x, role: 'viewer' } : x)));
+    assert.equal((await row('issues', 'i_d1')).assignee, 'u_dk');
+    ok(await setMembers(C.Y, 'ws_d1', m => m.map(x => x.userId === 'u_dk' ? { ...x, role: 'member' } : x)));
+  });
+
+  test('proje başka alana taşınınca orada rolü olmayan atanan boşalır; eski alan üye listesine geçince de', async () => {
+    ok(await C.Y.sync([iss('i_d4', 'pd1', { assignee: 'u_dk' }), iss('i_d5', 'pd1', { assignee: 'u_dm' })]));
+    let p = await row('projects', 'pd1');
+    const r = ok(await C.Y.sync([put('projects', 'pd1', { ...p, workspaceId: 'ws_d2' }, p)]));
+    assert.ok(r.json.adjusted.some(x => x.c === 'issues' && x.id === 'i_d4'));
+    assert.equal((await row('issues', 'i_d4')).assignee, null);
+    assert.equal((await row('issues', 'i_d5')).assignee, 'u_dm');
+    assert.equal((await hist('i_d4')).length, 1);
+    p = await row('projects', 'pd1');
+    ok(await C.Y.sync([put('projects', 'pd1', { ...p, workspaceId: 'ws_d1' }, p)]));
+    /* Eski (üyesiz) alan: herkes atanabilir; üye listesi tanımlanınca listede olmayanın ataması boşalır. */
+    ok(await C.K.sync([iss('i_d6', 'pd3', { assignee: 'u_dk' }), iss('i_d7', 'pd3', { assignee: 'u_dm' })]));
+    ok(await setMembers(C.A, 'ws_d3', () => [{ userId: 'u_dm', role: 'member' }]));
+    assert.equal((await row('issues', 'i_d6')).assignee, null);
+    assert.equal((await row('issues', 'i_d7')).assignee, 'u_dm');
+  });
+
+  test('@bahsetme ve yorum bildirimi yalnız işin alanına erişimi olana', async () => {
+    ok(await C.Y.sync([iss('i_d8', 'pd1', { reporter: 'u_dk' })]));
+    ok(await setMembers(C.Y, 'ws_d1', m => m.filter(x => x.userId !== 'u_dk')));
+    const count = async (u, kind) => Number((await pool.query(`SELECT count(*) n FROM notifications WHERE user_id=$1 AND issue_id='i_d8' AND kind=$2`, [u, kind])).rows[0].n);
+    ok(await C.M.sync([put('comments', 'c_d1', { issueId: 'i_d8', userId: 'u_dm', body: '@dkisi @dyon bakar mısınız' })]));
+    assert.equal(await count('u_dk', 'mention'), 0);
+    assert.equal(await count('u_dk', 'comment'), 0);            // raporlayan ama erişimi yok
+    assert.equal(await count('u_dy', 'mention'), 1);
+    /* Geri eklenince (İzleyici bile olsa) yine bildirim alır. */
+    ok(await setMembers(C.Y, 'ws_d1', m => [...m, { userId: 'u_dk', role: 'viewer' }]));
+    ok(await C.M.sync([put('comments', 'c_d2', { issueId: 'i_d8', userId: 'u_dm', body: '@dkisi tekrar' })]));
+    assert.equal(await count('u_dk', 'mention'), 1);
+    ok(await setMembers(C.Y, 'ws_d1', m => m.map(x => x.userId === 'u_dk' ? { ...x, role: 'member' } : x)));
+  });
+
+  test('sprint: kapalı duruma her geçiş ve kapalıdan çıkış alan yöneticisinde (başlamamış sprint ve yeni kayıt dahil)', async () => {
+    const F = 'Sprinti yalnızca alan yöneticisi başlatıp bitirebilir';
+    ok(await C.M.sync([put('sprints', 'sp_d1', { projectId: 'pd1', name: 'D1', state: 'future' })]));
+    const s = await row('sprints', 'sp_d1');
+    rej(await C.M.sync([put('sprints', 'sp_d1', { ...s, state: 'closed' }, s)]), F);
+    rej(await C.M.sync([put('sprints', 'sp_d2', { projectId: 'pd1', name: 'D2', state: 'closed' })]), F);
+    assert.equal(await row('sprints', 'sp_d2'), undefined);
+    assert.equal((await row('sprints', 'sp_d1')).state, 'future');
+    ok(await C.Y.sync([put('sprints', 'sp_d1', { ...s, state: 'closed' }, s)]));
+    const c = await row('sprints', 'sp_d1');
+    rej(await C.M.sync([put('sprints', 'sp_d1', { ...c, state: 'future' }, c)]), F);
+    /* Kapalı sprintte durum dışı düzenleme Üyede serbest. */
+    ok(await C.M.sync([put('sprints', 'sp_d1', { ...c, name: 'D1 yeni' }, c)]));
+    const c2 = await row('sprints', 'sp_d1');
+    ok(await C.Y.sync([put('sprints', 'sp_d1', { ...c2, state: 'future' }, c2)]));
+    ok(await C.M.sync([{ c: 'sprints', id: 'sp_d1', op: 'del' }]));
+  });
+
+  test('misc koleksiyonu beyaz liste: rastgele ad ve tercih/ayar adları reddedilir (yönetici dahil); eski kayıtlar okunur', async () => {
+    const names = ['notlar', 'ui', 'cfg', 'board', 'open', 'yeniDizi'];
+    for (const k of [C.A, C.M]) {
+      const r = await k.sync([...names.map(c => put(c, 'x1', { a: 1 })), ...names.map(c => ({ c, id: 'x1', op: 'del' }))]);
+      assert.equal(r.status, 200); assert.equal(r.json.applied, 0);
+      assert.equal(r.json.rejected.length, names.length * 2);
+      assert.ok(r.json.rejected.every(x => x.reason === 'geçersiz koleksiyon'), JSON.stringify(r.json.rejected));
+    }
+    assert.equal((await pool.query(`SELECT count(*) n FROM misc_records WHERE collection = ANY($1)`, [names])).rows[0].n, '0');
+    const st = (await C.M.state()).json.data;
+    assert.ok(!Array.isArray(st.ui) && !Array.isArray(st.cfg) && st.notlar === undefined);
+    /* Beyaz listedeki ad yazılır; listede olsa da tercih ve ayar adı reddedilir. */
+    ok(await C.A.sync([put('_settings', 'dAyar', { a: 1 })]));
+    MISC_COLLECTIONS.push('dNot', 'ui', 'dAyar');
+    try {
+      ok(await C.M.sync([put('dNot', 'n1', { a: 1 })]));
+      rej(await C.M.sync([put('ui', 'n1', { a: 1 })]), 'geçersiz koleksiyon');
+      rej(await C.A.sync([put('dAyar', 'n1', { a: 1 })]), 'geçersiz koleksiyon');
+      assert.equal((await C.M.state()).json.data.dNot[0].a, 1);
+      ok(await C.M.sync([{ c: 'dNot', id: 'n1', op: 'del' }]));
+    } finally { MISC_COLLECTIONS.length = 0; await C.A.sync([{ c: '_settings', id: 'dAyar', op: 'del' }]); }
+    /* Eski sürümün misc_records'a yazdığı dizi okunmaya devam eder (okuma tarafı aynı). */
+    await pool.query(`INSERT INTO misc_records (collection, id, data) VALUES ('eskiDizi','e1','{"id":"e1","a":2}')`);
+    try { assert.equal((await C.M.state()).json.data.eskiDizi[0].a, 2); }
+    finally { await pool.query(`DELETE FROM misc_records WHERE collection='eskiDizi'`); }
+  });
+
+  test('anahtarsız yeni iş: sunucu proje anahtarı + sonraki numarayı verir, sayacı ilerletir; anahtarlı ve eski anahtarsız iş değişmez', async () => {
+    const r1 = ok(await C.M.sync([put('issues', 'i_dk1', { projectId: 'pd2', summary: 'anahtarsız', statusId: 'pd2_s0' })]));
+    assert.ok(r1.json.adjusted.some(x => x.c === 'issues' && x.id === 'i_dk1'), JSON.stringify(r1.json));
+    const k1 = (await row('issues', 'i_dk1')).key;
+    assert.match(k1, /^PD2-\d+$/);
+    assert.equal(Number((await row('projects', 'pd2')).counter), Number(k1.split('-')[1]));
+    ok(await C.M.sync([put('issues', 'i_dk2', { projectId: 'pd2', key: 'PD2-50', summary: 'anahtarlı', statusId: 'pd2_s0' })]));
+    assert.equal((await row('issues', 'i_dk2')).key, 'PD2-50');
+    ok(await C.M.sync([put('issues', 'i_dk3', { projectId: 'pd2', key: '', summary: 'boş anahtar', statusId: 'pd2_s0' })]));
+    assert.equal((await row('issues', 'i_dk3')).key, 'PD2-51');
+    assert.equal(Number((await row('projects', 'pd2')).counter), 51);
+    /* Anahtarı olmayan eski iş düzenlenince anahtar almaz (bugünkü davranış). */
+    await pool.query(`INSERT INTO issues (id, data) VALUES ('i_dk4', '{"id":"i_dk4","projectId":"pd2","summary":"eski","statusId":"pd2_s0"}'::jsonb)`);
+    const old = await row('issues', 'i_dk4');
+    ok(await C.M.sync([put('issues', 'i_dk4', { ...old, summary: 'eski 2' }, old)]));
+    assert.equal((await row('issues', 'i_dk4')).key, undefined);
   });
 });

@@ -1,5 +1,5 @@
 // Küçük düzeltmeler tarayıcı testi: "Sunucu meşgul" (409) sonrası yerel değişiklik atılmaz ve yeniden gönderilir;
-// komut paletinde "Yeni proje oluştur" yalnız proje açabilene; cari e-postasında ? & " < > ve boşluk reddi;
+// komut paletinde "Yeni proje oluştur" yalnız proje açabilene; cari e-postasında ? & " < > ve boşluk reddi, mailto: adresi kodlu;
 // cari kartı özetinde açık iş / bağlı proje / bu ay / toplam süre sabit beklenen sayılarla.
 // Ön koşullar regresyon.cjs ile aynı: boş bir veritabanıyla sunucuyu
 // ADMIN_PASSWORD=admin12345 DEFAULT_USER_PASSWORD=Baslangic123 PORT=3100 ile başlatın ve
@@ -85,6 +85,20 @@ const V = 'u_kdv' + RUN, CU = 'c_kd' + RUN, CU2 = 'c_kd2' + RUN, P1 = 'p_kd' + R
   await A.fill('#cu_m', 'ad.soyad+kd@ornek.com'); await A.click('#cu_ok'); await sleep(400);
   ok('valid email saved', await waitFor(A, id => !DIRTY && cuById(id)?.email === 'ad.soyad+kd@ornek.com', CU) >= 0);
   await A.evaluate(() => closeModal());
+  // 2b) mailto: adres encodeURIComponent ile kodlanır (eski/içe aktarılmış ? & içeren adres parametre enjekte edemez)
+  const mt = await A.evaluate(id => {
+    const out = {};
+    for (const [k, m] of [['old', 'eski@ornek.com?bcc=x@kotu.com&body=y'], ['ok', 'ad.soyad+kd@ornek.com']]) {
+      customerView({ ...cuById(id), email: m });
+      const a = document.querySelector('.modal a[href^="mailto:"], a[href^="mailto:"]');
+      out[k] = { href: a?.getAttribute('href') || '', text: a?.textContent || '', m };
+      closeModal();
+    }
+    return out;
+  }, CU);
+  ok('mailto: href encoded, no raw ? & in address, decodes back',
+    Object.values(mt).every(x => x.href.startsWith('mailto:') && !/[?&@+]/.test(x.href.slice(7))
+      && decodeURIComponent(x.href.slice(7)) === x.m && x.text === x.m), JSON.stringify(mt));
 
   // 3) "Sunucu meşgul" (409): yerel değişiklik atılmaz, kısa beklemeyle yeniden gönderilir
   let busy = 0;
