@@ -18,7 +18,7 @@ export const ADMIN_ONLY = ['fields', 'rules', '_settings', 'customers'];
 const ISSUE_CHILDREN = ['comments', 'worklogs', 'history', 'transitions'];
 /* Yeni kaydı yalnız ekleyerek oluşturan koleksiyonlar (eşzamanlı oluşturmada üzerine yazılmaz). Geçmiş ve
    yorum: aynı kimlikle eşzamanlı ikinci gönderim ilk yazanın kaydını (yazarını) ezmesin. */
-const CREATE_ONCE = ['workspaces', 'customers', 'history', 'comments'];
+const CREATE_ONCE = ['workspaces', 'customers', 'history', 'comments', 'reports'];
 /* Geçmiş yalnız eklenir (B2): var olan kayıt değiştirilemez, tek tek silinemez (yöneticiler dahil); silme yalnız
    iş silmenin cascade'iyle. Yeni kayıtta yönetici olmayanın yazarı oturuma, zamanı sunucu saatine ±5 dk zorlanır. */
 export const HIST_LOCKED = 'Geçmiş kaydı değiştirilemez';
@@ -212,8 +212,9 @@ async function applyOnce(pool, me, ordered, opts = {}) {
            updated_at = now()`, [me.id, ch.id, JSON.stringify(ch.op === 'del' ? null : ch.data)]);
         applied++; continue;
       }
-      /* Projeye bağlı koleksiyonlarda yetki etkin proje rolüyle (checkScope); diğerlerinde genel izleyici salt okunur. */
-      if (!WS_SCOPED.includes(ch.c) && me.role === 'viewer') { reject('salt okunur kullanıcı'); continue; }
+      /* Projeye bağlı koleksiyonlarda yetki etkin proje rolüyle (checkScope); diğerlerinde genel izleyici salt okunur.
+         Kayıtlı rapor kişiseldir: genel izleyici de kendine kaydeder (paylaşamaz; checkReport). */
+      if (!WS_SCOPED.includes(ch.c) && ch.c !== 'reports' && me.role === 'viewer') { reject('salt okunur kullanıcı'); continue; }
       if (!meAdmin && ((ADMIN_ONLY.includes(ch.c) && ch.c !== 'fields') || (ch.c === 'workspaces' && ch.op === 'del'))) {
         reject('Bu değişiklik için yönetici yetkisi gerekli'); continue;
       }
@@ -278,6 +279,7 @@ async function applyRecord(c, ctx, ch) {
       throw new HttpError(403, 'Başkası adına süre kaydı yalnızca yönetici girebilir');
   }
   if (ch.c === 'worklogs') { if (cur?.issueId) ctx.touchedIssues.add(cur.issueId); if (ch.data?.issueId) ctx.touchedIssues.add(ch.data.issueId); }
+  if (ch.c === 'reports') checkReportOwner(me, cur);
   /* Başkasının ya da yazarı olmayan eski yorum: değiştirme/silme yalnız yönetici. Kayıt yoksa silme zaten etkisiz. */
   if (ch.c === 'comments' && !meAdmin && cur && cur.userId !== me.id) throw new HttpError(403, COMMENT_FORBIDDEN);
   if (ch.c === 'history') {
@@ -366,6 +368,7 @@ async function applyRecord(c, ctx, ch) {
   /* Yeni yorumda yazar oturumdur; var olan yorumun yazarı değişmez (yönetici hariç; yönetici olmayan
      yalnız kendi yorumunu düzenler, bu durumda cur.userId === me.id). */
   if (ch.c === 'comments' && !meAdmin && data.userId !== me.id) { data.userId = me.id; adjusted = true; }
+  if (ch.c === 'reports' && enforceReportOwner(data, cur, me)) adjusted = true;
   validate(ch.c, data, { live: true, cur });
   /* Geçmiş kaydının işi var olmalı (aynı gönderimde oluşturulan iş dahil: gruplamada işlerden sonra gelir).
      FOR SHARE: iş aynı anda silinirse yetim kayıt kalmasın. */
@@ -433,6 +436,7 @@ async function applyRecord(c, ctx, ch) {
   if (ch.c === 'customers') await checkCustomerTaxNo(c, ctx, ch.id, data, cur);
   if (ch.c === 'fields') await checkFieldKey(c, ch.id, data, cur);
   if (ch.c === 'links') await checkLinkEnds(c, ctx, data, cur, ctx.system);
+  if (ch.c === 'reports') await checkReport(c, me, data, cur);
 
   const json = JSON.stringify(data);
   if (table && !cur && CREATE_ONCE.includes(ch.c)) {
@@ -714,7 +718,7 @@ async function needPerm(c, ctx, p, ...keys) {
 export const ACCESS_CH = '_access';
 const BY_PROJECT = ['statuses', 'sprints', 'issues', 'fields', 'rules'];
 const BY_ISSUE = ['worklogs', 'comments', 'history', 'transitions'];
-const SCOPED_READ = ['workspaces', 'projects', ...BY_PROJECT, ...BY_ISSUE, 'links'];
+const SCOPED_READ = ['workspaces', 'projects', ...BY_PROJECT, ...BY_ISSUE, 'links', 'reports'];
 /* Görünen alan ve proje kimlikleri. */
 function buildScope(me, workspaces, projects) {
   const wsMap = new Map(workspaces.filter(w => w && w.id).map(w => [w.id, w]));
@@ -722,8 +726,10 @@ function buildScope(me, workspaces, projects) {
   const wsOfP = p => wsMap.get(projWsId(p)) ?? wsMap.get(DEFAULT_WS);
   const proj = new Set(projects.filter(p => p && p.id && projRole(me, p, wsOfP(p)) !== null).map(p => p.id));
   const wsOk = new Set([...wsMap.values()].filter(w => w.id === DEFAULT_WS || isWsAdmin(me, w) || wsHasNoAdmin(w)).map(w => w.id));
-  for (const p of projects) if (p && proj.has(p.id)) { const w = wsOfP(p); if (w) wsOk.add(w.id); }
-  return { wsOk, proj };
+  /* Alan kapsamlı paylaşılan rapor (reportVisible): alan yöneticisi ya da alanda en az bir projede rolü olan. */
+  const wsRep = new Set([...wsMap.values()].filter(w => isWsAdmin(me, w)).map(w => w.id));
+  for (const p of projects) if (p && proj.has(p.id)) { const w = wsOfP(p); if (w) { wsOk.add(w.id); wsRep.add(w.id); } }
+  return { me, wsOk, wsRep, proj };
 }
 /* Kayıt görünür mü (issueOk: iş kimliği → görünür mü). */
 function recordVisible(col, d, scope, issueOk) {
@@ -737,6 +743,7 @@ function recordVisible(col, d, scope, issueOk) {
   }
   if (BY_ISSUE.includes(col)) return issueOk(d.issueId);
   if (col === 'links') return issueOk(d.from) || issueOk(d.to);
+  if (col === 'reports') return reportVisible(d, scope);
   return true;
 }
 /* İlk yükleme: bellekteki tam veriden süz. */
@@ -763,7 +770,9 @@ async function scopeItems(db, me, items) {
   const list = [...ids].filter(x => typeof x === 'string');
   if (list.length) for (const r of (await db.query('SELECT id, project_id FROM issues WHERE id = ANY($1)', [list])).rows)
     if (scope.proj.has(r.project_id)) ok.add(r.id);
-  return items.filter(i => i.op !== 'put' || recordVisible(i.c, i.data, scope, id => ok.has(id)));
+  /* Görünmez olan rapor (paylaşımdan çıkarıldı) silme bildirimiyle gider: önceden alan istemcide kalmasın. */
+  return items.flatMap(i => i.op !== 'put' || recordVisible(i.c, i.data, scope, id => ok.has(id)) ? [i]
+    : i.c === 'reports' ? [{ c: i.c, id: i.id, op: 'del', seq: i.seq }] : []);
 }
 /* Erişim kümesi değişti: ilgili kullanıcıya (ya da '*' herkese) tam yeniden yükleme sinyali. */
 async function logAccess(c, ctx, uids) {
@@ -1082,6 +1091,55 @@ async function enforceWsMembers(c, me, data, cur) {
   if (cur && !wsLegacy(cur) && wsLegacy(data) && !isAdminRole(me.role))
     throw new HttpError(403, 'Üye listesini yalnızca sistem yöneticisi kaldırabilir');
   return changed || !same(before, data.members);
+}
+
+/* ---- kayıtlı raporlar (011) ----
+   Sahip (ownerId) oluşturmada oturumdur, sonradan değişmez. Değiştirme ve silme: sahip ya da sistem yöneticisi.
+   Okuma: kendi raporu ve kapsamına (tüm sistem / çalışma alanı / proje) erişebildiği paylaşılan rapor (reportVisible,
+   okuma süzmesiyle aynı erişim kuralı). Paylaşmak için yazanın da o kapsama erişimi olmalı; tüm sistemle paylaşmak
+   yalnız sistem yöneticisi; genel izleyici yalnız kendine kaydeder. Rapor yalnız ayardır: veriyi her okuyan kendi
+   erişebildiği kayıtlarla hesaplar. */
+export const REPORT_FORBIDDEN = 'Raporu yalnızca sahibi ya da sistem yöneticisi değiştirebilir';
+export const REPORT_MAX_PER_USER = 200;
+export const REPORT_WS_FORBIDDEN = 'Bu çalışma alanında rolünüz yok';
+/* Okuma (yetki-v2): proje kapsamı → projede rolü olan (projRole: proje rolü, proje sahibi, alan/sistem yöneticisi);
+   alan kapsamı → alan yöneticisi ya da alanda en az bir projede rolü olan (göreceği veri zaten kendi projeleriyle sınırlı);
+   tüm sistem → herkes (paylaşmayı yalnız sistem yöneticisi yapar). */
+function reportVisible(d, scope) {
+  if (scope.me && d.ownerId === scope.me.id) return true;
+  if (d.vis !== 'shared' || !d.scope || typeof d.scope !== 'object') return false;
+  const s = d.scope;
+  return s.kind === 'all' || (s.kind === 'ws' && scope.wsRep.has(s.id)) || (s.kind === 'project' && scope.proj.has(s.id));
+}
+function checkReportOwner(me, cur) {
+  if (cur && !isAdminRole(me.role) && cur.ownerId !== me.id) throw new HttpError(403, REPORT_FORBIDDEN);
+}
+function enforceReportOwner(data, cur, me) {
+  const before = data.ownerId;
+  data.ownerId = cur ? (cur.ownerId || me.id) : me.id;
+  return before !== data.ownerId;
+}
+/* Paylaşma: okuma kuralıyla aynı erişim yazana da gerekir (paylaştığı kişileri kendisi de kapsıyor olmalı). */
+async function checkReport(c, me, data, cur) {
+  if (!cur && Number((await c.query('SELECT count(*) AS n FROM reports WHERE owner_id=$1', [data.ownerId])).rows[0].n) >= REPORT_MAX_PER_USER)
+    throw new HttpError(400, `Bir kişi en fazla ${REPORT_MAX_PER_USER} rapor kaydedebilir`);
+  if (data.vis !== 'shared' || isAdminRole(me.role)) return;
+  if (me.role === 'viewer') throw new HttpError(403, 'İzleyici raporu paylaşamaz; "Yalnız ben" olarak kaydedin');
+  const s = data.scope;
+  if (s.kind === 'all') throw new HttpError(403, 'Raporu tüm sistemle yalnızca sistem yöneticisi paylaşabilir');
+  if (s.kind === 'project') {
+    const p = await projById(c, s.id);
+    if (!p) throw new HttpError(400, 'Raporun kapsamı bulunamadı');
+    if (await roleIn(c, me, p) === null) throw new HttpError(403, NO_ACCESS);
+    return;
+  }
+  const ws = (await c.query('SELECT data FROM workspaces WHERE id=$1', [s.id])).rows[0]?.data;
+  if (!ws) throw new HttpError(400, 'Raporun kapsamı bulunamadı');
+  if (isWsAdmin(me, ws)) return;
+  const pids = await wsProjectIds(c, s.id);
+  for (const r of pids.length ? (await c.query('SELECT data FROM projects WHERE id = ANY($1)', [pids])).rows : [])
+    if (projRole(me, r.data, ws) !== null) return;
+  throw new HttpError(403, REPORT_WS_FORBIDDEN);
 }
 
 /* ---- proje alanları (parametrik alanlar) ----

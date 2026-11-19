@@ -103,6 +103,33 @@ const cfOk = v => v == null || (typeof v === 'object' && !Array.isArray(v) && Ob
    İçe aktarma/geri yükleme gevşek kalır. */
 const changed = (d, opts, k) => !!opts.live && (!opts.cur || !sameJson(opts.cur[k], d[k]));
 
+/* Kayıtlı raporlar (011). Yeni koleksiyon, eski verisi yok: her yazmada sıkı. Bilinmeyen anahtar reddedilir (ekrana
+   basılan her şey bilinen biçimde); ayar (cfg) genel raporun kişisel süzgeç nesnesinin (grF) kaydedilebilir kısmıdır. */
+export const REPORT_NAME_MAX = 80;
+export const REPORT_DESC_MAX = 300;
+export const REPORT_MAX_BYTES = 8 * 1024;
+export const REPORT_VIS = ['private', 'shared'];
+export const REPORT_SCOPES = ['all', 'ws', 'project'];
+export const REPORT_MEASURES = ['hours', 'count', 'points'];
+export const REPORT_CHARTS = ['table', 'bar'];
+const REPORT_KEYS = new Set(['id', 'name', 'desc', 'ownerId', 'vis', 'scope', 'cfg', 'tpl', 'createdAt', 'updatedAt']);
+const REPORT_CFG_KEYS = new Set(['tab', 'row', 'col', 'ms', 'ch', 'per', 'month', 'from', 'to', 'f']);
+const REPORT_F_KEYS = new Set(['ws', 'proj', 'cu', 'user', 'type', 'bill', 'cfk', 'cfv']);
+const REPORT_DIM_RE = /^(cf:[a-z0-9_]{1,30}|[A-Za-z]{1,20})$/;
+const plainObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+const optTime = v => v == null || (Number.isInteger(v) && v > 0);
+const reportScopeOk = s => plainObj(s) && Object.keys(s).every(k => k === 'kind' || k === 'id') && REPORT_SCOPES.includes(s.kind)
+  && (s.kind === 'all' ? s.id == null : validId(s.id));
+const reportCfgOk = g => plainObj(g) && Object.keys(g).every(k => REPORT_CFG_KEYS.has(k))
+  && (g.tab == null || ['sure', 'fatura'].includes(g.tab))
+  && (g.row == null || (typeof g.row === 'string' && REPORT_DIM_RE.test(g.row)))
+  && (g.col == null || g.col === '' || (typeof g.col === 'string' && REPORT_DIM_RE.test(g.col)))
+  && (g.ms == null || REPORT_MEASURES.includes(g.ms)) && (g.ch == null || REPORT_CHARTS.includes(g.ch))
+  && (g.per == null || ['rel', 'month', 'custom'].includes(g.per))
+  && (g.month == null || g.month === '' || (typeof g.month === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(g.month)))
+  && realDate(g.from) && realDate(g.to)
+  && (g.f == null || (plainObj(g.f) && Object.entries(g.f).every(([k, v]) => REPORT_F_KEYS.has(k) && str(v, 200))));
+
 const RULES = {
   projects: (d, opts) => [
     [str(d.name, 200) && d.name.trim(), 'Proje adı gerekli'],
@@ -210,6 +237,18 @@ const RULES = {
         && (cur.projectId || null) === (d.projectId || null)), 'Alanın hazır alan bağı, kapsamı ve projesi sonradan değiştirilemez'],
     ];
   },
+  reports: d => [
+    [Buffer.byteLength(JSON.stringify(d)) <= REPORT_MAX_BYTES, 'Rapor kaydı çok büyük'],
+    [Object.keys(d).every(k => REPORT_KEYS.has(k)), 'Rapor kaydında bilinmeyen alan var'],
+    [typeof d.name === 'string' && d.name.trim().length >= 1 && d.name.length <= REPORT_NAME_MAX, `Rapor adı gerekli (en fazla ${REPORT_NAME_MAX} karakter)`],
+    [optStr(d.desc, REPORT_DESC_MAX), `Açıklama en fazla ${REPORT_DESC_MAX} karakter`],
+    [validId(d.ownerId), 'Raporun sahibi geçersiz'],
+    [REPORT_VIS.includes(d.vis), 'Görünürlük "private" ya da "shared" olmalı'],
+    [reportScopeOk(d.scope), 'Rapor kapsamı geçersiz (tüm sistem, çalışma alanı ya da proje)'],
+    [reportCfgOk(d.cfg), 'Rapor ayarı geçersiz (boyut, ölçü, grafik, dönem ya da süzgeç)'],
+    [d.tpl == null || (typeof d.tpl === 'string' && /^[a-z0-9_]{1,30}$/.test(d.tpl)), 'Hazır rapor kimliği geçersiz'],
+    [optTime(d.createdAt) && optTime(d.updatedAt), 'Rapor zamanı geçersiz'],
+  ],
   worklogs: d => [
     [str(d.issueId, 200), 'Süre kaydının işi yok'],
     [str(d.userId, 200), 'Süre kaydının kişisi yok'],

@@ -13,6 +13,7 @@ export const TABLES = {
   links: 'links', fields: 'fields', rules: 'rules', filters: 'filters',
   workspaces: 'workspaces',                         // 003_workspaces.sql
   customers: 'customers',                           // 004_cariler.sql
+  reports: 'reports',                               // 011_kayitli_raporlar.sql
 };
 
 /* İstemciden yazılabilen, tablosu olmayan (misc_records) koleksiyonlar: beyaz liste (Güv D1). Bugünkü ön yüzün
