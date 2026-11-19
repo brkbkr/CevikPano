@@ -132,7 +132,9 @@ export const logChange = (c, collection, id, op, uid, batch) =>
    c === '_settings' → genel ayar (id = anahtar), c === '_prefs' → kişisel tercih.
    Yetkisiz ya da geçersiz değişiklikler atlanır ve `rejected` içinde döner;
    sunucunun değiştirdiği kayıtlar (birleştirme, iş anahtarı) `adjusted` içinde döner. */
-/* opts.system: sunucu kaynaklı yazma (e-postadan iş, server/mail.js) — talep edeni bilinmeyen iş havuza düşebilir. */
+/* opts.system: sunucu kaynaklı yazma (e-postadan iş, server/mail.js) — talep edeni bilinmeyen iş havuza düşebilir ve
+   yazanın (sistem kullanıcısının) alan erişimi denetlenmez (checkScope, bağlantı ucu erişimi). Veri bütünlüğü (anahtar,
+   kolon, zorunlu alanlar) ve atananın alan rolü yine denetlenir. Yalnız sunucu içinden verilir: /api/sync opts geçirmez. */
 export async function applyChanges(pool, me, changes, opts = {}) {
   if (!Array.isArray(changes)) throw new HttpError(400, 'changes dizi olmalı');
   if (changes.length > 5000) throw new HttpError(413, 'Tek seferde en fazla 5000 değişiklik gönderilebilir');
@@ -266,7 +268,7 @@ async function applyRecord(c, ctx, ch) {
   const cur = sel.rows[0]?.data;
   const meAdmin = isAdminRole(me.role);
   /* Erişim/salt okunur denetimi önce (kayda özgü kurallardan önce); yeni hâl ayrıca yazmadan önce denetlenir. */
-  await checkScope(c, me, ch.c, undefined, cur ?? (ch.op === 'put' ? ch.data : undefined), true);
+  if (!ctx.system) await checkScope(c, me, ch.c, undefined, cur ?? (ch.op === 'put' ? ch.data : undefined), true);
 
   if (ch.c === 'worklogs' && !meAdmin) {
     const owner = ch.op === 'del' ? cur?.userId : (cur?.userId ?? ch.data?.userId);
@@ -294,7 +296,7 @@ async function applyRecord(c, ctx, ch) {
 
   if (ch.op === 'del') {
     if (!cur) return false;
-    await checkScope(c, me, ch.c, cur, undefined);
+    if (!ctx.system) await checkScope(c, me, ch.c, cur, undefined);
     if (ch.c === 'issues') await cascadeIssueDelete(c, ctx, ch.id);
     if (ch.c === 'workspaces') await checkWorkspaceDelete(c, ch.id);
     if (ch.c === 'sprints' && cur.state === 'active') await canManageSprint(c, me, cur.projectId, SPRINT_DELETE_FORBIDDEN);
@@ -395,7 +397,7 @@ async function applyRecord(c, ctx, ch) {
   if (ch.c === 'issues' && await ensureIssueKey(c, ctx, data, cur)) adjusted = true;
   if (ch.c === 'workspaces' && await enforceWsMembers(c, me, data, cur)) adjusted = true;
   if (cur && same(cur, data)) { if (adjusted) ctx.adjusted.push({ c: ch.c, id: ch.id }); return false; }
-  await checkScope(c, me, ch.c, cur, data);
+  if (!ctx.system) await checkScope(c, me, ch.c, cur, data);
   if (ch.c === 'workspaces') await checkWorkspace(c, me, ch.id, data, cur);
   if (ch.c === 'projects') await checkProjectWorkspace(c, data, cur);
   if (ch.c === 'projects' && cur) await checkProjectMove(c, me, cur, data);
@@ -420,7 +422,7 @@ async function applyRecord(c, ctx, ch) {
     if (!cur || colName(cur.name) !== colName(data.name) || cur.projectId !== data.projectId) ctx.colNamed.add(ch.id);
   }
   if (ch.c === 'customers') await checkCustomerTaxNo(c, ctx, ch.id, data, cur);
-  if (ch.c === 'links') await checkLinkEnds(c, me, data, cur);
+  if (ch.c === 'links') await checkLinkEnds(c, me, data, cur, ctx.system);
 
   const json = JSON.stringify(data);
   if (table && !cur && CREATE_ONCE.includes(ch.c)) {
@@ -847,13 +849,13 @@ async function checkScope(c, me, col, cur, data, early = false) {
 
 /* Bağlantının iki ucu da var olan iş olmalı (yeni bağlantıda ya da ucu değişince); `from` ucunda en az Üye
    (checkScope), `to` ucunda erişim (alanda herhangi bir rol). FOR SHARE: uç aynı anda silinirse yetim kalmasın. */
-async function checkLinkEnds(c, me, data, cur) {
+async function checkLinkEnds(c, me, data, cur, system = false) {
   if (cur && cur.from === data.from && cur.to === data.to) return;
   for (const end of [data.from, data.to]) {
     const pid = typeof end === 'string' && end
       ? (await c.query('SELECT project_id FROM issues WHERE id=$1 FOR SHARE', [end])).rows[0]?.project_id : undefined;
     if (pid === undefined) throw new HttpError(400, 'Bağlantının işi bulunamadı');
-    if (!isAdminRole(me.role) && !canAccess(me, await wsOfProjectData(c, await projById(c, pid)))) throw new HttpError(403, NO_ACCESS);
+    if (!system && !isAdminRole(me.role) && !canAccess(me, await wsOfProjectData(c, await projById(c, pid)))) throw new HttpError(403, NO_ACCESS);
   }
 }
 

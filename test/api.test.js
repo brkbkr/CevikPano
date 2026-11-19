@@ -2794,11 +2794,9 @@ describe('e-postayla yanıt', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     M = await newUser('u_eym', 'eyuye', 'member');
     W = await newUser('u_eyw', 'eyizci', 'member');
     X = await newUser('u_eyx', 'eydis', 'member');
-    /* Not (kapsam dışı, ayrıca bildirildi): e-posta sistem kullanıcısı üyeli alanda iş açabilmek için alanın üyesi olmalı. */
-    await pool.query(`INSERT INTO users (id, username, name, role, active, password_hash, must_change, system, data)
-      VALUES ('u_posta', 'posta-sistemi', 'E-posta', 'member', true, NULL, false, true, '{}'::jsonb) ON CONFLICT DO NOTHING`);
+    /* E-posta sistem kullanıcısı (u_posta) alanın üyesi DEĞİL: sunucu içi system bayrağıyla yine iş açar. */
     ok(await A.sync([
-      { c: 'workspaces', id: 'ws_ey', op: 'put', data: { name: 'Destek alanı', members: [{ userId: 'u_eym', role: 'member' }, { userId: 'u_eyw', role: 'viewer' }, { userId: 'u_posta', role: 'member' }] } },
+      { c: 'workspaces', id: 'ws_ey', op: 'put', data: { name: 'Destek alanı', members: [{ userId: 'u_eym', role: 'member' }, { userId: 'u_eyw', role: 'viewer' }] } },
       { c: 'projects', id: 'p_ey', op: 'put', data: { name: 'EY destek', key: 'EY', counter: 0, workspaceId: 'ws_ey', template: 'talep' } },
       { c: 'statuses', id: 'p_ey_s0', op: 'put', data: { projectId: 'p_ey', name: 'Yeni', cat: 'todo', ord: 0 } },
       { c: 'projects', id: 'p_ey2', op: 'put', data: { name: 'EY iç', key: 'EYI', counter: 0, workspaceId: 'ws_ey' } },
@@ -2997,6 +2995,41 @@ describe('e-postayla yanıt', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     r = await reply(M, IO.id, { body: 'üçüncü' });
     assert.equal(r.status, 409); assert.match(r.json.error, /Özgün ileti posta kutusunda bulunamadı/);
     assert.ok(calls.every(c => /^https:\/\/(graph\.microsoft\.com|gmail\.googleapis\.com|oauth2\.googleapis\.com|login\.microsoftonline\.com)\//.test(c.url)));
+  });
+
+  test('posta kuralı üyeli alanda iş açar (sistem kullanıcısı üye değil); rolü olmayan/izleyici atanan boş kalır, Üye atanır', async () => {
+    const ws = (await pool.query(`SELECT data FROM workspaces WHERE id='ws_ey'`)).rows[0].data;
+    assert.ok(!ws.members.some(x => x.userId === 'u_posta'), 'sistem kullanıcısı alanda üye değil');
+    assert.equal(IG.data.reporter, 'u_posta');
+    const accG = (await pool.query(`SELECT * FROM mail_accounts WHERE id='mb_eyg'`)).rows[0];
+    try {
+      const r = await A.req('POST', '/api/mail/rules', { rules: [
+        { id: 'mr_eyx', subjectContains: 'KURALX', projectId: 'p_ey2', assigneeId: 'u_eyx' },
+        { id: 'mr_eyw', subjectContains: 'KURALW', projectId: 'p_ey2', assigneeId: 'u_eyw' },
+        { id: 'mr_eym', subjectContains: 'KURALM', projectId: 'p_ey2', assigneeId: 'u_eym' },
+      ] });
+      assert.equal(r.status, 200, JSON.stringify(r.json));
+      for (const [tag, want] of [['KURALX', null], ['KURALW', null], ['KURALM', 'u_eym']]) {
+        assert.equal(await mail.processMessage(pool, accG, mail.parseGmail(gm('gk_' + tag, 'th_' + tag, {
+          From: 'kural@musteri-ey.test', To: 'destek@ey.test', Subject: `${tag} talebi`, 'Message-ID': `<${tag}@musteri-ey.test>` }, 'gövde'))), 'issue', tag);
+        const i = (await pool.query(`SELECT data FROM issues WHERE project_id='p_ey2' AND data->>'summary'=$1`, [`${tag} talebi`])).rows[0]?.data;
+        assert.ok(i, tag); assert.equal(i.assignee ?? null, want, tag); assert.equal(i.reporter, 'u_posta');
+        assert.match(i.key, /^EYI-\d+$/); assert.equal(i.statusId, 'p_ey2_s0');
+      }
+    } finally { await pool.query('DELETE FROM mail_rules'); }
+  });
+
+  test('istemci system bayrağını ayarlayamaz: /api/sync gövdesinde, değişiklikte ya da veride system:true etkisiz', async () => {
+    const data = { projectId: 'p_ey', key: 'EY-900', summary: 'Sahte sistem işi', statusId: 'p_ey_s0', system: true };
+    const r = await X.req('POST', '/api/sync', { system: true, opts: { system: true },
+      changes: [{ c: 'issues', id: 'i_eysahte', op: 'put', system: true, opts: { system: true }, data }] });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.deepEqual(r.json.rejected.map(x => x.reason), ['Bu çalışma alanına erişiminiz yok']);
+    assert.equal((await pool.query(`SELECT 1 FROM issues WHERE id='i_eysahte'`)).rowCount, 0);
+    /* yorumda da: alan dışı kişi sistem bayrağıyla alanın işine yazamaz */
+    const c = await X.req('POST', '/api/sync', { system: true,
+      changes: [{ c: 'comments', id: 'c_eysahte', op: 'put', system: true, data: { issueId: IG.id, body: 'sızma', system: true } }] });
+    assert.deepEqual(c.json.rejected.map(x => x.reason), ['Bu çalışma alanına erişiminiz yok']);
   });
 });
 
