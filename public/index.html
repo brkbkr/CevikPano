@@ -158,11 +158,11 @@ label.field{display:block;font-family:var(--mono);font-size:10px;text-transform:
 .cbox.on{background:var(--done);border-color:var(--done)}
 .card.is-done .sum{text-decoration:line-through;color:var(--ink3)}
 .card.is-done{opacity:.75}
-.donehead{width:100%;text-align:left;padding:6px 8px;margin-top:4px;border-radius:var(--r);
+.col-more{width:100%;text-align:left;padding:6px 8px;margin-top:4px;border-radius:var(--r);
   background:var(--surface);border:1px dashed var(--line2);color:var(--ink2);font-size:11.5px;
   display:flex;align-items:center;gap:6px}
-.donehead:hover{border-color:var(--ink3)}
-.donehead b{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink3)}
+.col-more:hover{border-color:var(--ink3)}
+.col-more b{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink3)}
 .c-subs{display:flex;align-items:center;gap:7px;font-size:10.5px;color:var(--ink3);margin-bottom:5px;cursor:pointer}
 .c-subbar{flex:1;height:4px;background:var(--track);border-radius:2px;overflow:hidden}
 .c-subbar i{display:block;height:100%;background:var(--done)}
@@ -551,7 +551,7 @@ label.field{font-size:11px;text-transform:none;letter-spacing:0;color:var(--ink2
 .card .bar{height:4px;border-radius:4px}
 .qa-btn{border-radius:7px;width:24px;height:24px}
 .cbox{border-radius:5px}
-.donehead{border-radius:9px}
+.col-more{border-radius:9px}
 
 /* ---------- liste / backlog ---------- */
 .sprintbox,.rmwrap,.tswrap,.wl-list,.panel,.projcard,.hero,.daygrid,.untimed{border-radius:14px;border-color:var(--line);box-shadow:var(--shadow-sm)}
@@ -4566,26 +4566,29 @@ addEventListener('keydown', e => {
 addEventListener('resize', () => { if (QM && !QM.mob) closeQuick(false); });
 addEventListener('scroll', e => { if (QM && !QM.mob && !e.target.closest?.('.qm')) closeQuick(false); }, true);
 
+/* Tamamlanan işler kendi Bitti kolonunda normal kart olarak durur (katlanmış grup yok). Çok kartlı Bitti
+   kolonu son tamamlanan DONE_SHOW işi gösterir (sıra pano sırası); "Tümünü göster" hepsini açar. */
+const DONE_SHOW = 20;
+const doneRecent = (a, b) => String(b.doneAt || '').localeCompare(String(a.doneAt || '')) || (b.updatedAt || 0) - (a.updatedAt || 0);
 function columns(list) {
   return `<div class="board">${stats().map(s => {
     const all = list.filter(i => colOf(i) === s.id);
-    const cards = all.filter(i => stat(i.statusId).cat !== 'done');
-    const fin = all.filter(i => stat(i.statusId).cat === 'done');
-    const dopen = DB.ui.doneOpen && DB.ui.doneOpen[s.id];
-    const over = s.wip && cards.length > s.wip;
+    const full = s.cat !== 'done' || all.length <= DONE_SHOW || (DB.ui.doneAll && DB.ui.doneAll[s.id]);
+    const keep = full ? null : new Set([...all].sort(doneRecent).slice(0, DONE_SHOW));
+    const cards = keep ? all.filter(i => keep.has(i)) : all;
+    const over = s.wip && all.length > s.wip;
     return `<section class="col c-${esc(s.cat || 'todo')} ${over ? 'wip-over' : ''}" data-status="${s.id}">
       <div class="col-h">
         <span class="nm">${esc(s.name)}</span>
-        <span class="ct ${over ? 'bad' : ''}">${cards.length}${s.wip ? ' / ' + s.wip : ''}</span>
+        <span class="ct ${over ? 'bad' : ''}">${all.length}${s.wip ? ' / ' + s.wip : ''}</span>
         <span class="spacer"></span>
         ${canCreate() ? `<button class="qa-btn" data-qa="${s.id}" title="Bu kolona görev ekle">${DB.ui.qaOpen === s.id ? '×' : '+'}</button>` : ''}
       </div>
       <div class="col-b" data-drop="status" data-status="${s.id}">
         ${DB.ui.qaOpen === s.id ? quickAddForm(s.id) : ''}
-        ${cards.map(card).join('') || (DB.ui.qaOpen === s.id || fin.length ? '' : '<div class="empty">Boş</div>')}
-        ${fin.length ? `<button class="donehead" data-donetgl="${s.id}">
-            <span>${dopen ? '▾' : '▸'}</span> Tamamlananlar <b>${fin.length}</b></button>
-          ${dopen ? fin.map(card).join('') : ''}` : ''}
+        ${cards.map(card).join('') || (DB.ui.qaOpen === s.id ? '' : '<div class="empty">Boş</div>')}
+        ${s.cat === 'done' && all.length > DONE_SHOW ? `<button class="col-more" data-doneall="${s.id}" aria-expanded="${!keep}">
+            ${keep ? `Tümünü göster <b>${all.length - DONE_SHOW} daha</b>` : 'Son tamamlananları göster'}</button>` : ''}
       </div>
     </section>`;
   }).join('')}</div>`;
@@ -6922,8 +6925,8 @@ function wire() {
     if (cp2 && cp2.dataset.complete) { e.stopPropagation(); return completeIssue(cp2.dataset.complete, !!cp2.closest('.hm-row')); }
     const ro = t.closest('[data-reopen]');
     if (ro) { e.stopPropagation(); return reopenIssue(ro.dataset.reopen); }
-    const dt = t.closest('[data-donetgl]');
-    if (dt) { DB.ui.doneOpen ||= {}; DB.ui.doneOpen[dt.dataset.donetgl] = !DB.ui.doneOpen[dt.dataset.donetgl]; save(); return render(); }
+    const dt = t.closest('[data-doneall]');
+    if (dt) { DB.ui.doneAll ||= {}; DB.ui.doneAll[dt.dataset.doneall] = !DB.ui.doneAll[dt.dataset.doneall]; save(); return render(); }
     const ew = t.closest('[data-editwl]');
     if (ew) { e.stopPropagation(); return worklogForm({ edit: ew.dataset.editwl }); }
     const cell = t.closest('[data-cell]');
@@ -7772,6 +7775,7 @@ function wireAdmin() {
     const n = $('#st_new').value.trim().replace(/\s+/g, ' '); if (!n) return toast('Durum adı gerekli');
     if (stats().length >= COL_MAX) return toast(`Bir projede en fazla ${COL_MAX} kolon olabilir`);
     const err = colNameErr(n, stats().map(x => x.name)); if (err) return toast(err);
+    if ($('#st_cat').value !== 'done' && !stats().some(x => x.cat === 'done')) return toast('Projede en az bir Bitti kolonu olmalı. Önce kategorisi "Bitti" olan bir durum ekleyin.');
     DB.statuses.push({ id: uid('st'), projectId: DB.ui.project, name: n, cat: $('#st_cat').value, wip: 0,
       ord: Math.max(0, ...stats().map(s => s.ord)) + 1 });
     save(); render(); toast(n + ' eklendi');
@@ -12476,7 +12480,7 @@ function colsDraw(focusSel, fallback) {
         n: colCount(s.id), first: k === 0, last: k === cols.length - 1, only: cols.length < 2,
         lock: s.cat === 'done' && nDone === 1, err: U.err[s.id], draft: U.draft[s.id] })).join('')}</div>
       <button type="button" class="pt-add" id="pt_add" ${full ? 'disabled aria-describedby="pt_lim"' : ''}>${ic('plus')}Kolon ekle<span class="lim" id="pt_lim">${cols.length}/${COL_MAX} · ${
-        full ? `Bir projede en fazla ${COL_MAX} kolon olabilir` : 'yeni kolon "Devam ediyor" olarak eklenir'}</span></button>
+        full ? `Bir projede en fazla ${COL_MAX} kolon olabilir` : nDone ? 'yeni kolon "Devam ediyor" olarak eklenir' : 'ilk kolon "Bitti" olarak eklenir'}</span></button>
     </div>
     <div class="m-f"><span class="note">${ic('check')}Değişiklikler hemen kaydedilir</span><button type="button" class="btn" data-close>Kapat</button></div>`;
   const redo = (sel, fb) => { U.alert = ''; colsDraw(sel, fb); };
@@ -12518,8 +12522,10 @@ function colsDraw(focusSel, fallback) {
   $('#pt_add', box).onclick = () => {
     if (colsOf(U.pid).length >= COL_MAX) return toast(`Bir projede en fazla ${COL_MAX} kolon olabilir`);
     const names = new Set(cols.map(c => colKey(c.name)));
-    let n = 'Yeni kolon', x = 2; while (names.has(colKey(n))) n = 'Yeni kolon ' + x++;
-    DB.statuses.push({ id: uid('st'), projectId: U.pid, name: n, cat: 'inprogress', wip: 0,
+    /* Bitti kolonu olmayan (kolonsuz) projede ilk eklenen kolon Bitti olur: sunucu Bitti'siz akışı kabul etmez. */
+    const nd = !cols.some(c => c.cat === 'done'), base = nd ? 'Bitti' : 'Yeni kolon';
+    let n = base, x = 2; while (names.has(colKey(n))) n = base + ' ' + x++;
+    DB.statuses.push({ id: uid('st'), projectId: U.pid, name: n, cat: nd ? 'done' : 'inprogress', wip: 0,
       ord: Math.max(-1, ...cols.map(c => +c.ord || 0)) + 1 });
     save(); render(); redo();
     const inp = box.querySelector(`[data-cn="${cols.length}"]`); if (inp) { inp.focus(); inp.select(); }
@@ -13769,8 +13775,8 @@ function reopenIssue(id) {
   setStatus(i, back);
   save(); render(); toast(i.key + ' yeniden açıldı');
 }
-/* Bir kolonun kartları: tamamlananlar, tamamlandığı kolonun altında kalır. */
-const colOf = i => doneFromOk(i) || i.statusId;
+/* Kartın kolonu her zaman durumudur: tamamlanan iş Bitti kolonunda görünür (doneFrom yalnız "Yeniden aç" hedefi). */
+const colOf = i => i.statusId;
 /* doneFrom yalnız hâlâ var olan ve işin kendi projesine ait bir durumsa geçerli (stat() bulamayınca yedek nesne döndürür). */
 function doneFromOk(i) {
   const s = i.doneFrom && DB.statuses.find(x => x.id === i.doneFrom);

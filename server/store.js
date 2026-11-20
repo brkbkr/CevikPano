@@ -608,13 +608,15 @@ async function lockColumns(c, ctx, pids) {
 }
 
 /* Gönderim sonu bütünlük: ihlalde tüm gönderim 409 ile geri alınır. Aynı gönderimde silinen (ya da hiç
-   olmayan) proje atlanır. Eski projede Bitti kolonu hiç yoksa Bitti kuralı işlemez. */
+   olmayan) proje atlanır. Kolonu olan her projede en az bir Bitti (done) kolonu bulunur: yeni proje de Bitti'siz
+   akışla açılmaz (eski Bitti'siz projelere açılışta ensureDoneColumns Bitti ekler). */
 async function checkColumns(c, ctx) {
   for (const [pid, before] of ctx.cols) {
     if (!(await c.query('SELECT 1 FROM projects WHERE id=$1', [pid])).rowCount) continue;
     const after = await colStats(c, pid);
-    if (before.done > 0 && after.done === 0) throw new HttpError(409, 'Projede en az bir Bitti kolonu kalmalı');
     if (before.total > 0 && after.total === 0) throw new HttpError(409, 'Projenin son kolonu silinemez');
+    if (after.total > 0 && after.done === 0)
+      throw new HttpError(409, before.done > 0 ? 'Projede en az bir Bitti kolonu kalmalı' : 'Projede en az bir Bitti kolonu olmalı');
     if (after.total > before.total && after.total > MAX_COLUMNS)
       throw new HttpError(409, `Bir projede en fazla ${MAX_COLUMNS} kolon olabilir`);
     const clash = after.rows.some(r => ctx.colNamed.has(r.id)
@@ -1658,6 +1660,7 @@ export async function bootstrap(pool, log = console.log) {
   }
 
   await ensureDefaultWorkspace(pool);
+  await ensureDoneColumns(pool, log);
   const p = Number((await pool.query('SELECT count(*) AS n FROM projects')).rows[0].n);
   if (p === 0) {
     const admin = (await pool.query(`SELECT id FROM users WHERE role IN ('super','admin') ORDER BY ord LIMIT 1`)).rows[0];
@@ -1675,6 +1678,31 @@ export async function bootstrap(pool, log = console.log) {
     });
     log('[kurulum] Başlangıç projesi "Genel" oluşturuldu.');
   }
+}
+
+/* Her projede bir Bitti kolonu (her açılışta ve içe aktarma / geri yükleme sonrası; tekrar çalıştırılabilir, yalnız
+   ekler): Bitti kategorili kolonu olmayan (kolonsuz dahil) projenin sonuna "Bitti" eklenir. Ad projede varsa
+   "Tamamlandı" / "Bitti 2". Açık sekmeler changes satırıyla görür. */
+export async function ensureDoneColumns(db, log = () => {}) {
+  const r = await db.query(`
+    WITH need AS (
+      SELECT p.id AS pid,
+             coalesce((SELECT max((s.data->>'ord')::numeric) FROM statuses s
+                        WHERE s.project_id = p.id AND jsonb_typeof(s.data->'ord') = 'number'), -1) + 1 AS ord,
+             coalesce((SELECT t.n FROM unnest(ARRAY['Bitti', 'Tamamlandı', 'Bitti 2']) WITH ORDINALITY AS t(n, k)
+                        WHERE NOT EXISTS (SELECT 1 FROM statuses s WHERE s.project_id = p.id
+                                             AND lower(btrim(coalesce(s.data->>'name', ''))) = lower(t.n))
+                        ORDER BY t.k LIMIT 1), 'Bitti') AS name,
+             'st_bitti_' || substr(md5(p.id || clock_timestamp()::text || random()::text), 1, 16) AS sid
+        FROM projects p
+       WHERE NOT EXISTS (SELECT 1 FROM statuses s WHERE s.project_id = p.id AND s.category = 'done'))
+    INSERT INTO statuses (id, data)
+    SELECT sid, jsonb_build_object('id', sid, 'projectId', pid, 'name', name, 'cat', 'done', 'wip', 0, 'ord', ord) FROM need
+    ON CONFLICT (id) DO NOTHING
+    RETURNING id, data->>'projectId' AS pid`);
+  for (const x of r.rows) await db.query(`INSERT INTO changes (collection, record_id, op) VALUES ('statuses', $1, 'put')`, [x.id]);
+  if (r.rowCount) log(`[kurulum] Bitti kolonu eklendi: ${r.rows.map(x => x.pid).join(', ')}`);
+  return r.rowCount;
 }
 
 /* Varsayılan "Genel" alanı yoksa oluştur (ilk kurulum, içe aktarma / geri yükleme sonrası). */

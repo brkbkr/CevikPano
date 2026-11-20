@@ -36,6 +36,7 @@ const X = 'u_osx' + R, WS = 'ws_os' + R, PID = 'p_os' + R, IID = 'i_os' + R, KEY
     { c: 'workspaces', id: WS, op: 'put', data: { name: 'Gizli Alan ' + R, members: [{ userId: 'u_admin', role: 'admin' }] } },
     { c: 'projects', id: PID, op: 'put', data: { key: KEY, code: KEY, name: 'Gizli Proje ' + R, workspaceId: WS, counter: 0, members: [], archived: false, type: 'board' } },
     { c: 'statuses', id: PID + '_s0', op: 'put', data: { projectId: PID, name: 'Yapılacak', cat: 'todo', wip: 0, ord: 0 } },
+    { c: 'statuses', id: PID + '_s9', op: 'put', data: { projectId: PID, name: 'Bitti', cat: 'done', wip: 0, ord: 9 } },
     { c: 'issues', id: IID, op: 'put', data: { projectId: PID, key: KEY + '-1', summary: 'Gizli iş ' + R, statusId: PID + '_s0', type: 'task' } },
     { c: 'comments', id: 'c_os' + R, op: 'put', data: { issueId: IID, body: 'gizli yorum ' + R } }]);
   ok('setup', r.rejected.length === 0, JSON.stringify(r.rejected));
@@ -70,7 +71,7 @@ const X = 'u_osx' + R, WS = 'ws_os' + R, PID = 'p_os' + R, IID = 'i_os' + R, KEY
 
   /* temizlik */
   r = await sync(A, [{ c: 'issues', id: IID, op: 'del' }, { c: 'issues', id: IID + 'b', op: 'del' },
-    { c: 'statuses', id: PID + '_s0', op: 'del' }, { c: 'projects', id: PID, op: 'del' }, { c: 'workspaces', id: WS, op: 'del' },
+    { c: 'statuses', id: PID + '_s0', op: 'del' }, { c: 'statuses', id: PID + '_s9', op: 'del' }, { c: 'projects', id: PID, op: 'del' }, { c: 'workspaces', id: WS, op: 'del' },
     { c: 'users', id: X, op: 'del' }]);
   ok('cleanup', r.rejected.length === 0, JSON.stringify(r.rejected));
   console.log(errs.join('\n') || 'no page errors / alerts');
