@@ -6,6 +6,11 @@ let cookie = '';
 const req = async (m, p, b) => { const r = await fetch(base + p, { method: m, headers: { 'x-pano': '1', 'content-type': 'application/json', cookie }, body: b && JSON.stringify(b) });
   const sc = r.headers.get('set-cookie'); if (sc) cookie = sc.split(';')[0]; return r.json(); };
 await req('POST', '/api/auth/login', { username: user, password: pass });
+/* yetki-v2: eski biçimdeki projede (roles yok) üye listesi proje rolüne çevrilir (genel rol İzleyici → İzleyici, diğerleri
+   Üye) — 009 geçişi ve yeni istemciyle aynı; sunucu tek başına gelen members'ı yok sayar. */
+const roleOf = id => (d.users || []).find(u => u.id === id)?.role === 'viewer' ? 'viewer' : 'member';
+for (const p of d.projects || [])
+  if (p && p.roles == null && Array.isArray(p.members) && p.members.length) p.roles = Object.fromEntries(p.members.map(id => [id, roleOf(id)]));
 const ch = [];
 for (const [k, v] of Object.entries(d)) {
   if (['ui', 'board', 'open', 'savedAt', 'savedBy'].includes(k)) continue;

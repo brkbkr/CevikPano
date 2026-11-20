@@ -88,7 +88,7 @@ const enc1254 = s => Buffer.from([...s].map(c => c.charCodeAt(0) < 128 ? c.charC
     `Kayıtlı Güncel ${RUN};;${tx(1)};;;0312 999 99 99;;`,                                                                  // 8 kayıtlı cari
     `${XSS} ${RUN};Bilinmeyen;${tx(9)};;;;;`,                                                                              // 9 tür tanınmadı
     '',
-    `TCKN Kişi ${RUN};müşteri;${T}0046;;;;;`,                                                                             // 11 (boş satır atlandı)
+    `Onbir Hane Kişi ${RUN};müşteri;${T}0046;;;;;`,                                                                             // 11 (boş satır atlandı) 11 hane: yalnız VKN
   ].join('\r\n');
   await upload(A, 'cariler-excel.csv', Buffer.concat([Buffer.from([0xEF, 0xBB, 0xBF]), Buffer.from(semi, 'utf8')]));
   const hd = await A.evaluate(() => ({ src: document.getElementById('cuc_src').textContent, map: [...document.querySelectorAll('[data-cucmap]')].map(s => s.value),
@@ -96,22 +96,24 @@ const enc1254 = s => Buffer.from([...s].map(c => c.charCodeAt(0) < 128 ? c.charC
   ok('";" detected, BOM stripped from first header, headers auto-mapped (Şehir not mapped)', /ayırıcı: noktalı virgül/.test(hd.src) && hd.firstHead === 'Unvan'
     && hd.map.join(',') === 'name,kind,taxNo,taxOffice,email,phone,notes,', JSON.stringify(hd));
   let c = await counts(A);
-  ok('preview counts: 3 add, 1 update, 0 skip, 5 error', c.add === 3 && c.update === 1 && c.skip === 0 && c.error === 5, JSON.stringify(c));
+  ok('preview counts: 2 add, 1 update, 0 skip, 6 error', c.add === 2 && c.update === 1 && c.skip === 0 && c.error === 6, JSON.stringify(c));
   const r4 = await rowOf(A, 4), r5 = await rowOf(A, 5), r6 = await rowOf(A, 6), r7 = await rowOf(A, 7), r9 = await rowOf(A, 9);
   ok('error rows red with reason: e-posta, unvan, vergi no, yinelenen, tür', r4?.act === 'error' && /E-posta adresi geçersiz/.test(r4.why)
-    && /Unvan boş/.test(r5?.why) && /10 \(VKN\) ya da 11 \(TCKN\)/.test(r6?.why) && /dosyada yineleniyor \(satır 2\)/.test(r7?.why) && /Tür tanınmadı/.test(r9?.why)
+    && /Unvan boş/.test(r5?.why) && /Vergi no 10 haneli \(VKN\) olmalı/.test(r6?.why) && /dosyada yineleniyor \(satır 2\)/.test(r7?.why) && /Tür tanınmadı/.test(r9?.why)
     && r4.bg !== 'rgba(0, 0, 0, 0)', JSON.stringify([r4, r7]));
   ok('errors listed first; quoted ";" kept in name; XSS shown as text', await A.evaluate(() => document.querySelector('#cuc_body tbody tr').dataset.act === 'error')
     && (await rowOf(A, 3))?.name === `Noktalı; Virgüllü ${RUN} A.Ş.` && r9.name.startsWith('<img') && await A.evaluate(() => window.__xss === undefined));
-  ok('row 8 matches existing by tax no → update; row 11 (after blank line) TCKN notice', (await rowOf(A, 8))?.act === 'update' && (await rowOf(A, 11))?.act === 'add'
-    && await A.evaluate(() => !!document.getElementById('cuc_kvkk')));
-  ok('run button counts importable rows', await A.evaluate(() => /4 cariyi aktar/.test(document.getElementById('cuc_run').textContent) && !document.getElementById('cuc_run').disabled));
+  const r11 = await rowOf(A, 11);
+  ok('row 8 matches existing by tax no → update; row 11 (after blank line, 11 digits) rejected as non-VKN, no TCKN notice', (await rowOf(A, 8))?.act === 'update'
+    && r11?.act === 'error' && /Vergi no 10 haneli \(VKN\) olmalı/.test(r11.why) && await A.evaluate(() => !document.getElementById('cuc_kvkk')
+      && !/TCKN|T\.C\. kimlik/.test(document.querySelector('#scrim .modal').textContent)), JSON.stringify(r11));
+  ok('run button counts importable rows', await A.evaluate(() => /3 cariyi aktar/.test(document.getElementById('cuc_run').textContent) && !document.getElementById('cuc_run').disabled));
   await A.screenshot({ path: SS + 'onizleme.png' });
   if (process.env.SHOT_DIR) await A.screenshot({ path: process.env.SHOT_DIR + '/cari-csv-onizleme.png' });
   /* Atla seçeneği */
   await A.click('[data-cucmode="skip"]'); await sleep(100);
   c = await counts(A);
-  ok('"Atla": existing match becomes skipped', c.add === 3 && c.update === 0 && c.skip === 1 && (await rowOf(A, 8))?.act === 'skip', JSON.stringify(c));
+  ok('"Atla": existing match becomes skipped', c.add === 2 && c.update === 0 && c.skip === 1 && (await rowOf(A, 8))?.act === 'skip', JSON.stringify(c));
   await A.click('[data-cucmode="update"]'); await sleep(100);
   /* eşlemeyi kaldır: Unvan zorunlu */
   await A.selectOption('[data-cucmap="0"]', ''); await sleep(100);
@@ -122,18 +124,18 @@ const enc1254 = s => Buffer.from([...s].map(c => c.charCodeAt(0) < 128 ? c.charC
   /* yalnız hatalılar */
   await A.click('#cuc_erronly'); await sleep(100);
   ok('"Yalnız hatalılar" filter', await A.evaluate(() => [...document.querySelectorAll('#cuc_body tbody tr')].every(r => r.dataset.act === 'error')
-    && document.querySelectorAll('#cuc_body tbody tr').length === 5));
+    && document.querySelectorAll('#cuc_body tbody tr').length === 6));
   await runImport(A);
   let rs = await result(A);
-  ok('result summary: 3 added, 1 updated, 0 skipped, 5 errors', rs.add === 3 && rs.update === 1 && rs.skip === 0 && rs.error === 5, JSON.stringify(rs));
+  ok('result summary: 2 added, 1 updated, 0 skipped, 6 errors', rs.add === 2 && rs.update === 1 && rs.skip === 0 && rs.error === 6, JSON.stringify(rs));
   let all = await srvAll(A);
   const c2 = byTax(all, tx(2)), ex = all.find(x => x.id === EX);
   ok('server: Turkish chars and quoted multi-line note with ";" and ""', c2?.name === `Çağrı Şişman Danışmanlık ${RUN} Ltd. Şti.` && c2.notes === 'İki satırlık; not\nikinci "satır"'
     && c2.kind === 'customer' && c2.taxOffice === 'Kadıköy' && c2.active === true, JSON.stringify(c2));
   ok('server: update keeps empty cells and contacts, changes phone + name', ex?.phone === '0312 999 99 99' && ex.name === `Kayıtlı Güncel ${RUN}` && ex.kind === 'supplier'
     && ex.contacts?.length === 1, JSON.stringify(ex));
-  ok('server: invalid rows not written; TCKN row written', !byTax(all, tx(4)) && !byTax(all, tx(5)) && !byTax(all, tx(9)) && !!byTax(all, T + '0046'));
-  ok('list shows imported customers', await A.evaluate(r => { closeModal(); CU_Q = r; render(); return document.querySelectorAll('#cuList tr.cu-row').length; }, RUN) >= 4);
+  ok('server: invalid rows not written; 11-digit row not written', !byTax(all, tx(4)) && !byTax(all, tx(5)) && !byTax(all, tx(9)) && !byTax(all, T + '0046'));
+  ok('list shows imported customers', await A.evaluate(r => { closeModal(); CU_Q = r; render(); return document.querySelectorAll('#cuList tr.cu-row').length; }, RUN) >= 3);
 
   // 4) "," ayırıcı, BOM'suz windows-1254 (Excel ANSI); tekillik: kayıtlı vergi no "Atla", sunucu çakışmayı reddeder
   const comma = [
@@ -178,9 +180,19 @@ const enc1254 = s => Buffer.from([...s].map(c => c.charCodeAt(0) < 128 ? c.charC
   const txt = ex1.buf.toString('utf8');
   const lines = txt.slice(1).split('\r\n').filter(Boolean);
   ok('export: BOM UTF-8, ";" header, file name', ex1.buf[0] === 0xEF && ex1.buf[1] === 0xBB && ex1.buf[2] === 0xBF && /^cariler-\d{4}-\d{2}-\d{2}\.csv$/.test(ex1.name)
-    && lines[0] === 'Unvan;Kısa ad;Tür;Vergi dairesi;Vergi no / TCKN;Adres;Telefon;E-posta;Notlar;Durum', lines[0]);
+    && lines[0] === 'Unvan;Kısa ad;Tür;Vergi dairesi;Vergi no;Adres;Telefon;E-posta;Notlar;Durum', lines[0]);
   const fx = txt.split('\r\n').find(l => l.includes(tx(40))) || '';
   ok('export: formula cells prefixed with \' (= + - @), quotes doubled', fx.startsWith(`"'=HYPERLINK(""http://x"",""tıkla"") ${RUN}";'-2+3;Müşteri;;${tx(40)};"Satır 1\nSatır 2; daire 3";'+90 555 000 00 00;;'@SUM(A1);Pasif`), fx);
+  /* baştaki boşluk / tam genişlik ＝＋－＠ sonrası formül de kaçırılır; içe aktarmada ' geri alınır */
+  const fw = await A.evaluate(() => {
+    const ins = [' =1+1', '  +A1', '　-2', ' @SUM(A1)', '＝1+1', '＋A1', '－2', '＠SUM(A1)', ' ＝cmd', '\t=1', '\tdüz', '\rx'];
+    const plain = ['a=1', 'Ltd. Şti.', '1-2', 'x@y.test', ' düz metin', '％'];
+    return { ins: ins.map(s => [s, cuCsvCell(s)]), plain: plain.map(s => [s, cuCsvCell(s)]),
+      back: ins.map(s => [s.trim(), cuCsvVal(csvParse(cuCsvCell(s), ';')[0].cells[0])]) };
+  });
+  ok('export: leading space / full-width formula chars prefixed with \'', fw.ins.every(([, c]) => /^"?'/.test(c)), JSON.stringify(fw.ins));
+  ok('export: plain text not prefixed', fw.plain.every(([, c]) => !c.replace(/^"/, '').startsWith("'")), JSON.stringify(fw.plain));
+  ok('import: \' prefix undone for new escapes (round trip)', fw.back.every(([s, b]) => b === s), JSON.stringify(fw.back));
   /* görünen (süzülmüş) liste: satır sayısı ekranla aynı; tür süzgeci uygulanır */
   const nRec = await A.evaluate(t => csvParse(t.replace(/^﻿/, ''), ';').length - 1, txt);
   ok('export: only visible (filtered) rows', nRec === shown && shown >= 8, `${nRec} / ${shown}`);

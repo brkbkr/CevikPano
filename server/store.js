@@ -2,8 +2,9 @@ import bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
 import { TABLES, PREF_KEYS, IGNORED_KEYS, MISC_COLLECTIONS, tx, tableOf, reservedName } from './db.js';
 import { HttpError, cj, same, merge3, isAdminRole } from './util.js';
-import { validate, PROJECT_TYPES, normalizePriority, normalizeArchived, normalizeCustomer, normalizeHistory, validId, validateCfg, validateNavDefault, stripBadKeys, HIST_TEXT_MAX } from './validate.js';
+import { validate, PROJECT_TYPES, normalizePriority, normalizeArchived, normalizeCustomer, normalizeHistory, validId, validateCfg, validateNavDefault, validatePerms, validateModules, stripBadKeys, HIST_TEXT_MAX } from './validate.js';
 import { notifyForIssue, notifyForComment } from './notify.js';
+import { PERM_LABEL, projRole, roleCan, isWsAdmin, wsAdminIds, wsHasNoAdmin, wsOwner, mergeMap, mergePerms } from './perms.js';
 
 export { HttpError };
 
@@ -11,14 +12,13 @@ export const DEFAULT_USER_PASSWORD = () => process.env.DEFAULT_USER_PASSWORD || 
 const SECRET_USER_KEYS = ['pw', 'salt', 'mustChange', 'password', 'password_hash', 'passwordHash'];
 const USER_COLS = ['id', 'username', 'name', 'role', 'active', 'system'];
 const ROLES = ['super', 'admin', 'member', 'viewer'];
-/* Proje yapılandırması ve cariler: yalnızca yönetici değiştirir. Üye projeyi oluşturup düzenleyebilir
-   (projeye etkin cari bağlamak dahil) ama silemez. Kolonlar (statuses) #12'den beri yönetici ya da
-   projenin üyesi olan Üye tarafından değiştirilir (canConfigure). */
+/* Genel yapılandırma ve cariler: yalnızca sistem yöneticisi değiştirir (projeye özel alan hariç: proje yetki tablosu,
+   project.fields). Projeye bağlı kayıtların yetkisi proje rolünden (yetki-v2, server/perms.js) gelir: checkScope. */
 export const ADMIN_ONLY = ['fields', 'rules', '_settings', 'customers'];
 const ISSUE_CHILDREN = ['comments', 'worklogs', 'history', 'transitions'];
 /* Yeni kaydı yalnız ekleyerek oluşturan koleksiyonlar (eşzamanlı oluşturmada üzerine yazılmaz). Geçmiş ve
    yorum: aynı kimlikle eşzamanlı ikinci gönderim ilk yazanın kaydını (yazarını) ezmesin. */
-const CREATE_ONCE = ['workspaces', 'customers', 'history', 'comments'];
+const CREATE_ONCE = ['workspaces', 'customers', 'history', 'comments', 'reports'];
 /* Geçmiş yalnız eklenir (B2): var olan kayıt değiştirilemez, tek tek silinemez (yöneticiler dahil); silme yalnız
    iş silmenin cascade'iyle. Yeni kayıtta yönetici olmayanın yazarı oturuma, zamanı sunucu saatine ±5 dk zorlanır. */
 export const HIST_LOCKED = 'Geçmiş kaydı değiştirilemez';
@@ -67,16 +67,26 @@ export async function readState(pool, me) {
     const data = scopeData(await readAll(c), me);
     const pr = (await c.query('SELECT data FROM user_prefs WHERE user_id=$1', [me.id])).rows[0];
     for (const k of PREF_KEYS) if (pr?.data?.[k] !== undefined && pr.data[k] !== null) data[k] = pr.data[k];
-    if (me.role === 'viewer' && Array.isArray(data.customers)) data.customers = data.customers.map(maskCustomer);
+    if (maskTaxFor(me) && Array.isArray(data.customers)) data.customers = data.customers.map(maskCustomer);
     return { seq, data };
   });
 }
 
-/* İzleyiciye 11 haneli vergi numarası (T.C. kimlik no) maskeli gider; yalnız son 2 hane görünür: *********01.
-   10 haneli vergi numarası (tüzel kişi) maskelenmez. Yedek / dışa aktarma maskesizdir (yalnız yönetici). */
+/* KVKK: 11 haneli vergi numarası (T.C. kimlik no) yalnız sistem yöneticisine tam gider; diğer herkese (üye, alan
+   yöneticisi, izleyici) maskeli, yalnız son 2 hane görünür: *********01. 10 haneli vergi numarası (tüzel kişi)
+   kişisel veri değildir, maskelenmez. Yedek / dışa aktarma maskesizdir (yalnız yönetici). Maskeli değer geri
+   yazılırsa gerçek değer korunur (applyOne → keepMaskedTaxNo). */
+export const maskTaxFor = me => !!me && !isAdminRole(me.role);
+const maskTax = t => '*'.repeat(9) + t.slice(-2);
 export function maskCustomer(d) {
   if (!d || typeof d.taxNo !== 'string' || !/^\d{11}$/.test(d.taxNo)) return d;
-  return { ...d, taxNo: '*'.repeat(9) + d.taxNo.slice(-2) };
+  return { ...d, taxNo: maskTax(d.taxNo) };
+}
+/* Gelen vergi no güncel 11 haneli değerin maskesiyse (maskeli almış bir istemcinin geri yazması) gerçek değer kalır. */
+function keepMaskedTaxNo(data, cur) {
+  if (typeof cur?.taxNo !== 'string' || !/^\d{11}$/.test(cur.taxNo) || data.taxNo !== maskTax(cur.taxNo)) return false;
+  data.taxNo = cur.taxNo;
+  return true;
 }
 
 /* ---- son okunan sıra numarasından beri değişenler ---- */
@@ -99,7 +109,7 @@ export async function readChanges(pool, since, me) {
     if (r.op === 'put') {
       const d = await readOne(pool, r.collection, r.record_id);
       if (d === undefined) it.op = 'del';
-      else it.data = r.collection === 'customers' && me?.role === 'viewer' ? maskCustomer(d) : d;
+      else it.data = r.collection === 'customers' && maskTaxFor(me) ? maskCustomer(d) : d;
     }
     items.push(it);
   }
@@ -143,11 +153,14 @@ export async function applyChanges(pool, me, changes, opts = {}) {
      projenin kolonları dizide önce gelse de doğru sırayla yazılır; silinen kolonun işleri aynı gönderimde
      taşındıysa silme onlardan sonra denetlenir. Geçmiş, yorum ve bağlantılar işlerden sonra (B2): yeni işin geçmişi
      işi bulur; iş silmeyle birlikte gönderilen geçmiş/yorum silmeleri cascade'den sonra "kayıt yok" olur. */
-  const rank = ch => (ch?.c === 'users' ? 0
+  /* Modül ayarı (Cariler aç/kapat) en önce: aynı gönderimdeki cari yazmaları yeni ayara göre denetlenir.
+     Süre kaydı ve geçişler de işlerden sonra (bağlı kaydın işi var olmalı: checkParent). Proje silme proje grubunda:
+     bağlı kayıtları sunucu siler (cascadeProjectDelete); aynı gönderimdeki alt kayıt silmeleri sonra "çöpte" diye geçer. */
+  const rank = ch => (ch?.c === 'users' || (ch?.c === '_settings' && ch?.id === 'modules') ? 0
     : ['workspaces', 'customers'].includes(ch?.c) && ch?.op === 'put' ? 1
-    : ch?.c === 'projects' && ch?.op === 'put' ? 2
+    : ch?.c === 'projects' ? 2
     : ch?.c === 'statuses' && ch?.op === 'del' ? 5
-    : ['history', 'comments', 'links'].includes(ch?.c) ? 4 : 3);
+    : ['history', 'comments', 'links', 'worklogs', 'transitions'].includes(ch?.c) ? 4 : 3);
   const ordered = changes.map((ch, i) => [rank(ch), i, ch]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
   /* Kilitlenme (40P01) ya da serileştirme hatası (40001): işlem bir kez yeniden denenir. */
   for (let attempt = 0; ; attempt++) {
@@ -183,7 +196,7 @@ async function applyOnce(pool, me, ordered, opts = {}) {
         [st.map(ch => ch.id)])).rows.map(r => r.project_id));
       /* Yetkisiz kişi kilit almaz: kolonlarını değiştiremeyeceği projenin kilidi atlanır (değişikliği applyRecord'da reddedilir). */
       const allowed = [];
-      for (const pid of new Set(pids)) if (await colAllowed(c, me, pid)) allowed.push(pid);
+      for (const pid of new Set(pids)) if (await colAllowed(c, ctx, pid)) allowed.push(pid);
       await lockColumns(c, ctx, allowed);
     }
     for (const [, i, ch] of ordered) {
@@ -212,9 +225,10 @@ async function applyOnce(pool, me, ordered, opts = {}) {
            updated_at = now()`, [me.id, ch.id, JSON.stringify(ch.op === 'del' ? null : ch.data)]);
         applied++; continue;
       }
-      /* Alana bağlı koleksiyonlarda yetki etkin alan rolüyle (checkScope); diğerlerinde genel izleyici salt okunur. */
-      if (!WS_SCOPED.includes(ch.c) && me.role === 'viewer') { reject('salt okunur kullanıcı'); continue; }
-      if (!meAdmin && ((ADMIN_ONLY.includes(ch.c) && ch.c !== 'fields') || (['projects', 'workspaces'].includes(ch.c) && ch.op === 'del'))) {
+      /* Projeye bağlı koleksiyonlarda yetki etkin proje rolüyle (checkScope); diğerlerinde genel izleyici salt okunur.
+         Kayıtlı rapor kişiseldir: genel izleyici de kendine kaydeder (paylaşamaz; checkReport). */
+      if (!WS_SCOPED.includes(ch.c) && ch.c !== 'reports' && me.role === 'viewer') { reject('salt okunur kullanıcı'); continue; }
+      if (!meAdmin && ((ADMIN_ONLY.includes(ch.c) && ch.c !== 'fields') || (ch.c === 'workspaces' && ch.op === 'del'))) {
         reject('Bu değişiklik için yönetici yetkisi gerekli'); continue;
       }
 
@@ -260,7 +274,7 @@ async function applyRecord(c, ctx, ch) {
   if (ch.c === 'statuses') {
     /* Danışma kilidi satır kilidinden ÖNCE (kilit sırası hep aynı: kilitlenme olmasın); yetki kilitten de önce. */
     const pre = (await c.query('SELECT project_id FROM statuses WHERE id=$1', [ch.id])).rows[0]?.project_id;
-    await colAuth(c, me, pre, ch.op === 'put' ? ch.data?.projectId : null);
+    await colAuth(c, ctx, pre, ch.op === 'put' ? ch.data?.projectId : null);
     await lockColumns(c, ctx, [pre, ch.op === 'put' ? ch.data?.projectId : null]);
   }
   const sel = table
@@ -268,8 +282,14 @@ async function applyRecord(c, ctx, ch) {
     : await c.query('SELECT data FROM misc_records WHERE collection=$1 AND id=$2 FOR UPDATE', [ch.c, ch.id]);
   const cur = sel.rows[0]?.data;
   const meAdmin = isAdminRole(me.role);
+  /* Cariler modülü kapalıyken cari ve cari özel alanı yazılmaz (veri durur; açılınca her şey geri gelir). */
+  if ((ch.c === 'customers' || (ch.c === 'fields' && (cur?.scope === 'customer' || ch.data?.scope === 'customer')))
+      && await customersOff(c, ctx)) throw new HttpError(409, CUSTOMERS_OFF);
   /* Erişim/salt okunur denetimi önce (kayda özgü kurallardan önce); yeni hâl ayrıca yazmadan önce denetlenir. */
-  if (!ctx.system) await checkScope(c, me, ch.c, undefined, cur ?? (ch.op === 'put' ? ch.data : undefined), true);
+  if (!ctx.system) await checkScope(c, ctx, ch.c, cur, ch.op === 'put' ? ch.data : undefined, true);
+  /* Bağlı kaydın projesi/işi var olmalı; silinmiş projenin kimliği yeniden açılamaz (O-1). Sistem yolu gevşek. */
+  if (!ctx.system && ch.op === 'put') await checkParent(c, ctx, ch.c, ch.data, cur);
+  if (!ctx.system && ch.c === 'projects' && ch.op === 'put' && !cur) await checkProjectIdFree(c, ctx, ch.id);
 
   if (ch.c === 'worklogs' && !meAdmin) {
     const owner = ch.op === 'del' ? cur?.userId : (cur?.userId ?? ch.data?.userId);
@@ -278,10 +298,11 @@ async function applyRecord(c, ctx, ch) {
       throw new HttpError(403, 'Başkası adına süre kaydı yalnızca yönetici girebilir');
   }
   if (ch.c === 'worklogs') { if (cur?.issueId) ctx.touchedIssues.add(cur.issueId); if (ch.data?.issueId) ctx.touchedIssues.add(ch.data.issueId); }
+  if (ch.c === 'reports') checkReportOwner(me, cur);
   /* Başkasının ya da yazarı olmayan eski yorum: değiştirme/silme yalnız yönetici. Kayıt yoksa silme zaten etkisiz. */
   if (ch.c === 'comments' && !meAdmin && cur && cur.userId !== me.id) throw new HttpError(403, COMMENT_FORBIDDEN);
   if (ch.c === 'history') {
-    if (ch.op === 'del') { if (!cur) return false; throw new HttpError(403, HIST_LOCKED); }
+    if (ch.op === 'del') { if (!cur) return goneDel(c, ctx, ch.c, ch.id); throw new HttpError(403, HIST_LOCKED); }
     if (cur) {
       const inc = { ...ch.data, id: ch.id };
       normalizeHistory(inc);
@@ -296,13 +317,14 @@ async function applyRecord(c, ctx, ch) {
   }
 
   if (ch.op === 'del') {
-    if (!cur) return false;
-    if (!ctx.system) await checkScope(c, me, ch.c, cur, undefined);
+    if (!cur) return goneDel(c, ctx, ch.c, ch.id);
+    if (!ctx.system) await checkScope(c, ctx, ch.c, cur, undefined);
     if (ch.c === 'issues') await cascadeIssueDelete(c, ctx, ch.id);
+    if (ch.c === 'projects') await cascadeProjectDelete(c, ctx, ch.id);
     if (ch.c === 'workspaces') await checkWorkspaceDelete(c, ch.id);
-    if (ch.c === 'sprints' && cur.state === 'active') await canManageSprint(c, me, cur.projectId, SPRINT_DELETE_FORBIDDEN);
+    if (ch.c === 'sprints' && cur.state === 'active') await canManageSprint(c, ctx, cur.projectId);
     if (ch.c === 'statuses') {
-      await canConfigure(c, me, cur.projectId);
+      await canConfigure(c, ctx, cur.projectId);
       await lockColumns(c, ctx, [cur.projectId]);
       if ((await c.query('SELECT 1 FROM issues WHERE status_id=$1 LIMIT 1', [ch.id])).rowCount)
         throw new HttpError(409, 'Önce içindeki işleri taşıyın');
@@ -337,6 +359,12 @@ async function applyRecord(c, ctx, ch) {
     if (ch.c === 'customers' && (mine.contacts === undefined || Array.isArray(mine.contacts))
         && [ch.base, mine, cur].some(x => x.contacts !== undefined))
       data.contacts = mergeContacts(ch.base.contacts, mine.contacts, cur.contacts);
+    /* Proje rolleri ve yetki tablosu kişi/anahtar düzeyinde birleşir: iki yönetici aynı anda farklı kişileri değiştirirse
+       ikisinin değişikliği de kalır. */
+    if (ch.c === 'projects' && mine.roles && typeof mine.roles === 'object' && !Array.isArray(mine.roles))
+      data.roles = mergeMap(ch.base.roles, mine.roles, cur.roles);
+    if (ch.c === 'projects' && mine.perms && typeof mine.perms === 'object' && !Array.isArray(mine.perms))
+      data.perms = mergePerms(ch.base.perms, mine.perms, cur.perms);
     adjusted = true;
   }
   if (ch.c === 'projects' && cur) {                 // iş sayacı geri gitmesin
@@ -347,9 +375,11 @@ async function applyRecord(c, ctx, ch) {
   /* Sprint planı (başlatmadaki anlık görüntü) bir kez yazılır: alanı göndermeyen (eski) istemci onu silemez. */
   if (ch.c === 'sprints' && cur?.plan != null && data.plan === undefined) { data.plan = cur.plan; adjusted = true; }
   if ((ch.c === 'projects' || ch.c === 'workspaces') && normalizeArchived(data)) adjusted = true;
+  if (ch.c === 'customers' && keepMaskedTaxNo(data, cur)) adjusted = true;
   if (ch.c === 'customers' && normalizeCustomer(data)) adjusted = true;
   if (ch.c === 'workspaces' && enforceCreatedBy(data, cur, me)) adjusted = true;
   if (ch.c === 'workspaces' && enforceOwner(data, cur, me)) adjusted = true;
+  if (ch.c === 'projects' && await enforceProjectRoles(c, ctx, data, cur)) adjusted = true;
   if (ch.c === 'history' && normalizeHistory(data)) adjusted = true;
   if (ch.c === 'history' && stripHistKeys(data)) adjusted = true;
   if (ch.c === 'history' && !meAdmin && enforceHistoryAuthor(data, me)) adjusted = true;
@@ -359,6 +389,7 @@ async function applyRecord(c, ctx, ch) {
   /* Yeni yorumda yazar oturumdur; var olan yorumun yazarı değişmez (yönetici hariç; yönetici olmayan
      yalnız kendi yorumunu düzenler, bu durumda cur.userId === me.id). */
   if (ch.c === 'comments' && !meAdmin && data.userId !== me.id) { data.userId = me.id; adjusted = true; }
+  if (ch.c === 'reports' && enforceReportOwner(data, cur, me)) adjusted = true;
   validate(ch.c, data, { live: true, cur });
   /* Geçmiş kaydının işi var olmalı (aynı gönderimde oluşturulan iş dahil: gruplamada işlerden sonra gelir).
      FOR SHARE: iş aynı anda silinirse yetim kayıt kalmasın. */
@@ -369,16 +400,17 @@ async function applyRecord(c, ctx, ch) {
   if (ch.c === 'comments' && (!cur || data.issueId !== cur.issueId)
       && !(await c.query('SELECT 1 FROM issues WHERE id=$1 FOR SHARE', [data.issueId])).rowCount)
     throw new HttpError(400, 'Yorumun işi bulunamadı');
-  /* Atanan değiştiyse var olan, aktif bir kullanıcı olmalı; üyeli alanda ayrıca alanda Yönetici/Üye rolü (erişimi
-     olmayana iş atanmaz, istemcideki memsOf ile aynı). İş başka alana taşınınca orada rolü olmayan atanan boşalır. */
+  /* Atanan değiştiyse var olan, aktif bir kullanıcı olmalı ve projede "İş düzenleme" yetkisi olmalı (istemcideki memsOf
+     ile aynı). Yalnız değişince denetlenir: rolü İzleyici'ye düşen kişinin var olan ataması kalır. İş başka projeye
+     taşınınca orada görme yetkisi olmayan atanan boşalır. */
   if (ch.c === 'issues' && data.assignee != null && data.assignee !== '' && data.assignee !== cur?.assignee) {
     const u = typeof data.assignee === 'string'
-      ? (await c.query('SELECT id, role FROM users WHERE id=$1 AND active', [data.assignee])).rows[0] : undefined;
+      ? (await c.query('SELECT id, role, active, system FROM users WHERE id=$1 AND active', [data.assignee])).rows[0] : undefined;
     if (!u) throw new HttpError(400, 'Atanan kullanıcı bulunamadı ya da pasif');
-    if (!(await assignable(c, u, data.projectId))) throw new HttpError(400, ASSIGNEE_NO_ACCESS);
+    if (!(await assignable(c, ctx, u, data.projectId))) throw new HttpError(400, ASSIGNEE_NO_ACCESS);
   } else if (ch.c === 'issues' && cur && typeof data.assignee === 'string' && data.assignee && data.projectId !== cur.projectId) {
-    const u = (await c.query('SELECT id, role FROM users WHERE id=$1', [data.assignee])).rows[0];
-    if (u && !(await assignable(c, u, data.projectId))) { data.assignee = null; adjusted = true; }
+    const u = (await c.query('SELECT id, role, active, system FROM users WHERE id=$1', [data.assignee])).rows[0];
+    if (u && !(await roleIn(c, u, await projById(c, data.projectId)))) { data.assignee = null; adjusted = true; }
   }
   /* Yalnız projesi değişen iş eski projenin kolonunda kalmaz: kolonu yeni projede yoksa yeni projenin ilk
      "yapılacak" kolonuna (yoksa ilk kolonuna) taşınır — istemcideki moveIssueTo ile aynı. */
@@ -399,35 +431,33 @@ async function applyRecord(c, ctx, ch) {
   if (ch.c === 'issues') await checkRequester(c, data, cur, ctx.system);
   if (ch.c === 'issues' && await ensureIssueKey(c, ctx, data, cur)) adjusted = true;
   if (ch.c === 'workspaces' && await enforceWsMembers(c, me, data, cur)) adjusted = true;
+  if (ch.c === 'workspaces' && await enforceWsAdmins(c, me, data, cur)) adjusted = true;
   if (cur && same(cur, data)) { if (adjusted) ctx.adjusted.push({ c: ch.c, id: ch.id }); return false; }
-  if (!ctx.system) await checkScope(c, me, ch.c, cur, data);
+  if (!ctx.system) await checkScope(c, ctx, ch.c, cur, data);
   if (ch.c === 'workspaces') await checkWorkspace(c, me, ch.id, data, cur);
+  if (ch.c === 'projects') await checkProjectRoles(c, data, cur);
   if (ch.c === 'projects') await checkProjectWorkspace(c, data, cur);
   if (ch.c === 'projects' && cur) await checkProjectMove(c, me, cur, data);
   if (ch.c === 'projects') await checkProjectCustomer(c, data, cur);
   if (ch.c === 'issues') await checkProjectCustomer(c, data, cur, 'Pasif cari işe bağlanamaz');
-  if (ch.c === 'projects' && cur) await checkProjectType(c, me, ch.id, data, cur);
-  /* Proje üyeleri: alan yöneticisi (üye listesi tanımsız eski alanda: yönetici ya da proje üyesi). Yeni projede serbest. */
-  if (ch.c === 'projects' && cur && !same(cur.members ?? [], data.members ?? []))
-    await canConfigure(c, me, ch.id, 'Proje üyelerini yalnızca alan yöneticisi değiştirebilir');
-  /* Proje adı ve diğer ayarları (sayaç, üyeler, tür, sprint süresi kendi denetiminde): canConfigure — üyeli alanda
-     alan yöneticisi, eski alanda projenin güncel üye listesindeki Üye (istemcideki canDesign ile aynı). */
-  if (ch.c === 'projects' && cur && !same(projSettings(cur), projSettings(data)))
-    await canConfigure(c, me, ch.id, PROJECT_FORBIDDEN);
+  if (ch.c === 'projects' && cur) await checkProjectType(c, ctx, ch.id, data, cur);
+  /* Proje ayarları (project.settings), roller ve yetki tablosu (proje Yöneticisi), sayaç (issue.create): checkScope →
+     checkProjectWrite. Sprint süresi: sprint.manage. */
   if (ch.c === 'projects' && cur && (cur.sprintWeeks ?? null) !== (data.sprintWeeks ?? null))
-    await canManageSprint(c, me, ch.id, SPRINT_WEEKS_FORBIDDEN);
-  if (ch.c === 'sprints') await checkSprintState(c, me, data, cur);
+    await canManageSprint(c, ctx, ch.id);
+  if (ch.c === 'sprints') await checkSprintState(c, ctx, data, cur);
   if (ch.c === 'sprints') await checkSprintStart(c, data, cur);
-  if (ch.c === 'sprints') await checkSprintPlan(c, me, data, cur, ctx.system);
+  if (ch.c === 'sprints') await checkSprintPlan(c, ctx, ch.id, data, cur, ctx.system);
   if (ch.c === 'statuses') {
-    if (cur) await canConfigure(c, me, cur.projectId);
-    await canConfigure(c, me, data.projectId);
+    if (cur) await canConfigure(c, ctx, cur.projectId);
+    await canConfigure(c, ctx, data.projectId);
     await lockColumns(c, ctx, [cur?.projectId, data.projectId]);
     if (!cur || colName(cur.name) !== colName(data.name) || cur.projectId !== data.projectId) ctx.colNamed.add(ch.id);
   }
   if (ch.c === 'customers') await checkCustomerTaxNo(c, ctx, ch.id, data, cur);
   if (ch.c === 'fields') await checkFieldKey(c, ch.id, data, cur);
-  if (ch.c === 'links') await checkLinkEnds(c, me, data, cur, ctx.system);
+  if (ch.c === 'links') await checkLinkEnds(c, ctx, data, cur, ctx.system);
+  if (ch.c === 'reports') await checkReport(c, me, data, cur);
 
   const json = JSON.stringify(data);
   if (table && !cur && CREATE_ONCE.includes(ch.c)) {
@@ -445,14 +475,21 @@ async function applyRecord(c, ctx, ch) {
      ON CONFLICT (collection, id) DO UPDATE SET data = EXCLUDED.data, version = t.version + 1,
        updated_at = now(), updated_by = EXCLUDED.updated_by`, [ch.c, ch.id, json, me.id]);
   if (adjusted) ctx.adjusted.push({ c: ch.c, id: ch.id });
-  /* Okuma süzmesi (18): üyelik ya da projenin alanı değişti → etkilenenler tam yeniden yükler. */
-  if (ch.c === 'workspaces') await logAccess(c, ctx, wsAccessDiff(cur, data));
-  if (ch.c === 'projects' && cur && projWsId(cur) !== projWsId(data)) await logAccess(c, ctx, ['*']);
-  /* Alandan çıkarılan (ya da projesi başka alana taşınan) atanan: alanda rolü kalmadıysa atama boşalır. */
-  if (ch.c === 'workspaces' && cur && wsAccessDiff(cur, data).length) await clearLostAssignees(c, ctx, data, await wsProjectIds(c, ch.id));
-  if (ch.c === 'projects' && cur && projWsId(cur) !== projWsId(data)) await clearLostAssignees(c, ctx, await wsOfProjectData(c, data), [ch.id]);
+  /* Okuma süzmesi: proje kişileri, sahip, alan yöneticileri ya da projenin alanı değişti → etkilenenler tam yeniden yükler;
+     projeyi göremez olan atananın ataması boşalır (rol düşürmede değil: İzleyici'ye düşenin ataması kalır). */
+  if (ch.c === 'workspaces') {
+    const diff = wsAccessDiff(cur, data);
+    await logAccess(c, ctx, diff);
+    if (cur && diff.length) await clearLostAssignees(c, ctx, await wsProjectIds(c, ch.id));
+  }
+  if (ch.c === 'projects' && cur) {
+    const diff = projAccessDiff(cur, data);
+    await logAccess(c, ctx, diff);
+    if (diff.length) await clearLostAssignees(c, ctx, [ch.id]);
+  }
 
   if (ch.c === 'issues') { ctx.touchedIssues.add(ch.id); await notifyForIssue(c, me, data, cur); }
+  if (ch.c === '_settings') ctx.sysPerms = undefined;
   if (ch.c === 'comments' && !cur) await notifyForComment(c, me, data);
   return true;
 }
@@ -462,80 +499,71 @@ async function applyRecord(c, ctx, ch) {
    (settings.cfg.modules.sprint === true → agile), kayda yazılmaz. İstemcideki projType ile aynı. */
 const COL_LOCK = 727276;
 export const MAX_COLUMNS = 12;
-const COLS_FORBIDDEN = 'Kolonları yalnızca alan yöneticisi değiştirebilir';
-const TYPE_FORBIDDEN = 'Proje türünü yalnızca alan yöneticisi değiştirebilir';
-const PROJECT_FORBIDDEN = 'Projeyi yalnızca alan yöneticisi değiştirebilir';
-const projSettings = p => { const { counter: _c, members: _m, type: _t, sprintWeeks: _s, ...rest } = p || {}; return rest; };
+/* Proje ayarları (project.settings): sayaç, tür, sprint süresi ve kişi/yetki alanları dışındaki her şey. */
+const PROJECT_ACCESS_KEYS = ['roles', 'perms', 'ownerId', 'members'];
+const projSettings = p => { const { counter: _c, members: _m, type: _t, sprintWeeks: _s, roles: _r, perms: _p, ownerId: _o, workspaceId: _w, ...rest } = p || {}; return rest; };
+const projAccessPart = p => ({ roles: p?.roles ?? null, perms: p?.perms ?? null, ownerId: p?.ownerId ?? null });
 const colName = s => String(s ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr');
 
 const sprintOn = async c =>
   (await c.query(`SELECT value FROM settings WHERE key='cfg'`)).rows[0]?.value?.modules?.sprint === true;
 export const projType = (p, on) => (PROJECT_TYPES.includes(p?.type) ? p.type : (on ? 'agile' : 'board'));
 
-/* Projenin tasarımı (kolonlar, tür, proje üyeleri): alan yöneticisi (sistem yöneticisi dahil). Üye listesi
-   tanımsız eski alanda bugünkü kural: projenin üye listesi boş/yoksa her Üye, değilse listedeki Üye. */
-async function canConfigure(c, me, pid, forbidden = COLS_FORBIDDEN) {
-  if (isAdminRole(me.role)) return;
-  const p = typeof pid === 'string' && pid
-    ? (await c.query('SELECT data FROM projects WHERE id=$1', [pid])).rows[0]?.data : undefined;
+/* Kolonlar ve proje türü: projede "Kolonlar ve proje türü" (project.columns) yetkisi. */
+async function canConfigure(c, ctx, pid) {
+  if (isAdminRole(ctx.me.role)) return;
+  const p = await projById(c, pid);
   if (!p) throw new HttpError(400, 'Durumun projesi yok');
-  if (!designOk(me, await wsOfProjectData(c, p), p)) throw new HttpError(403, forbidden);
+  await needPerm(c, ctx, p, 'project.columns');
 }
 
 /* Kolon danışma kilidinden ÖNCE yetki (yetkisiz istek kilit alıp başkasının kolon düzenlemesini bekletemez).
-   İletiler sonraki denetimlerle aynı: ilk proje (kolonun bugünkü, yoksa yeni projesi) için erişim/salt okunur
-   (checkScope), iki proje için de canConfigure. Olmayan proje burada atlanır (sonraki denetimler reddeder). */
-async function colAuth(c, me, pre, next) {
-  if (isAdminRole(me.role)) return;
-  const first = pre || next;
+   İletiler sonraki denetimlerle aynı: iki proje için de görme + project.columns. Olmayan proje burada atlanır
+   (sonraki denetimler reddeder). */
+async function colAuth(c, ctx, pre, next) {
+  if (isAdminRole(ctx.me.role)) return;
   for (const pid of new Set([pre, next])) {
     const p = await projById(c, pid);
-    if (!p) continue;
-    const ws = await wsOfProjectData(c, p);
-    if (pid === first) needMember(me, ws);
-    if (!designOk(me, ws, p)) throw new HttpError(403, COLS_FORBIDDEN);
+    if (p) await needPerm(c, ctx, p, 'project.columns');
   }
 }
-async function colAllowed(c, me, pid) {
-  try { await colAuth(c, me, pid, null); return true; }
+async function colAllowed(c, ctx, pid) {
+  try { await colAuth(c, ctx, pid, null); return true; }
   catch (e) { if (e instanceof HttpError) return false; throw e; }
 }
 
 /* Tür değişimi (hesaplanan türe göre): yetki + Pano'ya geçerken aktif sprint olmamalı. Proje satırı
    FOR UPDATE ile kilitli; sprint başlatma projeyi FOR SHARE okur → ikisi sıralanır. */
-async function checkProjectType(c, me, id, data, cur) {
+async function checkProjectType(c, ctx, id, data, cur) {
   if ((cur.type ?? '') === (data.type ?? '')) return;
   const on = await sprintOn(c);
   const to = projType(data, on);
   if (projType(cur, on) === to) return;
-  await canConfigure(c, me, id, TYPE_FORBIDDEN);
+  await canConfigure(c, ctx, id);
   if (to === 'board' && (await c.query(`SELECT 1 FROM sprints WHERE project_id=$1 AND state='active' LIMIT 1`, [id])).rowCount)
     throw new HttpError(409, 'Önce aktif sprinti tamamlayın');
 }
 
-/* Sprint başlatma (aktif olmayan → aktif, ya da aktif sprintin projesi değişir), tamamlama (aktif → kapalı) ve
-   projenin sprint süresi: projenin alanında Yönetici (wsRole === 'admin'; sistem yöneticisi ve alan sahibi dahil).
-   Üye listesi tanımsız eski alanda yalnız sistem yöneticisi. İstemcideki canManageProject ile aynı. */
-const SPRINT_FORBIDDEN = 'Sprinti yalnızca alan yöneticisi başlatıp bitirebilir';
-const SPRINT_DELETE_FORBIDDEN = 'Aktif sprinti yalnızca alan yöneticisi silebilir';
-const SPRINT_WEEKS_FORBIDDEN = 'Sprint süresini yalnızca alan yöneticisi değiştirebilir';
-async function canManageSprint(c, me, pid, forbidden = SPRINT_FORBIDDEN) {
-  if (isAdminRole(me.role)) return;
+/* Sprint başlatma (aktif olmayan → aktif, ya da aktif sprintin projesi değişir), tamamlama (aktif → kapalı), aktif
+   sprint silme ve projenin sprint süresi: projede "Sprint başlatma ve bitirme" (sprint.manage). İstemcideki
+   canManageProject ile aynı. */
+async function canManageSprint(c, ctx, pid) {
+  if (isAdminRole(ctx.me.role)) return;
   const p = await projById(c, pid);
   if (!p) throw new HttpError(400, 'Sprintin projesi yok');
-  if (wsRole(me, await wsOfProjectData(c, p)) !== 'admin') throw new HttpError(403, forbidden);
+  await needPerm(c, ctx, p, 'sprint.manage');
 }
-async function checkSprintState(c, me, data, cur) {
+async function checkSprintState(c, ctx, data, cur) {
   if (data.state === 'active' && (cur?.state !== 'active' || cur?.projectId !== data.projectId))
-    await canManageSprint(c, me, data.projectId);
+    await canManageSprint(c, ctx, data.projectId);
   /* Aktif sprintten her çıkış (tamamlama, geri çekme, başka projeye taşıma) alan yöneticisinde. */
   if (cur?.state === 'active' && (data.state !== 'active' || cur.projectId !== data.projectId))
-    await canManageSprint(c, me, cur.projectId);
+    await canManageSprint(c, ctx, cur.projectId);
   /* Kapalı duruma her geçiş (başlamamış sprint dahil; yeni kayıt da) ve kapalıdan her çıkış alan yöneticisinde. */
   if (data.state === 'closed' && (cur?.state !== 'closed' || cur?.projectId !== data.projectId))
-    await canManageSprint(c, me, data.projectId);
+    await canManageSprint(c, ctx, data.projectId);
   if (cur?.state === 'closed' && (data.state !== 'closed' || cur.projectId !== data.projectId))
-    await canManageSprint(c, me, cur.projectId);
+    await canManageSprint(c, ctx, cur.projectId);
 }
 
 /* Türü açıkça Pano (type === 'board') olan projede sprint başlatılamaz (aktif olan ya da projesi değişen
@@ -548,15 +576,21 @@ async function checkSprintStart(c, data, cur) {
 
 /* Sprint planı (`plan`: başlatma anındaki kapsam — sayı, puan, iş kimlikleri): yalnız sprint başlatılırken
    (aktif olmayan → aktif) ve başlatabilen (canManageSprint) yazar; yazıldıktan sonra değişmez, silinmez.
-   İçe aktarma / geri yükleme (system) eski veriyi olduğu gibi yazar. */
+   Silinmiş (başlamış) bir sprint kimliğiyle yeniden oluşturmada plan yazılamaz (sil + aynı kimlikle başlat ile plan
+   yeniden yazılamasın). İçe aktarma / geri yükleme (system) eski veriyi olduğu gibi yazar. */
 const SPRINT_PLAN_LOCKED = 'Sprintin başlangıç planı değiştirilemez';
-async function checkSprintPlan(c, me, data, cur, system) {
+async function checkSprintPlan(c, ctx, id, data, cur, system) {
   if (same(cur?.plan ?? null, data.plan ?? null)) return;
   if (system) return;
   if (cur?.plan != null) throw new HttpError(403, SPRINT_PLAN_LOCKED);
   if (data.plan == null) return;
   if (data.state !== 'active' || cur?.state === 'active') throw new HttpError(400, 'Sprint planı yalnızca sprint başlatılırken kaydedilir');
-  await canManageSprint(c, me, data.projectId);
+  /* Çöp kutusunda başlamış (planlı ya da aktif/kapalı) hâli duran kimlik yeniden plan alamaz; hiç başlamamış
+     (gelecek) sprintin silinip yeniden oluşturulması ya da geri yüklenmesi engellenmez. */
+  if ((await c.query(`SELECT 1 FROM deleted_records WHERE collection='sprints' AND record_id=$1
+      AND (data->'plan' IS NOT NULL AND data->'plan' <> 'null'::jsonb OR data->>'state' IN ('active','closed')) LIMIT 1`, [id])).rowCount)
+    throw new HttpError(403, SPRINT_PLAN_LOCKED);
+  await canManageSprint(c, ctx, data.projectId);
 }
 
 const colStats = async (c, pid) => {
@@ -618,8 +652,8 @@ function enforceCreatedBy(data, cur, me) {
 
 async function checkWorkspace(c, me, id, data, cur) {
   if (!cur && !isAdminRole(me.role)) throw new HttpError(403, WS_CREATE_FORBIDDEN);
-  if (cur && wsRole(me, cur) !== 'admin')
-    throw new HttpError(403, me.role === 'viewer' && wsLegacy(cur) ? 'salt okunur kullanıcı' : 'Bu çalışma alanını yalnızca alan yöneticisi değiştirebilir');
+  if (cur && !isAdminRole(me.role) && !isWsAdmin(me, cur))
+    throw new HttpError(403, 'Bu çalışma alanını yalnızca alan yöneticisi değiştirebilir');
   const archiving = data.archived === true && cur?.archived !== true;
   if (archiving && id === DEFAULT_WS) throw new HttpError(400, 'Genel çalışma alanı arşivlenemez');
   const active = data.archived !== true;
@@ -651,38 +685,17 @@ async function checkProjectWorkspace(c, data, cur) {
   if (row.archived) throw new HttpError(400, 'Arşivlenmiş çalışma alanına proje taşınamaz');
 }
 
-/* ---- çalışma alanı üyelikleri ve rolleri (22b) ----
-   workspaces.data.members = [{ userId, role: 'admin'|'member'|'viewer' }], data.ownerId (yoksa createdBy) = sahip.
-   Etkin alan rolü TEK yerde: wsRole (istemcideki wsRole ile aynı). Sistem yöneticisi her zaman 'admin'; sahip her
-   zaman 'admin'; üye listesi tanımsız/boş eski alanda kişinin genel rolü (izleyici → 'viewer', diğerleri 'member');
-   listede olmayan → null (erişim yok). Proje rolü = projenin alanındaki rol (projectRole). */
+/* ---- çalışma alanı yöneticileri ve proje rolleri (yetki-v2) ----
+   Alan yöneticisi: sahip (ownerId, yoksa createdBy) ve workspaces.data.admins (perms.js wsAdminIds). Alan üyesi / alan
+   izleyicisi rolü yoktur: workspaces.data.members yalnız eski (rolü olmayan) projelerin geri uyumu için saklanır.
+   Etkin proje rolü TEK yerde: perms.js projRole (istemcideki projRole ile aynı). */
 export const WS_ROLES = ['admin', 'member', 'viewer'];
-const WS_RANK = { viewer: 1, member: 2, admin: 3 };
 const WS_MAX_MEMBERS = 1000;
 export const WS_CREATE_FORBIDDEN = 'Çalışma alanını yalnızca yönetici açabilir';
 const WS_SCOPED = ['projects', 'statuses', 'sprints', 'issues', 'worklogs', 'comments', 'history', 'transitions', 'links', 'fields', 'workspaces'];
 const ISSUE_SCOPED = ['worklogs', 'comments', 'history', 'transitions'];
-export const wsOwner = ws => ws?.ownerId ?? ws?.createdBy ?? null;
+export { wsOwner } from './perms.js';
 export const wsLegacy = ws => !Array.isArray(ws?.members) || ws.members.length === 0;
-export function wsRole(u, ws) {
-  if (!u) return null;
-  if (isAdminRole(u.role)) return 'admin';
-  const owner = wsOwner(ws);
-  if (owner && owner === u.id) return 'admin';
-  if (wsLegacy(ws)) return u.role === 'viewer' ? 'viewer' : 'member';
-  const r = ws.members.find(x => x && x.userId === u.id)?.role;
-  return WS_ROLES.includes(r) ? r : null;
-}
-const atLeast = (r, need) => (WS_RANK[r] || 0) >= WS_RANK[need];
-/* Tasarım (kolon, tür, proje ayarı, proje üyeleri, yeni proje): alan yöneticisi. Eski (üyesiz) alanda bugünkü
-   kural: Üye de yapar; proje verilirse projenin üye listesi boş değilse listede olmalı. */
-function designOk(me, ws, p) {
-  const r = wsRole(me, ws);
-  if (r === 'admin') return true;
-  if (!wsLegacy(ws) || r !== 'member') return false;
-  const m = p?.members;
-  return !p || !Array.isArray(m) || m.length === 0 || m.includes(me.id);
-}
 /* Projenin alanı (olmayan alana bağlı ya da alansız proje Genel sayılır). */
 const projWsId = p => (typeof p?.workspaceId === 'string' && p.workspaceId ? p.workspaceId : DEFAULT_WS);
 async function wsOfProjectData(c, p) {
@@ -690,28 +703,54 @@ async function wsOfProjectData(c, p) {
   const r = (await c.query(`SELECT data FROM workspaces WHERE id = $1 OR id = $2 ORDER BY (id = $1) DESC LIMIT 1`, [id, DEFAULT_WS])).rows[0];
   return r?.data;
 }
+const projById = async (c, pid) => typeof pid === 'string' && pid
+  ? (await c.query('SELECT data FROM projects WHERE id=$1', [pid])).rows[0]?.data : undefined;
+const issueProj = async (c, iid) => typeof iid === 'string' && iid
+  ? (await c.query('SELECT project_id FROM issues WHERE id=$1', [iid])).rows[0]?.project_id : undefined;
 
-/* ---- okuma süzmesi (18) ----
-   Erişim kuralı TEK yerde: canAccess (alanda herhangi bir rol). Yazma (needMember / designOk / checkWorkspace) da
-   önce bu rolü ister: okunamayan alan/proje yazılamaz; yazılabilen her şey okunur. Üye listesi tanımsız (eski)
-   alanda herkesin rolü olduğu için süzme yok (bugünkü davranış). Sistem yöneticisi süzülmez.
+/* Sistem varsayılanı yetki tablosu (settings.perms) — gönderim başına bir kez okunur (ayar değişince sıfırlanır). */
+async function sysPermsOf(c, ctx) {
+  if (ctx && ctx.sysPerms !== undefined) return ctx.sysPerms;
+  const v = (await c.query(`SELECT value FROM settings WHERE key='perms'`)).rows[0]?.value ?? null;
+  if (ctx) ctx.sysPerms = v;
+  return v;
+}
+/* Kişinin projedeki etkin rolü (proje yoksa null). */
+async function roleIn(c, u, p) { return p ? projRole(u, p, await wsOfProjectData(c, p)) : null; }
+export const NO_ACCESS = 'Bu projeye erişiminiz yok';
+export const permMsg = key => `Bu projede "${PERM_LABEL[key]}" yetkiniz yok`;
+/* Projede anahtarlardan en az birinin yetkisi (yoksa 403). Projeyi göremeyene her yazmada aynı ileti (kayıt var/yok
+   sızmasın). Olmayan proje atlanır: kaydın kendi doğrulaması reddeder (eski davranış). */
+async function needPerm(c, ctx, p, ...keys) {
+  if (!p || isAdminRole(ctx.me.role)) return;
+  const r = await roleIn(c, ctx.me, p);
+  if (!r) throw new HttpError(403, NO_ACCESS);
+  const sys = await sysPermsOf(c, ctx);
+  if (!keys.some(k => roleCan(r, p, sys, k))) throw new HttpError(403, permMsg(keys[0]));
+}
+
+/* ---- okuma süzmesi (18, yetki-v2) ----
+   Erişim kuralı TEK yerde: projRole !== null (projeye eklenmiş, proje sahibi, alan yöneticisi ya da sistem yöneticisi).
+   Yazma (needPerm) da önce bu rolü ister: okunamayan proje yazılamaz. Sistem yöneticisi süzülmez.
+   Alan kaydı: alan yöneticisine, alanında görebildiği projesi olana ve yöneticisi olmayan alanlarda (Genel gibi: orada
+   genel rolü Üye olan da proje açar) herkese gider.
    Projeye bağlı tablolar projectId, işe bağlılar issueId, bağlantılar iki ucundan biri üzerinden süzülür.
    Proje bağımsız tablolar (users, customers, filters, genel fields/rules, settings, misc_records) olduğu gibi gider. */
-export const canAccess = (u, ws) => wsRole(u, ws) !== null;
 export const ACCESS_CH = '_access';
 const BY_PROJECT = ['statuses', 'sprints', 'issues', 'fields', 'rules'];
 const BY_ISSUE = ['worklogs', 'comments', 'history', 'transitions'];
-const SCOPED_READ = ['workspaces', 'projects', ...BY_PROJECT, ...BY_ISSUE, 'links'];
+const SCOPED_READ = ['workspaces', 'projects', ...BY_PROJECT, ...BY_ISSUE, 'links', 'reports'];
 /* Görünen alan ve proje kimlikleri. */
 function buildScope(me, workspaces, projects) {
   const wsMap = new Map(workspaces.filter(w => w && w.id).map(w => [w.id, w]));
-  const wsOk = new Set([...wsMap.values()].filter(w => canAccess(me, w)).map(w => w.id));
-  /* Olmayan alana bağlı proje Genel'e, Genel de yoksa eski (üyesiz) alana düşer: wsOfProjectData ile aynı. */
-  const projOk = p => {
-    const id = wsMap.has(projWsId(p)) ? projWsId(p) : DEFAULT_WS;
-    return wsMap.has(id) ? wsOk.has(id) : canAccess(me, undefined);
-  };
-  return { wsOk, proj: new Set(projects.filter(p => p && p.id && projOk(p)).map(p => p.id)) };
+  /* Olmayan alana bağlı proje Genel'e, Genel de yoksa alansız sayılır: wsOfProjectData ile aynı. */
+  const wsOfP = p => wsMap.get(projWsId(p)) ?? wsMap.get(DEFAULT_WS);
+  const proj = new Set(projects.filter(p => p && p.id && projRole(me, p, wsOfP(p)) !== null).map(p => p.id));
+  const wsOk = new Set([...wsMap.values()].filter(w => w.id === DEFAULT_WS || isWsAdmin(me, w) || wsHasNoAdmin(w)).map(w => w.id));
+  /* Alan kapsamlı paylaşılan rapor (reportVisible): yalnız alan yöneticisi (sistem yöneticisi zaten süzülmez). */
+  const wsRep = new Set([...wsMap.values()].filter(w => isWsAdmin(me, w)).map(w => w.id));
+  for (const p of projects) if (p && proj.has(p.id)) { const w = wsOfP(p); if (w) wsOk.add(w.id); }
+  return { me, wsOk, wsRep, proj };
 }
 /* Kayıt görünür mü (issueOk: iş kimliği → görünür mü). */
 function recordVisible(col, d, scope, issueOk) {
@@ -725,6 +764,7 @@ function recordVisible(col, d, scope, issueOk) {
   }
   if (BY_ISSUE.includes(col)) return issueOk(d.issueId);
   if (col === 'links') return issueOk(d.from) || issueOk(d.to);
+  if (col === 'reports') return reportVisible(d, scope);
   return true;
 }
 /* İlk yükleme: bellekteki tam veriden süz. */
@@ -735,7 +775,16 @@ export function scopeData(data, me) {
   const issueOk = id => ok.has(id);
   for (const col of SCOPED_READ)
     if (Array.isArray(data[col])) data[col] = data[col].filter(d => recordVisible(col, d, scope, issueOk));
+  if (Array.isArray(data.workspaces)) data.workspaces = data.workspaces.map(w => wsForReader(w, me));
   return data;
+}
+/* Alan kaydındaki eski üye listesi (members: kişi ve eski alan rolü) yalnız alan yöneticisine gider (D-2). admins'i
+   olmayan eski alanda yöneticiler üye listesinden hesaplandığı için admins okuyana hesaplanmış olarak yazılır. */
+function wsForReader(w, me) {
+  if (!w || typeof w !== 'object' || !Object.hasOwn(w, 'members') || isWsAdmin(me, w)) return w;
+  const { members: _m, ...rest } = w;
+  if (!Array.isArray(rest.admins)) { const o = wsOwner(w); rest.admins = wsAdminIds(w).filter(x => x !== o); }
+  return rest;
 }
 /* Değişiklik akışı: yalnız görünen kayıtların güncel hâli gider; silme bildirimleri (yalnız kimlik) olduğu gibi. */
 async function scopeItems(db, me, items) {
@@ -751,39 +800,49 @@ async function scopeItems(db, me, items) {
   const list = [...ids].filter(x => typeof x === 'string');
   if (list.length) for (const r of (await db.query('SELECT id, project_id FROM issues WHERE id = ANY($1)', [list])).rows)
     if (scope.proj.has(r.project_id)) ok.add(r.id);
-  return items.filter(i => i.op !== 'put' || recordVisible(i.c, i.data, scope, id => ok.has(id)));
+  /* Görünmez olan rapor (paylaşımdan çıkarıldı) silme bildirimiyle gider: önceden alan istemcide kalmasın. */
+  return items.flatMap(i => i.op !== 'put' || recordVisible(i.c, i.data, scope, id => ok.has(id))
+    ? [i.op === 'put' && i.c === 'workspaces' ? { ...i, data: wsForReader(i.data, me) } : i]
+    : i.c === 'reports' ? [{ c: i.c, id: i.id, op: 'del', seq: i.seq }] : []);
 }
 /* Erişim kümesi değişti: ilgili kullanıcıya (ya da '*' herkese) tam yeniden yükleme sinyali. */
 async function logAccess(c, ctx, uids) {
   for (const u of new Set(uids)) if (typeof u === 'string' && u) await logChange(c, ACCESS_CH, u, 'put', ctx.me.id, ctx.batch);
 }
-/* Alan kaydı değişince erişimi değişen kullanıcılar: eski↔üyeli geçişte herkes, değilse üye/sahip farkı. */
+/* Alan kaydı değişince erişimi değişen kullanıcılar: alan yöneticisi farkı; eski üye listesi değiştiyse (yalnız rolü
+   olmayan eski projeleri etkiler) herkes. */
 function wsAccessDiff(cur, data) {
-  if (!cur) return [];                                 // yeni alan: üyeler kaydın kendisini değişiklikle alır
-  if (wsLegacy(cur) !== wsLegacy(data)) return ['*'];
-  if (wsLegacy(cur)) return [];
-  const ids = w => new Set([...(w.members || []).map(x => x?.userId), wsOwner(w)].filter(Boolean));
+  if (!cur) return [];                                 // yeni alan: yöneticileri kaydı değişiklikle alır
+  if (!same(cur.members ?? null, data.members ?? null)) return ['*'];
+  const a = new Set(wsAdminIds(cur)), b = new Set(wsAdminIds(data));
+  return [...a].filter(x => !b.has(x)).concat([...b].filter(x => !a.has(x)));
+}
+/* Proje kaydı değişince erişimi değişen kullanıcılar: eklenen/çıkarılan kişi ve sahip farkı; alan değiştiyse ya da
+   rolü olmayan eski projeye ilk kez roles yazıldıysa herkes. Yalnız rol değişimi (Üye → İzleyici) erişimi değiştirmez. */
+function projAccessDiff(cur, data) {
+  if (projWsId(cur) !== projWsId(data)) return ['*'];
+  if (!isObj(cur.roles) && isObj(data.roles)) return ['*'];
+  const ids = p => new Set([...Object.keys(isObj(p.roles) ? p.roles : {}), p.ownerId].filter(Boolean));
   const a = ids(cur), b = ids(data);
   return [...a].filter(x => !b.has(x)).concat([...b].filter(x => !a.has(x)));
 }
-const projById = async (c, pid) => typeof pid === 'string' && pid
-  ? (await c.query('SELECT data FROM projects WHERE id=$1', [pid])).rows[0]?.data : undefined;
-const issueProj = async (c, iid) => typeof iid === 'string' && iid
-  ? (await c.query('SELECT project_id FROM issues WHERE id=$1', [iid])).rows[0]?.project_id : undefined;
 /* Alanın projeleri (alansız ya da olmayan alana bağlı proje Genel'de sayılır: wsOfProjectData ile aynı). */
 async function wsProjectIds(c, wsId) {
   return (await c.query(`SELECT p.id FROM projects p WHERE coalesce(nullif(p.workspace_id, ''), $2) = $1
       OR ($1 = $2 AND NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = p.workspace_id))`, [wsId, DEFAULT_WS])).rows.map(r => r.id);
 }
-/* Projelerin işlerinde alanda hiç rolü olmayan atananı boşaltır; işin geçmişine "Atanan → —" yazılır. Eski (üyesiz)
-   alanda herkesin rolü olduğundan bir şey yapmaz. Değişen işler değişiklik akışına ve `adjusted`'a düşer. */
-async function clearLostAssignees(c, ctx, ws, pids) {
-  if (!pids.length || wsLegacy(ws)) return;
+/* Projelerin işlerinde projeyi artık göremeyen atananı boşaltır; işin geçmişine "Atanan → —" yazılır. Değişen işler
+   değişiklik akışına ve `adjusted`'a düşer. */
+async function clearLostAssignees(c, ctx, pids) {
+  if (!pids.length) return;
   const { me, batch } = ctx;
-  const rows = (await c.query(`SELECT i.id, i.data, u.id AS uid, u.role, u.name FROM issues i JOIN users u ON u.id = i.assignee_id
+  const rows = (await c.query(`SELECT i.id, i.data, i.project_id, u.id AS uid, u.role, u.name, u.system FROM issues i JOIN users u ON u.id = i.assignee_id
       WHERE i.project_id = ANY($1) ORDER BY i.id FOR UPDATE OF i`, [pids])).rows;
+  const projs = new Map();
   for (const r of rows) {
-    if (wsRole({ id: r.uid, role: r.role }, ws) !== null) continue;
+    if (!projs.has(r.project_id)) { const p = await projById(c, r.project_id); projs.set(r.project_id, p ? [p, await wsOfProjectData(c, p)] : null); }
+    const pw = projs.get(r.project_id);
+    if (!pw || projRole({ id: r.uid, role: r.role, system: r.system }, pw[0], pw[1]) !== null) continue;
     const now = Date.now();
     await c.query('UPDATE issues SET data=$2::jsonb, version=version+1, updated_at=now(), updated_by=$3 WHERE id=$1',
       [r.id, JSON.stringify({ ...r.data, assignee: null, updatedAt: now }), me.id]);
@@ -795,27 +854,29 @@ async function clearLostAssignees(c, ctx, ws, pids) {
     if (!ctx.adjusted.some(x => x.c === 'issues' && x.id === r.id)) ctx.adjusted.push({ c: 'issues', id: r.id });
   }
 }
-/* Bildirim alıcısı (notify.js): kişinin projenin alanında herhangi bir rolü var mı (okuma süzmesiyle aynı kural). */
+/* Bildirim alıcısı (notify.js): kişi projeyi görebiliyor mu (okuma süzmesiyle aynı kural). */
 export async function userSeesProject(c, userId, pid) {
-  const u = (await c.query('SELECT id, role FROM users WHERE id=$1', [userId])).rows[0];
+  const u = (await c.query('SELECT id, role, active, system FROM users WHERE id=$1', [userId])).rows[0];
   if (!u) return false;
   if (isAdminRole(u.role)) return true;
-  return canAccess(u, await wsOfProjectData(c, await projById(c, pid)));
+  return (await roleIn(c, u, await projById(c, pid))) !== null;
 }
-/* Bir işe erişim (posta yanıtı, mail.js): yoksa ya da okunamıyorsa null; varsa { data, role } (okuma süzmesiyle aynı kural).
-   Yazma için role 'member' ya da 'admin' olmalı (needMember ile aynı). */
+/* Bir işe erişim (posta yanıtı, mail.js): yoksa ya da okunamıyorsa null; varsa { data, role, write }.
+   write: projede "Yorum yazma" yetkisi (e-postayla yanıt yorum ekler). */
 export async function issueAccess(c, me, iid) {
   if (typeof iid !== 'string' || !iid) return null;
   const row = (await c.query('SELECT data FROM issues WHERE id=$1', [iid])).rows[0];
   if (!row) return null;
-  const r = isAdminRole(me?.role) ? 'admin' : wsRole(me, await wsOfProjectData(c, await projById(c, row.data?.projectId)));
-  return r ? { data: row.data, role: r, write: atLeast(r, 'member') } : null;
+  const p = await projById(c, row.data?.projectId);
+  const r = isAdminRole(me?.role) ? 'admin' : await roleIn(c, me, p);
+  return r ? { data: row.data, role: r, write: roleCan(r, p, await sysPermsOf(c, null), 'comment.write') } : null;
 }
-/* Atanabilir kişi: üye listesi tanımsız (eski) alanda herkes (bugünkü davranış); üyeli alanda rolü Yönetici ya da Üye. */
-const ASSIGNEE_NO_ACCESS = 'Atanan kişinin bu çalışma alanında Üye ya da Yönetici rolü yok';
-async function assignable(c, u, pid) {
-  const ws = await wsOfProjectData(c, await projById(c, pid));
-  return wsLegacy(ws) || atLeast(wsRole(u, ws), 'member');
+/* Atanabilir kişi: projede "İş düzenleme" yetkisi olan (sistem/alan yöneticisi ve sahip dahil). */
+export const ASSIGNEE_NO_ACCESS = 'Atanan kişinin bu projede iş düzenleme yetkisi yok';
+async function assignable(c, ctx, u, pid) {
+  const p = await projById(c, pid);
+  if (!p) return true;                                  // olmayan proje: işin kendi doğrulaması reddeder
+  return roleCan(await roleIn(c, u, p), p, await sysPermsOf(c, ctx), 'issue.edit');
 }
 /* Bildirim listesi için (notify.js): kişinin görebildiği projeler; sistem yöneticisinde null (hepsi). */
 export async function visibleProjectIds(db, me) {
@@ -823,69 +884,173 @@ export async function visibleProjectIds(db, me) {
   return buildScope(me, (await db.query('SELECT data FROM workspaces')).rows.map(r => r.data),
     (await db.query('SELECT data FROM projects')).rows.map(r => r.data)).proj;
 }
-const NO_ACCESS = 'Bu çalışma alanına erişiminiz yok';
-const READ_ONLY = 'Bu çalışma alanında yalnızca görüntüleme yetkiniz var';
-const DESIGN_ONLY = 'Bu değişiklik için alan yöneticisi yetkisi gerekli';
-function needMember(me, ws) {
-  const r = wsRole(me, ws);
-  if (!r) throw new HttpError(403, NO_ACCESS);
-  if (!atLeast(r, 'member')) throw new HttpError(403, me.role === 'viewer' && wsLegacy(ws) ? 'salt okunur kullanıcı' : READ_ONLY);
+/* Çevrim içi listesi (app.js): kişinin görebildiği iş kimlikleri; sistem yöneticisinde null (hepsi). */
+export async function visibleIssueIds(db, me, ids) {
+  if (!me || isAdminRole(me.role)) return null;
+  const list = [...new Set(ids)].filter(x => typeof x === 'string' && x);
+  if (!list.length) return new Set();
+  const rows = (await db.query('SELECT id, project_id FROM issues WHERE id = ANY($1)', [list])).rows;
+  if (!rows.length) return new Set();
+  const proj = await visibleProjectIds(db, me);
+  return new Set(rows.filter(r => proj.has(r.project_id)).map(r => r.id));
 }
 /* Yalnız sayaç (iş anahtarı) değişen proje kaydı: işi açan Üye de yazar. */
 const onlyCounter = (a, b) => same({ ...a, counter: 0 }, { ...b, counter: 0 });
 
-/* Alana bağlı kayıtta etkin rol: iş/yorum/süre/sprint/bağlantı en az 'member'; proje ayarı ve projeye özel alan
-   'admin' (sistem yöneticisi sınırsız). Hem güncel kayıt (cur) hem yeni hâl (data) denetlenir: kayıt erişimi
-   olmayan alana taşınamaz. Çalışma alanı kaydı checkWorkspace'te, kolonlar canConfigure'da denetlenir. */
-async function checkScope(c, me, col, cur, data, early = false) {
+/* Projeye bağlı kayıtta yetki (yetki-v2, §5.2): kaydın projesinde etkin proje rolü + rol tablosu. Hem güncel kayıt (cur)
+   hem yeni hâl (data) denetlenir: kayıt yetkisi olmayan projeye taşınamaz. early: kayda özgü kurallardan önce yalnız
+   görme (projeyi göremeyene her yazmada aynı ileti). Çalışma alanı checkWorkspace'te, kolonlar canConfigure'da. */
+const ISSUE_PERMS = { comments: ['comment.write'], worklogs: ['worklog.own'], history: ['issue.edit', 'issue.create'],
+  transitions: ['issue.edit', 'issue.create'], links: ['issue.edit'], sprints: ['sprint.edit', 'sprint.manage'] };
+const recProj = async (c, col, d) => projById(c, ISSUE_SCOPED.includes(col) ? await issueProj(c, d.issueId)
+  : col === 'links' ? await issueProj(c, d.from) : d.projectId);
+async function checkScope(c, ctx, col, cur, data, early = false) {
+  const { me } = ctx;
   if (!WS_SCOPED.includes(col) || col === 'workspaces' || isAdminRole(me.role)) return;
-  if (col === 'statuses' && !early) return;                 // kolon yetkisi canConfigure'da
-  if (col === 'projects') {
-    if (early) return;
-    if (cur && data && onlyCounter(cur, data)) return needMember(me, await wsOfProjectData(c, cur));
-    for (const d of [cur, data]) if (d && !designOk(me, await wsOfProjectData(c, d), null)) {
-      const w = await wsOfProjectData(c, d), r = wsRole(me, w);
-      throw new HttpError(403, !r ? NO_ACCESS : me.role === 'viewer' && wsLegacy(w) ? 'salt okunur kullanıcı' : DESIGN_ONLY);
+  if (early) {
+    if (col === 'projects') { if (cur && !(await roleIn(c, me, cur))) throw new HttpError(403, NO_ACCESS); return; }
+    /* Güncel kayıt ve (bağı değişen) yeni hâl: gizli projeye taşıma da olmayan ebeveyne bağlama (checkParent) gibi erken
+       ve aynı iletiyle reddedilir (D-3). */
+    for (const d of cur && data ? [cur, data] : [cur ?? data]) {
+      if (!d || (col === 'fields' && !d.projectId)) continue;
+      const p = await recProj(c, col, d);
+      if (p && !(await roleIn(c, me, p))) throw new HttpError(403, NO_ACCESS);
     }
     return;
   }
-  for (const d of [cur, data]) {
-    if (!d) continue;
-    if (col === 'fields' && early) continue;
-    if (col === 'fields') {
-      /* Genel özel alan sistem yöneticisinde; projeye özel alan alan yöneticisinde (eski alanda sistem yöneticisi). */
+  if (col === 'statuses') return;                            // kolon yetkisi canConfigure'da
+  if (col === 'projects') return checkProjectWrite(c, ctx, cur, data);
+  if (col === 'fields') {
+    /* Genel özel alan sistem yöneticisinde; projeye özel alan projede "Proje alanları" yetkisinde. */
+    for (const d of [cur, data]) if (d) {
       const p = await projById(c, d.projectId);
-      const ws = p ? await wsOfProjectData(c, p) : undefined;
-      if (!p || wsLegacy(ws) || wsRole(me, ws) !== 'admin') throw new HttpError(403, 'Bu değişiklik için yönetici yetkisi gerekli');
-      continue;
+      if (!p) throw new HttpError(403, 'Bu değişiklik için yönetici yetkisi gerekli');
+      await needPerm(c, ctx, p, 'project.fields');
     }
-    const pid = ISSUE_SCOPED.includes(col) ? await issueProj(c, d.issueId)
-      : col === 'links' ? await issueProj(c, d.from) : d.projectId;
-    needMember(me, await wsOfProjectData(c, await projById(c, pid)));
+    return;
   }
+  if (col === 'issues') {
+    if (cur && !data) return needPerm(c, ctx, await projById(c, cur.projectId), 'issue.delete');
+    if (!cur) return needPerm(c, ctx, await projById(c, data.projectId), 'issue.create');
+    await needPerm(c, ctx, await projById(c, cur.projectId), 'issue.edit');
+    if (data.projectId !== cur.projectId) await needPerm(c, ctx, await projById(c, data.projectId), 'issue.create');
+    return;
+  }
+  for (const d of [cur, data]) if (d) await needPerm(c, ctx, await recProj(c, col, d), ...ISSUE_PERMS[col]);
 }
 
-/* Bağlantının iki ucu da var olan iş olmalı (yeni bağlantıda ya da ucu değişince); `from` ucunda en az Üye
-   (checkScope), `to` ucunda erişim (alanda herhangi bir rol). FOR SHARE: uç aynı anda silinirse yetim kalmasın. */
-async function checkLinkEnds(c, me, data, cur, system = false) {
+/* ---- bağlı kayıt ve silinmiş kimlik (O-1, D-3) ----
+   Yeni bağlı kayıtta (ya da bağı değişince) projesi/işi var olmalı. Projeyi göremeyen için olmayan ebeveyn de gizli
+   ebeveynle aynı yanıtı alır (403 NO_ACCESS; kayıt var/yok sızmasın); sistem yöneticisine 400. Sistem yolu (posta) ve
+   içe aktarma (replaceAll) bu denetimden geçmez. Satır kilidi alınmaz (iş anahtarı ve harcanan süre ebeveyni FOR UPDATE
+   kilitler; paylaşımlı kilit eşzamanlı yazmada kilitlenmeye yol açardı). Yorum, geçmiş ve bağlantı ayrıca FOR SHARE ile
+   denetlenir; silinmiş projenin kimliği yeniden açılamadığından yarışta kalan yetim kayıt kimseye açılmaz. */
+export const PARENT_MISSING = 'Bağlı kayıt bulunamadı';
+const PARENT_REF = { statuses: ['projectId'], sprints: ['projectId'], issues: ['projectId'], fields: ['projectId'],
+  rules: ['projectId'], worklogs: ['issueId'], comments: ['issueId'], history: ['issueId'], transitions: ['issueId'],
+  links: ['from', 'to'] };
+const SELF_PARENT_CHECK = ['history', 'comments', 'links'];
+async function checkParent(c, ctx, col, data, cur) {
+  const keys = PARENT_REF[col];
+  if (!keys || !data || typeof data !== 'object') return;
+  /* Geçmiş, yorum ve bağlantı yöneticiye kendi iletisiyle sonra (FOR SHARE) denetlenir. */
+  if (isAdminRole(ctx.me.role) && SELF_PARENT_CHECK.includes(col)) return;
+  const table = keys[0] === 'projectId' ? 'projects' : 'issues';
+  for (const k of keys) {
+    const v = data[k];
+    if (cur && cur[k] === v) continue;                        // yalnız yeni kayıtta ya da bağı değişince
+    if ((col === 'fields' || col === 'rules') && (v == null || v === '')) continue;   // genel alan / kural
+    if (v == null && col !== 'transitions') continue;         // eksik bağ: kaydın kendi doğrulaması reddeder
+    if (typeof v === 'string' && v && (await c.query(`SELECT 1 FROM ${table} WHERE id=$1`, [v])).rowCount) continue;
+    throw isAdminRole(ctx.me.role) ? new HttpError(400, PARENT_MISSING) : new HttpError(403, NO_ACCESS);
+  }
+}
+/* Silinmiş (çöpteki) projenin kimliğiyle yeni proje açılamaz: çöpten geri yükleme yolu (backup.js) bu denetimden geçmez. */
+export const PROJECT_ID_USED = 'Bu proje kimliği silinmiş bir projeye ait; çöp kutusundan geri yükleyin';
+async function checkProjectIdFree(c, ctx, id) {
+  if (!(await c.query(`SELECT 1 FROM deleted_records WHERE collection='projects' AND record_id=$1 LIMIT 1`, [id])).rowCount) return;
+  throw isAdminRole(ctx.me.role) ? new HttpError(409, PROJECT_ID_USED) : new HttpError(403, NO_ACCESS);
+}
+/* Olmayan kaydı silme: projeye bağlı koleksiyonlarda, sistem yöneticisi olmayana var olan gizli kayıtla aynı yanıt
+   (D-3). Çöpteki kayıt (eşzamanlı silme, proje/iş silmenin cascade'i, aynı gönderimdeki alt kayıt silmesi) sessizce geçer. */
+async function goneDel(c, ctx, col, id) {
+  if (ctx.system || isAdminRole(ctx.me.role) || !WS_SCOPED.includes(col) || col === 'workspaces') return false;
+  if ((await c.query('SELECT 1 FROM deleted_records WHERE collection=$1 AND record_id=$2 LIMIT 1', [col, id])).rowCount) return false;
+  throw new HttpError(403, NO_ACCESS);
+}
+
+/* Proje kaydı. Yeni: sistem yöneticisi, hedef alanın yöneticisi; yöneticisi olmayan alanda (Genel gibi) genel rolü Üye
+   olan da (açan kişi sahip ve proje Yöneticisi olur). Silme: projenin Yöneticisi ve üstü. Güncelleme: yalnız sayaç →
+   iş açma; ad ve ayarlar → project.settings; kişiler, sahip ve yetki tablosu → proje Yöneticisi (tür ve sprint süresi
+   kendi denetiminde). */
+export const PROJECT_CREATE_FORBIDDEN = 'Bu alana yalnızca alan yöneticisi proje açabilir';
+export const PROJECT_DELETE_FORBIDDEN = 'Projeyi yalnızca proje yöneticisi silebilir';
+export const PROJECT_ACCESS_FORBIDDEN = 'Projenin kişilerini ve yetkilerini yalnızca proje yöneticisi değiştirebilir';
+async function checkProjectWrite(c, ctx, cur, data) {
+  const { me } = ctx;
+  if (!cur) {
+    const ws = await wsOfProjectData(c, data);
+    if (isWsAdmin(me, ws) || ((!ws || wsHasNoAdmin(ws)) && me.role === 'member')) return;
+    throw new HttpError(403, PROJECT_CREATE_FORBIDDEN);
+  }
+  const r = await roleIn(c, me, cur);
+  if (!r) throw new HttpError(403, NO_ACCESS);
+  if (!data) { if (r !== 'admin') throw new HttpError(403, PROJECT_DELETE_FORBIDDEN); return; }
+  if (onlyCounter(cur, data)) return needPerm(c, ctx, cur, 'issue.create');
+  if (!same(projSettings(cur), projSettings(data))) await needPerm(c, ctx, cur, 'project.settings');
+  if (!same(projAccessPart(cur), projAccessPart(data)) && r !== 'admin') throw new HttpError(403, PROJECT_ACCESS_FORBIDDEN);
+}
+
+/* Bağlantının iki ucu da var olan iş olmalı (yeni bağlantıda ya da ucu değişince); `from` ucunda iş düzenleme
+   (checkScope), `to` ucunda görme. FOR SHARE: uç aynı anda silinirse yetim kalmasın. */
+async function checkLinkEnds(c, ctx, data, cur, system = false) {
+  const { me } = ctx;
   if (cur && cur.from === data.from && cur.to === data.to) return;
   for (const end of [data.from, data.to]) {
     const pid = typeof end === 'string' && end
       ? (await c.query('SELECT project_id FROM issues WHERE id=$1 FOR SHARE', [end])).rows[0]?.project_id : undefined;
     if (pid === undefined) throw new HttpError(400, 'Bağlantının işi bulunamadı');
-    if (!system && !isAdminRole(me.role) && !canAccess(me, await wsOfProjectData(c, await projById(c, pid)))) throw new HttpError(403, NO_ACCESS);
+    const p = await projById(c, pid);
+    if (!system && !isAdminRole(me.role) && p && !(await roleIn(c, me, p))) throw new HttpError(403, NO_ACCESS);
   }
 }
 
-/* Projeyi başka alana taşıma: kaynak ve hedef alanın ikisinde de alan yöneticisi; iki alandan biri üye listesi
-   tanımsız (eski) alansa yalnız sistem yöneticisi (eski alanın projesi herkesindir, tek kişi saklayamaz/açamaz).
-   İstemcideki canMoveProj ile aynı. */
+/* Projeyi başka alana taşıma: kaynak ve hedef alanın ikisinde de alan yöneticisi; iki alandan biri yöneticisiz (Genel
+   gibi) ise yalnız sistem yöneticisi. İstemcideki canMoveProj ile aynı. */
 const MOVE_FORBIDDEN = 'Projeyi başka alana yalnızca iki alanın da yöneticisi taşıyabilir';
 async function checkProjectMove(c, me, cur, data) {
   if (isAdminRole(me.role)) return;
   const a = await wsOfProjectData(c, cur), b = await wsOfProjectData(c, data);
   if ((a?.id ?? null) === (b?.id ?? null)) return;
-  for (const w of [a, b]) if (wsLegacy(w) || wsRole(me, w) !== 'admin') throw new HttpError(403, MOVE_FORBIDDEN);
+  for (const w of [a, b]) if (!isWsAdmin(me, w)) throw new HttpError(403, MOVE_FORBIDDEN);
+}
+
+/* Alan yöneticileri (admins): biçim, tekil, var olan etkin kullanıcı; sahip listede tutulmaz (her zaman yönetici).
+   admins göndermeyen istemcide güncel liste korunur. Eski istemcinin değiştirdiği üye listesi (members) yöneticileri
+   değiştirmez (D-1): yalnız eski biçimde saklanır. admins'i olmayan eski alanda üye listesi değişirse yöneticiler
+   güncel (değişiklik öncesi) listeden dondurulur. Yeni alanda verilmezse üye listesinden. Değiştiyse true. */
+async function enforceWsAdmins(c, me, data, cur) {
+  if (cur ? !(isAdminRole(me.role) || isWsAdmin(me, cur)) : !isAdminRole(me.role)) return false;
+  const before = data.admins;
+  const adminsOf = mem => [...new Set((Array.isArray(mem) ? mem : [])
+    .filter(m => m && m.role === 'admin' && typeof m.userId === 'string').map(m => m.userId))];
+  if (data.admins == null) {
+    if (Array.isArray(cur?.admins)) data.admins = cur.admins;
+    else if (cur && !same(cur.members ?? null, data.members ?? null)) data.admins = adminsOf(cur.members);
+    else if (!cur && adminsOf(data.members).length) data.admins = adminsOf(data.members);
+    else { delete data.admins; return before !== undefined; }   // yöneticisiz eski biçim: alan eklenmez (wsAdminIds üye listesine bakar)
+  } else if (!Array.isArray(data.admins)) throw new HttpError(400, 'Alan yöneticileri dizi olmalı');
+  const owner = wsOwner(data);
+  data.admins = data.admins.filter(x => x !== owner);
+  const old = new Set(Array.isArray(cur?.admins) ? cur.admins : adminsOf(cur?.members));
+  const fresh = [...new Set(data.admins.filter(x => !old.has(x)))];
+  if (fresh.length) {
+    if (!fresh.every(validId)) throw new HttpError(400, 'Alan yöneticileri geçersiz (tekil kişi kimlikleri, en fazla 1000)');
+    const ok = new Set((await c.query(`SELECT id FROM users WHERE id = ANY($1) AND active AND (NOT system OR role IN ('admin','super'))`,
+      [fresh])).rows.map(r => r.id));
+    if (fresh.some(id => !ok.has(id))) throw new HttpError(400, 'Alan yöneticisi bulunamadı ya da pasif');
+  }
+  return !same(before, data.admins);
 }
 
 /* Sahip: istemciden yalnız sistem yöneticisi belirler (açarken başka kişi seçebilir / sonradan devreder). */
@@ -897,11 +1062,85 @@ function enforceOwner(data, cur, me) {
   return !same(before, data.ownerId);
 }
 
+/* ---- proje rolleri (yetki-v2) ----
+   roles = { kullanıcı: 'admin'|'member'|'viewer' } yetkinin kaynağıdır; members eski kodla uyum için roles'taki kişilerdir
+   (sunucu eşitler; istemcinin tek başına gönderdiği members yok sayılır). ownerId: yeni projede oturumdaki kullanıcı,
+   sonradan yalnız sistem ya da alan yöneticisi değiştirir; sahip roles'ta her zaman 'admin'. roles bir kez yazıldıktan
+   sonra silinemez (proje eski kurala düşürülüp herkese açılamaz). Değiştiyse true. */
+const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+async function enforceProjectRoles(c, ctx, data, cur) {
+  const { me } = ctx;
+  const before = cj({ roles: data.roles, members: data.members, ownerId: data.ownerId });
+  if (data.roles == null) { if (isObj(cur?.roles)) data.roles = { ...cur.roles }; else delete data.roles; }
+  /* Göndermeyen (eski / kısmi) istemcide yetki tablosu ve sahip korunur; sıfırlama açıkça ({} / null) yapılır. */
+  if (cur && data.perms === undefined && cur.perms !== undefined) data.perms = cur.perms;
+  if (cur && !Object.hasOwn(data, 'ownerId') && Object.hasOwn(cur, 'ownerId')) data.ownerId = cur.ownerId;
+  if (!cur) data.ownerId = me.id;
+  else if ((cur.ownerId ?? null) !== (data.ownerId ?? null)) {
+    const allowed = isAdminRole(me.role) || isWsAdmin(me, await wsOfProjectData(c, cur));
+    if (!allowed) { if (Object.hasOwn(cur, 'ownerId')) data.ownerId = cur.ownerId; else delete data.ownerId; }
+  }
+  if (!cur && data.roles === undefined) data.roles = await seedRoles(c, data);
+  if (!isObj(data.roles) && cur && !same(cur.members ?? null, data.members ?? null)) {
+    if (Object.hasOwn(cur, 'members')) data.members = cur.members; else delete data.members;
+  }
+  if (isObj(data.roles)) {
+    const r = {};
+    for (const [k, v] of Object.entries(data.roles)) r[k] = v;
+    if (typeof data.ownerId === 'string' && data.ownerId) r[data.ownerId] = 'admin';
+    data.roles = r;
+    const keys = Object.keys(r), set = new Set(keys);
+    const prev = Array.isArray(cur?.members) ? cur.members : Array.isArray(data.members) ? data.members : [];
+    const order = [...new Set(prev.filter(x => set.has(x)))];
+    for (const k of keys) if (!order.includes(k)) order.push(k);
+    data.members = order;
+  }
+  return before !== cj({ roles: data.roles, members: data.members, ownerId: data.ownerId });
+}
+/* roles göndermeyen (eski) istemcinin açtığı proje: alanın eski üye listesindeki Üye/İzleyiciler (alan yöneticileri
+   hariç, onlar zaten görür) ya da eski alanda projenin üye listesindekiler (genel rolle). Liste yoksa yalnız sahip:
+   yeni proje kimseye kendiliğinden açılmaz. */
+async function seedRoles(c, data) {
+  const ws = await wsOfProjectData(c, data);
+  const mem = Array.isArray(ws?.members) ? ws.members : [];
+  const admins = new Set(wsAdminIds(ws));
+  const want = new Map();
+  if (mem.length) {
+    for (const m of mem) if (m && typeof m.userId === 'string' && !want.has(m.userId) && !admins.has(m.userId)) want.set(m.userId, m.role);
+  } else if (Array.isArray(data.members)) for (const id of data.members) if (validId(id)) want.set(id, null);
+  const ids = [...want.keys()].filter(validId);
+  const out = {};
+  if (!ids.length) return out;
+  for (const u of (await c.query('SELECT id, role FROM users WHERE id = ANY($1) AND NOT system', [ids])).rows) {
+    const r = want.get(u.id) ?? (u.role === 'viewer' ? 'viewer' : 'member');
+    if (r === 'member' || r === 'viewer') out[u.id] = r;
+  }
+  return out;
+}
+
+/* Rol/sahip değişikliğinin doğrulaması (yetki denetiminden SONRA: yetkisize kişi var/yok bilgisi sızmasın).
+   Yeni eklenen kişi var olan, sistem kullanıcısı olmayan bir kullanıcı olmalı; yeni sahip etkin olmalı. */
+async function checkProjectRoles(c, data, cur) {
+  const old = isObj(cur?.roles) ? cur.roles : {};
+  const admins = r => (isObj(r) ? Object.values(r).filter(v => v === 'admin').length : 0);
+  if (cur && !data.ownerId && admins(old) > 0 && admins(data.roles) === 0)
+    throw new HttpError(409, 'Projede en az bir yönetici kalmalı');
+  const fresh = isObj(data.roles) ? Object.keys(data.roles).filter(k => !Object.hasOwn(old, k) && k !== data.ownerId) : [];
+  if (fresh.length) {
+    /* Sistem hesabı (e-posta) projeye eklenmez; kurulumdaki süper yönetici de system işaretlidir ve eklenebilir. */
+    const ok = new Set((await c.query(`SELECT id FROM users WHERE id = ANY($1) AND (NOT system OR role IN ('admin','super'))`, [fresh])).rows.map(r => r.id));
+    if (fresh.some(id => !ok.has(id))) throw new HttpError(400, 'Projeye eklenen kişi bulunamadı');
+  }
+  if (cur && (cur.ownerId ?? null) !== (data.ownerId ?? null) && data.ownerId != null
+      && !(await c.query(`SELECT 1 FROM users WHERE id=$1 AND active AND (NOT system OR role IN ('admin','super'))`, [data.ownerId])).rowCount)
+    throw new HttpError(400, 'Proje sahibi bulunamadı ya da pasif');
+}
+
 /* Üye listesi: biçim, tekil kişi, var olan kullanıcı; sahip listede ve 'admin' (kaldırılamaz, düşürülemez).
    Dolu listeyi boşaltmak (alanı herkese açmak) yalnız sistem yöneticisi. Değiştiyse true. */
 async function enforceWsMembers(c, me, data, cur) {
   /* Yetkisiz yazma burada doğrulanmaz (kişi var/yok bilgisi sızmasın); checkWorkspace 403 verir. */
-  if (cur ? wsRole(me, cur) !== 'admin' : !isAdminRole(me.role)) return false;
+  if (cur ? !(isAdminRole(me.role) || isWsAdmin(me, cur)) : !isAdminRole(me.role)) return false;
   const before = data.members;
   let changed = false;
   if (data.ownerId != null && data.ownerId !== (cur ? cur.ownerId : undefined)) {
@@ -933,9 +1172,54 @@ async function enforceWsMembers(c, me, data, cur) {
     const ok = new Set((await c.query('SELECT id FROM users WHERE id = ANY($1)', [fresh])).rows.map(r => r.id));
     if (fresh.some(id => !ok.has(id))) throw new HttpError(400, 'Üye bulunamadı');
   }
-  if (!wsLegacy(cur) && wsLegacy(data) && !isAdminRole(me.role))
+  if (cur && !wsLegacy(cur) && wsLegacy(data) && !isAdminRole(me.role))
     throw new HttpError(403, 'Üye listesini yalnızca sistem yöneticisi kaldırabilir');
   return changed || !same(before, data.members);
+}
+
+/* ---- kayıtlı raporlar (011) ----
+   Sahip (ownerId) oluşturmada oturumdur, sonradan değişmez. Değiştirme ve silme: sahip ya da sistem yöneticisi.
+   Okuma: kendi raporu ve kapsamına (tüm sistem / çalışma alanı / proje) erişebildiği paylaşılan rapor (reportVisible).
+   Paylaşmak için yazanın da o kapsama erişimi olmalı (alan kapsamında alan yöneticiliği); tüm sistemle paylaşmak
+   yalnız sistem yöneticisi; genel izleyici yalnız kendine kaydeder. Rapor yalnız ayardır: veriyi her okuyan kendi
+   erişebildiği kayıtlarla hesaplar. */
+export const REPORT_FORBIDDEN = 'Raporu yalnızca sahibi ya da sistem yöneticisi değiştirebilir';
+export const REPORT_MAX_PER_USER = 200;
+export const REPORT_WS_FORBIDDEN = 'Raporu çalışma alanıyla yalnızca alan yöneticisi paylaşabilir';
+/* Okuma (yetki-v2): proje kapsamı → projede rolü olan (projRole: proje rolü, proje sahibi, alan/sistem yöneticisi);
+   alan kapsamı → yalnız alan yöneticisi (alanda tek projede rolü olan görmez; kendi kişisel raporu sahiplikten görünür);
+   tüm sistem → herkes (paylaşmayı yalnız sistem yöneticisi yapar). */
+function reportVisible(d, scope) {
+  if (scope.me && d.ownerId === scope.me.id) return true;
+  if (d.vis !== 'shared' || !d.scope || typeof d.scope !== 'object') return false;
+  const s = d.scope;
+  return s.kind === 'all' || (s.kind === 'ws' && scope.wsRep.has(s.id)) || (s.kind === 'project' && scope.proj.has(s.id));
+}
+function checkReportOwner(me, cur) {
+  if (cur && !isAdminRole(me.role) && cur.ownerId !== me.id) throw new HttpError(403, REPORT_FORBIDDEN);
+}
+function enforceReportOwner(data, cur, me) {
+  const before = data.ownerId;
+  data.ownerId = cur ? (cur.ownerId || me.id) : me.id;
+  return before !== data.ownerId;
+}
+/* Paylaşma: okuma kuralıyla aynı erişim yazana da gerekir (paylaştığı kişileri kendisi de kapsıyor olmalı). */
+async function checkReport(c, me, data, cur) {
+  if (!cur && Number((await c.query('SELECT count(*) AS n FROM reports WHERE owner_id=$1', [data.ownerId])).rows[0].n) >= REPORT_MAX_PER_USER)
+    throw new HttpError(400, `Bir kişi en fazla ${REPORT_MAX_PER_USER} rapor kaydedebilir`);
+  if (data.vis !== 'shared' || isAdminRole(me.role)) return;
+  if (me.role === 'viewer') throw new HttpError(403, 'İzleyici raporu paylaşamaz; "Yalnız ben" olarak kaydedin');
+  const s = data.scope;
+  if (s.kind === 'all') throw new HttpError(403, 'Raporu tüm sistemle yalnızca sistem yöneticisi paylaşabilir');
+  if (s.kind === 'project') {
+    const p = await projById(c, s.id);
+    if (!p) throw new HttpError(400, 'Raporun kapsamı bulunamadı');
+    if (await roleIn(c, me, p) === null) throw new HttpError(403, NO_ACCESS);
+    return;
+  }
+  const ws = (await c.query('SELECT data FROM workspaces WHERE id=$1', [s.id])).rows[0]?.data;
+  if (!ws) throw new HttpError(400, 'Raporun kapsamı bulunamadı');
+  if (!isWsAdmin(me, ws)) throw new HttpError(403, REPORT_WS_FORBIDDEN);
 }
 
 /* ---- proje alanları (parametrik alanlar) ----
@@ -955,10 +1239,25 @@ async function checkFieldKey(c, id, data, cur) {
   }
   if (typeof data.key !== 'string' || !data.key || (cur && cur.key === data.key)) return;
   await c.query('SELECT pg_advisory_xact_lock($1, hashtext($2))', [FIELD_KEY_LOCK, 'key:' + data.key]);
+  /* Cari alanları (scope 'customer') kendi aralarında tekil; iş alanlarının anahtarlarıyla çakışmaz. Cari alanı eski
+     sürümden gizlensin diye hidden:true taşır; bu yüzden 005 gizlemesi istisnası yalnız iş alanlarında. */
+  const sc = data.scope === 'customer' ? 'customer' : 'issue';
   const clash = await c.query(`SELECT 1 FROM fields WHERE field_key=$1 AND id<>$2
-      AND NOT (coalesce(data->>'hidden','') = 'true' AND data->>'bind' IS NULL)
-      AND ($3::text IS NULL OR coalesce(project_id,'') = '' OR project_id = $3) LIMIT 1`, [data.key, id, pid]);
+      AND coalesce(data->>'scope', 'issue') = $4
+      AND ($4 = 'customer' OR (NOT (coalesce(data->>'hidden','') = 'true' AND data->>'bind' IS NULL)
+        AND ($3::text IS NULL OR coalesce(project_id,'') = '' OR project_id = $3))) LIMIT 1`, [data.key, id, pid, sc]);
   if (clash.rowCount) throw new HttpError(409, FIELD_KEY_TAKEN);
+}
+
+/* ---- Cariler modülü (Sistem → Modüller; settings.modules.customers === false → kapalı) ----
+   Kapalıyken cari kaydı, yetkili kişi ve cari özel alanı yazılmaz; okuma süzülmez (veri silinmez). Talep şablonlu
+   projede "Talep eden" zorunluluğu da kalkar (seçici arayüzde yok). Gönderim içinde bir kez okunur. */
+export const CUSTOMERS_OFF = 'Cariler modülü kapalı';
+async function customersOff(c, ctx) {
+  if (ctx && ctx.cuOff !== undefined) return ctx.cuOff;
+  const off = (await c.query(`SELECT value->'customers' AS v FROM settings WHERE key='modules'`)).rows[0]?.v === false;
+  if (ctx) ctx.cuOff = off;
+  return off;
 }
 
 /* ---- cariler (#11) ----
@@ -1062,7 +1361,7 @@ async function checkRequester(c, data, cur, system = false) {
   if (!r) {
     if (system) return;                              // e-postadan: "Talep eden bekleniyor" etiketiyle havuza
     const tpl = (await c.query(`SELECT data->>'template' AS t FROM projects WHERE id=$1`, [data.projectId])).rows[0]?.t;
-    if (tpl === 'talep') throw new HttpError(400, REQUESTER_REQUIRED);
+    if (tpl === 'talep' && !(await customersOff(c))) throw new HttpError(400, REQUESTER_REQUIRED);
     return;
   }
   const row = (await c.query('SELECT active, data FROM customers WHERE id=$1 FOR SHARE', [r.customerId])).rows[0];
@@ -1088,6 +1387,7 @@ export async function addContact(pool, me, customerId, body) {
     if (v) p[k] = v;
   }
   return tx(pool, async c => {
+    if (await customersOff(c)) throw new HttpError(409, CUSTOMERS_OFF);
     const row = (await c.query('SELECT data, active FROM customers WHERE id=$1 FOR UPDATE', [customerId])).rows[0];
     if (!row) throw new HttpError(404, 'Cari bulunamadı. Yöneticinize cari ekletin.');
     if (!row.active) throw new HttpError(400, 'Pasif cariye kişi eklenemez');
@@ -1119,23 +1419,43 @@ export function mergeContacts(base, mine, theirs) {
 
 /* İş silinince yorumları, süre kayıtları, geçmişi ve bağlantıları da çöp kutusuna gider
    (aynı batch → birlikte geri yüklenir); alt işlerin ve epik çocuklarının bağı kopar. */
-async function cascadeIssueDelete(c, ctx, id) {
+async function moveToTrash(c, ctx, table, where, params) {
   const { me, batch } = ctx;
-  const move = async (table, where, params) => {
-    const rows = (await c.query(`DELETE FROM ${table} WHERE ${where} RETURNING id, data`, params)).rows;
-    for (const r of rows) {
-      await c.query(`INSERT INTO deleted_records (collection, record_id, data, batch_id, deleted_by)
-        VALUES ($1,$2,$3::jsonb,$4,$5)`, [table, r.id, JSON.stringify(r.data), batch, me.id]);
-      await logChange(c, table, r.id, 'del', me.id, batch);
-    }
-  };
-  for (const t of ISSUE_CHILDREN) await move(t, 'issue_id = $1', [id]);
-  await move('links', 'from_issue = $1 OR to_issue = $1', [id]);
+  const rows = (await c.query(`DELETE FROM ${table} WHERE ${where} RETURNING id, data`, params)).rows;
+  for (const r of rows) {
+    await c.query(`INSERT INTO deleted_records (collection, record_id, data, batch_id, deleted_by)
+      VALUES ($1,$2,$3::jsonb,$4,$5)`, [table, r.id, JSON.stringify(r.data), batch, me.id]);
+    await logChange(c, table, r.id, 'del', me.id, batch);
+  }
+}
+/* Silinen işlere (ids) bağlı, silinmeyen işlerin üst iş / epik bağı kopar. */
+async function unlinkIssues(c, ctx, ids) {
+  const { me, batch } = ctx;
   for (const [col, key] of [['parent_id', 'parentId'], ['epic_id', 'epicId']]) {
     const rows = (await c.query(`UPDATE issues SET data = jsonb_set(data, '{${key}}', 'null'::jsonb), version = version + 1,
-      updated_at = now() WHERE ${col} = $1 RETURNING id`, [id])).rows;
+      updated_at = now() WHERE ${col} = ANY($1) AND NOT (id = ANY($1)) RETURNING id`, [ids])).rows;
     for (const r of rows) { await logChange(c, 'issues', r.id, 'put', me.id, batch); ctx.adjusted.push({ c: 'issues', id: r.id }); }
   }
+}
+async function cascadeIssueDelete(c, ctx, id) {
+  for (const t of ISSUE_CHILDREN) await moveToTrash(c, ctx, t, 'issue_id = $1', [id]);
+  await moveToTrash(c, ctx, 'links', 'from_issue = $1 OR to_issue = $1', [id]);
+  await unlinkIssues(c, ctx, [id]);
+}
+/* Proje silinince bağlı kayıtlar (işler ve onların yorum, süre, geçmiş, geçiş ve bağlantıları; kolonlar, sprintler,
+   projeye özel alanlar ve kurallar) aynı batch'le çöp kutusuna gider: proje ile birlikte geri yüklenir, istemci ne
+   gönderirse göndersin (ham API, yarım silme) yetim kayıt kalmaz (O-1). Yetki proje silme yetkisidir (checkScope). */
+const PROJECT_CHILDREN = ['statuses', 'sprints', 'fields', 'rules'];
+async function cascadeProjectDelete(c, ctx, pid) {
+  await lockColumns(c, ctx, [pid]);
+  const ids = (await c.query('SELECT id FROM issues WHERE project_id=$1 ORDER BY id FOR UPDATE', [pid])).rows.map(r => r.id);
+  if (ids.length) {
+    for (const t of ISSUE_CHILDREN) await moveToTrash(c, ctx, t, 'issue_id = ANY($1)', [ids]);
+    await moveToTrash(c, ctx, 'links', 'from_issue = ANY($1) OR to_issue = ANY($1)', [ids]);
+    await unlinkIssues(c, ctx, ids);
+    await moveToTrash(c, ctx, 'issues', 'id = ANY($1)', [ids]);
+  }
+  for (const t of PROJECT_CHILDREN) await moveToTrash(c, ctx, t, 'project_id = $1', [pid]);
 }
 
 async function recomputeSpent(c, ctx, iid) {
@@ -1199,15 +1519,18 @@ async function applySetting(c, ctx, ch) {
     throw new HttpError(400, 'geçersiz ayar anahtarı');
   if (ch.op === 'put' && JSON.stringify(ch.data).length > 512 * 1024) throw new HttpError(400, 'Ayar çok büyük');
   const cur = (await c.query('SELECT value FROM settings WHERE key=$1 FOR UPDATE', [ch.id])).rows[0]?.value;
+  if (ch.id === 'modules') delete ctx.cuOff;          // aynı gönderimdeki sonraki cari yazmaları yeni ayarı görsün
   if (ch.op === 'del') return (await c.query('DELETE FROM settings WHERE key=$1', [ch.id])).rowCount > 0;
   let val = ch.data;
   if (cur !== undefined && ch.base !== undefined && !same(cur, ch.base)
       && val && typeof val === 'object' && !Array.isArray(val) && cur && typeof cur === 'object' && !Array.isArray(cur)) {
-    val = merge3(ch.base, val, cur);
+    val = ch.id === 'perms' ? mergePerms(ch.base, val, cur) : merge3(ch.base, val, cur);
     ctx.adjusted.push({ c: '_settings', id: ch.id });
   }
   if (ch.id === 'cfg') validateCfg(val);
   if (ch.id === 'navDefault') validateNavDefault(val);
+  if (ch.id === 'perms') validatePerms(val);
+  if (ch.id === 'modules') validateModules(val);
   if (cur !== undefined && same(cur, val)) return false;
   await c.query(
     `INSERT INTO settings AS s (key, value, updated_by) VALUES ($1, $2::jsonb, $3)
@@ -1229,6 +1552,7 @@ async function applyUser(c, ctx, ch) {
     await c.query(`INSERT INTO deleted_records (collection, record_id, data, batch_id, deleted_by)
       VALUES ('users',$1,$2::jsonb,$3,$4)`, [cur.id, JSON.stringify(publicUser(cur)), batch, me.id]);
     await c.query('DELETE FROM users WHERE id=$1', [ch.id]);
+    await removeUserFromProjects(c, ctx, cur.id);
     return true;
   }
 
@@ -1285,6 +1609,32 @@ async function applyUser(c, ctx, ch) {
   return r.rowCount > 0;
 }
 
+/* Silinen kullanıcı projelerin rollerinden/üye listesinden ve alanların yönetici listesinden çıkar; sahibi olduğu
+   projenin sahibi boşalır. Rolü olmayan eski projede üye listesi boşalacaksa dokunulmaz (boş liste eski kuralda
+   "herkes" demektir). */
+async function removeUserFromProjects(c, ctx, uid) {
+  const { me, batch } = ctx;
+  const rows = (await c.query(`SELECT id, data FROM projects WHERE data->'roles' ? $1 OR data->>'ownerId' = $1 OR data->'members' ? $1
+      ORDER BY id FOR UPDATE`, [uid])).rows;
+  for (const r of rows) {
+    const d = { ...r.data };
+    if (isObj(d.roles)) { d.roles = { ...d.roles }; delete d.roles[uid]; }
+    if (Array.isArray(d.members) && (isObj(d.roles) || d.members.filter(x => x !== uid).length > 0)) d.members = d.members.filter(x => x !== uid);
+    if (d.ownerId === uid) d.ownerId = null;
+    if (same(d, r.data)) continue;
+    await c.query('UPDATE projects SET data=$2::jsonb, version=version+1, updated_at=now(), updated_by=$3 WHERE id=$1', [r.id, JSON.stringify(d), me.id]);
+    await logChange(c, 'projects', r.id, 'put', me.id, batch);
+    ctx.adjusted.push({ c: 'projects', id: r.id });
+  }
+  const ws = (await c.query(`SELECT id, data FROM workspaces WHERE data->'admins' ? $1 ORDER BY id FOR UPDATE`, [uid])).rows;
+  for (const r of ws) {
+    const d = { ...r.data, admins: r.data.admins.filter(x => x !== uid) };
+    await c.query('UPDATE workspaces SET data=$2::jsonb, version=version+1, updated_at=now(), updated_by=$3 WHERE id=$1', [r.id, JSON.stringify(d), me.id]);
+    await logChange(c, 'workspaces', r.id, 'put', me.id, batch);
+    ctx.adjusted.push({ c: 'workspaces', id: r.id });
+  }
+}
+
 /* ---- ilk kurulum: yönetici ve boş bir proje ---- */
 export async function bootstrap(pool, log = console.log) {
   const username = (process.env.ADMIN_USERNAME || 'admin').trim().toLowerCase();
@@ -1314,7 +1664,8 @@ export async function bootstrap(pool, log = console.log) {
     await tx(pool, async c => {
       await c.query(`INSERT INTO projects (id, data) VALUES ('p1', $1::jsonb)`, [JSON.stringify({
         id: 'p1', key: 'GEN', code: 'GEN', name: 'Genel', lead: admin?.id || null, counter: 0,
-        members: admin ? [admin.id] : [], archived: false, workspaceId: DEFAULT_WS })]);
+        members: admin ? [admin.id] : [], archived: false, workspaceId: DEFAULT_WS,
+        ...(admin ? { ownerId: admin.id, roles: { [admin.id]: 'admin' } } : {}) })]);
       const st = [['Yapılacak', 'todo'], ['Devam ediyor', 'inprogress'], ['Beklemede', 'inprogress'], ['Bitti', 'done']];
       for (const [i, [name, cat]] of st.entries()) {
         await c.query(`INSERT INTO statuses (id, data) VALUES ($1, $2::jsonb)`,

@@ -15,13 +15,15 @@ async function add(c, userId, kind, issueId, actorId, meta = {}) {
     [userId, kind, issueId, actorId, JSON.stringify(meta)]);
 }
 
+/* Atama ve durum bildirimi de yalnız işin projesini görebilen kişiye (projeden çıkarılan raporlayıcıya üretilmez). */
 export async function notifyForIssue(c, me, data, cur) {
-  if (data.assignee && (!cur || cur.assignee !== data.assignee))
+  const sees = async u => u !== me.id && await userSeesProject(c, u, data.projectId);
+  if (data.assignee && (!cur || cur.assignee !== data.assignee) && await sees(data.assignee))
     await add(c, data.assignee, 'assigned', data.id, me.id);
   if (cur && cur.statusId !== data.statusId && data.statusId) {
     const st = (await c.query('SELECT name FROM statuses WHERE id=$1', [data.statusId])).rows[0];
     const to = new Set([data.reporter, data.assignee].filter(Boolean));
-    for (const u of to) await add(c, u, 'status', data.id, me.id, { status: st?.name || '' });
+    for (const u of to) if (await sees(u)) await add(c, u, 'status', data.id, me.id, { status: st?.name || '' });
   }
 }
 

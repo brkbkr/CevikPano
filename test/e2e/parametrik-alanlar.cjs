@@ -97,7 +97,7 @@ const FN = 'Sahne ' + XSS, OPT2 = '<b>Kalın</b>' + XSS;
   const YP = await mk('wsadmin'); await login(YP, 'pay' + R, 'Baslangic123', 'PaYon123456');
   await go(YP, 'admin');
   const tabsY = await YP.evaluate(() => [...document.querySelectorAll('#adminTabs [data-a]')].map(b => b.dataset.a));
-  ok('field admin: project settings show İş akışı + Alanlar tabs only', JSON.stringify(tabsY) === '["workflow","fields"]', JSON.stringify(tabsY));
+  ok('field admin: project settings show İş akışı + Alanlar + Yetkiler tabs only', JSON.stringify(tabsY) === '["workflow","fields","perms"]', JSON.stringify(tabsY));
   await YP.click('#adminTabs [data-a="fields"]'); await sleep(300);
   const t0 = await YP.evaluate(() => ({ rows: [...document.querySelectorAll('#pfTab [data-pfrow^="b:"]')].map(r => [r.dataset.pfrow, r.classList.contains('on')]),
     add: !!document.querySelector('#addField'), empty: !!document.querySelector('#pfTab .pf-empty') }));
@@ -140,7 +140,7 @@ const FN = 'Sahne ' + XSS, OPT2 = '<b>Kalın</b>' + XSS;
   const mt = await MP.evaluate(() => ({ tabs: [...document.querySelectorAll('#adminTabs [data-a]')].map(b => b.dataset.a), pf: !!document.querySelector('#pfTab') }));
   ok('member: no Alanlar tab, forced tab does not open it', !mt.tabs.includes('fields') && !mt.pf, JSON.stringify(mt));
   const mr = await MP.evaluate(async pid => (await API.post('/api/sync', { changes: [{ c: 'fields', id: 'f_m_' + pid, op: 'put', data: { projectId: pid, key: 'uyealan', name: 'Üye', type: 'text' } }] })), PID);
-  ok('member: server rejects project field (403 reason)', mr.applied === 0 && mr.rejected?.[0]?.reason === 'Bu değişiklik için yönetici yetkisi gerekli', JSON.stringify(mr));
+  ok('member: server rejects project field (403 reason)', mr.applied === 0 && mr.rejected?.[0]?.reason === 'Bu projede "Proje alanları" yetkiniz yok', JSON.stringify(mr));
 
   /* ---------------- 3) kartta (iş detayında) değer girme ---------------- */
   await go(MP, 'board');
@@ -299,6 +299,27 @@ const FN = 'Sahne ' + XSS, OPT2 = '<b>Kalın</b>' + XSS;
   await AM.evaluate(([pid, mon]) => { DB.ui.grF = { month: mon, proj: pid }; location.hash = 'raporlar/sure'; }, [PID, MON]); await sleep(600);
   const mo = await AM.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth, n: document.querySelectorAll('[data-grtpl]').length }));
   ok('mobile 390px: report templates scroll inside bar (no page overflow)', mo.n === 5 && mo.sw <= mo.cw + 1, JSON.stringify(mo));
+
+  /* ---------------- cari alanları (scope 'customer') iş alanlarına karışmaz; Cariler kapalıyken "Cari" hazır alanı yok ---------------- */
+  const CFC = 'f_pac' + R;
+  await A.evaluate(async ([id, r]) => { const x = await API.post('/api/sync', { changes: [{ c: 'fields', id, op: 'put',
+    data: { scope: 'customer', key: 'pac_' + r, name: 'Cari sektörü ' + r, type: 'select', options: ['A', 'B'], hidden: true, onList: true } }] });
+    if (x.rejected?.length) throw new Error(JSON.stringify(x.rejected)); await reloadState(); }, [CFC, R]);
+  await fieldsTab(A);
+  const cx = await A.evaluate(([id, pid]) => ({ tab: !document.querySelector(`[data-pfrow="${id}"]`) && !document.getElementById('pfTab').textContent.includes('Cari sektörü'),
+    live: !liveFields().some(f => f.id === id), forIssue: !fieldsFor().some(f => f.id === id),
+    rep: (() => { DB.ui.project = pid; const X = grCtx(); return ![...X.FD.values()].some(d => d.glob?.id === id); })() }), [CFC, PID]);
+  ok('customer-scope field not in project Alanlar tab, issue fields or report dimensions', cx.tab && cx.live && cx.forIssue && cx.rep, JSON.stringify(cx));
+  await A.evaluate(() => { newIssueForm(); }); await sleep(250);
+  ok('customer-scope field not in new issue form', await A.evaluate(id => !document.querySelector(`#scrim [data-cf="${id}"]`), CFC));
+  await A.evaluate(() => closeModal());
+  const off = await A.evaluate(() => { const keep = DB.modules; DB.modules = { customers: false }; render();
+    const rows = [...document.querySelectorAll('#pfTab [data-pfrow]')].map(r => r.dataset.pfrow), D = grDims(grCtx());
+    const r = { rows, cari: bindOn(DB.ui.project, 'customerId'), dim: 'customer' in D, sub: document.querySelector('#pfTab .pf-blk .sub')?.textContent };
+    DB.modules = keep; render(); r.back = [...document.querySelectorAll('#pfTab [data-pfrow]')].some(x => x.dataset.pfrow === 'b:customerId'); return r; });
+  ok('module off: "Cari" preset hidden in Alanlar and reports, back when on', !off.rows.includes('b:customerId') && off.rows.includes('b:billable') && !off.cari && !off.dim
+    && off.sub === 'Faturalama için' && off.back, JSON.stringify(off));
+  await A.evaluate(async id => { await API.post('/api/sync', { changes: [{ c: 'fields', id, op: 'del' }] }); await reloadState(); }, CFC);
 
   /* ---------------- demo veri: değerler yine aynı ---------------- */
   const demo1 = await demoVals();

@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { authRoutes, requireUser, meOf } from './auth.js';
-import { readState, readChanges, applyChanges, addContact, HttpError } from './store.js';
+import { readState, readChanges, applyChanges, addContact, HttpError, visibleIssueIds } from './store.js';
 import { listNotifications, unreadCount, markRead } from './notify.js';
 import { createSnapshot, listSnapshots, getSnapshot, replaceAll, listTrash, restoreTrash, activity } from './backup.js';
 import { isAdminRole } from './util.js';
@@ -77,12 +77,14 @@ export function createApp(pool) {
     res.json({ ...st, me: meOf(req.user) });
   });
 
-  /* Kim çevrim içi: son 30 sn'de değişiklik soran kullanıcılar (bellekte tutulur). */
+  /* Kim çevrim içi: son 30 sn'de değişiklik soran kullanıcılar (bellekte tutulur). Bakılan iş kimliği yalnız o işi
+     görebilene gider; başkasına kişi çevrim içi görünür, iş kimliği boş gelir. */
   const presence = new Map();
-  const online = () => {
+  const online = async me => {
     const now = Date.now(), out = [];
     for (const [id, p] of presence) { if (now - p.at < 30e3) out.push({ id, view: p.view, issue: p.issue }); else presence.delete(id); }
-    return out;
+    const ok = await visibleIssueIds(pool, me, out.map(o => o.issue));
+    return ok ? out.map(o => (o.issue && !ok.has(o.issue) ? { ...o, issue: '' } : o)) : out;
   };
 
   app.get('/api/changes', requireUser, async (req, res) => {
@@ -90,7 +92,7 @@ export function createApp(pool) {
     presence.set(req.user.id, { at: Date.now(), view: String(req.query.view || '').slice(0, 30),
       issue: String(req.query.issue || '').slice(0, 200) });
     res.setHeader('Cache-Control', 'no-store');
-    res.json({ ...(await readChanges(pool, since, req.user)), unread: await unreadCount(pool, req.user.id), online: online() });
+    res.json({ ...(await readChanges(pool, since, req.user)), unread: await unreadCount(pool, req.user.id), online: await online(req.user) });
   });
 
   app.get('/api/notifications', requireUser, async (req, res) => {

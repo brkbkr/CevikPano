@@ -61,21 +61,19 @@ const Y = 'u_gty' + R, M = 'u_gtm' + R, V = 'u_gtv' + R, X = 'u_gtx' + R, WS = '
     save(); await flushAll();
   }, [PID, IID]);
 
-  /* D3: proje kartında yalnız alan üyeleri (sistem kullanıcısı ve alan dışı yok); "Üyeler (n)" = işaretli çip sayısı */
+  /* yetki-v2: kişiler projeye proje rolüyle eklenir (Yetkiler sekmesi); proje kartı projenin kişilerini gösterir */
+  await A.evaluate(async ([pid, M, V]) => { const p = DB.projects.find(x => x.id === pid); p.roles = { ...p.roles, [M]: 'member', [V]: 'viewer' }; save(); await flushAll(); }, [PID, M, V]);
   await A.evaluate(ws => openWsPage(ws), WS); await sleep(400);
-  const card = await A.evaluate(([pid, ids]) => { const c = document.querySelector(`[data-wsproj="${pid}"]`);
-    const chips = [...c.querySelectorAll('[data-memu]')];
-    return { ids: chips.map(x => x.dataset.memu).sort(), on: chips.filter(x => x.getAttribute('aria-pressed') === 'true').length,
-      lbl: c.querySelector('.ws-plbl')?.textContent, want: ids.sort() }; }, [PID, [Y, M, V]]);
-  ok('project card chips: only workspace members', JSON.stringify(card.ids) === JSON.stringify(card.want), JSON.stringify(card));
-  ok('project card count equals checked chips', card.lbl === `Üyeler (${card.on})`, JSON.stringify(card));
+  const card = await A.evaluate(pid => { const c = document.querySelector(`[data-wsproj="${pid}"]`);
+    return { n: c.querySelectorAll('[data-projpeople] .memchip').length, lbl: c.querySelector('.ws-plbl')?.textContent, perms: !!c.querySelector('[data-projperms]') }; }, PID);
+  ok('project card: people of the project (owner + 2) and "Kişiler ve yetkiler" for project admin', card.n === 3 && card.lbl === 'Kişiler (3)' && card.perms, JSON.stringify(card));
 
   /* Y1: alan yöneticisi panoda kartın kişi düğmesinden atama menüsü → alanın Yönetici/Üye kişileri */
   const Yp = await mk('wsadmin'); await login(Yp, 'gty' + R, 'Baslangic123', 'GtYon12345!');
   await Yp.evaluate(pid => { DB.ui.project = pid; DB.ui.view = 'board'; render(); }, PID); await sleep(400);
   await Yp.click(`[data-qas="${IID}"]`); await sleep(300);
   const menu = await Yp.evaluate(() => [...document.querySelectorAll('.qm-opt[data-qv]')].map(x => x.dataset.qv));
-  ok('assign menu lists workspace admin + member (not viewer, outsider, system user)', menu.includes(Y) && menu.includes(M) && !menu.includes(V)
+  ok('assign menu lists project members with edit right (not viewer, outsider, system user)', menu.includes(M) && !menu.includes(V)
     && !menu.includes(X) && !menu.includes('u_admin'), JSON.stringify(menu));
   await Yp.click(`.qm-opt[data-qv="${M}"]`); await sleep(300); await flush(Yp);
   ok('assignment to workspace member saved on server', await Yp.evaluate(async ([iid, M]) =>
@@ -86,7 +84,7 @@ const Y = 'u_gty' + R, M = 'u_gtm' + R, V = 'u_gtv' + R, X = 'u_gtx' + R, WS = '
   ok('server rejects assigning an outsider', await Yp.evaluate(async ([iid, X]) => {
     const i = (await API.get('/api/state')).data.issues.find(x => x.id === iid);
     const r = await API.post('/api/sync', { changes: [{ c: 'issues', id: iid, op: 'put', data: { ...i, assignee: X }, base: i }] });
-    return r.rejected?.[0]?.reason === 'Atanan kişinin bu çalışma alanında Üye ya da Yönetici rolü yok'; }, [IID, X]));
+    return r.rejected?.[0]?.reason === 'Atanan kişinin bu projede iş düzenleme yetkisi yok'; }, [IID, X]));
 
   /* Güv O1: alan yöneticisi kendi (üyeli) alanındaki projede taşıma menüsünü görür; eski Genel alanındaki projede görmez */
   const mv = await Yp.evaluate(([ws, pid, lp]) => { openWsPage(ws);
@@ -94,7 +92,8 @@ const Y = 'u_gty' + R, M = 'u_gtm' + R, V = 'u_gtv' + R, X = 'u_gtx' + R, WS = '
     openWsPage('ws1');
     const c = document.querySelector(`[data-wsproj="${lp}"]`);
     return { own, card: !!c, legacy: !!c?.querySelector('[data-movproj]'), arch: !!c?.querySelector('[data-arch]') }; }, [WS, PID, 'p_gtl' + R]);
-  ok('move menu: shown in own member workspace, hidden in legacy workspace (other actions stay)', mv.own && mv.card && !mv.legacy && mv.arch, JSON.stringify(mv));
+  /* yetki-v2: Genel'deki projede Y proje Üyesi: taşıma yok, arşivleme (proje ayarı) de varsayılanda kapalı */
+  ok('move menu: shown in own workspace, hidden in workspace without admin; project member has no archive', mv.own && mv.card && !mv.legacy && !mv.arch, JSON.stringify(mv));
 
   /* O2: üye iş detayını açık tutup yorum yazarken alandan çıkarılır → pencere kapanır, uyarı tostu */
   const Mp = await mk('member'); await login(Mp, 'gtm' + R, 'Baslangic123', 'GtUye12345!');
@@ -103,10 +102,11 @@ const Y = 'u_gty' + R, M = 'u_gtm' + R, V = 'u_gtv' + R, X = 'u_gtx' + R, WS = '
   await sleep(400);
   ok('member: issue detail open', await Mp.evaluate(() => !!document.querySelector('#scrim.on .modal.id-dlg')));
   await Mp.fill('#newCmt', 'yarım kalan yorum');
-  await A.evaluate(async ([ws, M]) => {
-    const w = (await API.get('/api/state')).data.workspaces.find(x => x.id === ws);
-    await API.post('/api/sync', { changes: [{ c: 'workspaces', id: ws, op: 'put', data: { ...w, members: w.members.filter(m => m.userId !== M) }, base: w }] });
-  }, [WS, M]);
+  /* yetki-v2: projeden çıkarılır */
+  await A.evaluate(async ([pid, M]) => {
+    const p = (await API.get('/api/state')).data.projects.find(x => x.id === pid), roles = { ...p.roles }; delete roles[M];
+    await API.post('/api/sync', { changes: [{ c: 'projects', id: pid, op: 'put', data: { ...p, roles }, base: p }] });
+  }, [PID, M]);
   ok('removed member: detail dialog closes within a poll', await waitFor(Mp, () => !document.querySelector('#scrim.on')));
   const after = await Mp.evaluate(([pid, iid]) => ({ proj: DB.projects.some(p => p.id === pid), iss: DB.issues.some(i => i.id === iid),
     sel: DB.ui.project === pid, txt: document.body.innerText.includes('Genel tur işi'), toasts: window.__toasts }), [PID, IID]);

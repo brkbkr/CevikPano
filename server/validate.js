@@ -1,4 +1,5 @@
 import { HttpError } from './util.js';
+import { PROJECT_ROLES, MAX_PROJECT_ROLES, permsError } from './perms.js';
 
 /* Kayıt doğrulama. Eski verilerle uyum için gevşek tutuldu: yalnızca verinin
    bütünlüğünü bozacak hataları reddeder. */
@@ -50,7 +51,11 @@ const optEmail = v => v == null || v === '' || (typeof v === 'string' && v.lengt
 const MAILTO_BAD = /[?&"<>\s]/;
 const cuEmail = (v, old, live) => optEmail(v) && (!live || v == null || v === '' || v === old || !MAILTO_BAD.test(v));
 export const CUSTOMER_KINDS = ['customer', 'supplier', 'both'];
+/* Vergi no: yeni ya da değişen değer 10 haneli VKN (canlı yazma). Eski 11 haneli kayıt (T.C. kimlik no) silinmez:
+   değişmeden kaydedilebilir, içe aktarma/geri yükleme de kabul eder; sistem yöneticisi dışındakilere maskeli gider (store.js maskCustomer). */
 const TAX_NO_RE = /^\d{10,11}$/;
+const VKN_RE = /^\d{10}$/;
+export const TAX_NO_MSG = 'Vergi numarası 10 haneli olmalı';
 const MAX_CONTACTS = 200;
 
 /* Yetkili kişiler: dizi; her biri güvenli kimlik ve ad taşır. İlk hata döner (yoksa boş). */
@@ -84,6 +89,10 @@ export const PROJECT_TEMPLATES = ['kanban', 'scrum', 'gorev', 'uyarlama', 'talep
 /* Proje alanları (parametrik alanlar). Hazır alanlar (bind) değerini işin yerleşik özelliğinde tutar:
    billable → issues.data.billable, billType → billType, customerId → customerId. Anahtar ve tür bind'e sabittir. */
 export const FIELD_TYPES = ['text', 'number', 'select', 'date', 'user', 'checkbox', 'cari'];
+/* Alan kapsamı: 'issue' (yok = iş alanı, eski kayıtlar) ya da 'customer' (cari özel alanı: genel, hazır alan değil,
+   yalnız sistem yöneticisi tanımlar — projesiz alan store.js checkScope'ta yöneticiye kalır). */
+export const FIELD_SCOPES = ['issue', 'customer'];
+export const CUSTOMER_FIELD_TYPES = ['text', 'number', 'date', 'select', 'checkbox'];
 export const FIELD_BINDS = { billable: { key: 'fatura', type: 'select' }, billType: { key: 'faturaturu', type: 'select' },
   customerId: { key: 'cari', type: 'cari' } };
 export const BILLABLE_OPTIONS = ['Faturalanacak', 'Faturalanmayacak'];
@@ -102,8 +111,35 @@ const cfOk = v => v == null || (typeof v === 'object' && !Array.isArray(v) && Ob
    İçe aktarma/geri yükleme gevşek kalır. */
 const changed = (d, opts, k) => !!opts.live && (!opts.cur || !sameJson(opts.cur[k], d[k]));
 
+/* Kayıtlı raporlar (011). Yeni koleksiyon, eski verisi yok: her yazmada sıkı. Bilinmeyen anahtar reddedilir (ekrana
+   basılan her şey bilinen biçimde); ayar (cfg) genel raporun kişisel süzgeç nesnesinin (grF) kaydedilebilir kısmıdır. */
+export const REPORT_NAME_MAX = 80;
+export const REPORT_DESC_MAX = 300;
+export const REPORT_MAX_BYTES = 8 * 1024;
+export const REPORT_VIS = ['private', 'shared'];
+export const REPORT_SCOPES = ['all', 'ws', 'project'];
+export const REPORT_MEASURES = ['hours', 'count', 'points'];
+export const REPORT_CHARTS = ['table', 'bar'];
+const REPORT_KEYS = new Set(['id', 'name', 'desc', 'ownerId', 'vis', 'scope', 'cfg', 'tpl', 'createdAt', 'updatedAt']);
+const REPORT_CFG_KEYS = new Set(['tab', 'row', 'col', 'ms', 'ch', 'per', 'month', 'from', 'to', 'f']);
+const REPORT_F_KEYS = new Set(['ws', 'proj', 'cu', 'user', 'type', 'bill', 'cfk', 'cfv']);
+const REPORT_DIM_RE = /^(cf:[a-z0-9_]{1,30}|[A-Za-z]{1,20})$/;
+const plainObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+const optTime = v => v == null || (Number.isInteger(v) && v > 0);
+const reportScopeOk = s => plainObj(s) && Object.keys(s).every(k => k === 'kind' || k === 'id') && REPORT_SCOPES.includes(s.kind)
+  && (s.kind === 'all' ? s.id == null : validId(s.id));
+const reportCfgOk = g => plainObj(g) && Object.keys(g).every(k => REPORT_CFG_KEYS.has(k))
+  && (g.tab == null || ['sure', 'fatura'].includes(g.tab))
+  && (g.row == null || (typeof g.row === 'string' && REPORT_DIM_RE.test(g.row)))
+  && (g.col == null || g.col === '' || (typeof g.col === 'string' && REPORT_DIM_RE.test(g.col)))
+  && (g.ms == null || REPORT_MEASURES.includes(g.ms)) && (g.ch == null || REPORT_CHARTS.includes(g.ch))
+  && (g.per == null || ['rel', 'month', 'custom'].includes(g.per))
+  && (g.month == null || g.month === '' || (typeof g.month === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(g.month)))
+  && realDate(g.from) && realDate(g.to)
+  && (g.f == null || (plainObj(g.f) && Object.entries(g.f).every(([k, v]) => REPORT_F_KEYS.has(k) && str(v, 200))));
+
 const RULES = {
-  projects: d => [
+  projects: (d, opts) => [
     [str(d.name, 200) && d.name.trim(), 'Proje adı gerekli'],
     [optKey(d.key, KEY_RE), 'Proje anahtarı yalnızca harf, rakam, _ ve - içerebilir (en fazla 20)'],
     [optKey(d.code, KEY_RE), 'Proje kodu geçersiz'],
@@ -114,6 +150,13 @@ const RULES = {
     [d.template == null || d.template === '' || PROJECT_TEMPLATES.includes(d.template), 'Geçersiz şablon'],
     [d.sprintWeeks == null || (Number.isInteger(d.sprintWeeks) && d.sprintWeeks >= 1 && d.sprintWeeks <= 8),
       'Sprint süresi 1 ile 8 hafta arasında bir tamsayı olmalı'],
+    /* Proje rolleri (yetki-v2): { kullanıcı kimliği: 'admin'|'member'|'viewer' }, en çok 1000 kişi. */
+    [d.roles == null || (typeof d.roles === 'object' && !Array.isArray(d.roles) && Object.keys(d.roles).length <= MAX_PROJECT_ROLES
+      && Object.entries(d.roles).every(([k, v]) => validId(k) && PROJECT_ROLES.includes(v))),
+      `Proje rolleri geçersiz (kişi kimliği ve rol: admin, member, viewer; en fazla ${MAX_PROJECT_ROLES} kişi)`],
+    [d.ownerId == null || validId(d.ownerId), 'Proje sahibi geçersiz'],
+    [!changed(d, opts, 'members') || d.members == null || (Array.isArray(d.members) && d.members.length <= MAX_PROJECT_ROLES && d.members.every(validId)), 'Proje üyeleri geçersiz'],
+    [d.perms == null || !permsError(d.perms), d.perms == null ? '' : permsError(d.perms) || ''],
   ],
   /* Cariler (#11). İletilerde değer YOK: kişisel veri (T.C. kimlik no, e-posta) günlüğe/yanıta düşmesin. */
   customers: (d, opts) => [
@@ -121,13 +164,15 @@ const RULES = {
     [CUSTOMER_KINDS.includes(d.kind), 'Tür müşteri, tedarikçi ya da ikisi olmalı'],
     [optStr(d.shortName, 60), 'Kısa ad en fazla 60 karakter'],
     [optStr(d.taxOffice, 100), 'Vergi dairesi en fazla 100 karakter'],
-    [d.taxNo == null || d.taxNo === '' || (typeof d.taxNo === 'string' && TAX_NO_RE.test(d.taxNo)),
-      'Vergi numarası 10 ya da 11 haneli olmalı'],
+    [d.taxNo == null || d.taxNo === '' || (typeof d.taxNo === 'string' && TAX_NO_RE.test(d.taxNo)), TAX_NO_MSG],
+    [!changed(d, opts, 'taxNo') || d.taxNo == null || d.taxNo === '' || VKN_RE.test(d.taxNo), TAX_NO_MSG],
     [optStr(d.address, 500), 'Adres en fazla 500 karakter'],
     [cuEmail(d.email, opts.cur?.email, opts.live), 'E-posta adresi geçersiz'],
     [optStr(d.phone, 30), 'Telefon en fazla 30 karakter'],
     [optStr(d.notes, 2000), 'Notlar en fazla 2000 karakter'],
     [optBool(d.active), 'Durum (etkin) true ya da false olmalı'],
+    /* Cari özel alanları (fields.scope = 'customer'): değerler customers.data.cf'de, işlerdeki cf ile aynı biçim. */
+    [!changed(d, opts, 'cf') || cfOk(d.cf), 'Cari alan değerleri geçersiz (en fazla 200 alan; değer metin, sayı ya da evet/hayır)'],
     ...contactRules(d.contacts, opts),
   ],
   workspaces: d => [
@@ -136,6 +181,9 @@ const RULES = {
     [d.color == null || d.color === '' || (typeof d.color === 'string' && HEX_RE.test(d.color)), 'Renk #RRGGBB biçiminde olmalı'],
     [optStr(d.description, 500), 'Açıklama en fazla 500 karakter'],
     [optBool(d.archived), 'Arşiv bilgisi true ya da false olmalı'],
+    /* Alan yöneticileri (yetki-v2): kişi kimlikleri, tekil, en çok 1000. */
+    [d.admins == null || (Array.isArray(d.admins) && d.admins.length <= MAX_PROJECT_ROLES && d.admins.every(validId)
+      && new Set(d.admins).size === d.admins.length), 'Alan yöneticileri geçersiz (tekil kişi kimlikleri, en fazla 1000)'],
   ],
   /* Kolon adı 1–30 karakter: yalnız canlı yazmada (opts.live), yeni kolonda ya da ad değişince.
      Eski uzun adlı kolon sıralanabilir; içe aktarma/geri yükleme eski veriyi reddetmez. */
@@ -183,7 +231,11 @@ const RULES = {
       [!changed(d, opts, 'name') || (typeof d.name === 'string' && d.name.trim().length >= 1 && d.name.length <= 60), 'Alan adı gerekli (en fazla 60 karakter)'],
       [!changed(d, opts, 'key') || (typeof d.key === 'string' && FIELD_KEY_RE.test(d.key)), 'Alan anahtarı yalnız küçük harf, rakam ve _ içerebilir (en fazla 30)'],
       [!changed(d, opts, 'type') || FIELD_TYPES.includes(d.type), 'Geçersiz alan türü'],
-      [!changed(d, opts, 'scope') || d.scope == null || d.scope === 'issue', 'Geçersiz alan kapsamı'],
+      [!changed(d, opts, 'scope') || d.scope == null || FIELD_SCOPES.includes(d.scope), 'Geçersiz alan kapsamı'],
+      [!opts.live || d.scope !== 'customer' || ((d.projectId == null || d.projectId === '') && b == null),
+        'Cari alanı tüm carilerde geçerlidir; projeye ya da hazır alana bağlanamaz'],
+      [!opts.live || d.scope !== 'customer' || !changed(d, opts, 'type') || CUSTOMER_FIELD_TYPES.includes(d.type),
+        'Cari alanının türü metin, sayı, tarih, seçim ya da evet/hayır olmalı'],
       [d.projectId == null || d.projectId === '' || validId(d.projectId), 'Geçersiz proje'],
       [!changed(d, opts, 'options') || optionsOk(d.options), `Seçenekler en fazla ${MAX_FIELD_OPTIONS} tekil metin olmalı (her biri 1–100 karakter)`],
       [!changed(d, opts, 'def') || defOk(d.def), 'Varsayılan değer geçersiz'],
@@ -199,6 +251,18 @@ const RULES = {
         && (cur.projectId || null) === (d.projectId || null)), 'Alanın hazır alan bağı, kapsamı ve projesi sonradan değiştirilemez'],
     ];
   },
+  reports: d => [
+    [Buffer.byteLength(JSON.stringify(d)) <= REPORT_MAX_BYTES, 'Rapor kaydı çok büyük'],
+    [Object.keys(d).every(k => REPORT_KEYS.has(k)), 'Rapor kaydında bilinmeyen alan var'],
+    [typeof d.name === 'string' && d.name.trim().length >= 1 && d.name.length <= REPORT_NAME_MAX, `Rapor adı gerekli (en fazla ${REPORT_NAME_MAX} karakter)`],
+    [optStr(d.desc, REPORT_DESC_MAX), `Açıklama en fazla ${REPORT_DESC_MAX} karakter`],
+    [validId(d.ownerId), 'Raporun sahibi geçersiz'],
+    [REPORT_VIS.includes(d.vis), 'Görünürlük "private" ya da "shared" olmalı'],
+    [reportScopeOk(d.scope), 'Rapor kapsamı geçersiz (tüm sistem, çalışma alanı ya da proje)'],
+    [reportCfgOk(d.cfg), 'Rapor ayarı geçersiz (boyut, ölçü, grafik, dönem ya da süzgeç)'],
+    [d.tpl == null || (typeof d.tpl === 'string' && /^[a-z0-9_]{1,30}$/.test(d.tpl)), 'Hazır rapor kimliği geçersiz'],
+    [optTime(d.createdAt) && optTime(d.updatedAt), 'Rapor zamanı geçersiz'],
+  ],
   worklogs: d => [
     [str(d.issueId, 200), 'Süre kaydının işi yok'],
     [str(d.userId, 200), 'Süre kaydının kişisi yok'],
@@ -307,6 +371,11 @@ export function validateCfg(v) {
 /* Genel ayar `navDefault` (yönetici, herkes için varsayılan kenar çubuğu): { items: [{ id, visible }] }.
    Kimlikler istemcideki NAV_MOVABLE ile aynı (bilinen, benzersiz); visible boolean; başka anahtar yok. */
 export const NAV_DEFAULT_IDS = ['recent', 'customers', 'reports', 'pool', 'users', 'system'];
+/* Genel ayar `perms` (sistem varsayılanı rol yetkileri, yalnız sistem yöneticisi): perms.js permsError. */
+export function validatePerms(v) {
+  const e = permsError(v, { system: true });
+  if (e) throw new HttpError(400, e);
+}
 export function validateNavDefault(v) {
   const ok = v != null && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).every(k => k === 'items')
     && Array.isArray(v.items) && v.items.length <= NAV_DEFAULT_IDS.length
@@ -315,6 +384,15 @@ export function validateNavDefault(v) {
       && typeof x.id === 'string' && NAV_DEFAULT_IDS.includes(x.id) && typeof x.visible === 'boolean'
       && a.findIndex(y => y && y.id === x.id) === i);
   if (!ok) throw new HttpError(400, 'Geçersiz varsayılan menü (bilinen öğe kimlikleri, benzersiz, görünürlük true/false)');
+}
+
+/* Genel ayar `modules` (yönetici, Sistem → Modüller): { customers?: boolean }. Yok/true = açık; false = Cariler modülü
+   kapalı (veri silinmez; sunucu cari yazmalarını reddeder, store.js customersOff). Başka anahtar yok. */
+export const MODULE_KEYS = ['customers'];
+export function validateModules(v) {
+  const ok = v != null && typeof v === 'object' && !Array.isArray(v)
+    && Object.entries(v).every(([k, x]) => MODULE_KEYS.includes(k) && typeof x === 'boolean');
+  if (!ok) throw new HttpError(400, 'Geçersiz modül ayarı (yalnız customers: true/false)');
 }
 
 /* opts: { live: true, cur } → /api/sync yazması (cur: veritabanındaki güncel hâl); içe aktarmada verilmez. */

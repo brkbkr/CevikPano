@@ -83,7 +83,8 @@ const num = s => +String(s).replace(/\./g, '').replace(',', '.');
       iss('i_gra1' + R, PA, KA + '-1', 'task', 'Faturalanacak', 'Rapor işi A1 ' + R),
       iss('i_gra2' + R, PA, KA + '-2', 'bug', 'Faturalanmayacak', 'Rapor işi A2 ' + R),
       iss('i_grb1' + R, PB, KB + '-1', 'task', '', 'Rapor işi B1 ' + R),
-      iss('i_grc1' + R, PC, KC + '-1', 'task', 'Faturalanacak', 'Gizli iş ' + R),
+      /* yetki-v2: göremediği projede M'ye iş atanamaz; gizli projenin işi yöneticide */
+      ((x) => ({ ...x, data: { ...x.data, assignee: ADM } }))(iss('i_grc1' + R, PC, KC + '-1', 'task', 'Faturalanacak', 'Gizli iş ' + R)),
     ] });
     const r4 = await API.post('/api/sync', { changes: [
       wl('w_gr1' + R, 'i_gra1' + R, M, '2025-03-03', 2, 'Analiz ' + XSS),
