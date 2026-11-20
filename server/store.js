@@ -238,6 +238,7 @@ async function applyOnce(pool, me, ordered, opts = {}) {
             [ctx.taxNo, ch.id])).rows[0]?.id : null;
           reject(taxNoTaken(other));
         }
+        else if (e.code === '23505' && e.constraint === 'fields_project_bind_uq') reject(FIELD_BIND_TAKEN);
         else if (e.code === '23505') reject(/username/.test(e.constraint || '') ? 'Bu kullanıcı adı kullanılıyor' : 'Bu kayıt zaten var (benzersizlik ihlali)');
         else throw e;
       }
@@ -425,6 +426,7 @@ async function applyRecord(c, ctx, ch) {
     if (!cur || colName(cur.name) !== colName(data.name) || cur.projectId !== data.projectId) ctx.colNamed.add(ch.id);
   }
   if (ch.c === 'customers') await checkCustomerTaxNo(c, ctx, ch.id, data, cur);
+  if (ch.c === 'fields') await checkFieldKey(c, ch.id, data, cur);
   if (ch.c === 'links') await checkLinkEnds(c, me, data, cur, ctx.system);
 
   const json = JSON.stringify(data);
@@ -936,6 +938,29 @@ async function enforceWsMembers(c, me, data, cur) {
   if (!wsLegacy(cur) && wsLegacy(data) && !isAdminRole(me.role))
     throw new HttpError(403, 'Üye listesini yalnızca sistem yöneticisi kaldırabilir');
   return changed || !same(before, data.members);
+}
+
+/* ---- proje alanları (parametrik alanlar) ----
+   Anahtar tekilliği: projeye özel alan aynı projedeki ve genel (tüm projeler) alanlarla, genel alan tüm alanlarla
+   çakışamaz. Farklı projelerde aynı anahtar serbest (raporda tek boyutta birleşir). 005'in gizlediği eski alan
+   (hidden, bind yok) sayılmaz. Yeni kayıtta ya da anahtar değişince denetlenir; aynı anahtara eşzamanlı yazmalar
+   danışma kilidiyle sıralanır. Hazır alan (bind) projede bir kez: fields_project_bind_uq (008) yedek kısıttır. */
+const FIELD_KEY_LOCK = 727278;
+export const FIELD_KEY_TAKEN = 'Bu anahtarla bir alan zaten var';
+export const FIELD_BIND_TAKEN = 'Bu projede bu hazır alan zaten var';
+async function checkFieldKey(c, id, data, cur) {
+  const pid = data.projectId || null;
+  if (data.bind && !cur) {
+    await c.query('SELECT pg_advisory_xact_lock($1, hashtext($2))', [FIELD_KEY_LOCK, 'bind:' + pid + ':' + data.bind]);
+    if ((await c.query(`SELECT 1 FROM fields WHERE project_id=$1 AND data->>'bind'=$2 AND id<>$3 LIMIT 1`, [pid, data.bind, id])).rowCount)
+      throw new HttpError(409, FIELD_BIND_TAKEN);
+  }
+  if (typeof data.key !== 'string' || !data.key || (cur && cur.key === data.key)) return;
+  await c.query('SELECT pg_advisory_xact_lock($1, hashtext($2))', [FIELD_KEY_LOCK, 'key:' + data.key]);
+  const clash = await c.query(`SELECT 1 FROM fields WHERE field_key=$1 AND id<>$2
+      AND NOT (coalesce(data->>'hidden','') = 'true' AND data->>'bind' IS NULL)
+      AND ($3::text IS NULL OR coalesce(project_id,'') = '' OR project_id = $3) LIMIT 1`, [data.key, id, pid]);
+  if (clash.rowCount) throw new HttpError(409, FIELD_KEY_TAKEN);
 }
 
 /* ---- cariler (#11) ----

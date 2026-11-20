@@ -101,6 +101,8 @@ jobs:
         run: node test/e2e/varsayilan-menu.cjs
       - name: Bitti kolonu testi (Tamamlananlar grubu yok, tamamlanan iş Bitti kolonunda, son 20 / Tümünü göster, Bitti kolonu kilitli, kolonsuz projede ilk kolon Bitti)
         run: node test/e2e/bitti-kolonu.cjs
+      - name: Parametrik proje alanları testi (Alanlar sekmesi ve yetki, hazır alan aç/kapat, kartta değer ve rozet, raporda alan boyutu ve hazır şablonlar, XSS)
+        run: node test/e2e/parametrik-alanlar.cjs
       - name: Sunucu günlüğü
         if: failure()
         run: cat server.log

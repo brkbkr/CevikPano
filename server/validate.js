@@ -6,6 +6,10 @@ const MAX_RECORD = 512 * 1024;
 const str = (v, max = 1000) => typeof v === 'string' && v.length <= max;
 const optStr = (v, max) => v == null || v === '' || str(v, max);
 const date = v => v == null || v === '' || (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v));
+/* Sıkı tarih (canlı yazmada değişen alan): tam 'YYYY-AA-GG' ve takvimde var olan gün. */
+const realDate = v => v == null || v === '' || (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
+  && !Number.isNaN(Date.parse(v + 'T00:00:00Z')) && new Date(v + 'T00:00:00Z').toISOString().slice(0, 10) === v);
+export const ESTIMATE_MAX = 10000;   // saat
 
 const KEY_RE = /^[\p{L}\p{N}_-]{1,20}$/u;
 const ISSUE_KEY_RE = /^[\p{L}\p{N}_-]{1,20}-\d{1,9}$/u;
@@ -77,6 +81,27 @@ export const COL_NAME_MAX = 30;
 /* Yeni proje şablonu (görev 10): yalnız bilgi; boş/yok = şablonsuz (eski) proje. */
 export const PROJECT_TEMPLATES = ['kanban', 'scrum', 'gorev', 'uyarlama', 'talep', 'yolharitasi', 'bos'];
 
+/* Proje alanları (parametrik alanlar). Hazır alanlar (bind) değerini işin yerleşik özelliğinde tutar:
+   billable → issues.data.billable, billType → billType, customerId → customerId. Anahtar ve tür bind'e sabittir. */
+export const FIELD_TYPES = ['text', 'number', 'select', 'date', 'user', 'checkbox', 'cari'];
+export const FIELD_BINDS = { billable: { key: 'fatura', type: 'select' }, billType: { key: 'faturaturu', type: 'select' },
+  customerId: { key: 'cari', type: 'cari' } };
+export const BILLABLE_OPTIONS = ['Faturalanacak', 'Faturalanmayacak'];
+const FIELD_KEY_RE = /^[a-z0-9_]{1,30}$/;
+const MAX_FIELD_OPTIONS = 100;
+const sameJson = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+const optionsOk = o => o == null || (Array.isArray(o) && o.length <= MAX_FIELD_OPTIONS
+  && o.every(x => typeof x === 'string' && x.trim().length >= 1 && x.length <= 100) && new Set(o).size === o.length);
+const defOk = v => v == null || v === '' || typeof v === 'boolean' || (typeof v === 'number' && Number.isFinite(v)) || str(v, 100);
+/* Değer haritası (issue.cf): nesne, en çok 200 anahtar; değerler metin (≤1000), sayı, boolean ya da boş. */
+const MAX_CF_KEYS = 200;
+const cfOk = v => v == null || (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length <= MAX_CF_KEYS
+  && Object.entries(v).every(([k, x]) => k.length <= 200 && (x == null || typeof x === 'boolean'
+    || (typeof x === 'number' && Number.isFinite(x)) || str(x, 1000))));
+/* Sıkı kurallar yalnız canlı yazmada; var olan kayıtta yalnız değişen özellik denetlenir (eski veri kaydedilebilsin).
+   İçe aktarma/geri yükleme gevşek kalır. */
+const changed = (d, opts, k) => !!opts.live && (!opts.cur || !sameJson(opts.cur[k], d[k]));
+
 const RULES = {
   projects: d => [
     [str(d.name, 200) && d.name.trim(), 'Proje adı gerekli'],
@@ -123,14 +148,20 @@ const RULES = {
   ],
   sprints: d => [[str(d.projectId, 200), 'Sprintin projesi yok'], [optStr(d.name, 200), 'Sprint adı çok uzun'],
     [d.plan == null || validPlan(d.plan), 'Geçersiz sprint planı']],
-  issues: d => [
+  issues: (d, opts) => [
     [str(d.projectId, 200), 'İşin projesi yok'],
     [optKey(d.key, ISSUE_KEY_RE), 'Geçersiz iş anahtarı'],
     [typeof d.summary === 'string' && d.summary.length <= 500, 'İş özeti gerekli (en fazla 500 karakter)'],
     [optStr(d.description, 100000), 'Açıklama çok uzun'],
     [date(d.due) && date(d.start), 'Geçersiz tarih'],
+    [(!changed(d, opts, 'start') || realDate(d.start)) && (!changed(d, opts, 'due') || realDate(d.due)),
+      'Tarih YYYY-AA-GG biçiminde geçerli bir gün olmalı'],
+    [!(changed(d, opts, 'start') || changed(d, opts, 'due')) || !d.start || !d.due || String(d.due) >= String(d.start),
+      'Bitiş, başlangıçtan önce olamaz'],
     [d.customerId == null || d.customerId === '' || validId(d.customerId), 'Geçersiz cari'],
     [d.estimate == null || (typeof d.estimate === 'number' && d.estimate >= 0), 'Tahmin negatif olamaz'],
+    [!changed(d, opts, 'estimate') || d.estimate == null || (Number.isFinite(d.estimate) && d.estimate <= ESTIMATE_MAX),
+      `Tahmin en fazla ${ESTIMATE_MAX} saat olabilir`],
     [d.priority == null || (Number.isInteger(d.priority) && d.priority >= 1 && d.priority <= 5), 'Öncelik 1 ile 5 arasında bir tamsayı olmalı'],
     [d.points == null || (typeof d.points === 'number' && Number.isFinite(d.points) && d.points >= 0 && d.points <= 1000), 'Puan 0 ile 1000 arasında bir sayı olmalı'],
     [d.color == null || d.color === '' || (typeof d.color === 'string' && HEX_RE.test(d.color)), 'Renk #RRGGBB biçiminde olmalı'],
@@ -140,7 +171,34 @@ const RULES = {
     [d.requester == null || (typeof d.requester === 'object' && !Array.isArray(d.requester)
       && validId(d.requester.customerId) && validId(d.requester.contactId)), 'Talep eden geçersiz'],
     [optEmail(d.requesterEmail), 'Talep edenin e-posta adresi geçersiz'],
+    [!changed(d, opts, 'cf') || cfOk(d.cf), 'Özel alan değerleri geçersiz (en fazla 200 alan; değer metin, sayı ya da evet/hayır)'],
+    [!changed(d, opts, 'billable') || optStr(d.billable, 100), 'Faturalama değeri en fazla 100 karakter'],
+    [!changed(d, opts, 'billType') || optStr(d.billType, 100), 'Fatura türü değeri en fazla 100 karakter'],
   ],
+  /* Değer serbesttir (zorunluluk yok, eski değerler korunur): seçenek listesine uyum zorlanmaz. */
+  fields: (d, opts) => {
+    const b = d.bind == null || d.bind === '' ? null : d.bind, B = b && Object.hasOwn(FIELD_BINDS, b) ? FIELD_BINDS[b] : null;
+    const cur = opts.cur;
+    return [
+      [!changed(d, opts, 'name') || (typeof d.name === 'string' && d.name.trim().length >= 1 && d.name.length <= 60), 'Alan adı gerekli (en fazla 60 karakter)'],
+      [!changed(d, opts, 'key') || (typeof d.key === 'string' && FIELD_KEY_RE.test(d.key)), 'Alan anahtarı yalnız küçük harf, rakam ve _ içerebilir (en fazla 30)'],
+      [!changed(d, opts, 'type') || FIELD_TYPES.includes(d.type), 'Geçersiz alan türü'],
+      [!changed(d, opts, 'scope') || d.scope == null || d.scope === 'issue', 'Geçersiz alan kapsamı'],
+      [d.projectId == null || d.projectId === '' || validId(d.projectId), 'Geçersiz proje'],
+      [!changed(d, opts, 'options') || optionsOk(d.options), `Seçenekler en fazla ${MAX_FIELD_OPTIONS} tekil metin olmalı (her biri 1–100 karakter)`],
+      [!changed(d, opts, 'def') || defOk(d.def), 'Varsayılan değer geçersiz'],
+      [['onCard', 'onList', 'archived', 'hidden'].every(k => !changed(d, opts, k) || optBool(d[k])), 'Alan işaretleri true ya da false olmalı'],
+      /* Hazır alan: bilinen bind, projeye özel, anahtar/tür sabit; Faturalama seçenekleri değişmez (raporlar ve eski sürüm). */
+      [b == null || !!B, 'Geçersiz hazır alan'],
+      [!opts.live || !B || (typeof d.projectId === 'string' && d.projectId !== ''), 'Hazır alan bir projeye bağlı olmalı'],
+      [!opts.live || !B || (d.key === B.key && d.type === B.type), 'Hazır alanın anahtarı ve türü değiştirilemez'],
+      [!opts.live || b !== 'billable' || d.options == null || sameJson(d.options, BILLABLE_OPTIONS), 'Faturalama seçenekleri değiştirilemez'],
+      [!opts.live || b !== 'customerId' || d.options == null || (Array.isArray(d.options) && !d.options.length), 'Cari alanının seçenekleri cari kayıtlarından gelir'],
+      /* Sonradan değişmez: bind, kapsam ve proje (yetki ve değer yeri bunlara bağlı). */
+      [!opts.live || !cur || ((cur.bind ?? null) === (d.bind ?? null) && (cur.scope ?? 'issue') === (d.scope ?? 'issue')
+        && (cur.projectId || null) === (d.projectId || null)), 'Alanın hazır alan bağı, kapsamı ve projesi sonradan değiştirilemez'],
+    ];
+  },
   worklogs: d => [
     [str(d.issueId, 200), 'Süre kaydının işi yok'],
     [str(d.userId, 200), 'Süre kaydının kişisi yok'],
