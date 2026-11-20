@@ -7805,7 +7805,7 @@ function adminTabs() {
   const pr = P();
   return [['workflow', 'İş akışı'], ['types', 'İş tipleri'], ['fields', 'Alanlar'], ['perms', 'Yetkiler'], ['rules', 'Otomasyon'], ['people', 'Modüller & genel']]
     .filter(([v]) => v === 'perms' ? isProjAdmin(pr)
-      : isAdmin() || (!!pr && (v === 'workflow' ? (canEditCols(pr) || isProjAdmin(pr) || canDesign(pr)) : v === 'fields' && canFields(pr))));
+      : isAdmin() || (!!pr && (v === 'workflow' ? (canEditCols(pr) || isProjAdmin(pr)) : v === 'fields' && canFields(pr))));
 }
 function toolbarAdmin() {
   return `<div class="seg" id="adminTabs">${adminTabs().map(([v, l]) =>
@@ -7817,8 +7817,6 @@ function renderAdmin() {
   const tab = adminTab();
   if (tab === 'workflow') {
     const ss = stats(), pr = P(), nDone = ss.filter(s => s.cat === 'done').length;
-    /* Yalnız "Proje adı ve ayarları" yetkisi olan (kolon yetkisi yok): yalnız geçiş kuralları. */
-    if (!isAdmin() && !canEditCols(pr) && !isProjAdmin(pr)) return gatesPanel(pr);
     /* Proje türü ve kolonlar (#12): tür burada da görünür, değişiklik aynı pencereyle. */
     return `<div class="pt-set">
       <div class="r"><div class="tx"><div class="l">Proje türü</div><div class="d">Menüyü, panoyu ve sprint ekranlarını belirler.</div></div>

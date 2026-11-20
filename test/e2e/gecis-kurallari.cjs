@@ -4,8 +4,8 @@
 // kuralı ekler (sunucuya yazılır). Üye panoda kartı Bitti'ye sürükler → kart yerinde kalır, eksikler uyarıda ("Bitti'ye geçmek
 // için: süre kaydı girin, Fatura türü seçin"); iş detayındaki durum menüsünde Bitti'nin altında eksikler; seçince yine uyarı.
 // Süre + Fatura türü girilince sürükleme geçer. Eski istemci (kuralı atlayan) taşırsa sunucu reddeder, iş geri döner.
-// Rol kuralı (Onaylandı: yalnız Yönetici) Üye'de menü notu; Yönetici taşır. Yalnız "Proje adı ve ayarları" yetkisi olan Üye
-// İş akışı sekmesinde yalnız geçiş kurallarını görür. XSS: alan adı metin olarak basılır. 390 px: yatay kaydırma yok.
+// Rol kuralı (Onaylandı: yalnız Yönetici) Üye'de menü notu; Yönetici taşır. Kolon yetkisi olan Üye kuralları salt okunur
+// görür, "Proje adı ve ayarları" da verilince düzenler. XSS: alan adı metin olarak basılır. 390 px: yatay kaydırma yok.
 const { chromium } = require('playwright');
 const BASE = process.env.BASE_URL || 'http://localhost:3100/';
 const SS = process.env.SS_DIR || '/tmp/pano_gecis_';
@@ -151,15 +151,20 @@ const MSG = "Bitti'ye geçmek için: süre kaydı girin, Fatura türü seçin";
   await flush(Yp); await sleep(300);
   ok('server: Onaylandı saved', (await srv(A, 'issues', I1))?.statusId === S.ok);
 
-  /* ---- 7) Yalnız "Proje adı ve ayarları" yetkisi olan Üye: İş akışı sekmesinde yalnız geçiş kuralları ---- */
-  r = await A.evaluate(async P => { const p = (await API.get('/api/state')).data.projects.find(x => x.id === P);
-    return API.post('/api/sync', { changes: [{ c: 'projects', id: P, op: 'put', data: { ...p, perms: { member: { 'project.settings': true } } }, base: p }] }); }, P);
-  ok('perms: member gets project.settings', r.rejected.length === 0, JSON.stringify(r.rejected));
+  /* ---- 7) Kolon yetkisi olan Üye: İş akışı sekmesinde kurallar salt okunur; "Proje adı ve ayarları" da verilince düzenler ---- */
+  const setMemberPerms = perms => A.evaluate(async ([P, perms]) => { const p = (await API.get('/api/state')).data.projects.find(x => x.id === P);
+    return API.post('/api/sync', { changes: [{ c: 'projects', id: P, op: 'put', data: { ...p, perms: { member: perms } }, base: p }] }); }, [P, perms]);
+  r = await setMemberPerms({ 'project.columns': true });
+  ok('perms: member gets project.columns', r.rejected.length === 0, JSON.stringify(r.rejected));
   const w7 = await waitFor(Mp, () => adminTabs().some(x => x[0] === 'workflow'), null, 12000);
   await openWorkflow(Mp); await sleep(300);
-  const t7 = await Mp.evaluate(() => ({ panel: !!document.getElementById('gkPanel'), cols: !!document.querySelector('[data-st]'), add: !!document.getElementById('gkAdd'),
-    edit: document.querySelectorAll('[data-gkedit]').length }));
-  ok('settings-only member: workflow tab shows only gate rules (editable)', w7 >= 0 && t7.panel && !t7.cols && t7.add && t7.edit === 2, JSON.stringify(t7));
+  const t7 = await Mp.evaluate(() => ({ panel: !!document.getElementById('gkPanel'), add: !!document.getElementById('gkAdd'),
+    edit: document.querySelectorAll('[data-gkedit]').length, ro: !!document.querySelector('#gkPanel .gk-ro'), n: document.querySelectorAll('#gkPanel .gk-rule').length }));
+  ok('columns-only member: gate rules read-only', w7 >= 0 && t7.panel && !t7.add && t7.edit === 0 && t7.ro && t7.n === 2, JSON.stringify(t7));
+  r = await setMemberPerms({ 'project.columns': true, 'project.settings': true });
+  ok('perms: member gets project.settings too', r.rejected.length === 0, JSON.stringify(r.rejected));
+  const w7b = await waitFor(Mp, () => { if (DB.ui.view === 'admin') render(); return !!document.getElementById('gkAdd'); }, null, 12000);
+  ok('settings member: gate rules editable', w7b >= 0 && (await Mp.evaluate(() => document.querySelectorAll('[data-gkedit]').length)) === 2);
   /* XSS adlı alanı kurala ekler: chip ve uyarı metin olarak. */
   await Mp.click('[data-gkedit]'); await sleep(300);
   await Mp.check(`[data-gkf="cf:${FX}"]`); await Mp.click('#gk_ok'); await sleep(300);
