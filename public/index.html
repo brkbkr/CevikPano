@@ -961,6 +961,18 @@ svg.i{width:14px;height:14px;flex-shrink:0;fill:none;stroke:currentColor;stroke-
 .c-fb > span{overflow:hidden;text-overflow:ellipsis;min-width:0}
 .c-fb svg.i{width:11px;height:11px;flex-shrink:0}
 .c-fb.risk{color:var(--risk);background:var(--risk-bg);border-color:var(--risk-line)}
+/* Engelli iş rozeti (açık engelleyeni var) ve "Engelli işler" hızlı süzgeci */
+.blk-b{display:inline-flex;align-items:center;gap:4px;flex-shrink:0;font-size:10.5px;font-weight:700;line-height:16px;padding:1px 7px 1px 5px;border-radius:999px;
+  color:var(--risk);background:var(--risk-bg);border:1px solid var(--risk-line);white-space:nowrap;cursor:help}
+.blk-b svg.i{width:11px;height:11px}
+.blk-b b{font-weight:700;padding-left:4px;margin-left:1px;border-left:1px solid var(--risk-line)}
+.b-blk{display:inline-flex;align-items:center;gap:6px}
+.b-blk svg.i{width:14px;height:14px;color:var(--risk)}
+.b-blk b{font-size:11px;font-weight:600;color:var(--ink3)}
+.b-blk.on{color:var(--risk);background:var(--risk-bg);border-color:var(--risk-line)}
+.b-blk.on b{color:var(--risk)}
+.id-mic.blk{background:var(--risk-bg);color:var(--risk)}
+.blk-list{display:flex;flex-direction:column;gap:6px;max-height:240px;overflow:auto}
 
 .c-meta{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--meta);flex-wrap:wrap;row-gap:4px;min-height:24px;white-space:nowrap}
 .c-sep{width:3px;height:3px;border-radius:50%;background:var(--line2);flex-shrink:0}
@@ -4065,7 +4077,14 @@ function matches(i) {
   if (b.q) { const q = b.q.toLowerCase(); if (!(String(i.summary || '').toLowerCase().includes(q) || String(i.key || '').toLowerCase().includes(q))) return false; }
   if (b.filterUser && i.assignee !== b.filterUser) return false;
   if (b.filterType && i.type !== b.filterType) return false;
+  if (b.blocked && !isBlocked(i)) return false;            // "Engelli işler" hızlı süzgeci (kişisel, user_prefs)
   return true;
+}
+/* "Engelli işler" hızlı süzgeci düğmesi (pano, aktif sprint, backlog, zaman çizelgesi); sayı projedeki engelli iş sayısı. */
+function blkToggle() {
+  const on = !!DB.board.blocked, n = issuesOf().filter(i => i.type !== 'epic' && isBlocked(i)).length;
+  return `<button type="button" class="btn b-blk${on ? ' on' : ''}" id="fBlk" aria-pressed="${on}"
+    title="${on ? 'Tüm işleri göster' : 'Yalnız engelli işleri göster'}">${ic('ban')}Engelli işler<b class="num">${n}</b></button>`;
 }
 /* Kalan süre Jira'daki gibi bağımsız bir alandır: normalde süre kaydı kadar
    otomatik azalır, ama kayıt sırasında elle geçersiz kılınabilir. */
@@ -4169,6 +4188,7 @@ const SVG = {
   later: '<path d="M20.5 9.5V7.5A2.5 2.5 0 0 0 18 5H6a2.5 2.5 0 0 0-2.5 2.5V18A2.5 2.5 0 0 0 6 20.5h4"/><path d="M16 3v4M8 3v4M3.5 10h7"/><circle cx="17" cy="17" r="4.5"/><path d="M17 15v2l1.3 1.2"/>',
   nodate: '<path d="M5 5.2A2.5 2.5 0 0 0 3.5 7.5V18A2.5 2.5 0 0 0 6 20.5h12a2.5 2.5 0 0 0 2.3-1.5M20.5 15V7.5A2.5 2.5 0 0 0 18 5h-7.5M3.5 10h6.5M14 10h6.5M16 3v4M8 3v1.5M3 3l18 18"/>',
   pause: '<circle cx="12" cy="12" r="9"/><path d="M10 15V9M14 15V9"/>',
+  ban: '<circle cx="12" cy="12" r="9"/><path d="m5.7 5.7 12.6 12.6"/>',
   arrow: '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
   timeplus: '<path d="M20.9 13A9 9 0 1 0 12 21"/><path d="M12 7v5l3 2"/><path d="M18.5 15.5v6M15.5 18.5h6"/>',
   hour: '<path d="M6.5 3h11M6.5 21h11"/><path d="M7.5 3v2.5a4.5 4.5 0 0 0 9 0V3M7.5 21v-2.5a4.5 4.5 0 0 1 9 0V21"/>',
@@ -4376,6 +4396,7 @@ function toolbarBoard(sprintView) {
         .map(([v, l]) => `<option value="${v}" ${DB.board.swimlane === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
     <button type="button" class="btn b-subs" id="fSubs" role="switch" aria-checked="${DB.board.subs !== false}"
       title="${DB.board.subs !== false ? 'Alt işleri gizle' : 'Alt işleri göster'}">${ic('subs')}Alt işler<span class="b-sw" aria-hidden="true"></span></button>
+    ${blkToggle()}
     <div class="spacer"></div>
     ${canEditCols(P()) ? `<button class="btn" id="colsEdit">${ic('cols')}Kolonları düzenle</button>` : ''}
     ${canCreate() ? '<button class="btn pri" id="newIssue">+ İş oluştur</button>' : ''}`;
@@ -4420,7 +4441,7 @@ function card(i) {
   const kids = kidsOf(i.id), kd = kids.filter(k => stat(k.statusId).cat === 'done').length;
   const tags = Array.isArray(i.labels) ? i.labels : [];
   /* İlerleme sağa yaslanır: dar kolonda alt satıra geçse de sarkan ayraç kalmaz. */
-  const meta = [priBadge(i, edit), cardDue(i, done)].filter(Boolean);
+  const meta = [blkBadge(i), priBadge(i, edit), cardDue(i, done)].filter(Boolean);
   return `<article class="card ${done ? 'is-done' : ''}" draggable="${edit}" data-id="${esc(i.id)}">
     ${edit ? (done
       ? `<button type="button" class="c-tick on" data-reopen="${esc(i.id)}" title="Yeniden aç" aria-label="Yeniden aç">${ic('check')}</button>`
@@ -4619,6 +4640,7 @@ function toolbarBacklog() {
   return `<div class="search"><input class="inp" id="q" placeholder="Backlog ara…" value="${esc(DB.board.q)}"></div>
     <select class="inp" id="fUser" style="width:auto"><option value="">Herkes</option>
       ${DB.users.map(u => `<option value="${u.id}" ${DB.board.filterUser === u.id ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select>
+    ${blkToggle()}
     <div class="spacer"></div>
     ${P() && (canP(P(), 'sprint.edit') || canManageProject(P())) && AGILE() ? '<button class="btn" id="newSprint">+ Sprint oluştur</button>' : ''}
     ${canCreate() ? '<button class="btn pri" id="newIssue">+ İş oluştur</button>' : ''}`;
@@ -4631,7 +4653,7 @@ function blRow(i) {
       ? `<button class="cbox on" data-reopen="${esc(i.id)}" title="Yeniden aç">✓</button>`
       : `<button class="cbox" data-complete="${esc(i.id)}" title="Tamamla"></button>`) : ''}
     ${tIcon(i.type)}<span class="k" style="color:var(--ink3);width:64px">${esc(i.key)}</span>
-    ${parChip(i)}<span class="sum">${esc(i.summary)}</span>
+    ${parChip(i)}<span class="sum">${esc(i.summary)}</span>${blkBadge(i)}
     ${ep ? `<span class="epic-tag" style="background:${safeColor(ep.color || '#6B4FBB')};margin:0">${esc(ep.summary)}</span>` : ''}
     ${pIcon(i.priority)}
     ${i.estimate ? `<span class="k" style="color:var(--ink3)">${fmtDur(i.estimate)}</span>` : ''}
@@ -4963,7 +4985,7 @@ function renderTimesheet() {
         id, open: id,
         label: `<div style="display:flex;align-items:center;gap:7px">${tIcon(i.type)}<span class="k" style="color:var(--ink3)">${i.key}</span>
                 <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(i.summary)}</span>
-                ${tsAllMode() ? `<span class="chip lbl">${esc(projName(i.projectId))}</span>` : ''}</div>`,
+                ${blkBadge(i)}${tsAllMode() ? `<span class="chip lbl">${esc(projName(i.projectId))}</span>` : ''}</div>`,
         pick: w => w.issueId === id };
       });
 
@@ -5914,7 +5936,7 @@ function propMenu(kind, btn) {
     return pool.filter(u => hit(u.name)).map(u => pmOpt(u.id, cur, `<span class="c-av" style="background:${safeColor(u.color)}">${esc(u.ini || '?')}</span>`, esc(u.name))).join('') || '<div class="qm-empty">Eşleşen kişi yok</div>'; };
   const M = {
     status: () => ({ title: 'Durum', list: () => statsOf(i.projectId).map(s => pmOpt(s.id, i.statusId, `<span class="cat-dot ${esc(s.cat)}"></span>`, esc(s.name))).join(''),
-      pick: v => after(idSet(i, 'statusId', v)) }),
+      pick: v => blkGuard(i, v, () => after(idSet(issue(i.id), 'statusId', v))) }),
     pri: () => ({ kind: 'pri', title: 'Öncelik', list: () => qmPriList(i), pick: v => after(idSet(i, 'priority', +v)) }),
     as: () => ({ kind: 'as', title: 'Atanan kişi', search: issueUsers(i).length > 8, list: q => qmAsList(i, q), pick: v => after(idSet(i, 'assignee', v || null)) }),
     req: () => ({ kind: 'req', title: 'Talep eden', search: true, list: reqList(reqVal(i.requester), reqMode(projOfI(i)) === 'req', projOfI(i)),
@@ -6025,7 +6047,8 @@ function idClick(e) {
   if (hit('#idDescNo')) return idCancel();
   if (hit('[data-copykey]')) return copyText(`${i.key} ${i.summary}`);
   if (hit('#logHere')) return worklogForm({ issueId: i.id });
-  if ((b = hit('[data-next]'))) { if (idSet(i, 'statusId', b.dataset.next)) refreshIssue(['all']); return; }
+  if ((b = hit('[data-next]'))) { const to = b.dataset.next;
+    return blkGuard(i, to, () => { if (idSet(issue(i.id), 'statusId', to)) refreshIssue(['all']); }); }
   if ((b = hit('[data-feed]'))) { DB.ui.idFeed = b.dataset.feed; ID_MORE = 0; save(); refreshIssue(['act']); return; }
   if (hit('#idMoreFeed')) { ID_MORE++; return refreshIssue(['act']); }
   if (hit('#addSub')) return subTaskForm(i.id);
@@ -6822,6 +6845,7 @@ function wireToolbar() {
   on('#fType', 'onchange', e => { DB.board.filterType = e.target.value; save(); render(); });
   on('#fSwim', 'onchange', e => { DB.board.swimlane = e.target.value; save(); render(); });
   on('#fSubs', 'onclick', () => { DB.board.subs = DB.board.subs === false; save(); render(); $('#fSubs')?.focus(); });
+  on('#fBlk', 'onclick', () => { DB.board.blocked = !DB.board.blocked; save(); render(); $('#fBlk')?.focus(); });
   on('#newIssue', 'onclick', () => newIssueForm());
   on('#newIssue2', 'onclick', () => newIssueForm({ sprintId: '' }));
   on('#newSprint', 'onclick', () => sprintForm());
@@ -6832,6 +6856,9 @@ function wireToolbar() {
   on('#ptSprintW', 'onchange', e => { const p = P(); if (!canManageProject(p)) return;
     const w = parseInt(e.target.value, 10); if (!(w >= 1 && w <= 8)) return;
     p.sprintWeeks = w; save(); render(); toast(`Sprint süresi ${w} hafta`); });
+  on('#ptBlkWarn', 'onclick', () => { const p = P(); if (!p || !canP(p, 'project.settings')) return;
+    p.blockWarn = !blockWarnOn(p); save(); render(); $('#ptBlkWarn')?.focus();
+    toast(p.blockWarn ? 'Engelli iş uyarısı açıldı' : 'Engelli iş uyarısı kapatıldı'); });
   on('#logWork', 'onclick', () => logWorkForm());
   const sc = $('#scope'); if (sc) sc.onclick = e => { const b = e.target.closest('[data-s]');
     if (b) { DB.board.scope = b.dataset.s; save(); render(); } };
@@ -6988,10 +7015,15 @@ function wire() {
     e.preventDefault();
     const i = issue(DRAG); if (!i) return;
     if (z.dataset.drop === 'status') {
-      i.rank = dropIndexRank(z, e.clientY, '.card');
-      setStatus(i, z.dataset.status);
-      const act = activeSprint();
-      if (act && AGILE() && !i.sprintId && DB.board.scope !== 'all') histSet(i, 'sprintId', act.id);
+      /* Engelli iş Bitti kolonuna çekilirse önce sorulur (blkGuard); Vazgeç'te hiçbir şey değişmez. */
+      const rank = dropIndexRank(z, e.clientY, '.card'), sid = z.dataset.status, id = i.id;
+      DRAG = null;
+      return blkGuard(i, sid, () => { const x = issue(id); if (!x) return render();
+        x.rank = rank;
+        setStatus(x, sid);
+        const act = activeSprint();
+        if (act && AGILE() && !x.sprintId && DB.board.scope !== 'all') histSet(x, 'sprintId', act.id);
+        save(); render(); });
     } else {
       const to = z.dataset.sprint || null;
       if (i.sprintId !== to) logHist(i, 'Sprint', i.sprintId ? sprint(i.sprintId).name : 'Backlog', to ? sprint(to).name : 'Backlog');
@@ -7151,6 +7183,8 @@ const QF = {
   fatura:     { g: i => billOf(i) },
   faturaturu: { g: i => btypeOf(i) },
   cari:       { g: i => customerOf(i) },
+  /* Engelli: açık engelleyeni olan açık iş (isBlocked). engelli = evet | hayır */
+  engelli:    { g: i => isBlocked(i) ? 'Evet' : 'Hayır', alt: i => isBlocked(i) ? 'true' : 'false' },
 };
 /* Öncelik adları büyük/küçük harf ve ı/i farkı gözetmeden; eski adlar takma ad. */
 const priKey = v => String(v).toLocaleLowerCase('tr').replace(/ı/g, 'i').trim();
@@ -7292,6 +7326,7 @@ const SAMPLES = [
   ['Yüksek öncelikli açık işler', 'oncelik <= 2 AND kategori != Bitti'],
   ['Geciken işler', 'bitis < "' + TODAY + '" AND kategori != Bitti'],
   ['Tarihsiz açık işler', 'bitis IS EMPTY AND kategori != Bitti'],
+  ['Engelli işler', 'engelli = evet'],
   ['1 günden uzun kalan', 'kalan > 1d AND kategori != Bitti'],
 ];
 
@@ -7330,7 +7365,7 @@ function renderSearch() {
         <td>${canEdit() ? `<input type="checkbox" data-sel="${i.id}" ${SEL.has(i.id) ? 'checked' : ''}>` : ''}</td>
         <td class="who"><div style="display:flex;align-items:center;gap:7px">${tIcon(i.type)}
           <span class="k" style="color:var(--ink3)">${i.key}</span>
-          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(i.summary)}</span></div></td>
+          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(i.summary)}</span>${blkBadge(i)}</div></td>
         <td style="font-size:11.5px">${TYPE[i.type][2]}</td>
         <td><span class="chip cat-${s.cat}">${esc(s.name)}</span></td>
         <td>${avat(i.assignee)}</td>
@@ -7403,6 +7438,57 @@ function linksOf(id) {
   return DB.links.filter(l => l.from === id || l.to === id).map(l => ({
     l, other: issue(l.from === id ? l.to : l.from), label: LINKT[l.type][l.from === id ? 0 : 1],
   })).filter(x => x.other);
+}
+/* ---- Engelli iş (PO önerisi 1): links {from, to, type:'blocks'} → from, to'yu engeller.
+   Engelli = kendisi açık (Bitti değil) ve en az bir açık engelleyicisi olan iş. Engelleyen yerelde yoksa
+   (okuma süzmesiyle gelmeyen proje) bilinemez, sayılmaz. Bitti'ye alırken uyarı projede kapatılabilir
+   (projects.data.blockWarn === false); sert engel değildir, sunucu kuralı yok. */
+const isOpenIssue = i => !!i && stat(i.statusId).cat !== 'done';
+function openBlockers(i) {
+  if (!i) return [];
+  const seen = new Set(), out = [];
+  for (const l of DB.links || []) {
+    if (!l || l.type !== 'blocks' || l.to !== i.id || l.from === i.id || seen.has(l.from)) continue;
+    const b = issue(l.from);
+    if (b && isOpenIssue(b)) { seen.add(b.id); out.push(b); }
+  }
+  return out;
+}
+const isBlocked = i => isOpenIssue(i) && openBlockers(i).length > 0;
+const blkName = b => { const p = DB.projects.find(x => x.id === b.projectId);
+  return p && canSeeProject(p) ? `${b.key} ${b.summary || ''}`.trim() : 'erişemediğin bir iş'; };
+/* "Engelli" rozeti; üzerine gelince (title) engelleyen açık işler listelenir. */
+function blkBadge(i) {
+  const bs = isOpenIssue(i) ? openBlockers(i) : [];
+  if (!bs.length) return '';
+  const tip = `Engelleyen açık iş${bs.length > 1 ? 'ler' : ''} (${bs.length}):\n` + bs.map(blkName).join('\n');
+  return `<span class="blk-b" data-blk="${esc(i.id)}" role="img" title="${esc(tip)}" aria-label="${esc('Engelli. ' + tip.replace(/:\n/, ': ').replace(/\n/g, '; '))}">${ic('ban')}<span>Engelli</span>${
+    bs.length > 1 ? `<b class="num">${bs.length}</b>` : ''}</span>`;
+}
+const blockWarnOn = p => !!p && p.blockWarn !== false;
+/* Bitti'ye alma kapısı: hedef durum Bitti kategorisindeyse, iş açıksa, projede uyarı açıksa ve açık engelleyen
+   varsa onay sorar; "Yine de tamamla" go()'yu çağırır, Vazgeç hiçbir şey değiştirmez. Diğer her durumda go() hemen. */
+function blkGuard(i, sid, go) {
+  const to = DB.statuses.find(s => s.id === sid);
+  const bs = i && to && to.cat === 'done' && isOpenIssue(i) && blockWarnOn(DB.projects.find(p => p.id === i.projectId)) ? openBlockers(i) : [];
+  if (!bs.length) return go();
+  const n = bs.length;
+  const m = openSub(`<div class="id-mh"><span class="id-mic blk">${ic('ban')}</span>
+      <div class="tx"><b id="blkTitle">Bu işi engelleyen ${n} açık iş var</b><div class="sub">${esc(i.key)} · ${esc(i.summary || '')}</div></div>
+      <button type="button" class="id-ib" data-close aria-label="Kapat">${ic('x')}</button></div>
+    <div class="id-mb">
+      <div class="id-sec2">Engelleyen işler</div>
+      <div class="blk-list">${bs.map(b => { const see = blkName(b) !== 'erişemediğin bir iş', s = stat(b.statusId);
+        return `<div class="id-delitem">${see ? `<span class="k">${esc(b.key)}</span><span class="t">${esc(b.summary || '')}</span>
+          <span class="chip cat-${esc(s.cat)}">${esc(s.name)}</span>` : '<span class="t">erişemediğin bir iş</span>'}</div>`; }).join('')}</div>
+      <div class="id-delw">${ic('alert')}<span>Engelleyen işler bitmeden bu işi <b>${esc(to.name)}</b> durumuna almak istediğine emin misin?</span></div>
+    </div>
+    <div class="m-f"><span class="spacer"></span><button type="button" class="btn" id="blkNo" data-close>Vazgeç</button>
+      <button type="button" class="btn pri" id="blkOk">${ic('checkc')}Yine de tamamla</button></div>`, 'narrow id-m id-trap');
+  m.setAttribute('role', 'alertdialog'); m.setAttribute('aria-labelledby', 'blkTitle');
+  setTimeout(() => $('#blkNo')?.focus(), 40);
+  $('#blkOk').onclick = () => { closeSubOrModal(); go();
+    if (OPEN_ISSUE && issue(OPEN_ISSUE) && $('#scrim .modal.id-dlg')) refreshIssue(['all']); };
 }
 /* ============================================================
    4) OTOMASYON
@@ -7627,7 +7713,12 @@ function renderAdmin() {
         <div class="d">Yeni sprintin bitişi bu süreye göre önerilir.</div></div>
         ${canManageProject(pr) ? `<select class="inp" id="ptSprintW" style="width:auto">${[1, 2, 3, 4, 5, 6, 7, 8].map(w =>
           `<option value="${w}" ${sprintWeeks(pr) === w ? 'selected' : ''}>${w} hafta</option>`).join('')}</select>`
-          : `<span class="chip">${sprintWeeks(pr)} hafta</span>`}</div>` : ''}</div>
+          : `<span class="chip">${sprintWeeks(pr)} hafta</span>`}</div>` : ''}
+      <div class="r"><div class="tx"><div class="l" id="ptBlkWarnL">Engelli işi Bitti'ye alırken uyar</div>
+        <div class="d">Açık engelleyeni olan bir iş Bitti'ye alınırken onay sorulur; kişi yine de devam edebilir.</div></div>
+        ${canP(pr, 'project.settings') ? `<button type="button" class="btn b-subs" id="ptBlkWarn" role="switch" aria-checked="${blockWarnOn(pr)}"
+          aria-labelledby="ptBlkWarnL">${blockWarnOn(pr) ? 'Açık' : 'Kapalı'}<span class="b-sw" aria-hidden="true"></span></button>`
+          : `<span class="chip" id="ptBlkWarnRo">${blockWarnOn(pr) ? 'Açık' : 'Kapalı'}</span>`}</div></div>
     <div class="panel"><h3>Durumlar ve kolonlar</h3>
       <div class="sub">Pano kolonları bu sırayla oluşur. <b>Kategori</b> raporları belirler — durum adını değiştirmek raporları bozmaz.</div>
       ${ss.map((s, k) => `<div class="row" style="border:1px solid var(--line);border-radius:6px;margin-bottom:6px;cursor:default">
@@ -10337,6 +10428,7 @@ function homeRow(i, c) {
   const rem = +remaining(i) || 0;
   if (rem > 0) sub.push(`<span class="rem" title="Kalan süre">${ic('hour')}${efFmtSafe(rem)} kalan</span>`);
   const bl = c.blocker.get(i.id);
+  const bb = bl ? blkBadge(i) : ''; if (bb) sub.unshift(bb);
   if (bl) { const p = DB.projects.find(x => x.id === bl.projectId), see = p && canSeeProject(p);
     sub.push(`<span class="blk" title="Engelleyen iş">${ic('link')}Bekliyor: ${see
       ? `<span class="k">${esc(bl.key)}</span> ${esc(bl.summary)}` : 'erişemediğin bir iş'}</span>`); }
@@ -10433,6 +10525,9 @@ function homeAdvance(id, to) {
   /* bu arada durumlar değişmiş (sonraki durum yok/başka ya da silinmiş): işlem yok, güncel hâli göster */
   if (!nx || nx.id !== to || !DB.statuses.some(s => s.id === to)) {
     toast('Durumlar değişti, yeniden deneyin', { warn: true }); return render(); }
+  blkGuard(i, nx.id, () => { const x = issue(id); if (x && nextStatus(x)?.id === nx.id) homeAdvanceNow(x, nx); });
+}
+function homeAdvanceNow(i, nx) {
   const was = i.statusId, me = i.assignee || null, near = homeNeighbors(i.id);
   setStatus(i, nx.id); save(); render();
   const now = i.assignee || null, items = [{ id: i.id, f: 'statusId', was, now: i.statusId }];
@@ -13561,6 +13656,7 @@ function toolbarPlan() {
         `<option value="${v}" ${(DB.ui.planGroup || 'none') === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
     <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink2)">
       <input type="checkbox" id="planUnset" ${DB.ui.planUnset ? 'checked' : ''}> Tarihsizleri de göster</label>
+    ${blkToggle()}
     <div class="spacer"></div>
     ${canCreate() ? '<button class="btn pri" id="planNew">+ İş oluştur</button>' : ''}`;
 }
@@ -13616,7 +13712,7 @@ function renderPlan() {
         <div style="display:flex;align-items:center;gap:7px">
           ${tIcon(i.type)}<span class="k" style="color:var(--ink3)">${i.key}</span>
           <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(i.summary)}</span>
-          ${avat(i.assignee)}
+          ${blkBadge(i)}${avat(i.assignee)}
         </div>
       </td>
       <td class="pl-dates"><span class="k">${i.start ? fmtD(i.start) : '—'} → ${i.due ? fmtD(i.due) : '—'}</span>
@@ -13747,6 +13843,10 @@ function completeIssue(id, undo = false) {
   const ds = doneStatus(i.projectId);
   if (!ds) return toast('Bu projede "Bitti" kategorisinde durum yok');
   if (stat(i.statusId).cat === 'done') return;
+  return blkGuard(i, ds.id, () => completeNow(id, ds, undo));
+}
+function completeNow(id, ds, undo) {
+  const i = issue(id); if (!i || !canEdit() || stat(i.statusId).cat === 'done') return;
   const prev = [{ id: i.id, f: 'statusId', was: i.statusId, now: ds.id, df: true }], as0 = i.assignee || null;
   i.doneFrom = i.statusId;
   setStatus(i, ds.id);
