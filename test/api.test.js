@@ -1643,24 +1643,24 @@ describe('cariler', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     const I = (id, pid, extra = {}) => ({ c: 'issues', id, op: 'put', data: { projectId: pid, summary: 'Yetim işi ' + id, ...extra } });
     const req = { customerId: 'c_yt', contactId: 'ct_yt' };
     ok(await A.sync([cu('c_yt', firm('Yetim Carisi', { contacts: [{ id: 'ct_yt', name: 'Yetim Kişi' }] })), cu('c_yk2', firm('Kalan Cari')),
-      P('p_yt', { customerId: 'c_yt' }), P('p_yt2'),
-      I('i_yt', 'p_yt', { customerId: 'c_yt', requester: req }), I('i_yt2', 'p_yt2', { customerId: 'c_yt' }), I('i_yk', 'p_yt2', { customerId: 'c_yk2' })]));
+      P('p_yc', { customerId: 'c_yt' }), P('p_yc2'),
+      I('i_yt', 'p_yc', { customerId: 'c_yt', requester: req }), I('i_yc2', 'p_yc2', { customerId: 'c_yt' }), I('i_yk', 'p_yc2', { customerId: 'c_yk2' })]));
     const b = (await A.req('POST', '/api/backups', { label: 'yetim öncesi' })).json;
-    /* i_yt2 çöpe; p_yt ve i_yt bağı kalkar; cari silinir (yedekten de çıkar) */
-    ok(await A.sync([del('issues', 'i_yt2')]));
-    const p = (await row('projects', 'p_yt')).data, i = (await row('issues', 'i_yt')).data;
+    /* i_yc2 çöpe; p_yc ve i_yt bağı kalkar; cari silinir (yedekten de çıkar) */
+    ok(await A.sync([del('issues', 'i_yc2')]));
+    const p = (await row('projects', 'p_yc')).data, i = (await row('issues', 'i_yt')).data;
     const { customerId: _a, ...p0 } = p, { customerId: _b, requester: _c, ...i0 } = i;
-    ok(await A.sync([{ c: 'projects', id: 'p_yt', op: 'put', data: p0, base: p }, { c: 'issues', id: 'i_yt', op: 'put', data: i0, base: i }]));
+    ok(await A.sync([{ c: 'projects', id: 'p_yc', op: 'put', data: p0, base: p }, { c: 'issues', id: 'i_yt', op: 'put', data: i0, base: i }]));
     ok(await A.sync([del('customers', 'c_yt')]));
     /* çöp kutusundan: bağsız */
-    const t = (await A.req('GET', '/api/trash')).json.find(x => x.record_id === 'i_yt2');
+    const t = (await A.req('GET', '/api/trash')).json.find(x => x.record_id === 'i_yc2');
     assert.equal((await A.req('POST', `/api/trash/${t.id}/restore`, {})).json.restored, 1);
-    let r2 = await row('issues', 'i_yt2');
+    let r2 = await row('issues', 'i_yc2');
     assert.equal(r2.customer_id, null); assert.equal(r2.data.customerId, undefined);
     /* yedekten: proje ve işlerde silinmiş cari bağı (ve talep eden) kalkar; var olan cari bağı korunur */
     assert.equal((await A.req('POST', `/api/backups/${b.id}/restore`, {})).status, 200);
-    const pr = await row('projects', 'p_yt'), ir = await row('issues', 'i_yt');
-    r2 = await row('issues', 'i_yt2');
+    const pr = await row('projects', 'p_yc'), ir = await row('issues', 'i_yt');
+    r2 = await row('issues', 'i_yc2');
     assert.equal(pr.customer_id, null); assert.equal(pr.data.customerId, undefined);
     assert.equal(ir.customer_id, null); assert.equal(ir.data.customerId, undefined); assert.equal(ir.data.requester, undefined);
     assert.equal(r2.customer_id, null);
@@ -3625,10 +3625,11 @@ describe('alan rolleri', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
   test('yöneticisiz alan (Genel): projeye eklenmemiş genel Üye yazamaz; eklenince proje rolüyle yazar; genel İzleyici proje Üyesiyse yazar', async () => {
     rej(await C.X.sync([iss('i_rl1', 'p1', { statusId: 'p1_s0' })]), NO);
     ok(await C.A.sync([put('projects', 'p_rl', { name: 'Eski alan', key: 'RLE', workspaceId: 'ws1' }),
-      put('statuses', 'p_rl_s0', { projectId: 'p_rl', name: 'Yapılacak', cat: 'todo', ord: 0 })]));
-    rej(await C.X.sync([put('statuses', 'p_rl_s1', { projectId: 'p_rl', name: 'Bitti', cat: 'done', ord: 1 })]), NO);
+      put('statuses', 'p_rl_s0', { projectId: 'p_rl', name: 'Yapılacak', cat: 'todo', ord: 0 }),
+      put('statuses', 'p_rl_s9', { projectId: 'p_rl', name: 'Bitti', cat: 'done', ord: 9 })]));
+    rej(await C.X.sync([put('statuses', 'p_rl_s1', { projectId: 'p_rl', name: 'Testte', cat: 'inprogress', ord: 1 })]), NO);
     await addRoles(C.A, 'p_rl', { u_rx: 'member', u_rg: 'member' });
-    rej(await C.X.sync([put('statuses', 'p_rl_s1', { projectId: 'p_rl', name: 'Bitti', cat: 'done', ord: 1 })]), COLS_PERM);
+    rej(await C.X.sync([put('statuses', 'p_rl_s1', { projectId: 'p_rl', name: 'Testte', cat: 'inprogress', ord: 1 })]), COLS_PERM);
     const pl = await row('projects', 'p_rl');
     rej(await C.X.sync([put('projects', 'p_rl', { ...pl, name: 'Eski alan (Üye)' }, pl)]), SET);
     ok(await C.X.sync([iss('i_rl1', 'p_rl', { statusId: 'p_rl_s0' })]));
@@ -4500,6 +4501,7 @@ describe('proje rolleri (yetki-v2)', { skip: !URL && 'TEST_DATABASE_URL yok' }, 
       put('fields', 'f_yt1', { projectId: 'p_yt', key: 'yt_alan', name: 'Gizli alan', type: 'text' }),
       put('projects', 'p_yt2', { name: 'Başka proje', key: 'YT2', counter: 0, workspaceId: 'ws_y', roles: { u_ym: 'member' } }),
       put('statuses', 'p_yt2_s0', { projectId: 'p_yt2', name: 'Yapılacak', cat: 'todo', ord: 0 }),
+      put('statuses', 'p_yt2_s1', { projectId: 'p_yt2', name: 'Bitti', cat: 'done', ord: 1 }),
     ]));
     const p = await row('projects', 'p_yt');
     assert.equal(p.ownerId, 'u_admin');
@@ -4860,6 +4862,7 @@ describe('cariler modülü ve cari alanları', { skip: !URL && 'TEST_DATABASE_UR
       put('projects', 'p_cm', { name: 'Cari modül', key: 'CMP', counter: 0, workspaceId: 'ws_cm' }),
       put('projects', 'p_cmt', { name: 'Cari modül talep', key: 'CMT', counter: 0, workspaceId: 'ws_cm', template: 'talep' }),
       put('statuses', 'p_cmt_s0', { projectId: 'p_cmt', name: 'Yeni', cat: 'todo', ord: 0 }),
+      put('statuses', 'p_cmt_s9', { projectId: 'p_cmt', name: 'Bitti', cat: 'done', ord: 9 }),
       put('customers', 'c_cm1', { name: 'Modül Deneme A.Ş.', kind: 'customer', contacts: [{ id: 'ct_cm1', name: 'Deneme Kişi' }] })]));
   });
   after(async () => { if (A) await A.sync([mods({ customers: true })]); });

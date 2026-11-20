@@ -51,6 +51,7 @@ const XSS = '<img src=x onerror="window.__xss=1">';
       { c: 'customers', id: CU2, op: 'put', data: { name: `Modül İki ${R} Ltd.`, kind: 'supplier', taxNo: T + '002', active: true, contacts: [] } },
       { c: 'projects', id: PT, op: 'put', data: { name: 'Modül Talep ' + R, key: 'MT' + R.toUpperCase().replace(/[^A-Z0-9]/g, ''), counter: 0, template: 'talep', type: 'board', workspaceId: 'ws1', members: [M] } },
       { c: 'statuses', id: PT + '_s0', op: 'put', data: { projectId: PT, name: 'Yeni', cat: 'todo', ord: 0 } },
+      { c: 'statuses', id: PT + '_s1', op: 'put', data: { projectId: PT, name: 'Bitti', cat: 'done', ord: 1 } },
     ] });
     if (r.rejected?.length) throw new Error(JSON.stringify(r.rejected));
     await reloadState();

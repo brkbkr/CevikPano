@@ -160,6 +160,7 @@ const P1 = 'p_pm' + R, KEY = 'PM' + R.toUpperCase();
   r = await A.evaluate(async ([P2, P2N, KEY, Y, M]) => (await API.post('/api/sync', { changes: [
     { c: 'projects', id: P2, op: 'put', data: { name: P2N, key: KEY + 'D', code: KEY + 'D', counter: 1, workspaceId: 'ws1', type: 'board', roles: { [Y]: 'admin', [M]: 'member' } } },
     { c: 'statuses', id: P2 + '_s0', op: 'put', data: { projectId: P2, name: 'Yapılacak', cat: 'todo', wip: 0, ord: 0 } },
+    { c: 'statuses', id: P2 + '_s1', op: 'put', data: { projectId: P2, name: 'Bitti', cat: 'done', wip: 0, ord: 1 } },
     { c: 'issues', id: P2 + '_i1', op: 'put', data: { projectId: P2, key: KEY + 'D-1', summary: 'Silinecek iş', statusId: P2 + '_s0', type: 'task' } },
   ] })), [P2, P2N, KEY, Y, M]);
   ok('delete setup accepted', r.rejected.length === 0, JSON.stringify(r.rejected));
