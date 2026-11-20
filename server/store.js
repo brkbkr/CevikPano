@@ -183,6 +183,7 @@ async function applyOnce(pool, me, ordered, opts = {}) {
   let applied = 0;
   const batch = randomUUID();
   const ctx = { me, batch, adjusted, touchedIssues: new Set(), cols: new Map(), colNamed: new Set(), system: opts.system === true };
+  gateCtx(ctx, ordered.map(x => x[2]));
   const meAdmin = isAdminRole(me.role);
   const rejIdx = new Map();                         // ret listesi gönderim sırasında döner
 
@@ -259,6 +260,7 @@ async function applyOnce(pool, me, ordered, opts = {}) {
     }
     /* Harcanan süre her zaman süre kayıtlarının toplamıdır (eşzamanlı kayıtta kayma olmasın). */
     for (const iid of ctx.touchedIssues) await recomputeSpent(c, ctx, iid);
+    await recheckGates(c, ctx);
     await checkColumns(c, ctx);
     const admins = Number((await c.query(
       `SELECT count(*) AS n FROM users WHERE active AND role IN ('admin','super')`)).rows[0].n);
@@ -299,6 +301,7 @@ async function applyRecord(c, ctx, ch) {
   }
   if (ch.c === 'worklogs') { if (cur?.issueId) ctx.touchedIssues.add(cur.issueId); if (ch.data?.issueId) ctx.touchedIssues.add(ch.data.issueId); }
   if (ch.c === 'reports') checkReportOwner(me, cur);
+  if (ch.op === 'put' && (ch.c === 'transitions' || ch.c === 'history')) gateOrphan(ctx, ch, cur);
   /* Başkasının ya da yazarı olmayan eski yorum: değiştirme/silme yalnız yönetici. Kayıt yoksa silme zaten etkisiz. */
   if (ch.c === 'comments' && !meAdmin && cur && cur.userId !== me.id) throw new HttpError(403, COMMENT_FORBIDDEN);
   if (ch.c === 'history') {
@@ -434,6 +437,7 @@ async function applyRecord(c, ctx, ch) {
   if (ch.c === 'workspaces' && await enforceWsAdmins(c, me, data, cur)) adjusted = true;
   if (cur && same(cur, data)) { if (adjusted) ctx.adjusted.push({ c: ch.c, id: ch.id }); return false; }
   if (!ctx.system) await checkScope(c, ctx, ch.c, cur, data);
+  if (ch.c === 'issues' && cur) await checkGates(c, ctx, data, cur);
   if (ch.c === 'workspaces') await checkWorkspace(c, me, ch.id, data, cur);
   if (ch.c === 'projects') await checkProjectRoles(c, data, cur);
   if (ch.c === 'projects') await checkProjectWorkspace(c, data, cur);
@@ -620,6 +624,181 @@ async function checkColumns(c, ctx) {
     const clash = after.rows.some(r => ctx.colNamed.has(r.id)
       && after.rows.some(o => o.id !== r.id && colName(o.name) === colName(r.name)));
     if (clash) throw new HttpError(409, 'Bu adla bir kolon zaten var');
+  }
+}
+
+/* ---- iş akışı geçiş kuralları (gk, Jira "conditions/validators") ----
+   Proje kaydında `gates` (validate.js gatesError): bir kolona (statusId) ya da bir kategoriye (cat) geçmek için koşullar.
+   Yalnız var olan işin kolonu değişince ve yalnız canlı yazmada (/api/sync) uygulanır; kural yoksa (varsayılan) hiçbir şey
+   değişmez. Muaf yollar: sistem yazması (e-postadan iş/yanıt, ctx.system), içe aktarma / geri yükleme / çöpten geri alma
+   (backup.js, bu kapıdan geçmez), yeni iş oluşturma (geçiş değil) ve kolon silmede toplu taşıma (kaynak kolon aynı gönderimde
+   silinir ve kişinin "Kolonlar" yetkisi var; silme olmazsa gönderim sonunda tüm gönderim reddedilir). Otomasyon kuralları
+   tarayıcıda kişi adına çalıştığından muaf DEĞİL: sunucu otomasyonla elle taşımayı ayıramaz (istemci de kuralı atlar).
+   Kategori kuralı kategoriye GİRİŞTE işler (Bitti → başka Bitti kolonu geçişi değil); kolon kuralı her girişte.
+   Koşullar aynı gönderimdeki bekleyen değişikliklerle (süre kaydı, alt iş, bağlantı) birlikte değerlendirilir; gönderim
+   sonunda gerçek durumla yeniden denetlenir (eşlik eden değişiklik reddedildiyse tüm gönderim 409). İstemcideki gateCheck
+   ile aynı kural ve iletiler (public/index.html). */
+const GATE_BIND = { billable: 'Faturalama', billType: 'Fatura türü', customerId: 'Cari' };
+const GATE_ROLE_NAME = { admin: 'Yönetici', member: 'Üye', viewer: 'İzleyici' };
+export const GATE_COLDEL = 'Kolon silinemedi: taşınan işler geçiş kuralına takılıyor';
+/* "Bitti" → "Bitti'ye", "İnceleniyor" → "İnceleniyor'a"; harfle bitmeyen ad → "\"X1\" kolonuna". */
+export function gateTarget(name) {
+  const s = String(name ?? '').trim().slice(0, 60);
+  const low = s.toLocaleLowerCase('tr'), V = 'aeıioöuü';
+  const v = [...low].reverse().find(ch => V.includes(ch));
+  if (!s || !/\p{L}$/u.test(s) || !v) return `"${s || 'Bu'}" kolonuna`;
+  return `${s}'${V.includes(low.slice(-1)) ? 'y' : ''}${'aıou'.includes(v) ? 'a' : 'e'}`;
+}
+const gateAsk = (name, type) => `${String(name).trim().slice(0, 60)} ${['select', 'user', 'cari'].includes(type) ? 'seçin'
+  : type === 'checkbox' ? 'işaretleyin' : 'girin'}`;
+const filled = v => v != null && v !== false && !(typeof v === 'string' && !v.trim());
+function gateCtx(ctx, list) {
+  ctx.pending = list;
+  ctx.pendingBy = new Map();
+  ctx.delStatuses = new Set(list.filter(ch => ch?.c === 'statuses' && ch.op === 'del' && typeof ch.id === 'string').map(ch => ch.id));
+  ctx.gateRej = new Map();
+  ctx.gateLater = [];
+  ctx.gateColDel = new Set();
+}
+/* Gönderimdeki bekleyen kayıtlar (son yazan kazanır): kimlik → veri (silme: null). */
+function pendingOf(ctx, col) {
+  if (ctx.pendingBy.has(col)) return ctx.pendingBy.get(col);
+  const m = new Map();
+  for (const ch of ctx.pending) if (ch?.c === col && typeof ch.id === 'string')
+    if (ch.op === 'del') m.set(ch.id, null);
+    else if (ch.op === 'put' && ch.data && typeof ch.data === 'object' && !Array.isArray(ch.data)) m.set(ch.id, { ...ch.data, id: ch.id });
+  ctx.pendingBy.set(col, m);
+  return m;
+}
+/* Kolonlar (kategori ve ad), bekleyen kolon değişiklikleri dahil. */
+async function gateStatuses(c, ctx, ids, overlay) {
+  const list = ids.filter(x => typeof x === 'string' && x);
+  const out = new Map((await c.query('SELECT id, data FROM statuses WHERE id = ANY($1)', [list])).rows.map(r => [r.id, r.data]));
+  if (overlay) for (const id of list) if (pendingOf(ctx, 'statuses').has(id)) {
+    const d = pendingOf(ctx, 'statuses').get(id);
+    if (d) out.set(id, d); else out.delete(id);
+  }
+  return out;
+}
+/* Kayıtlar (DB + bekleyen): where ile seçilenler; bekleyenlerden keep(d) tutanlar eklenir, tutmayanlar ve silinenler çıkar. */
+async function gateRows(c, ctx, table, where, args, keep, overlay) {
+  const m = new Map((await c.query(`SELECT id, data FROM ${table} WHERE ${where}`, args)).rows.map(r => [r.id, r.data]));
+  if (overlay) for (const [id, d] of pendingOf(ctx, table)) { if (d && keep(d)) m.set(id, d); else m.delete(id); }
+  return m;
+}
+async function gateIssues(c, ctx, ids, overlay) {
+  const m = new Map((await c.query('SELECT id, data FROM issues WHERE id = ANY($1)', [ids])).rows.map(r => [r.id, r.data]));
+  if (overlay) for (const id of ids) if (pendingOf(ctx, 'issues').has(id)) {
+    const d = pendingOf(ctx, 'issues').get(id);
+    if (d) m.set(id, d); else m.delete(id);
+  }
+  return m;
+}
+/* İşe uyan kurallar (yoksa null): projenin kuralları, hedef kolon ve kaynak kolonun kategorisine göre. */
+async function gatesHit(c, ctx, p, to, from, overlay) {
+  const gates = Array.isArray(p?.gates) ? p.gates.filter(g => g && typeof g === 'object' && !Array.isArray(g)) : [];
+  if (!gates.length) return null;
+  const st = await gateStatuses(c, ctx, [to, from], overlay);
+  const toS = st.get(to);
+  if (!toS) return null;
+  const fromCat = st.get(from)?.cat ?? null;
+  const hit = gates.filter(g => (typeof g.statusId === 'string' && g.statusId === to)
+    || (typeof g.cat === 'string' && g.cat === toS.cat && fromCat !== toS.cat));
+  return hit.length ? { hit, toS } : null;
+}
+/* Eksikler: { code, msg } ya da null. overlay: aynı gönderimdeki bekleyen değişiklikler sayılır. */
+async function gateMissing(c, ctx, p, d, hit, toS, overlay) {
+  const target = gateTarget(toS.name);
+  const allow = hit.filter(g => Array.isArray(g.roles));
+  if (allow.length) {
+    const r = await roleIn(c, ctx.me, p);
+    if (r !== 'admin' && !allow.every(g => g.roles.includes(r))) {
+      const ok = ['admin', ...['member', 'viewer'].filter(x => allow.every(g => g.roles.includes(x)))];
+      return { code: 403, msg: `${target} yalnız ${ok.map(x => GATE_ROLE_NAME[x]).join(' ve ')} rolündekiler taşıyabilir` };
+    }
+  }
+  const any = k => hit.some(g => g[k] === true);
+  const items = [];
+  const iid = d.id;
+  if (any('worklog')) {
+    const w = await gateRows(c, ctx, 'worklogs', 'issue_id=$1', [iid], x => x.issueId === iid, overlay);
+    if (![...w.values()].some(x => Number(x?.hours) > 0)) items.push('süre kaydı girin');
+  }
+  if (any('assignee') && !(typeof d.assignee === 'string' && d.assignee)) items.push('atanan seçin');
+  for (const ref of [...new Set(hit.flatMap(g => Array.isArray(g.fields) ? g.fields : []))]) {
+    if (typeof ref !== 'string') continue;
+    if (ref.startsWith('bind:')) {
+      const b = ref.slice(5);
+      if (!Object.hasOwn(GATE_BIND, b)) continue;
+      const rec = (await c.query(`SELECT data FROM fields WHERE project_id=$1 AND data->>'bind'=$2`, [p.id, b])).rows[0]?.data;
+      if (rec?.archived === true) continue;                    // alan projede kapalı: koşul yok sayılır
+      const name = (typeof rec?.name === 'string' && rec.name.trim()) || GATE_BIND[b];
+      if (b === 'customerId') {
+        if (await customersOff(c, ctx)) continue;
+        /* İstemcideki customerIdOf ile aynı: işin carisi, yoksa projenin carisi (var olan cari kaydı). */
+        const ids = [d.customerId, p.customerId].filter(x => typeof x === 'string' && x);
+        const has = ids.length > 0 && (await c.query('SELECT 1 FROM customers WHERE id = ANY($1) LIMIT 1', [ids])).rowCount > 0;
+        if (!has) items.push(gateAsk(name, 'cari'));
+      } else if (!filled(d[b])) items.push(gateAsk(name, 'select'));
+      continue;
+    }
+    if (!ref.startsWith('cf:')) continue;
+    const fid = ref.slice(3);
+    const f = (await c.query('SELECT data FROM fields WHERE id=$1', [fid])).rows[0]?.data;
+    /* Silinmiş, kapalı/gizli, hazır, cari ya da başka projenin alanı: doldurulamaz, koşul yok sayılır. */
+    if (!f || f.bind || f.archived === true || f.hidden === true || f.scope === 'customer' || (f.projectId && f.projectId !== p.id)) continue;
+    const v = d.cf && typeof d.cf === 'object' ? d.cf[fid] : undefined;
+    if (!filled(v)) items.push(gateAsk(f.name || 'Alan', f.type));
+  }
+  if (any('subsDone')) {
+    const kids = await gateRows(c, ctx, 'issues', 'parent_id=$1', [iid], x => x.parentId === iid, overlay);
+    kids.delete(iid);
+    const st = await gateStatuses(c, ctx, [...new Set([...kids.values()].map(k => k.statusId))], overlay);
+    const open = [...kids.values()].filter(k => st.get(k.statusId)?.cat !== 'done').length;
+    if (open) items.push(`alt işleri bitirin (${open} açık)`);
+  }
+  if (any('noBlockers')) {
+    const lk = await gateRows(c, ctx, 'links', `to_issue=$1 AND link_type='blocks'`, [iid], x => x.to === iid && x.type === 'blocks', overlay);
+    const from = [...new Set([...lk.values()].map(l => l.from).filter(x => typeof x === 'string' && x && x !== iid))];
+    const bl = await gateIssues(c, ctx, from, overlay);
+    const st = await gateStatuses(c, ctx, [...new Set([...bl.values()].map(x => x.statusId))], overlay);
+    const open = [...bl.values()].filter(x => st.get(x.statusId)?.cat !== 'done').length;
+    if (open) items.push(`engelleyen işleri kapatın (${open} açık)`);
+  }
+  return items.length ? { code: 409, msg: `${target} geçmek için: ${items.join(', ')}` } : null;
+}
+async function checkGates(c, ctx, data, cur) {
+  if (ctx.system || typeof data.statusId !== 'string' || !data.statusId || data.statusId === cur.statusId) return;
+  const p = await projById(c, data.projectId);
+  const g = await gatesHit(c, ctx, p, data.statusId, cur.statusId, true);
+  if (!g) return;
+  /* Kolon silmede toplu taşıma: kaynak kolon bu gönderimde siliniyor ve kişi kolonları yönetebiliyor. */
+  if (ctx.delStatuses.has(cur.statusId) && cur.projectId === data.projectId && await colAllowed(c, ctx, cur.projectId)) {
+    ctx.gateColDel.add(cur.statusId);
+    return;
+  }
+  const miss = await gateMissing(c, ctx, p, data, g.hit, g.toS, true);
+  if (miss) {
+    ctx.gateRej.set(data.id, { to: data.statusId, reason: miss.msg });
+    throw new HttpError(miss.code, miss.msg);
+  }
+  ctx.gateLater.push({ id: data.id, to: data.statusId, pid: data.projectId, hit: g.hit, toS: g.toS });
+}
+/* Reddedilen geçişin aynı gönderimdeki yeni geçiş kaydı ve "Durum" geçmiş satırı da yazılmaz (olmamış taşıma görünmesin). */
+function gateOrphan(ctx, ch, cur) {
+  const r = ctx.gateRej?.get(ch.data?.issueId);
+  if (!r || cur) return;
+  if (ch.c === 'transitions' ? ch.data.to === r.to : ch.data.field === 'Durum') throw new HttpError(409, r.reason);
+}
+/* Gönderim sonu: koşullar gerçek durumla (bekleyen değişiklikler uygulandıktan sonra) yeniden; ihlalde tüm gönderim 409. */
+async function recheckGates(c, ctx) {
+  for (const sid of ctx.gateColDel)
+    if ((await c.query('SELECT 1 FROM statuses WHERE id=$1', [sid])).rowCount) throw new HttpError(409, GATE_COLDEL);
+  for (const x of ctx.gateLater) {
+    const d = (await c.query('SELECT data FROM issues WHERE id=$1', [x.id])).rows[0]?.data;
+    if (!d || d.statusId !== x.to || d.projectId !== x.pid) continue;
+    const miss = await gateMissing(c, ctx, await projById(c, x.pid), { ...d, id: x.id }, x.hit, x.toS, false);
+    if (miss) throw new HttpError(409, miss.msg);
   }
 }
 

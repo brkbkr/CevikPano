@@ -5210,3 +5210,230 @@ describe('yetki ve silme güvenliği (O-1, D-1, D-2, D-3, çevrim içi)', { skip
     assert.equal((await onl(C.X)).issue, 'i_p_yg4');
   });
 });
+
+describe('iş akışı geçiş kuralları (gk)', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  const ok = r => { assert.equal(r.status, 200, JSON.stringify(r.json)); assert.deepEqual(r.json.rejected, [], JSON.stringify(r.json)); return r; };
+  const reasons = r => r.json.rejected.map(x => x.reason);
+  const put = (c, id, data, base) => ({ c, id, op: 'put', data, ...(base ? { base } : {}) });
+  const del = (c, id) => ({ c, id, op: 'del' });
+  const row = async (table, id) => (await pool.query(`SELECT data FROM ${table} WHERE id=$1`, [id])).rows[0]?.data;
+  const count = async (table, iid) => Number((await pool.query(`SELECT count(*) n FROM ${table} WHERE issue_id=$1`, [iid])).rows[0].n);
+  const C = {};
+  const newUser = async (id, username, role = 'member') => {
+    ok(await C.A.sync([put('users', id, { username, name: 'Kişi ' + username, role, active: true })]));
+    const k = client(); await k.login(username, 'Start12345');
+    assert.equal((await k.req('POST', '/api/auth/password', { newPassword: 'GecisKural123' })).status, 200);
+    return k;
+  };
+  const P = 'p_gk';
+  const setGates = async (gates, who = C.A) => {
+    const p = await row('projects', P);
+    return who.sync([put('projects', P, { ...p, gates }, p)]);
+  };
+  /* İşi verilen kolona taşı (istemcinin gönderdiği gibi: iş + geçiş kaydı + Durum geçmişi). */
+  let N = 0;
+  const move = async (who, iid, to, extra = [], patch = {}) => {
+    const d = await row('issues', iid);
+    N++;
+    return who.sync([put('issues', iid, { ...d, ...patch, statusId: to }, d),
+      put('transitions', 't_gk' + N, { issueId: iid, at: Date.now(), date: '2026-11-20', from: d.statusId, to }),
+      put('history', 'h_gk' + N, { issueId: iid, field: 'Durum', from: 'A', to: 'B', at: Date.now() }), ...extra]);
+  };
+  const issue = (id, o = {}) => put('issues', id, { projectId: P, summary: 'İş ' + id, statusId: P + '_todo', ...o });
+
+  before(async () => {
+    C.A = client(); await C.A.login('admin', 'test-admin-pw');
+    C.M = await newUser('u_gk_m', 'gkuye');
+    C.Y = await newUser('u_gk_y', 'gkyonetici');
+    ok(await C.A.sync([put('projects', P, { name: 'Geçiş', key: 'GK', counter: 0, workspaceId: 'ws1',
+      roles: { u_gk_m: 'member', u_gk_y: 'admin' } })]));
+    ok(await C.A.sync([put('statuses', P + '_todo', { projectId: P, name: 'Yapılacak', cat: 'todo', ord: 0 }),
+      put('statuses', P + '_dev', { projectId: P, name: 'İnceleniyor', cat: 'inprogress', ord: 1 }),
+      put('statuses', P + '_done', { projectId: P, name: 'Bitti', cat: 'done', ord: 2 }),
+      put('statuses', P + '_ok', { projectId: P, name: 'Onaylandı', cat: 'done', ord: 3 })]));
+    ok(await C.A.sync([put('fields', 'cf_gk_kod', { projectId: P, key: 'gkkod', name: 'Proje kodu', type: 'text' }),
+      put('fields', 'cf_gk_onay', { projectId: P, key: 'gkonay', name: 'Müşteri onayı', type: 'checkbox' })]));
+  });
+
+  test('varsayılanda kural yok: her geçiş serbest', async () => {
+    ok(await C.M.sync([issue('i_gk0')]));
+    ok(await move(C.M, 'i_gk0', P + '_done'));
+    assert.equal((await row('issues', 'i_gk0')).statusId, P + '_done');
+  });
+
+  test('doğrulama: bilinmeyen anahtar, çift hedef, koşulsuz kural, geçersiz alan/rol reddedilir', async () => {
+    const bad = async (gates, re) => {
+      const r = await setGates(gates);
+      assert.equal(r.json.rejected.length, 1, JSON.stringify(r.json));
+      assert.match(r.json.rejected[0].reason, re);
+    };
+    await bad({ x: 1 }, /liste olmalı/);
+    await bad([{ id: 'g1', cat: 'done', worklog: true, hack: 1 }], /Geçiş kuralı geçersiz/);
+    await bad([{ id: 'g1', cat: 'done', statusId: P + '_done', worklog: true }], /bir kolon ya da bir kategori/);
+    await bad([{ id: 'g1', worklog: true }], /bir kolon ya da bir kategori/);
+    await bad([{ id: 'g1', cat: 'bitti', worklog: true }], /kategorisi geçersiz/);
+    await bad([{ id: 'g1', cat: 'done' }], /en az bir koşul/);
+    await bad([{ id: 'g1', cat: 'done', worklog: 'evet' }], /true\) ya da kapalı/);
+    await bad([{ id: 'g1', cat: 'done', fields: ['billType'] }], /Zorunlu alan listesi/);
+    await bad([{ id: 'g1', cat: 'done', fields: ['bind:billType', 'bind:billType'] }], /Zorunlu alan listesi/);
+    await bad([{ id: 'g1', cat: 'done', roles: ['super'] }], /roller geçersiz/);
+    await bad([{ id: 'g1', cat: 'done', roles: [] }], /roller geçersiz/);
+    await bad([{ id: '<x>', cat: 'done', worklog: true }], /kimliği geçersiz/);
+    await bad([{ id: 'g1', cat: 'done', worklog: true }, { id: 'g1', cat: 'todo', worklog: true }], /kimliği geçersiz/);
+    await bad(Array.from({ length: 31 }, (_, k) => ({ id: 'g' + k, cat: 'done', worklog: true })), /en fazla 30/);
+    ok(await setGates([]));
+  });
+
+  test('yetki: geçiş kurallarını yalnız "Proje adı ve ayarları" yetkisi olan değiştirir', async () => {
+    const r = await setGates([{ id: 'g1', cat: 'done', worklog: true }], C.M);
+    assert.deepEqual(reasons(r), ['Bu projede "Proje adı ve ayarları" yetkiniz yok']);
+    ok(await setGates([{ id: 'g1', cat: 'done', worklog: true }], C.Y));
+    assert.deepEqual((await row('projects', P)).gates, [{ id: 'g1', cat: 'done', worklog: true }]);
+    await setPerms(C.A, P, { member: { 'project.settings': true } });
+    ok(await setGates([], C.M));
+    await setPerms(C.A, P, {});
+  });
+
+  test('süre kaydı koşulu: eksikse sunucu reddeder (geçiş kaydı ve Durum geçmişi de yazılmaz), aynı gönderimde girilirse geçer', async () => {
+    ok(await setGates([{ id: 'g1', cat: 'done', worklog: true }]));
+    ok(await C.M.sync([issue('i_gk1')]));
+    const nT = await count('transitions', 'i_gk1'), nH = await count('history', 'i_gk1');
+    let r = await move(C.M, 'i_gk1', P + '_done');
+    assert.equal(r.status, 200);
+    assert.deepEqual(reasons(r), Array(3).fill("Bitti'ye geçmek için: süre kaydı girin"));
+    assert.equal((await row('issues', 'i_gk1')).statusId, P + '_todo');
+    assert.equal(await count('transitions', 'i_gk1'), nT);
+    assert.equal(await count('history', 'i_gk1'), nH);
+    /* Yönetici de kurala uyar (doğrulayıcı kişiye göre değil). */
+    r = await move(C.A, 'i_gk1', P + '_ok');
+    assert.deepEqual(reasons(r).slice(0, 1), ["Onaylandı'ya geçmek için: süre kaydı girin"]);
+    /* Sıfır saatlik kayıt sayılmaz. */
+    ok(await C.M.sync([put('worklogs', 'w_gk0', { issueId: 'i_gk1', userId: 'u_gk_m', hours: 0, date: '2026-11-20' })]));
+    assert.equal(reasons(await move(C.M, 'i_gk1', P + '_done'))[0], "Bitti'ye geçmek için: süre kaydı girin");
+    /* Süre kaydı aynı gönderimde (işten sonra işlenir): geçer. */
+    ok(await move(C.M, 'i_gk1', P + '_done', [put('worklogs', 'w_gk1', { issueId: 'i_gk1', userId: 'u_gk_m', hours: 1.5, date: '2026-11-20' })]));
+    assert.equal((await row('issues', 'i_gk1')).statusId, P + '_done');
+    /* Bitti → başka Bitti kolonu kategoriye giriş değildir: kategori kuralı işlemez. */
+    ok(await C.M.sync([issue('i_gk1b', { statusId: P + '_done' })]));
+    ok(await move(C.M, 'i_gk1b', P + '_ok'));
+    /* Bitti'den çıkış serbest. */
+    ok(await move(C.M, 'i_gk1b', P + '_todo'));
+  });
+
+  test('aynı gönderimdeki eşlik eden değişiklik reddedilirse tüm gönderim 409 ile geri alınır', async () => {
+    ok(await C.M.sync([issue('i_gk2')]));
+    /* Üye başkası adına süre giremez: süre kaydı reddedilir, geçiş gönderim sonunda tutmaz. */
+    const r = await move(C.M, 'i_gk2', P + '_done', [put('worklogs', 'w_gk2', { issueId: 'i_gk2', userId: 'u_gk_y', hours: 2, date: '2026-11-20' })]);
+    assert.equal(r.status, 409, JSON.stringify(r.json));
+    assert.match(r.json.error, /Bitti'ye geçmek için: süre kaydı girin/);
+    assert.equal((await row('issues', 'i_gk2')).statusId, P + '_todo');
+    assert.equal(await row('worklogs', 'w_gk2'), undefined);
+    /* Aynı gönderimde süre kaydı silinirse de geçmez. */
+    ok(await C.M.sync([put('worklogs', 'w_gk3', { issueId: 'i_gk2', userId: 'u_gk_m', hours: 1, date: '2026-11-20' })]));
+    const r2 = await move(C.M, 'i_gk2', P + '_done', [del('worklogs', 'w_gk3')]);
+    assert.equal(reasons(r2)[0], "Bitti'ye geçmek için: süre kaydı girin");
+    assert.equal((await row('issues', 'i_gk2')).statusId, P + '_todo');
+    assert.equal(await row('worklogs', 'w_gk3'), undefined);      // silme kendi başına geçerli bir değişiklik
+  });
+
+  test('alan koşulları: hazır alanlar (Faturalama, Fatura türü) ve özel alanlar; eksikler tek iletide', async () => {
+    ok(await setGates([{ id: 'g1', cat: 'done', worklog: true, fields: ['bind:billType', 'cf:cf_gk_kod', 'cf:cf_gk_onay'] }]));
+    ok(await C.M.sync([issue('i_gk3')]));
+    let r = await move(C.M, 'i_gk3', P + '_done');
+    assert.equal(reasons(r)[0], "Bitti'ye geçmek için: süre kaydı girin, Fatura türü seçin, Proje kodu girin, Müşteri onayı işaretleyin");
+    /* Boşluk dolu sayılmaz; onay kutusu işaretli olmalı. */
+    r = await move(C.M, 'i_gk3', P + '_done', [put('worklogs', 'w_gk4', { issueId: 'i_gk3', userId: 'u_gk_m', hours: 1, date: '2026-11-20' })],
+      { billType: 'Adam/Ay', cf: { cf_gk_kod: '  ', cf_gk_onay: false } });
+    assert.equal(reasons(r)[0], "Bitti'ye geçmek için: Proje kodu girin, Müşteri onayı işaretleyin");
+    ok(await move(C.M, 'i_gk3', P + '_done', [], { billType: 'Adam/Ay', cf: { cf_gk_kod: 'K-12', cf_gk_onay: true } }));
+    /* Hazır alanın projedeki adı iletide kullanılır; alan projede kapatılırsa koşul yok sayılır. */
+    ok(await C.A.sync([put('fields', 'cf_billType_' + P, { projectId: P, bind: 'billType', key: 'faturaturu', name: 'Fatura şekli', type: 'select',
+      options: ['Kişi/Saat', 'Adam/Ay'], hidden: true, archived: false })]));
+    ok(await setGates([{ id: 'g1', cat: 'done', fields: ['bind:billType', 'bind:billable'] }]));
+    ok(await C.M.sync([issue('i_gk4')]));
+    assert.equal(reasons(await move(C.M, 'i_gk4', P + '_done'))[0], "Bitti'ye geçmek için: Fatura şekli seçin, Faturalama seçin");
+    const f = await row('fields', 'cf_billType_' + P);
+    ok(await C.A.sync([put('fields', 'cf_billType_' + P, { ...f, archived: true }, f)]));
+    assert.equal(reasons(await move(C.M, 'i_gk4', P + '_done'))[0], "Bitti'ye geçmek için: Faturalama seçin");
+    ok(await move(C.M, 'i_gk4', P + '_done', [], { billable: 'Faturalanmayacak' }));
+    /* Silinmiş özel alan koşulu yok sayılır (doldurulamaz). */
+    ok(await setGates([{ id: 'g1', cat: 'done', fields: ['cf:cf_yok'] }]));
+    ok(await C.M.sync([issue('i_gk4b')]));
+    ok(await move(C.M, 'i_gk4b', P + '_done'));
+  });
+
+  test('atanan, alt işler ve engelleyen iş koşulları', async () => {
+    ok(await setGates([{ id: 'g2', statusId: P + '_dev', assignee: true }, { id: 'g1', cat: 'done', subsDone: true, noBlockers: true }]));
+    ok(await C.M.sync([issue('i_gk5'), issue('i_gk5a', { parentId: 'i_gk5' }), issue('i_gk5b', { parentId: 'i_gk5', statusId: P + '_done' }),
+      issue('i_gk6'), put('links', 'l_gk1', { from: 'i_gk6', to: 'i_gk5', type: 'blocks' }),
+      issue('i_gk7'), put('links', 'l_gk2', { from: 'i_gk7', to: 'i_gk5', type: 'relates' })]));
+    /* Kolon kuralı (İnceleniyor): atanan. */
+    assert.equal(reasons(await move(C.M, 'i_gk5', P + '_dev'))[0], "İnceleniyor'a geçmek için: atanan seçin");
+    ok(await move(C.M, 'i_gk5', P + '_dev', [], { assignee: 'u_gk_m' }));
+    assert.equal(reasons(await move(C.M, 'i_gk5', P + '_done'))[0], "Bitti'ye geçmek için: alt işleri bitirin (1 açık), engelleyen işleri kapatın (1 açık)");
+    /* Alt iş ve engelleyen iş aynı gönderimde biterse geçer. */
+    const a = await row('issues', 'i_gk5a'), b = await row('issues', 'i_gk6');
+    ok(await move(C.M, 'i_gk5', P + '_done', [put('issues', 'i_gk5a', { ...a, statusId: P + '_done' }, a),
+      put('issues', 'i_gk6', { ...b, statusId: P + '_ok' }, b)]));
+    assert.equal((await row('issues', 'i_gk5')).statusId, P + '_done');
+  });
+
+  test('rol koşulu: yalnız Yönetici (proje yöneticisi ve sistem yöneticisi geçirir)', async () => {
+    ok(await setGates([{ id: 'g1', statusId: P + '_ok', roles: ['admin'] }]));
+    ok(await C.M.sync([issue('i_gk8')]));
+    const r = await move(C.M, 'i_gk8', P + '_ok');
+    assert.equal(reasons(r)[0], "Onaylandı'ya yalnız Yönetici rolündekiler taşıyabilir");
+    ok(await move(C.Y, 'i_gk8', P + '_ok'));
+    ok(await move(C.M, 'i_gk8', P + '_todo'));
+    ok(await move(C.A, 'i_gk8', P + '_ok'));
+    ok(await setGates([{ id: 'g1', statusId: P + '_ok', roles: ['admin', 'member'] }]));
+    ok(await move(C.M, 'i_gk8', P + '_todo'));
+    ok(await move(C.M, 'i_gk8', P + '_ok'));
+  });
+
+  test('muaf yollar: yeni iş, kolon silmede toplu taşıma, sistem yazması; durum değişmeyen düzenleme', async () => {
+    ok(await setGates([{ id: 'g1', cat: 'done', worklog: true }]));
+    /* Yeni iş doğrudan Bitti'de açılabilir (geçiş değil). */
+    ok(await C.M.sync([issue('i_gk9', { statusId: P + '_done' })]));
+    /* Durumu değişmeyen düzenleme kuralı tetiklemez. */
+    const d = await row('issues', 'i_gk9');
+    ok(await C.M.sync([put('issues', 'i_gk9', { ...d, summary: 'Yeni ad' }, d)]));
+    /* Kolon silme: içindeki işler kuralı olan kolona taşınır, kolon aynı gönderimde silinir (kolon yetkisi olan). */
+    ok(await C.A.sync([put('statuses', P + '_tmp', { projectId: P, name: 'Geçici', cat: 'todo', ord: 9 })]));
+    ok(await C.M.sync([issue('i_gk10', { statusId: P + '_tmp' })]));
+    const e = await row('issues', 'i_gk10');
+    ok(await C.Y.sync([put('issues', 'i_gk10', { ...e, statusId: P + '_done' }, e), del('statuses', P + '_tmp')]));
+    assert.equal((await row('issues', 'i_gk10')).statusId, P + '_done');
+    /* Kolon yetkisi olmayan aynı yolu kullanamaz: geçiş reddedilir. */
+    ok(await C.A.sync([put('statuses', P + '_tmp2', { projectId: P, name: 'Geçici 2', cat: 'todo', ord: 9 })]));
+    ok(await C.M.sync([issue('i_gk11', { statusId: P + '_tmp2' })]));
+    const f = await row('issues', 'i_gk11');
+    const r = await C.M.sync([put('issues', 'i_gk11', { ...f, statusId: P + '_done' }, f), del('statuses', P + '_tmp2')]);
+    assert.equal(reasons(r)[0], "Bitti'ye geçmek için: süre kaydı girin");
+    assert.equal((await row('issues', 'i_gk11')).statusId, P + '_tmp2');
+    /* Kolon silinemezse (içinde başka iş kaldı) taşıma da tutmaz: tüm gönderim 409. */
+    ok(await C.M.sync([issue('i_gk12', { statusId: P + '_tmp2' })]));
+    const r2 = await C.Y.sync([put('issues', 'i_gk11', { ...f, statusId: P + '_done' }, f), del('statuses', P + '_tmp2')]);
+    assert.equal(r2.status, 409, JSON.stringify(r2.json));
+    assert.equal(r2.json.error, 'Kolon silinemedi: taşınan işler geçiş kuralına takılıyor');
+    assert.equal((await row('issues', 'i_gk11')).statusId, P + '_tmp2');
+    /* Sistem yazması (e-posta) muaf. */
+    const { applyChanges } = await import('../server/store.js');
+    const sys = (await pool.query(`SELECT * FROM users WHERE role IN ('admin','super') LIMIT 1`)).rows[0];
+    const g = await row('issues', 'i_gk11');
+    const res = await applyChanges(pool, { id: sys.id, role: sys.role, name: 'sistem' }, [put('issues', 'i_gk11', { ...g, statusId: P + '_done' }, g)], { system: true });
+    assert.deepEqual(res.rejected, []);
+    assert.equal((await row('issues', 'i_gk11')).statusId, P + '_done');
+    ok(await setGates([]));
+  });
+
+  test('gateTarget: Türkçe yönelme eki', async () => {
+    const { gateTarget } = await import('../server/store.js');
+    assert.equal(gateTarget('Bitti'), "Bitti'ye");
+    assert.equal(gateTarget('İnceleniyor'), "İnceleniyor'a");
+    assert.equal(gateTarget('Test'), "Test'e");
+    assert.equal(gateTarget('Onaylandı'), "Onaylandı'ya");
+    assert.equal(gateTarget('Yapılacak'), "Yapılacak'a");
+    assert.equal(gateTarget('QA 2'), '"QA 2" kolonuna');
+  });
+});
