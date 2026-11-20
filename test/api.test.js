@@ -5210,3 +5210,182 @@ describe('yetki ve silme güvenliği (O-1, D-1, D-2, D-3, çevrim içi)', { skip
     assert.equal((await onl(C.X)).issue, 'i_p_yg4');
   });
 });
+
+/* ---------------- Sürümler / teslim paketleri (017) ----------------
+   versions: projeye bağlı (okuma süzmesi), yazma projede "Proje adı ve ayarları" (project.settings); ad projede tekil;
+   işin sürümleri issues.data.versionIds: eklenen kimlik işin projesinde var olan, arşivlenmemiş sürüm olmalı. */
+describe('sürümler', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  const reasons = r => r.json.rejected.map(x => x.reason);
+  const ok = r => { assert.equal(r.status, 200, JSON.stringify(r.json)); assert.deepEqual(r.json.rejected, [], JSON.stringify(r.json)); return r; };
+  const rej = (r, msg) => { assert.equal(r.status, 200); assert.equal(r.json.applied, 0, JSON.stringify(r.json));
+    const got = reasons(r); assert.equal(got.length, 1, JSON.stringify(got)); if (msg instanceof RegExp) assert.match(got[0], msg); else assert.equal(got[0], msg); };
+  const put = (c, id, data, base) => ({ c, id, op: 'put', data, ...(base ? { base } : {}) });
+  const row = async (t, id) => (await pool.query(`SELECT data FROM ${t} WHERE id=$1`, [id])).rows[0]?.data;
+  const ver = (id, extra = {}) => put('versions', id, { projectId: 'p_srm', name: 'Sürüm ' + id, state: 'planned', ...extra });
+  const SETTINGS = 'Bu projede "Proje adı ve ayarları" yetkiniz yok';
+  const C = {};
+  const newUser = async (id, username, role = 'member') => {
+    ok(await C.A.sync([put('users', id, { username, name: username, role, active: true })]));
+    const k = client(); await k.login(username, 'Start12345');
+    assert.equal((await k.req('POST', '/api/auth/password', { newPassword: 'SurumYeni12345' })).status, 200);
+    return k;
+  };
+  const issueEdit = async (k, id, patch) => { const d = await row('issues', id); return k.sync([put('issues', id, { ...d, ...patch }, d)]); };
+
+  /* p_srm: Yönetici Yasin (proje rolü admin), Üye Mert, İzleyici Vural; p_srm2: Mert Üye; Osman hiçbir projede yok. */
+  before(async () => {
+    if (!URL) return;
+    C.A = client(); await C.A.login('admin', 'test-admin-pw');
+    C.Y = await newUser('u_srm_y', 'srm_yasin');
+    C.M = await newUser('u_srm_m', 'srm_mert');
+    C.V = await newUser('u_srm_v', 'srm_vural');
+    C.O = await newUser('u_srm_o', 'srm_osman');
+    ok(await C.A.sync([
+      put('workspaces', 'ws_srm', { name: 'Sürüm alanı' }),
+      put('projects', 'p_srm', { name: 'Sürüm projesi', key: 'SRM', counter: 0, workspaceId: 'ws_srm' }),
+      put('projects', 'p_srm2', { name: 'Sürüm ikinci', key: 'SRMB', counter: 0, workspaceId: 'ws_srm' }),
+      put('statuses', 'p_srm_t', { projectId: 'p_srm', name: 'Yapılacak', cat: 'todo', ord: 0 }),
+      put('statuses', 'p_srm_d', { projectId: 'p_srm', name: 'Bitti', cat: 'done', ord: 1 }),
+      put('statuses', 'p_srm2_t', { projectId: 'p_srm2', name: 'Yapılacak', cat: 'todo', ord: 0 }),
+      put('statuses', 'p_srm2_d', { projectId: 'p_srm2', name: 'Bitti', cat: 'done', ord: 1 })]));
+    await addRoles(C.A, 'p_srm', { u_srm_y: 'admin', u_srm_m: 'member', u_srm_v: 'viewer' });
+    await addRoles(C.A, 'p_srm2', { u_srm_m: 'member' });
+    ok(await C.A.sync([
+      put('issues', 'i_srm1', { projectId: 'p_srm', summary: 'Sürüm işi 1', statusId: 'p_srm_t', type: 'task' }),
+      put('issues', 'i_srm2', { projectId: 'p_srm', summary: 'Sürüm işi 2', statusId: 'p_srm_d', type: 'task' })]));
+  });
+
+  test('yetki: proje Yöneticisi oluşturur/düzenler/siler; Üye ve İzleyici 403; projede olmayan erişim yok; yetki tablosuyla Üye de yazar', async () => {
+    const r = ok(await C.Y.sync([ver('v_srm1', { name: '1.0', start: '2026-11-01', due: '2026-11-30', desc: 'İlk teslim' })]));
+    assert.equal(r.json.applied, 1);
+    rej(await C.M.sync([ver('v_srm_m')]), SETTINGS);
+    rej(await C.V.sync([ver('v_srm_v')]), SETTINGS);
+    rej(await C.O.sync([ver('v_srm_o')]), NO_PROJECT);
+    /* Olmayan projeye bağlı sürüm: üye 403 (gizliyle aynı), yönetici 400. */
+    rej(await C.M.sync([ver('v_srm_x', { projectId: 'p_yok' })]), NO_PROJECT);
+    rej(await C.A.sync([ver('v_srm_x', { projectId: 'p_yok' })]), 'Bağlı kayıt bulunamadı');
+    const d = await row('versions', 'v_srm1');
+    rej(await C.M.sync([put('versions', 'v_srm1', { ...d, state: 'released' }, d)]), SETTINGS);
+    rej(await C.M.sync([{ c: 'versions', id: 'v_srm1', op: 'del' }]), SETTINGS);
+    rej(await C.O.sync([{ c: 'versions', id: 'v_srm1', op: 'del' }]), NO_PROJECT);
+    /* Proje yetki tablosunda Üye'ye "Proje adı ve ayarları" açılınca Üye de yazar; kapatılınca yine 403. */
+    await setPerms(C.Y, 'p_srm', { member: { 'project.settings': true } });
+    ok(await C.M.sync([ver('v_srm_m', { name: 'Üye sürümü' })]));
+    await setPerms(C.Y, 'p_srm', {});
+    const m = await row('versions', 'v_srm_m');
+    rej(await C.M.sync([put('versions', 'v_srm_m', { ...m, name: 'Üye 2' }, m)]), SETTINGS);
+    ok(await C.Y.sync([{ c: 'versions', id: 'v_srm_m', op: 'del' }]));
+    assert.equal(await row('versions', 'v_srm_m'), undefined);
+    /* Genel İzleyici rolündeki kişi projede Yöneticiyse sürüm yazar (proje rolü belirler). */
+    const G = await newUser('u_srm_g', 'srm_gozcu', 'viewer');
+    await addRoles(C.A, 'p_srm2', { u_srm_g: 'admin' });
+    ok(await G.sync([put('versions', 'v_srm_g', { projectId: 'p_srm2', name: 'B 1.0', state: 'planned' })]));
+  });
+
+  test('görünürlük: sürüm yalnız projeyi görene gider (ilk yükleme ve değişiklik akışı)', async () => {
+    const ids = async k => ((await k.state()).json.data.versions || []).map(x => x.id);
+    assert.ok((await ids(C.M)).includes('v_srm1'));
+    assert.ok((await ids(C.V)).includes('v_srm1'));
+    assert.ok(!(await ids(C.O)).includes('v_srm1'));
+    assert.ok(!(await ids(C.V)).includes('v_srm_g'), 'başka projenin sürümü sızdı');
+    const s0 = (await C.O.req('GET', '/api/changes?since=0')).json.seq;
+    const d = await row('versions', 'v_srm1');
+    ok(await C.Y.sync([put('versions', 'v_srm1', { ...d, desc: 'İlk teslim paketi' }, d)]));
+    const itO = (await C.O.req('GET', `/api/changes?since=${s0}`)).json.items.filter(i => i.c === 'versions');
+    assert.equal(itO.length, 0, JSON.stringify(itO));
+    const itV = (await C.V.req('GET', `/api/changes?since=${s0}`)).json.items.filter(i => i.c === 'versions');
+    assert.equal(itV[0]?.data?.desc, 'İlk teslim paketi');
+  });
+
+  test('biçim: ad, bilinmeyen alan, durum, tarihler, proje değişmez, ad projede tekil (Türkçe büyük/küçük harf)', async () => {
+    const bad = async (patch, msg) => rej(await C.Y.sync([ver('v_srm_f', patch)]), msg);
+    await bad({ name: '  ' }, /Sürüm adı gerekli/);
+    await bad({ name: 'x'.repeat(61) }, /Sürüm adı gerekli/);
+    await bad({ desc: 'x'.repeat(1001) }, /Açıklama en fazla/);
+    await bad({ html: '<b>' }, 'Sürüm kaydında bilinmeyen alan var');
+    await bad({ state: 'done' }, /Sürüm durumu/);
+    await bad({ state: undefined }, /Sürüm durumu/);
+    await bad({ due: '2026-02-30' }, /Tarih YYYY-AA-GG/);
+    await bad({ start: '2026-11-10T00:00' }, /Tarih YYYY-AA-GG/);
+    await bad({ releasedAt: 'dün' }, /Tarih YYYY-AA-GG/);
+    await bad({ start: '2026-12-10', due: '2026-12-01' }, 'Teslim tarihi başlangıçtan önce olamaz');
+    await bad({ createdAt: 'x' }, 'Sürüm zamanı geçersiz');
+    await bad({ name: ' 1.0 ' }, 'Bu projede bu adla bir sürüm zaten var');
+    ok(await C.Y.sync([ver('v_srm_i', { name: 'Faz İki' })]));
+    await bad({ name: 'faz  iki' }, 'Bu projede bu adla bir sürüm zaten var');
+    /* Başka projede aynı ad serbest. */
+    ok(await C.A.sync([put('versions', 'v_srm_b10', { projectId: 'p_srm2', name: '1.0', state: 'planned' })]));
+    /* Kendi adını (aynı ad) koruyarak düzenleme serbest; projesi değişmez. */
+    const d = await row('versions', 'v_srm_i');
+    ok(await C.Y.sync([put('versions', 'v_srm_i', { ...d, desc: 'açıklama' }, d)]));
+    const d2 = await row('versions', 'v_srm_i');
+    rej(await C.A.sync([put('versions', 'v_srm_i', { ...d2, projectId: 'p_srm2' }, d2)]), 'Sürümün projesi değiştirilemez');
+  });
+
+  test('işin sürümleri: var olan ve arşivlenmemiş sürüm eklenir; başka projenin / olmayan / arşivli sürüm 400; biçim', async () => {
+    ok(await C.Y.sync([ver('v_srm2', { name: '1.1' }), ver('v_srm_ar', { name: 'Eski', state: 'archived' })]));
+    ok(await issueEdit(C.M, 'i_srm1', { versionIds: ['v_srm1', 'v_srm2'] }));
+    assert.deepEqual((await row('issues', 'i_srm1')).versionIds, ['v_srm1', 'v_srm2']);
+    rej(await issueEdit(C.M, 'i_srm2', { versionIds: ['v_srm_b10'] }), 'Sürüm bulunamadı');
+    rej(await issueEdit(C.M, 'i_srm2', { versionIds: ['v_yok'] }), 'Sürüm bulunamadı');
+    rej(await issueEdit(C.M, 'i_srm2', { versionIds: ['v_srm_ar'] }), 'Arşivlenmiş sürüme iş eklenemez');
+    rej(await issueEdit(C.M, 'i_srm2', { versionIds: ['v_srm1', 'v_srm1'] }), /tekil sürüm kimliği/);
+    rej(await issueEdit(C.M, 'i_srm2', { versionIds: 'v_srm1' }), /tekil sürüm kimliği/);
+    rej(await issueEdit(C.M, 'i_srm2', { versionIds: ['"><img>'] }), /tekil sürüm kimliği/);
+    /* İzleyici işi düzenleyemez (sürüm alanı da). */
+    rej(await issueEdit(C.V, 'i_srm2', { versionIds: ['v_srm1'] }), 'Bu projede "İş düzenleme" yetkiniz yok');
+    /* Yeni iş sürümle açılır. */
+    ok(await C.M.sync([put('issues', 'i_srm3', { projectId: 'p_srm', summary: 'Sürüm işi 3', statusId: 'p_srm_t', type: 'task', versionIds: ['v_srm2'] })]));
+    rej(await C.M.sync([put('issues', 'i_srm4', { projectId: 'p_srm', summary: 'Sürüm işi 4', statusId: 'p_srm_t', type: 'task', versionIds: ['v_srm_ar'] })]),
+      'Arşivlenmiş sürüme iş eklenemez');
+    /* Sürüm sonradan arşivlenirse işteki bağ kalır; başka alan değişince iş kaydedilir. */
+    const v2 = await row('versions', 'v_srm2');
+    ok(await C.Y.sync([put('versions', 'v_srm2', { ...v2, state: 'archived' }, v2)]));
+    ok(await issueEdit(C.M, 'i_srm1', { summary: 'Sürüm işi 1 (güncel)' }));
+    assert.deepEqual((await row('issues', 'i_srm1')).versionIds, ['v_srm1', 'v_srm2']);
+    const v2b = await row('versions', 'v_srm2');
+    ok(await C.Y.sync([put('versions', 'v_srm2', { ...v2b, state: 'released', releasedAt: '2026-11-20' }, v2b)]));
+    /* Yayınlanmış sürüme iş eklenebilir (açık işleri taşıma da böyle olur). */
+    ok(await issueEdit(C.M, 'i_srm2', { versionIds: ['v_srm2'] }));
+  });
+
+  test('iş başka projeye taşınınca eski projenin sürümleri düşer; sürüm silinince işlerdeki bağ kalkar; proje silinince sürümler çöpe gider', async () => {
+    ok(await C.A.sync([put('issues', 'i_srm5', { projectId: 'p_srm', summary: 'Taşınacak', statusId: 'p_srm_t', type: 'task', versionIds: ['v_srm1'] })]));
+    const d = await row('issues', 'i_srm5');
+    const r = ok(await C.M.sync([put('issues', 'i_srm5', { ...d, projectId: 'p_srm2', statusId: 'p_srm2_t' }, d)]));
+    assert.ok(r.json.adjusted.some(x => x.c === 'issues' && x.id === 'i_srm5'));
+    assert.deepEqual((await row('issues', 'i_srm5')).versionIds, []);
+    /* Taşırken hedef projenin sürümü seçilirse kalır, başka projeninki düşer. */
+    const d5 = await row('issues', 'i_srm5');
+    ok(await C.M.sync([put('issues', 'i_srm5', { ...d5, projectId: 'p_srm', statusId: 'p_srm_t', versionIds: ['v_srm1', 'v_srm_b10'] }, d5)]));
+    assert.deepEqual((await row('issues', 'i_srm5')).versionIds, ['v_srm1']);
+    /* Sürüm silme: işlerden bağ kalkar, değişen işler akışa düşer; sürüm çöp kutusunda. */
+    const s0 = (await C.M.req('GET', '/api/changes?since=0')).json.seq;
+    const del = ok(await C.Y.sync([{ c: 'versions', id: 'v_srm1', op: 'del' }]));
+    assert.ok(del.json.adjusted.some(x => x.id === 'i_srm1') && del.json.adjusted.some(x => x.id === 'i_srm5'), JSON.stringify(del.json.adjusted));
+    assert.deepEqual((await row('issues', 'i_srm1')).versionIds, ['v_srm2']);
+    assert.deepEqual((await row('issues', 'i_srm5')).versionIds, []);
+    const items = (await C.M.req('GET', `/api/changes?since=${s0}`)).json.items;
+    assert.ok(items.some(i => i.c === 'issues' && i.id === 'i_srm1' && i.op === 'put'));
+    assert.ok(items.some(i => i.c === 'versions' && i.id === 'v_srm1' && i.op === 'del'));
+    assert.ok((await pool.query(`SELECT 1 FROM deleted_records WHERE collection='versions' AND record_id='v_srm1'`)).rowCount);
+    /* Proje silme: sürümleri de çöpe gider. */
+    ok(await C.A.sync([put('projects', 'p_srm3', { name: 'Silinecek', key: 'SRMC', counter: 0, workspaceId: 'ws_srm' }),
+      put('statuses', 'p_srm3_d', { projectId: 'p_srm3', name: 'Bitti', cat: 'done', ord: 0 })]));
+    ok(await C.A.sync([put('versions', 'v_srm3', { projectId: 'p_srm3', name: 'C 1.0', state: 'planned' })]));
+    ok(await C.A.sync([{ c: 'projects', id: 'p_srm3', op: 'del' }]));
+    assert.equal(await row('versions', 'v_srm3'), undefined);
+    assert.ok((await pool.query(`SELECT 1 FROM deleted_records WHERE collection='versions' AND record_id='v_srm3'`)).rowCount);
+  });
+
+  test('017 tekrar çalışır, veri silmez; dışa aktarmada sürümler var', async () => {
+    const n = Number((await pool.query('SELECT count(*) n FROM versions')).rows[0].n);
+    assert.ok(n > 0);
+    const { readFile } = await import('node:fs/promises');
+    const sql = await readFile(new globalThis.URL('../server/migrations/017_surumler.sql', import.meta.url), 'utf8');
+    await pool.query(sql);
+    assert.equal(Number((await pool.query('SELECT count(*) n FROM versions')).rows[0].n), n);
+    const ex = (await C.A.req('GET', '/api/export')).json;
+    assert.ok(Array.isArray(ex.versions ?? ex.data?.versions), 'dışa aktarmada versions yok');
+  });
+});

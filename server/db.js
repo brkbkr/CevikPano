@@ -14,6 +14,7 @@ export const TABLES = {
   workspaces: 'workspaces',                         // 003_workspaces.sql
   customers: 'customers',                           // 004_cariler.sql
   reports: 'reports',                               // 011_kayitli_raporlar.sql
+  versions: 'versions',                             // 017_surumler.sql
 };
 
 /* İstemciden yazılabilen, tablosu olmayan (misc_records) koleksiyonlar: beyaz liste (Güv D1). Bugünkü ön yüzün

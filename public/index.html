@@ -3269,6 +3269,53 @@ button.pf-card:hover{background:var(--surface2);border-color:var(--line)}
   .pm-add .pm-pick{flex-basis:100%}
   .pm-add .pm-rsel{flex:1}
 }
+/* ---- Sürümler / teslim paketleri (017): mevcut dil (cu-tools, cu-seg, as-head, sp-bar) ---- */
+.vr-c{max-width:1180px}
+.vr-tools{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.vr-tools .spacer{flex:1}
+.vr-wrap{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-sm);overflow:auto}
+.vr-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.vr-tbl th{text-align:left;font-size:11px;font-weight:650;color:var(--meta);padding:9px 12px;border-bottom:1px solid var(--line);background:var(--surface2);white-space:nowrap}
+.vr-tbl td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+.vr-tbl tr:last-child td{border-bottom:0}
+.vr-row{cursor:pointer}
+.vr-row:hover td,.vr-row:focus-visible td{background:var(--surface2)}
+.vr-row:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.vr-row.ar td{color:var(--ink3)}
+.vr-nm{display:block;font-weight:650;color:var(--ink);overflow-wrap:anywhere}
+.vr-ds{display:block;font-size:11.5px;color:var(--meta);max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vr-st{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:650;border:1px solid var(--line);background:var(--surface2);color:var(--ink2);white-space:nowrap}
+.vr-st.pl{background:var(--accent-soft);color:var(--accent-d);border-color:transparent}
+.vr-st.rl{background:var(--done-bg);color:var(--done);border-color:var(--done-line)}
+.vr-st.ar{background:var(--todo-bg);color:var(--todo);border-color:var(--todo-line)}
+.vr-pg{min-width:170px}
+.vr-pg .sp-bar{margin-bottom:4px}
+.vr-pn{font-family:var(--mono);font-size:11px;color:var(--ink2);white-space:nowrap}
+.vr-dt{font-family:var(--mono);font-size:11.5px;color:var(--ink2);white-space:nowrap}
+.vr-late{display:flex;align-items:center;gap:7px;margin-top:8px;padding:7px 10px;border-radius:9px;background:var(--risk-bg);border:1px solid var(--risk-line);color:var(--risk);font-size:12.5px;font-weight:600}
+.vr-late svg.i{width:15px;height:15px;flex-shrink:0}
+.vr-lt{display:inline-flex;margin-left:6px;font-size:11px;font-weight:650;color:var(--risk);white-space:nowrap}
+.vr-back{margin-bottom:10px}
+.vr-ic{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--accent-soft);color:var(--accent-d)}
+.vr-ic svg.i{width:17px;height:17px}
+.vr-desc{white-space:pre-wrap}
+.vr-acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.vr-list{margin-top:4px}
+.vr-list .vr-wrap{box-shadow:none}
+.vr-its .done td{color:var(--ink3)}
+.vr-its .done .vr-sum{text-decoration:line-through;text-decoration-color:var(--line2)}
+.vr-sum{overflow-wrap:anywhere}
+.vr-tags .id-tag svg.i{width:12px;height:12px;color:var(--accent-d)}
+.vr-tags .id-tag small{color:var(--meta);font-size:10.5px}
+.id-versel{height:28px;padding:2px 8px;font-size:12px;width:auto;max-width:180px}
+.vr-pick{display:flex;flex-wrap:wrap;gap:6px}
+.vr-opt{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:12.5px;cursor:pointer}
+.vr-opt:has(input:checked){border-color:var(--accent);background:var(--accent-soft);color:var(--accent-d)}
+@media (max-width:640px){
+  .vr-tbl .vr-hide{display:none}
+  .vr-pg{min-width:110px}
+  .vr-acts .btn,.vr-tools .btn,.vr-opt{min-height:44px}
+}
 </style>
 </head>
 <body>
@@ -4029,7 +4076,7 @@ async function load() {
   if (ME.defaultPassword) DEFAULT_PW = ME.defaultPassword;
   const d = r.data || {};
   for (const k of ['users', 'projects', 'statuses', 'sprints', 'issues', 'worklogs', 'comments', 'history',
-                   'fields', 'rules', 'links', 'transitions', 'filters', 'workspaces', 'customers', 'reports']) if (!Array.isArray(d[k])) d[k] = [];
+                   'fields', 'rules', 'links', 'transitions', 'filters', 'workspaces', 'customers', 'reports', 'versions']) if (!Array.isArray(d[k])) d[k] = [];
   if (!d.cfg) d.cfg = { h: 8, d: 5, modules: { ...MODULE_DEFAULTS }, types: TYPE_DEFAULTS.map(t => ({ ...t })),
     defaultStatuses: STATUS_TEMPLATES.uyarlama[1].map(x => [...x]) };
   /* Sunucunun gördüğü hâl — kişisel tercihler varsayılanlardan ÖNCE alınır ki ilk kez kaydedilsin. */
@@ -4209,6 +4256,9 @@ const SVG = {
   /* İş detayı (docs/tasarim/kart-detay) */
   chat: '<path d="M4.5 5h15a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H9l-4.5 3.5V17h0a1.5 1.5 0 0 1-1.5-1.5v-9A1.5 1.5 0 0 1 4.5 5z"/>',
   tag: '<path d="M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8 8a1.4 1.4 0 0 1 0 2l-7 7a1.4 1.4 0 0 1-2 0z"/><circle cx="8" cy="8" r="1.4"/>',
+  /* Sürümler (017) */
+  package: '<path d="M12 3 20.5 7.5v9L12 21l-8.5-4.5v-9z"/><path d="m3.5 7.5 8.5 4.5 8.5-4.5M12 12v9"/><path d="m7.8 5.3 8.5 4.6"/>',
+  rocket: '<path d="M14.5 4.5c2.5-1.2 5-1.5 5-1.5s-.3 2.5-1.5 5l-6.5 6.5-3.5-3.5z"/><path d="M8 11 5 10.5 3 13l3.5 1M13 16l.5 3L11 21l-1-3.5"/><path d="M6.5 17.5 4 20"/>',
   up: '<path d="m18 15-6-6-6 6"/>',
   /* gezinme: proje sekmeleri ve hesap menüsü (docs/tasarim/gezinme) */
   plan: '<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M16 2v4M8 2v4M3 10h18M7 14h5M11 18h6"/>',
@@ -4871,6 +4921,290 @@ function renderSprint() {
     </section>
     ${renderBoard('sprint')}`;
 }
+
+/* ============================ SÜRÜMLER / TESLİM PAKETLERİ (017) ============================
+   Proje sekmesi "Sürümler" (Jira Releases): sürüm oluştur/düzenle (ad, açıklama, başlangıç, teslim tarihi, durum),
+   ilerleme (biten/toplam iş ve puan), gecikme uyarısı, işler listesi, "Yayınla" (açık işler başka sürüme taşınsın mı).
+   İşin sürümleri issues.data.versionIds (birden çok). Kayıtlar DB.versions → versions tablosu. Yetki ve bütünlük
+   sunucuda (store.js: project.settings, adın projede tekilliği, arşivli sürüme iş eklenmez); buradakiler yalnız deneyim. */
+const VER_ST = { planned: ['Planlanan', 'pl'], released: ['Yayınlandı', 'rl'], archived: ['Arşiv', 'ar'] };
+const VER_TABS = [['all', 'Tümü'], ['planned', 'Planlanan'], ['released', 'Yayınlandı'], ['archived', 'Arşiv']];
+const verList = () => (DB.versions || []).filter(v => v && typeof v.id === 'string' && typeof v.name === 'string');
+const verById = id => verList().find(v => v.id === id);
+const verState = v => (Object.hasOwn(VER_ST, v?.state) ? v.state : 'planned');
+const verCmp = (a, b) => (verState(a) === 'archived') - (verState(b) === 'archived')
+  || String(a.due || '9999').localeCompare(String(b.due || '9999'))
+  || String(a.name).localeCompare(String(b.name), 'tr', { numeric: true });
+const versOfP = pid => verList().filter(v => v.projectId === pid).sort(verCmp);
+const iVerIds = i => (Array.isArray(i?.versionIds) ? i.versionIds.filter(x => typeof x === 'string') : []);
+const verName = id => verById(id)?.name || '(silinmiş sürüm)';
+const verNames = ids => ids.map(verName).join(', ');
+/* Sürüm yazma: projede "Proje adı ve ayarları" (sunucudaki ISSUE_PERMS.versions ile aynı). */
+const canVer = p => !!p && canP(p, 'project.settings');
+const verChip = v => `<span class="vr-st ${VER_ST[verState(v)][1]}">${esc(VER_ST[verState(v)][0])}</span>`;
+const verPts = n => (Math.round((+n || 0) * 10) / 10).toLocaleString('tr-TR');
+function verStats(v) {
+  const items = DB.issues.filter(i => i.projectId === v.projectId && iVerIds(i).includes(v.id));
+  const done = items.filter(isDone);
+  const pts = items.reduce((a, i) => a + (+i.points || 0), 0), ptsDone = done.reduce((a, i) => a + (+i.points || 0), 0);
+  const open = items.length - done.length;
+  const late = verState(v) === 'planned' && !!v.due && v.due < TODAY && open > 0;
+  return { items, n: items.length, done: done.length, open, pts, ptsDone, late,
+    lateDays: late ? Math.max(1, Math.round((hmDay(TODAY) - hmDay(v.due)) / 864e5)) : 0 };
+}
+/* İşin sürümlerini yazar ve geçmişe adla kaydeder (değişmediyse false). */
+function verSet(i, ids) {
+  const cur = iVerIds(i);
+  if (cur.length === ids.length && cur.every((x, k) => x === ids[k])) return false;
+  logHist(i, 'Sürüm', verNames(cur) || '—', verNames(ids) || '—');
+  i.versionIds = ids; i.updatedAt = Date.now();
+  return true;
+}
+/* Rapor/sorgu boyutu: işin sürümleri tek anahtar (birden çok sürüm "A + B"; toplamlar çift sayılmaz). */
+/* Kimlik → sürüm haritası: bir çizim (eşzamanlı iş) boyunca bir kez kurulur, sonra bırakılır. */
+let VER_MAP = null;
+const verMap = () => { if (!VER_MAP) { VER_MAP = new Map(verList().map(v => [v.id, v])); queueMicrotask(() => { VER_MAP = null; }); } return VER_MAP; };
+const verDimKey = (i, VM) => { const vs = iVerIds(i).map(id => VM.get(id)).filter(Boolean).sort(verCmp);
+  return vs.length ? vs.map(v => v.id).join('|') : '__none'; };
+const verDimName = (k, VM) => k === '__none' ? 'Sürümsüz' : String(k).split('|').map(id => VM.get(id)?.name || '—').join(' + ');
+
+function renderReleases() {
+  const pr = P(); if (!pr) return '';
+  const sel = DB.ui.verSel ? verById(DB.ui.verSel) : null;
+  if (sel && sel.projectId === pr.id) return verPage(sel, pr);
+  const all = versOfP(pr.id), can = canVer(pr);
+  if (!all.length) return `<div class="vr-c" id="vrPage"><div class="hm-empty" data-vrempty="none"><span class="hm-empty-ic">${ic('package')}</span>
+      <h3>Henüz sürüm yok</h3><p>İşleri "v2.1", "Mart teslimi" ya da "Faz 2" gibi teslim paketlerinde toplayın; ilerlemeyi ve teslim tarihini tek ekranda izleyin.</p>
+      ${can ? `<div class="acts"><button type="button" class="btn pri" data-vrnew>${ic('plus')}Sürüm oluştur</button></div>` : '<p>Sürümleri proje yöneticisi oluşturur.</p>'}</div></div>`;
+  const tab = VER_TABS.some(t => t[0] === DB.ui.verTab) ? DB.ui.verTab : 'all';
+  const list = tab === 'all' ? all : all.filter(v => verState(v) === tab);
+  const seg = VER_TABS.map(([k, l]) => { const n = k === 'all' ? all.length : all.filter(v => verState(v) === k).length;
+    return `<button type="button" role="radio" data-vrtab="${k}" aria-checked="${tab === k}" tabindex="${tab === k ? 0 : -1}">${l} <span class="n">${n}</span></button>`; }).join('');
+  const showPts = MOD('points') || all.some(v => verStats(v).pts);
+  const row = v => { const s = verStats(v), st = verState(v), pct = s.n ? s.done / s.n * 100 : 0;
+    return `<tr class="vr-row ${VER_ST[st][1]}" tabindex="0" data-vropen="${esc(v.id)}" aria-label="${esc(v.name)} · ${esc(VER_ST[st][0])}">
+      <td><span class="vr-nm">${esc(v.name)}</span>${v.desc ? `<span class="vr-ds">${esc(v.desc)}</span>` : ''}</td>
+      <td>${verChip(v)}</td>
+      <td class="vr-pg">${spBar(pct, 'done', `${v.name}: biten iş oranı`)}<span class="vr-pn">${s.done}/${s.n} iş${showPts ? ` · ${verPts(s.ptsDone)}/${verPts(s.pts)} puan` : ''}</span></td>
+      <td class="vr-dt vr-hide">${v.start ? esc(fmtDMid(v.start)) : '—'}</td>
+      <td class="vr-dt">${v.due ? esc(fmtDMid(v.due)) : '—'}${s.late ? `<span class="vr-lt" data-vrlate>${ic('alert')}${s.lateDays} gün gecikti</span>` : ''}</td>
+      <td class="vr-dt vr-hide">${st !== 'planned' && v.releasedAt ? esc(fmtDMid(v.releasedAt)) : '—'}</td></tr>`; };
+  return `<div class="vr-c" id="vrPage">
+    <div class="vr-tools"><div class="cu-seg" role="radiogroup" aria-label="Sürüm durumu">${seg}</div><span class="spacer"></span>
+      ${can ? `<button type="button" class="btn pri" data-vrnew>${ic('plus')}Sürüm oluştur</button>` : ''}</div>
+    ${list.length ? `<div class="vr-wrap"><table class="vr-tbl" aria-label="Sürümler"><thead><tr><th>Sürüm</th><th>Durum</th><th>İlerleme</th>
+      <th class="vr-hide">Başlangıç</th><th>Teslim</th><th class="vr-hide">Yayın</th></tr></thead>
+      <tbody>${list.map(row).join('')}</tbody></table></div>`
+      : `<div class="hm-empty" data-vrempty="tab"><span class="hm-empty-ic">${ic('filter')}</span><h3>Bu durumda sürüm yok</h3>
+        <div class="acts"><button type="button" class="btn" data-vrtab="all">Tümünü göster</button></div></div>`}
+  </div>`;
+}
+
+function verPage(v, pr) {
+  const s = verStats(v), can = canVer(pr), st = verState(v);
+  const pct = s.n ? s.done / s.n * 100 : 0, pp = s.pts ? s.ptsDone / s.pts * 100 : 0;
+  const showPts = MOD('points') || s.pts > 0;
+  const rows = s.items.slice().sort((a, b) => isDone(a) - isDone(b) || String(a.key).localeCompare(String(b.key), 'tr', { numeric: true }));
+  const id = esc(v.id);
+  return `<div class="vr-c" id="vrPage" data-vr="${id}">
+    <button type="button" class="btn ghost sm vr-back" data-vrback>${ic('back')}Tüm sürümler</button>
+    <section class="as-head vr-head" aria-labelledby="vrTitle">
+      <div class="as-main">
+        <div class="as-t"><span class="vr-ic" aria-hidden="true">${ic('package')}</span><h2 id="vrTitle" tabindex="-1">${esc(v.name)}</h2>${verChip(v)}
+          ${v.start || v.due ? `<span class="as-dates">${v.start ? esc(fmtDMid(v.start)) : '—'} → ${v.due ? esc(fmtDMid(v.due)) : '—'}</span>` : ''}
+          ${st !== 'planned' && v.releasedAt ? `<span class="as-left">Yayın: ${esc(fmtDMid(v.releasedAt))}</span>` : ''}</div>
+        ${v.desc ? `<p class="as-goal vr-desc">${esc(v.desc)}</p>` : ''}
+        ${s.late ? `<div class="vr-late" role="alert" data-vrlate>${ic('alert')}<span>Teslim tarihi ${s.lateDays} gün önce geçti; ${s.open} iş hâlâ açık.</span></div>` : ''}
+      </div>
+      <div class="as-prog">
+        <div class="as-pl"><span>Biten iş <b class="num" data-vrn>${s.done}/${s.n}</b></span>${showPts ? `<span>Puan <b class="num" data-vrp>${verPts(s.ptsDone)}/${verPts(s.pts)}</b></span>` : ''}</div>
+        ${spBar(pct, 'done', 'Biten iş oranı')}
+        ${s.pts ? spBar(pp, 'hrs', 'Biten puan oranı') : ''}
+      </div>
+      ${can ? `<div class="vr-acts">
+        ${st === 'planned' ? `<button type="button" class="btn pri" data-vrrel="${id}">${ic('rocket')}Yayınla</button>` : ''}
+        ${st === 'released' ? `<button type="button" class="btn" data-vrunrel="${id}">${ic('undo')}Yayını geri al</button>` : ''}
+        <button type="button" class="btn" data-vredit="${id}">${ic('pencil')}Düzenle</button>
+        ${st === 'archived' ? `<button type="button" class="btn" data-vrunarch="${id}">${ic('unarchive')}Arşivden çıkar</button>`
+          : `<button type="button" class="btn" data-vrarch="${id}">${ic('archive')}Arşivle</button>`}
+        <button type="button" class="btn danger" data-vrdel="${id}">${ic('trash')}Sil</button></div>` : ''}
+    </section>
+    <section class="panel vr-list" aria-label="Sürümdeki işler">
+      <h3>İşler</h3><div class="sub">${s.n} iş · ${s.open} açık · ${s.done} bitti</div>
+      ${rows.length ? `<div class="vr-wrap"><table class="vr-tbl vr-its" aria-label="Sürümdeki işler"><thead><tr><th>İş</th><th class="vr-hide">Tip</th><th>Durum</th><th class="vr-hide">Atanan</th>${showPts ? '<th>Puan</th>' : ''}</tr></thead>
+        <tbody>${rows.map(i => { const x = stat(i.statusId);
+          return `<tr class="vr-row ${isDone(i) ? 'done' : ''}" tabindex="0" data-open="${esc(i.id)}" aria-label="${esc(i.key)} ${esc(i.summary)}">
+            <td><span class="k" style="color:var(--ink3);margin-right:6px">${esc(i.key)}</span><span class="vr-sum">${esc(i.summary)}</span></td>
+            <td class="vr-hide">${tIcon(i.type)}</td>
+            <td><span class="chip cat-${esc(x.cat)}">${esc(x.name)}</span></td>
+            <td class="vr-hide">${i.assignee ? avat(i.assignee) + ' ' + esc(user(i.assignee)?.name || '') : '<span class="muted">Atanmamış</span>'}</td>
+            ${showPts ? `<td class="num">${esc(String(i.points ?? '—'))}</td>` : ''}</tr>`; }).join('')}</tbody></table></div>`
+        : '<div class="empty" data-vrnoiss>Bu sürümde iş yok. İş detayındaki "Sürüm" alanından, yeni iş formundan ya da toplu düzenlemeden ekleyin.</div>'}
+    </section></div>`;
+}
+
+/* Sürüm oluştur / düzenle (sprint penceresiyle aynı dil). Durum da buradan değişir; "Yayınla" açık işleri sorar. */
+function verForm(id) {
+  const pr = P(); if (!pr) return toast('Önce bir proje seçin');
+  if (!canVer(pr)) return toast(PERM_DENY('project.settings'));
+  const v = id ? verById(id) : null;
+  if (id && !v) return toast('Sürüm bulunamadı');
+  const st = verState(v);
+  openModal(`${spHead('package', 'vrFormT', v ? 'Sürümü düzenle' : 'Sürüm oluştur', `<span class="k">${esc(pr.key)}</span> ${esc(pr.name)}`)}
+    <div class="id-mb">
+      <div class="id-fl"><label for="vr_name">Ad <span class="req">*</span></label></div>
+      <input class="inp" id="vr_name" maxlength="60" value="${esc(v?.name || '')}" placeholder="örn. v2.1, Mart teslimi, Faz 2" autocomplete="off" aria-describedby="vr_name_e">
+      <div class="id-err" id="vr_name_e" role="alert"></div>
+      <div class="id-fl"><label for="vr_desc">Açıklama <span class="opt">(isteğe bağlı)</span></label></div>
+      <textarea class="inp" id="vr_desc" rows="3" maxlength="1000" placeholder="Bu teslimde neler var?">${esc(v?.desc || '')}</textarea>
+      <div class="id-g2">
+        <div><div class="id-fl">Başlangıç</div>${dateField({ id: 'vr_start', label: 'Başlangıç', quick: false, value: v?.start || '' })}</div>
+        <div><div class="id-fl">Teslim tarihi</div>${dateField({ id: 'vr_due', label: 'Teslim tarihi', quick: false, value: v?.due || '' })}</div>
+      </div>
+      <div class="id-fl"><label for="vr_state">Durum</label></div>
+      <select class="inp" id="vr_state">${Object.entries(VER_ST).map(([k, [l]]) => `<option value="${k}" ${st === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+    </div>
+    <div class="m-f"><span class="spacer"></span><button type="button" class="btn" data-close>Vazgeç</button>
+      <button type="button" class="btn pri" id="vr_ok">${ic(v ? 'check' : 'plus')}${v ? 'Kaydet' : 'Sürüm oluştur'}</button></div>`, 'id-m narrow sp-m id-trap');
+  spDlg('vrFormT');
+  const chk = () => { const a = $('#vr_start').value, b = $('#vr_due').value;
+    const msg = a && b && b < a ? `Teslim tarihi, başlangıçtan (${fmtDMid(a)}) önce olamaz.` : ''; dfErr('vr_due', msg); return !msg; };
+  $('#vr_start').addEventListener('change', chk); $('#vr_due').addEventListener('change', chk);
+  const err = m => { $('#vr_name_e').innerHTML = m ? ic('alert') + esc(m) : ''; $('#vr_name').toggleAttribute('aria-invalid', !!m); };
+  $('#vr_name').oninput = () => { if ($('#vr_name').value.trim()) err(''); };
+  $('#vr_ok').onclick = () => {
+    const name = $('#vr_name').value.trim().replace(/\s+/g, ' ');
+    if (!name) { err('Ad gerekli.'); return $('#vr_name').focus(); }
+    if (versOfP(pr.id).some(x => x.id !== v?.id && wsKey(x.name) === wsKey(name))) { err('Bu projede bu adla bir sürüm zaten var.'); return $('#vr_name').focus(); }
+    if (!chk()) return;
+    const ns = $('#vr_state').value, o = { name, desc: $('#vr_desc').value.trim(), start: $('#vr_start').value || '', due: $('#vr_due').value || '', state: ns, updatedAt: Date.now() };
+    if (ns === 'released' && (st !== 'released' || !v?.releasedAt)) o.releasedAt = v?.releasedAt || TODAY;
+    if (ns === 'planned') o.releasedAt = '';
+    if (v) Object.assign(v, o);
+    else { const nv = { id: uid('v'), projectId: pr.id, createdAt: Date.now(), ...o }; (DB.versions ||= []).push(nv); DB.ui.verSel = nv.id; }
+    closeModal(); save(); render(); toast(v ? 'Sürüm kaydedildi' : `${name} oluşturuldu`);
+    setTimeout(() => $('#vrTitle')?.focus(), 30);
+  };
+  $('#scrim .modal').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey || e.target.id === 'vr_name')) { e.preventDefault(); $('#vr_ok').click(); } });
+  setTimeout(() => $('#vr_name')?.focus(), 40);
+}
+
+/* Yayınla: yayın tarihi + açık işler nereye (başka planlanan sürüm / sürümden çıkar / bu sürümde bırak). */
+function verRelease(id) {
+  const v = verById(id), pr = P();
+  if (!v || !pr) return;
+  if (!canVer(pr)) return toast(PERM_DENY('project.settings'));
+  const s = verStats(v), open = s.items.filter(i => !isDone(i));
+  const others = versOfP(pr.id).filter(x => x.id !== v.id && verState(x) === 'planned');
+  const dests = [...others.map(x => [x.id, x.name, x.due ? 'Teslim ' + fmtDMid(x.due) : 'Planlanan sürüm', 'package']),
+    ['__none', 'Sürümden çıkar', 'Açık işler sürümsüz kalır', 'x'], ['', 'Bu sürümde bırak', 'Açık işler bu sürümde kalır', 'check']];
+  openModal(`${spHead('rocket', 'vrRelT', 'Sürümü yayınla', `<span class="k">${esc(pr.key)}</span> ${esc(v.name)}`)}
+    <div class="id-mb">
+      <div class="sp-stats">${spStat(s.done, 'biten iş', 'ok')}${spStat(s.open, 'açık iş', s.open ? 'warn' : '')}${spStat(verPts(s.ptsDone) + '/' + verPts(s.pts), 'biten puan')}</div>
+      <div class="id-fl">Yayın tarihi</div>${dateField({ id: 'vr_rdate', label: 'Yayın tarihi', clear: false, value: TODAY })}
+      ${open.length ? `<div class="id-fl">Açık ${open.length} iş başka sürüme taşınsın mı?</div>
+        <div class="id-types sp-dest" role="radiogroup" aria-label="Açık işlerin hedefi">${dests.map(([val, n, sub, icn], k) =>
+          `<button type="button" class="id-tcard" role="radio" data-vrdest="${esc(val)}" aria-checked="${k === 0}" tabindex="${k === 0 ? 0 : -1}">
+            <span class="id-mic sm">${ic(icn)}</span><span class="tx"><b>${esc(n)}</b><small>${esc(sub)}</small></span></button>`).join('')}</div>
+        ${others.length ? '' : `<div class="id-hint sp-note">${ic('info')}Başka planlanan sürüm yok; taşımak için önce yeni bir sürüm oluşturun.</div>`}`
+        : `<div class="sp-goal ok">${ic('checkc')}<span>Sürümdeki tüm işler bitti.</span></div>`}
+    </div>
+    <div class="m-f"><span class="spacer"></span><button type="button" class="btn" data-close>Vazgeç</button>
+      <button type="button" class="btn pri" id="vr_doRel">${ic('rocket')}Yayınla</button></div>`, 'id-m narrow sp-m id-trap');
+  const m = spDlg('vrRelT');
+  const g = m.querySelector('.sp-dest');
+  if (g) {
+    const pick = b => g.querySelectorAll('[data-vrdest]').forEach(x => { x.setAttribute('aria-checked', String(x === b)); x.tabIndex = x === b ? 0 : -1; });
+    g.onclick = e => { const b = e.target.closest('[data-vrdest]'); if (b) pick(b); };
+    g.onkeydown = e => { if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+      const r = [...g.querySelectorAll('[role=radio]')], k = r.indexOf(e.target); if (k < 0) return;
+      e.preventDefault(); const n = r[(k + (e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 1) + r.length) % r.length]; n.focus(); pick(n); };
+  }
+  $('#vr_doRel').onclick = () => {
+    const to = g ? g.querySelector('[aria-checked="true"]')?.dataset.vrdest ?? '' : '';
+    let moved = 0;
+    if (to) open.forEach(i => { const rest = iVerIds(i).filter(x => x !== v.id && x !== to);
+      if (verSet(i, to === '__none' ? rest : [...rest, to])) moved++; });
+    v.state = 'released'; v.releasedAt = day10($('#vr_rdate').value) || TODAY; v.updatedAt = Date.now();
+    closeModal(); save(); render();
+    toast(`${v.name} yayınlandı${moved ? ` · ${moved} açık iş ${to === '__none' ? 'sürümden çıkarıldı' : verName(to) + ' sürümüne taşındı'}` : ''}`);
+  };
+  setTimeout(() => $('#vr_doRel')?.focus(), 40);
+}
+function verSetState(id, state) {
+  const v = verById(id), pr = P(); if (!v || !pr) return;
+  if (!canVer(pr)) return toast(PERM_DENY('project.settings'));
+  if (state === 'archived') {
+    const n = verStats(v).n;
+    if (!confirm(`"${v.name}" arşivlensin mi?\n\nArşivli sürüm seçicilerde görünmez ve ona yeni iş eklenemez.${n ? ` ${n} işteki bağ korunur.` : ''}`)) return;
+  }
+  v.state = state; v.updatedAt = Date.now();
+  if (state === 'planned') v.releasedAt = '';
+  save(); render();
+  toast(state === 'archived' ? `${v.name} arşivlendi` : state === 'planned' ? `${v.name} planlanan duruma döndü` : `${v.name} arşivden çıkarıldı`);
+}
+function verDelete(id) {
+  const v = verById(id), pr = P(); if (!v || !pr) return;
+  if (!canVer(pr)) return toast(PERM_DENY('project.settings'));
+  const n = verStats(v).n;
+  if (!confirm(`"${v.name}" sürümü silinsin mi?\n\n${n ? `${n} işten bu sürüm kaldırılır; işler silinmez. ` : ''}Gerekirse Sistem › Çöp kutusu'ndan geri yüklenebilir.`)) return;
+  DB.issues.forEach(i => { if (iVerIds(i).includes(v.id)) verSet(i, iVerIds(i).filter(x => x !== v.id)); });
+  DB.versions = (DB.versions || []).filter(x => x.id !== v.id);
+  DB.ui.verSel = null;
+  save(); render(); toast(`${v.name} silindi`);
+}
+/* İş detayı: "Sürüm" satırı (Planlama grubu). Çipler + "+ Sürüm" seçici (arşivli sürüm listelenmez). */
+function idVerRow(i, row, ed) {
+  const all = versOfP(i.projectId), cur = iVerIds(i);
+  if (!all.length && !cur.length) return '';
+  const add = all.filter(v => verState(v) !== 'archived' && !cur.includes(v.id));
+  const chips = cur.map(id => { const v = verById(id), st = v ? verState(v) : null;
+    return `<span class="id-tag">${ic('package')}${esc(verName(id))}${st && st !== 'planned' ? ` <small>${esc(VER_ST[st][0].toLocaleLowerCase('tr'))}</small>` : ''}
+      ${ed ? `<button type="button" data-delver="${esc(id)}" aria-label="Sürümü kaldır: ${esc(verName(id))}">${ic('x')}</button>` : ''}</span>`; }).join('');
+  const sel = ed && add.length ? `<select class="inp id-versel" id="idVerAdd" aria-label="Sürüm ekle"><option value="">+ Sürüm</option>
+    ${add.map(v => `<option value="${esc(v.id)}">${esc(v.name)}${verState(v) === 'released' ? ' (yayınlandı)' : ''}</option>`).join('')}</select>` : '';
+  return row('Sürüm', `<div class="id-tags vr-tags" id="idVers">${chips || (sel ? '' : '<span class="muted">Yok</span>')}${sel}</div>`);
+}
+/* Toplu düzenleme: seçili işler tek projedeyse o projenin (arşivlenmemiş) sürümleri; ekler ya da temizler. */
+function bulkVer() {
+  const pids = [...new Set([...SEL].map(issue).filter(Boolean).map(i => i.projectId))];
+  if (pids.length !== 1) return '';
+  const vs = versOfP(pids[0]).filter(v => verState(v) !== 'archived');
+  if (!vs.length) return '';
+  return `<select class="inp" id="bk_ver" style="width:auto" aria-label="Sürüm"><option value="">Sürüm…</option>
+    ${vs.map(v => `<option value="${esc(v.id)}">+ ${esc(v.name)}</option>`).join('')}<option value="__none">Sürümleri temizle</option></select>`;
+}
+function bulkVerApply(i, vr) {
+  if (!vr) return;
+  if (vr === '__none') { verSet(i, []); return; }
+  const v = verById(vr);
+  if (v && v.projectId === i.projectId && !iVerIds(i).includes(vr)) verSet(i, [...iVerIds(i), vr]);
+}
+document.addEventListener('click', e => {
+  if (DB?.ui?.view !== 'versions' || !e.target.closest?.('#vrPage')) return;
+  const t = e.target, hit = s => t.closest(s);
+  let b;
+  if (hit('[data-vrnew]')) return verForm();
+  if ((b = hit('[data-vrtab]'))) { DB.ui.verTab = b.dataset.vrtab; save(); render(); return $(`[data-vrtab="${CSS.escape(DB.ui.verTab)}"]`)?.focus(); }
+  if (hit('[data-vrback]')) { const was = DB.ui.verSel; DB.ui.verSel = null; save(); render(); return $(`[data-vropen="${CSS.escape(was || '')}"]`)?.focus(); }
+  if ((b = hit('[data-vredit]'))) return verForm(b.dataset.vredit);
+  if ((b = hit('[data-vrrel]'))) return verRelease(b.dataset.vrrel);
+  if ((b = hit('[data-vrunrel]'))) return verSetState(b.dataset.vrunrel, 'planned');
+  if ((b = hit('[data-vrarch]'))) return verSetState(b.dataset.vrarch, 'archived');
+  if ((b = hit('[data-vrunarch]'))) { const v = verById(b.dataset.vrunarch); return verSetState(b.dataset.vrunarch, v?.releasedAt ? 'released' : 'planned'); }
+  if ((b = hit('[data-vrdel]'))) return verDelete(b.dataset.vrdel);
+  if ((b = hit('[data-vropen]'))) { DB.ui.verSel = b.dataset.vropen; save(); render(); setTimeout(() => $('#vrTitle')?.focus({ preventScroll: true }), 0); }
+});
+document.addEventListener('keydown', e => {
+  if (DB?.ui?.view !== 'versions' || !e.target.closest?.('#vrPage')) return;
+  const r = e.target.closest('tr[data-vropen], tr[data-open]');
+  if (r && r === e.target && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); r.click(); return; }
+  const g = e.target.closest('.cu-seg[role=radiogroup]');
+  if (g && ['ArrowLeft', 'ArrowRight'].includes(e.key)) {
+    const bs = [...g.querySelectorAll('[role=radio]')], k = bs.indexOf(e.target); if (k < 0) return;
+    e.preventDefault(); bs[(k + (e.key === 'ArrowLeft' ? -1 : 1) + bs.length) % bs.length].click();
+  }
+});
 
 /* ============================================================
    Bölüm 3: Yol haritası • Zaman çizelgesi • Raporlar
@@ -5820,6 +6154,7 @@ function issueProps(i) {
     + (reqMode(pr) || (cuOn() && i.requester) ? grp('building', 'Talep eden', reqDetail(i, ed, reqMode(pr), row, pb)) : '')
     + grp('cal', 'Planlama', (projType(pr) === 'agile' ? row('Sprint', pb('sprintId', 'sprint', `<span class="t">${sp ? esc(sp.name) + (sp.state === 'active' ? ' <small>aktif</small>' : '') : 'Backlog'}</span>`, 'Sprint: ' + (sp?.name || 'Backlog'))) : '')
       + (MOD('epic') ? row('Epik', pb('epicId', 'epic', ep ? `<span class="id-epic">${ic('layers')}${esc(ep.summary)}</span>` : '<span class="t muted">Yok</span>', 'Epik: ' + (ep?.summary || 'Yok'))) : '')
+      + idVerRow(i, row, ed)
       + row('Başlangıç', ed ? dateField({ id: 'idStart', f: 'start', value: der('start') ? der('start').v : i.start, label: 'Başlangıç', err: der('start')?.msg, quick: true })
           : `<span class="id-pv ro">${i.start ? esc(fmtDLong(i.start)) : '—'}</span>`, ' date')
       + row('Bitiş', ed ? dateField({ id: 'idDue', f: 'due', value: der('due') ? der('due').v : i.due, label: 'Bitiş', err: der('due')?.msg, late: der('due') ? 0 : lateDays(i) })
@@ -6036,6 +6371,8 @@ function idClick(e) {
   if ((b = hit('[data-dellink]'))) { const l = DB.links.find(x => x.id === b.dataset.dellink); if (l) linkHist(l, 'remove');
     DB.links = DB.links.filter(x => x.id !== b.dataset.dellink); save(); RERENDER = true; return refreshIssue(['links', 'act']); }
   if ((b = hit('[data-dellabel]'))) { labelDel(i, b.dataset.dellabel); save(); RERENDER = true; return refreshIssue(['props', 'act']); }
+  if ((b = hit('[data-delver]'))) { if (canEdit() && verSet(i, iVerIds(i).filter(x => x !== b.dataset.delver))) { save(); RERENDER = true; }
+    refreshIssue(['props', 'act']); return $('#idVerAdd')?.focus(); }
   if ((b = hit('[data-cedit]'))) { ID_CEDIT = b.dataset.cedit; ID_ED = null; refreshIssue(['act']); ID_ED = { part: 'act', f: 'cmt' }; $('#ce_' + CSS.escape(ID_CEDIT))?.focus(); return; }
   if (hit('[data-ccancel]')) { ID_CEDIT = null; ID_ED = null; return refreshIssue(['act']); }
   if ((b = hit('[data-csave]'))) return idCmtSave(b.dataset.csave);
@@ -6101,6 +6438,11 @@ function idKey(e) {
 }
 function idChange(e) {
   const t = e.target, i = curIssue(); if (!i) return;
+  if (t.id === 'idVerAdd') {
+    const v = verById(t.value);
+    if (v && canEdit() && v.projectId === i.projectId && verSet(i, [...iVerIds(i), v.id])) { save(); RERENDER = true; }
+    refreshIssue(['props', 'act']); $('#idVerAdd')?.focus(); return;
+  }
   if (t.dataset?.cf) {
     const f = DB.fields.find(x => x.id === t.dataset.cf); if (!f) return;
     const v = f.type === 'checkbox' ? t.checked : f.type === 'number' ? (t.value === '' ? '' : parseFloat(t.value.replace(',', '.'))) : t.value;
@@ -6166,7 +6508,8 @@ function newIssueForm(preset = {}, keep) {
   const nbSel = f => `<div><div class="id-fl"><label for="${f.bind === 'billable' ? 'f_bill' : 'f_btype'}">${esc(f.name)}</label></div>
     <select class="inp" id="${f.bind === 'billable' ? 'f_bill' : 'f_btype'}"><option value="">—</option>${f.options.map(x =>
       `<option value="${esc(x)}" ${x === f.def ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></div>`;
-  const moreN = ['Durum', ...nb.map(f => f.name), fs.length ? `${fs.length} özel alan` : '', 'Etiketler'].filter(Boolean).join(', ');
+  const vs = versOfP(pr.id).filter(v => verState(v) !== 'archived'), vk = new Set(keep?.versionIds || []);
+  const moreN = ['Durum', vs.length ? 'Sürüm' : '', ...nb.map(f => f.name), fs.length ? `${fs.length} özel alan` : '', 'Etiketler'].filter(Boolean).join(', ');
   openModal(`
     <div class="id-mh"><span class="id-mic">${ic('plus')}</span>
       <div class="tx"><b id="niTitle">Yeni iş</b><div class="sub"><span class="k">${esc(pr.key)}</span> ${esc(pr.name)}</div></div>
@@ -6205,6 +6548,8 @@ function newIssueForm(preset = {}, keep) {
         ${nb.map(nbSel).join('')}
         ${fs.map(f => `<div><div class="id-fl">${esc(f.name)}</div>${cfInput(f, f.def ?? '')}</div>`).join('')}
       </div>
+      ${vs.length ? `<div class="id-fl"><span id="f_vers_l">Sürüm <span class="opt">(isteğe bağlı, birden çok seçilebilir)</span></span></div>
+        <div class="vr-pick" id="f_vers" role="group" aria-labelledby="f_vers_l">${vs.map(v => `<label class="vr-opt"><input type="checkbox" value="${esc(v.id)}" ${vk.has(v.id) ? 'checked' : ''}>${esc(v.name)}</label>`).join('')}</div>` : ''}
       <div class="id-fl"><label for="f_lbl">Etiketler (virgülle)</label></div><input class="inp" id="f_lbl" placeholder="api, acil"></div>
     </div>
     <div class="m-f"><span class="id-hint"><span class="kbd">Ctrl</span>+<span class="kbd">Enter</span> oluşturur</span><span class="spacer"></span>
@@ -6259,6 +6604,7 @@ function newIssueForm(preset = {}, keep) {
       const v = f.type === 'checkbox' ? el.checked : el.value;
       if (v !== '' && v !== false) cf[f.id] = f.type === 'number' ? parseFloat(String(v).replace(',', '.')) : v; });
     const pri = +($('#f_pri [aria-checked="true"]')?.dataset.pri || 3);
+    const vers = $$('#f_vers input:checked').map(x => x.value).filter(id => verById(id));
     const it = createIssue(pr, {
       type: $('#f_type').value, summary: s, description: $('#f_desc').value.trim(), statusId: $('#f_st').value || stats()[0]?.id,
       assignee: NI_AS || null, priority: pri, points: $('#f_pts')?.value ? parseFloat($('#f_pts').value.replace(',', '.')) : null,
@@ -6268,11 +6614,12 @@ function newIssueForm(preset = {}, keep) {
       ...($('#f_cu')?.value ? { customerId: $('#f_cu').value } : {}),
       labels: $('#f_lbl').value.split(',').map(x => x.trim()).filter(Boolean),
       ...(rm ? { requester: NI_REQ || null } : {}),
+      ...(vers.length ? { versionIds: vers } : {}),
     }, pr.key);
     save();
     if (!again) { closeModal(); render(); return toast(it.key + ' oluşturuldu'); }
     const k = { type: $('#f_type').value, priority: pri, sprintId: $('#f_sp')?.value || '', epicId: $('#f_ep')?.value || '', assignee: NI_AS, requester: NI_REQ,
-      customerId: $('#f_cu') ? $('#f_cu').value : undefined };
+      customerId: $('#f_cu') ? $('#f_cu').value : undefined, versionIds: vers };
     RERENDER = true;
     newIssueForm(preset, k);
     toast(it.key + ' oluşturuldu');
@@ -6571,6 +6918,7 @@ function moveIssueTo(i, pr) {
   if (!s0) return false;
   i.projectId = pr.id; i.key = `${pr.key}-${++pr.counter}`; i.statusId = s0.id;
   i.sprintId = null; i.epicId = null; i.parentId = null;
+  if (iVerIds(i).length) i.versionIds = [];          // sürümler projeye özel (sunucu da düşürür)
   logHist(i, 'Proje', from, pr.name);
   return true;
 }
@@ -6630,6 +6978,7 @@ const VIEWS = {
   backlog:   { s: 'proj',   t: 'Backlog',           c: 'Planlama',          r: renderBacklog,   tb: toolbarBacklog },
   plan:      { s: 'proj',   t: 'Zaman planı',       c: 'Planlama',          r: renderPlan,      tb: toolbarPlan },
   roadmap:   { s: 'proj',   t: 'Yol haritası',      c: 'Epik zaman çizelgesi', r: renderRoadmap, tb: () => '' },
+  versions:  { s: 'proj',   t: 'Sürümler',          c: 'Teslim paketleri',  r: renderReleases,  tb: () => '' },
   timesheet: { s: 'proj',   t: 'Zaman çizelgesi',   c: 'Takip',             r: renderTimesheet, tb: toolbarTimesheet },
   effort:    { s: 'proj',   t: 'Efor raporu',       c: 'Takip',             r: renderEffort,    tb: toolbarEffort },
   search:    { s: 'proj',   t: 'Arama',             c: 'Sorgu',             r: renderSearch,    tb: toolbarSearch },
@@ -6640,8 +6989,8 @@ const VIEWS = {
 };
 
 /* Proje sekmeleri, soldan sağa (docs/tasarim/gezinme). Hangisinin görüneceğine viewAllowed karar verir. */
-const PROJ_TABS = ['board', 'sprint', 'backlog', 'plan', 'roadmap', 'timesheet', 'effort', 'reports', 'search', 'admin'];
-const TAB_IC = { board: 'board', sprint: 'sprint', backlog: 'backlog', plan: 'plan', roadmap: 'roadmap', timesheet: 'clock', effort: 'effort',
+const PROJ_TABS = ['board', 'sprint', 'backlog', 'plan', 'roadmap', 'versions', 'timesheet', 'effort', 'reports', 'search', 'admin'];
+const TAB_IC = { board: 'board', sprint: 'sprint', backlog: 'backlog', plan: 'plan', roadmap: 'roadmap', versions: 'package', timesheet: 'clock', effort: 'effort',
   reports: 'reports', search: 'search', admin: 'settings' };
 /* Görünürlük için tek kural: render (adres elle yazılsa da), sekmeler, sol menü ve hesap menüsü bunu kullanır.
    Yetki sunucuda; bu yalnız kullanıcı deneyimi içindir. */
@@ -7111,6 +7460,7 @@ function ensureSchema() {
   DB.rules   ||= [];
   DB.filters ||= [];
   DB.reports ||= [];
+  DB.versions ||= [];
   DB.transitions ||= [];
   DB.issues.forEach(i => { i.cf ||= {}; if (!Array.isArray(i.labels)) i.labels = []; });
   ensureTypes();
@@ -7144,6 +7494,7 @@ const QF = {
   sprint:     { g: i => i.sprintId ? sprint(i.sprintId).name : '', empty: i => !i.sprintId },
   epik:       { g: i => i.epicId ? issue(i.epicId).summary : '', empty: i => !i.epicId },
   etiket:     { g: i => i.labels || [], t: 'list', empty: i => !(i.labels || []).length },
+  surum:      { g: i => iVerIds(i).map(verName), t: 'list', empty: i => !iVerIds(i).length },
   bitis:      { g: i => i.due, t: 'date', empty: i => !i.due },
   baslangic:  { g: i => i.start, t: 'date', empty: i => !i.start },
   plangun:    { g: i => planDays(i), t: 'num' },
@@ -8318,7 +8669,7 @@ function bulkBar() {
       ${sprintsOf().map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>` : ''}
     <select class="inp" id="bk_pr" style="width:auto"><option value="">Öncelik…</option>
       ${LVLS.map(p => `<option value="${p}">${PRI[p][1]}</option>`).join('')}</select>
-    ${bulkBind('billable', 'bk_bill')}${bulkBind('billType', 'bk_bt')}
+    ${bulkBind('billable', 'bk_bill')}${bulkBind('billType', 'bk_bt')}${bulkVer()}
     <input class="inp" type="date" id="bk_st2" title="Başlangıç" style="width:auto">
     <input class="inp" type="date" id="bk_du" title="Bitiş" style="width:auto">
     <input class="inp" id="bk_lb" placeholder="Etiket ekle" style="width:130px">
@@ -8339,7 +8690,7 @@ function wireBulk() {
   $('#bk_del').onclick = () => issueDelete([...SEL]);
   go.onclick = () => {
     const st = $('#bk_st').value, as = $('#bk_as').value, sp = $('#bk_sp')?.value || '',
-          pr = $('#bk_pr').value, lb = $('#bk_lb').value.trim();
+          pr = $('#bk_pr').value, lb = $('#bk_lb').value.trim(), vr = $('#bk_ver')?.value || '';
     let n = 0;
     [...SEL].map(issue).filter(Boolean).forEach(i => {
       if (st) setStatus(i, st);
@@ -8352,6 +8703,7 @@ function wireBulk() {
       if ($('#bk_bill')?.value) histSet(i, 'billable', $('#bk_bill').value);
       if ($('#bk_bt')?.value) histSet(i, 'billType', $('#bk_bt').value);
       if (lb) labelAdd(i, lb);
+      bulkVerApply(i, vr);
       n++;
     });
     SEL.clear(); save(); render(); toast(n + ' iş güncellendi');
@@ -8502,12 +8854,13 @@ const DIMS = {
              n: id => id === '__none' ? CU_NONE : (cuById(id)?.name || '—') },
   month:   { l: 'Ay',      k: w => w.date.slice(0, 7),
              n: m => monthName(m), short: m => m },
+  version: { l: 'Sürüm',   k: w => verDimKey(issue(w.issueId), verMap()), n: k => verDimName(k, verMap()) },
 };
 /* Efor raporunun seçili satır/sütun boyutu; Cariler kapalıyken kayıtlı "Cari" seçimi saklanır ama varsayılan kullanılır. */
 const efRowK = () => { const k = DB.ui.efRow || 'user'; return k === 'customer' && !cuOn() ? 'user' : k; };
 const efColK = () => { const k = DB.ui.efCol ?? 'project'; return k === 'customer' && !cuOn() ? 'project' : k; };
 const activeDims = () => Object.entries(DIMS).filter(([k]) =>
-  (k !== 'epic' || MOD('epic')) && (k !== 'sprint' || anyAgile()) && (k !== 'customer' || cuOn()));
+  (k !== 'epic' || MOD('epic')) && (k !== 'sprint' || anyAgile()) && (k !== 'customer' || cuOn()) && (k !== 'version' || verList().length > 0));
 const MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
                 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 const monthName = m => `${MONTHS[+m.slice(5, 7) - 1]} ${m.slice(0, 4)}`;
@@ -8907,6 +9260,8 @@ function grDims(X) {
     n: x => x === GR_NONE ? 'Belirtilmemiş' : x === GR_UNK ? 'Bilinmeyen' : d.type === 'user' ? (X.UM.get(x)?.name || 'Bilinmeyen') : String(x) };
   if (MOD('epic')) D.epic = { l: 'Epik', k: (w, i) => i.epicId || GR_NONE, n: id => id === GR_NONE ? 'Epik yok' : (issue(id)?.summary || '—') };
   if (anyAgile()) D.sprint = { l: 'Sprint', k: (w, i) => i.sprintId || GR_NONE, n: id => id === GR_NONE ? 'Backlog' : (X.SM.get(id)?.name || '—') };
+  const VM = verMap();
+  if (VM.size) D.version = { l: 'Sürüm', k: (w, i) => verDimKey(i, VM), n: k => verDimName(k, VM) };
   return D;
 }
 
@@ -10492,7 +10847,7 @@ const WS_FALLBACK = { id: WS_DEFAULT, name: 'Genel', color: '#64748B', descripti
 const WS_COLORS = [['#64748B', 'Arduvaz'], ['#2563EB', 'Mavi'], ['#4F46E5', 'Çivit'], ['#7C3AED', 'Mor'],
   ['#BE185D', 'Pembe'], ['#C2410C', 'Turuncu'], ['#047857', 'Yeşil'], ['#0E7490', 'Deniz']];
 /* Seçili proje yokken boş durum paneli gösterilen (projeye bağlı) ekranlar. */
-const WS_PROJ_VIEWS = ['board', 'backlog', 'plan', 'roadmap', 'reports', 'admin', 'effort', 'timesheet'];
+const WS_PROJ_VIEWS = ['board', 'backlog', 'plan', 'roadmap', 'versions', 'reports', 'admin', 'effort', 'timesheet'];
 /* Bu oturumda açtığım alanlar: sunucu createdBy'yi yazıp poll ile geri gönderene kadar "benim" sayılır. */
 const WS_MINE = new Set();
 const wsAll = () => { const l = (DB.workspaces || []).filter(w => w && w.id);
@@ -12973,6 +13328,7 @@ function deleteProject(pid) {
     DB.issues = DB.issues.filter(i => i.projectId !== pid);
     DB.statuses = DB.statuses.filter(s => s.projectId !== pid);
     DB.sprints = DB.sprints.filter(s => s.projectId !== pid);
+    DB.versions = (DB.versions || []).filter(v => v.projectId !== pid);
     DB.rules = DB.rules.filter(r => r.projectId !== pid);
     DB.fields = DB.fields.filter(f => f.projectId !== pid);
     DB.projects = DB.projects.filter(x => x.id !== pid);
@@ -14510,7 +14866,7 @@ function sysModules(el) {
 }
 const KIND_TR = { auto: 'Otomatik', manual: 'Elle', 'pre-import': 'İçe aktarma öncesi', 'pre-restore': 'Geri yükleme öncesi' };
 const COL_TR = { issues: 'İş', projects: 'Proje', users: 'Kullanıcı', comments: 'Yorum', worklogs: 'Süre kaydı', sprints: 'Sprint',
-  statuses: 'Durum', fields: 'Özel alan', rules: 'Otomasyon', links: 'Bağlantı', filters: 'Filtre', reports: 'Rapor' };
+  statuses: 'Durum', fields: 'Özel alan', rules: 'Otomasyon', links: 'Bağlantı', filters: 'Filtre', reports: 'Rapor', versions: 'Sürüm' };
 const fmtSize = b => b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
 const fmtWhen = t => new Date(t).toLocaleString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
