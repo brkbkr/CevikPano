@@ -814,10 +814,51 @@ async function recordReply(pool, me, issueId, text, { to, subject, sentMid, prov
   return !res.rejected?.length;
 }
 
+/* ---- sistem e-postası (bildirimler, server/notifymail.js) ----
+   Alıcı, konu ve gövde yalnız sunucuda üretilir. Başlık değerleri assertHeader'dan geçer (CR/LF yok), konu ve gönderen adı
+   RFC 2047 ile kodlanır; gövde base64. Auto-Submitted başlığı otomatik yanıt döngüsünü önler (kendi çekicimiz de bu
+   başlıklı iletiyi iş yapmaz). Sonuç: { ok } ya da { error: 'reconnect' | 'rate' | 'provider' }. */
+export function buildAltMime({ from, fromName, to, subject, messageId, text, html }) {
+  const bnd = 'cp_' + randomBytes(12).toString('hex');
+  const b64 = s => Buffer.from(String(s).replace(/\r\n?/g, '\n').replace(/\n/g, '\r\n'), 'utf8').toString('base64').replace(/.{76}/g, '$&\r\n');
+  const H = [['From', fromName ? `${encWord(fromName)} <${from}>` : from], ['To', to], ['Subject', encWord(subject)],
+    ['Date', new Date().toUTCString()], ['Message-ID', messageId], ['Auto-Submitted', 'auto-generated'],
+    ['X-Auto-Response-Suppress', 'All'], ['MIME-Version', '1.0'], ['Content-Type', `multipart/alternative; boundary="${bnd}"`]];
+  const part = (type, body) => `--${bnd}\r\nContent-Type: ${type}; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${b64(body)}\r\n`;
+  return H.map(([k, v]) => `${k}: ${assertHeader(k, v)}`).join('\r\n') + '\r\n\r\n'
+    + part('text/plain', text) + part('text/html', html) + `--${bnd}--\r\n`;
+}
+export const validMailAddress = a => typeof a === 'string' && a.length <= 200 && EMAIL_RE.test(a) && !CRLF.test(a);
+export async function sendSystemMail(pool, acc, { to, subject, text, html }) {
+  assertHeader('To', to); assertHeader('Subject', subject);
+  if (!validMailAddress(to)) throw new HttpError(400, 'Geçersiz alıcı');
+  const domain = String(acc.address).split('@')[1] || 'cevikpano.invalid';
+  try {
+    const token = await accessToken(pool, acc);
+    if (acc.provider === 'google') {
+      const raw = Buffer.from(buildAltMime({ from: acc.address, fromName: 'ÇevikPano', to, subject,
+        messageId: `<cpn.${randomUUID().replace(/-/g, '')}@${domain}>`, text, html }), 'utf8').toString('base64url');
+      await call(`${GMAIL}/messages/send`, { method: 'POST', token, json: { raw } });
+    } else {
+      await call(`${GRAPH}/me/sendMail`, { method: 'POST', token, json: { saveToSentItems: false, message: {
+        subject, body: { contentType: 'HTML', content: html }, toRecipients: [{ emailAddress: { address: to } }],
+        internetMessageHeaders: [{ name: 'X-Auto-Response-Suppress', value: 'All' }] } } });
+    }
+    return { ok: true };
+  } catch (e) {
+    if (e instanceof ReconnectError || (e instanceof ProviderError && (e.status === 401 || e.status === 403))) {
+      await markReconnect(pool, acc).catch(() => {});
+      return { error: 'reconnect' };
+    }
+    if (e instanceof ProviderError) return { error: e.status === 429 ? 'rate' : 'provider', retryAfter: e.retryAfter };
+    throw e;
+  }
+}
+
 /* ---- yönetici uçları ---- */
 const pubAccount = r => ({ id: r.id, provider: r.provider, address: r.address, defaultProjectId: r.default_project_id,
   active: r.active, status: r.status, lastPollAt: r.last_poll_at, lastError: r.last_error, backoffUntil: r.backoff_until,
-  createdAt: r.created_at });
+  createdAt: r.created_at, notifySender: r.notify_sender === true });
 const pubRule = r => ({ id: r.id, ord: r.ord, accountId: r.account_id, toMatch: r.to_match || '', subjectContains: r.subject_contains || '',
   fromDomain: r.from_domain || '', projectId: r.project_id, assigneeId: r.assignee_id, active: r.active });
 
@@ -878,8 +919,18 @@ export function mailRoutes(app, pool, requireUser, requireAdmin) {
       }
     }
     if (b.active !== undefined) active = b.active === true;
-    const r = await pool.query(`UPDATE mail_accounts SET default_project_id=$2, active=$3, updated_at=now() WHERE id=$1 RETURNING *`,
-      [acc.id, pid, active]);
+    if (b.notifySender !== undefined && typeof b.notifySender !== 'boolean') throw new HttpError(400, 'Bildirim gönderici açık/kapalı olmalı');
+    /* Bildirim gönderici en fazla bir kutu (015, tekil dizin): seçilince diğerlerinden kalkar; aynı işlemde. */
+    const c = await pool.connect();
+    let r;
+    try {
+      await c.query('BEGIN');
+      if (b.notifySender === true) await c.query('UPDATE mail_accounts SET notify_sender=false, updated_at=now() WHERE notify_sender AND id<>$1', [acc.id]);
+      r = await c.query(`UPDATE mail_accounts SET default_project_id=$2, active=$3,
+        notify_sender=coalesce($4, notify_sender), updated_at=now() WHERE id=$1 RETURNING *`,
+        [acc.id, pid, active, b.notifySender === undefined ? null : b.notifySender]);
+      await c.query('COMMIT');
+    } catch (e) { await c.query('ROLLBACK').catch(() => {}); throw e; } finally { c.release(); }
     res.json(pubAccount(r.rows[0]));
   });
 

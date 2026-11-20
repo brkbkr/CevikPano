@@ -2797,7 +2797,7 @@ describe('posta kutuları', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
     assert.equal(mail.decrypt(a.refresh_token_enc), 'tok_YENILEME_g1');
     const s = track(await A.req('GET', '/api/mail/status'));
     assert.equal(s.json.configured, true); assert.equal(s.json.accounts.length, 1);
-    assert.deepEqual(Object.keys(s.json.accounts[0]).sort(), ['active', 'address', 'backoffUntil', 'createdAt', 'defaultProjectId', 'id', 'lastError', 'lastPollAt', 'provider', 'status']);
+    assert.deepEqual(Object.keys(s.json.accounts[0]).sort(), ['active', 'address', 'backoffUntil', 'createdAt', 'defaultProjectId', 'id', 'lastError', 'lastPollAt', 'notifySender', 'provider', 'status']);
     /* durum / dışa aktarma / yedek: posta tabloları yok */
     track(await A.req('GET', '/api/state')); track(await A.req('GET', '/api/export'));
     track(await A.req('POST', '/api/backups', { label: 'posta' }));
@@ -5208,5 +5208,325 @@ describe('yetki ve silme güvenliği (O-1, D-1, D-2, D-3, çevrim içi)', { skip
     assert.equal((await onl(C.A)).issue, 'i_p_yg4');
     await addRoles(C.A, 'p_yg4', { u_yg_x: 'viewer' });
     assert.equal((await onl(C.X)).issue, 'i_p_yg4');
+  });
+});
+
+/* E-posta bildirimleri ve sabah özeti (015, server/notifymail.js). Sağlayıcı çağrıları setMailFetch ile taklit edilir
+   (ağa çıkılmaz); zaman `now` ile ileri alınır. */
+describe('e-posta bildirimleri', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  let mail, NM, A, K1, K2, K4;
+  const ENV = ['MAIL_TOKEN_KEY', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'MS_CLIENT_ID', 'MS_CLIENT_SECRET', 'MS_TENANT', 'MAIL_ENABLED', 'PUBLIC_URL'];
+  const saved = {};
+  const calls = [];
+  let graphStatus = 202;
+  const J = (status, body) => new Response(body === undefined ? null : JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+  const ok = r => { assert.equal(r.status, 200, JSON.stringify(r.json)); assert.deepEqual(r.json.rejected, [], JSON.stringify(r.json)); return r; };
+  const ok200 = r => { assert.equal(r.status, 200, JSON.stringify(r.json)); return r; };
+  const newUser = async (id, username, email) => {
+    ok(await A.sync([{ c: 'users', id, op: 'put', data: { username, name: 'Kişi ' + username, role: 'member', active: true, ...(email ? { email } : {}) } }]));
+    const k = client(); await k.login(username, 'Start12345');
+    assert.equal((await k.req('POST', '/api/auth/password', { newPassword: 'BildirimYeni123' })).status, 200);
+    return k;
+  };
+  const sends = () => calls.filter(c => /\/messages\/send$|\/me\/sendMail$/.test(c.path));
+  const decode = c => {
+    const m = Buffer.from(JSON.parse(c.body).raw, 'base64url').toString('utf8');
+    const head = m.split('\r\n\r\n')[0];
+    const sj = /^Subject: =\?UTF-8\?B\?([^?]+)\?=$/m.exec(head)?.[1];
+    const parts = Object.fromEntries([...m.matchAll(/Content-Type: (text\/(?:plain|html)); charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n([A-Za-z0-9+/=\r\n]+?)\r\n--/g)]
+      .map(x => [x[1], Buffer.from(x[2].replace(/\r\n/g, ''), 'base64').toString('utf8')]));
+    return { head, to: /^To: (.*)$/m.exec(head)?.[1], subject: sj ? Buffer.from(sj, 'base64').toString('utf8') : null, text: parts['text/plain'], html: parts['text/html'] };
+  };
+  const later = ms => new Date(Date.now() + ms);
+  const flush = (ms = 3 * 60e3) => NM.flushNotifyMail(pool, { now: later(ms) });
+  const queue = async uid => (await pool.query(`SELECT kind, status, issue_id FROM mail_notify_queue WHERE user_id=$1 ORDER BY id`, [uid])).rows;
+  const pending = async uid => (await queue(uid)).filter(r => r.status === 'pending');
+  const clearQueue = () => pool.query(`UPDATE mail_notify_queue SET status='dropped' WHERE status='pending'`);
+  const issue = (id, key, extra = {}) => ({ c: 'issues', id, op: 'put', data: { projectId: 'p_eb', key, summary: 'İş ' + key, statusId: 'p_eb_s0', type: 'task', ...extra } });
+  const prefs = (k, b) => k.req('POST', '/api/notify/prefs', b);
+
+  before(async () => {
+    for (const k of ENV) saved[k] = process.env[k];
+    process.env.MAIL_TOKEN_KEY = Buffer.alloc(32, 5).toString('base64');
+    process.env.GOOGLE_CLIENT_ID = 'g-istemci'; process.env.GOOGLE_CLIENT_SECRET = 'g-sir';
+    process.env.MS_CLIENT_ID = 'm-istemci'; process.env.MS_CLIENT_SECRET = 'm-sir'; process.env.MS_TENANT = 'common';
+    process.env.MAIL_ENABLED = 'true';
+    process.env.PUBLIC_URL = 'https://pano.test';
+    mail = await import('../server/mail.js');
+    NM = await import('../server/notifymail.js');
+    NM.resetNotifyMail();
+    mail.setMailFetch(async (url, opt = {}) => {
+      const u = new globalThis.URL(url); calls.push({ path: u.origin + u.pathname, method: opt.method || 'GET', body: opt.body || '' });
+      if (/gmail\.googleapis\.com\/gmail\/v1\/users\/me\/messages\/send$/.test(u.origin + u.pathname)) return J(200, { id: 'gs' + calls.length });
+      if (/graph\.microsoft\.com\/v1\.0\/me\/sendMail$/.test(u.origin + u.pathname))
+        return graphStatus === 202 ? new Response(null, { status: 202 }) : J(graphStatus, { error: { code: 'InvalidAuthenticationToken' } });
+      return J(404, { error: 'bulunamadı' });
+    });
+    A = client(); await A.login('admin', 'test-admin-pw');
+    K1 = await newUser('u_eb1', 'ebkisi1', 'eb1@kisi.test');
+    K2 = await newUser('u_eb2', 'ebkisi2', 'eb2@kisi.test');
+    await newUser('u_eb3', 'ebdis', 'eb3@kisi.test');                  // projeye eklenmemiş
+    K4 = await newUser('u_eb4', 'ebepostasiz', null);                  // e-postası yok
+    ok(await A.sync([
+      { c: 'workspaces', id: 'ws_eb', op: 'put', data: { name: 'Bildirim alanı' } },
+      { c: 'projects', id: 'p_eb', op: 'put', data: { name: 'Bildirim projesi', key: 'EB', counter: 0, workspaceId: 'ws_eb' } },
+      { c: 'statuses', id: 'p_eb_s0', op: 'put', data: { projectId: 'p_eb', name: 'Yapılacak', cat: 'todo', ord: 0 } },
+      { c: 'statuses', id: 'p_eb_s1', op: 'put', data: { projectId: 'p_eb', name: 'Bitti', cat: 'done', ord: 1 } },
+      { c: 'projects', id: 'p_ebx', op: 'put', data: { name: 'Gizli proje', key: 'EBX', counter: 0, workspaceId: 'ws_eb' } },
+      { c: 'statuses', id: 'p_ebx_s0', op: 'put', data: { projectId: 'p_ebx', name: 'Yapılacak', cat: 'todo', ord: 0 } },
+      { c: 'statuses', id: 'p_ebx_s1', op: 'put', data: { projectId: 'p_ebx', name: 'Bitti', cat: 'done', ord: 1 } },
+    ]));
+    await addRoles(A, 'p_eb', { u_eb1: 'member', u_eb2: 'member', u_eb4: 'member' });
+    await addRoles(A, 'p_ebx', { u_eb2: 'member' });
+    for (const [id, p, addr] of [['mb_ebg', 'google', 'bildirim@eb.test'], ['mb_ebm', 'microsoft', 'bildirim-ms@eb.test']])
+      await pool.query(`INSERT INTO mail_accounts (id, provider, address, refresh_token_enc, access_token_enc, access_expires_at)
+        VALUES ($1,$2,$3,$4,$5, now() + interval '1 hour')`, [id, p, addr, mail.encrypt('tok_YEN_' + id), mail.encrypt('tok_ERS_' + id)]);
+  });
+  after(async () => {
+    mail?.setMailFetch(null); NM?.resetNotifyMail();
+    await pool.query('UPDATE mail_accounts SET notify_sender=false');
+    for (const k of ENV) { if (saved[k] === undefined) delete process.env[k]; else process.env[k] = saved[k]; }
+  });
+
+  test('tercih ucu: varsayılan atama + bahsetme açık, özet kapalı; doğrulama; yalnız kendi tercihi; istemci verisine inmez', async () => {
+    let r = await K1.req('GET', '/api/notify/prefs');
+    assert.equal(r.status, 200);
+    assert.deepEqual(r.json.prefs, { assigned: true, comment: false, mention: true, status: false, due: false, digest: false });
+    assert.equal(r.json.available, false); assert.equal(r.json.reason, 'nosender'); assert.equal(r.json.email, 'eb1@kisi.test');
+    assert.equal((await client().req('GET', '/api/notify/prefs')).status, 401);
+    for (const bad of [{ digest: 'evet' }, { gizli: true }, [], { assigned: 1 }]) assert.equal((await prefs(K1, bad)).status, 400, JSON.stringify(bad));
+    r = await prefs(K1, { comment: true, digest: true });
+    assert.equal(r.status, 200);
+    assert.deepEqual(r.json.prefs, { assigned: true, comment: true, mention: true, status: false, due: false, digest: true });
+    assert.equal((await K2.req('GET', '/api/notify/prefs')).json.prefs.digest, false);        // başkasının tercihi değişmez
+    const row = (await pool.query(`SELECT data FROM user_prefs WHERE user_id='u_eb1'`)).rows[0].data;
+    assert.equal(row.notif.digest, true);
+    /* Tercih istemci senkronuna girmez: _prefs ile 'notif' yazılamaz, durumda da yok. */
+    const s = await K1.sync([{ c: '_prefs', id: 'notif', op: 'put', data: { digest: false } }]);
+    assert.deepEqual(s.json.rejected.map(x => x.reason), ['geçersiz tercih']);
+    assert.equal((await K1.state()).json.data.notif, undefined);
+    /* Ekran tercihi yazmak bildirim tercihini silmez. */
+    await K1.sync([{ c: '_prefs', id: 'ui', op: 'put', data: { view: 'home' } }]);
+    assert.equal((await K1.req('GET', '/api/notify/prefs')).json.prefs.digest, true);
+    r = await prefs(K1, { comment: false, digest: false });
+    assert.equal(r.json.prefs.comment, false);
+  });
+
+  test('bildirim gönderici: yalnız sistem yöneticisi seçer; en fazla bir kutu; durum ucunda görünür', async () => {
+    assert.equal((await K1.req('POST', '/api/mail/accounts/mb_ebg', { notifySender: true })).status, 403);
+    assert.equal((await A.req('POST', '/api/mail/accounts/mb_ebg', { notifySender: 'evet' })).status, 400);
+    let r = ok200(await A.req('POST', '/api/mail/accounts/mb_ebg', { notifySender: true }));
+    assert.equal(r.json.notifySender, true);
+    r = ok200(await A.req('POST', '/api/mail/accounts/mb_ebm', { notifySender: true }));
+    assert.equal(r.json.notifySender, true);
+    const flags = async () => Object.fromEntries((await pool.query(`SELECT id, notify_sender FROM mail_accounts WHERE id IN ('mb_ebg','mb_ebm')`)).rows.map(x => [x.id, x.notify_sender]));
+    assert.deepEqual(await flags(), { mb_ebg: false, mb_ebm: true });
+    await assert.rejects(pool.query(`UPDATE mail_accounts SET notify_sender=true WHERE id='mb_ebg'`));        // tekil dizin
+    ok200(await A.req('POST', '/api/mail/accounts/mb_ebg', { notifySender: true }));
+    assert.deepEqual(await flags(), { mb_ebg: true, mb_ebm: false });
+    const st = await A.req('GET', '/api/mail/status');
+    assert.equal(st.json.accounts.find(a => a.id === 'mb_ebg').notifySender, true);
+    assert.ok(!JSON.stringify(st.json).includes('v1:'));
+    r = await K1.req('GET', '/api/notify/prefs');
+    assert.equal(r.json.available, true); assert.equal(r.json.reason, '');
+    assert.ok(!JSON.stringify(r.json).includes('bildirim@eb.test'));                                         // gönderici adresi kişiye gitmez
+    r = await K4.req('GET', '/api/notify/prefs');
+    assert.equal(r.json.available, false); assert.equal(r.json.reason, 'noemail'); assert.equal(r.json.email, '');
+  });
+
+  test('kapalı durum: MAIL_ENABLED=false, gönderici yok ya da yeniden bağlanmalıyken kuyruğa yazılmaz (uygulama içi bildirim sürer)', async () => {
+    process.env.MAIL_ENABLED = 'false';
+    try {
+      ok(await A.sync([issue('i_ebk1', 'EB-90', { assignee: 'u_eb1' })]));
+      assert.equal((await pool.query(`SELECT count(*)::int n FROM notifications WHERE user_id='u_eb1' AND issue_id='i_ebk1'`)).rows[0].n, 1);
+      assert.deepEqual(await queue('u_eb1'), []);
+      assert.equal((await K1.req('GET', '/api/notify/prefs')).json.reason, 'off');
+      assert.equal((await flush()).off, true);
+    } finally { process.env.MAIL_ENABLED = 'true'; }
+    await pool.query(`UPDATE mail_accounts SET notify_sender=false`);
+    ok(await A.sync([issue('i_ebk2', 'EB-91', { assignee: 'u_eb1' })]));
+    assert.deepEqual(await queue('u_eb1'), []);
+    await pool.query(`UPDATE mail_accounts SET status='reconnect', notify_sender=true WHERE id='mb_ebg'`);
+    ok(await A.sync([issue('i_ebk3', 'EB-92', { assignee: 'u_eb1' })]));
+    assert.deepEqual(await queue('u_eb1'), []);
+    await pool.query(`UPDATE mail_accounts SET status='ok' WHERE id='mb_ebg'`);
+    assert.equal(sends().length, 0);
+  });
+
+  test('hedefleme ve toplama: aynı kişiye kısa sürede gelen olaylar tek e-postada; kapalı tür ve kendi eylemi gitmez; HTML kaçışlı', async () => {
+    ok(await A.sync([issue('i_eb1', 'EB-1', { summary: 'Yazıcı <b>bozuk</b> & "acil"', assignee: 'u_eb1', reporter: 'u_eb2' })]));
+    ok(await K2.sync([{ c: 'comments', id: 'c_eb1', op: 'put', data: { issueId: 'i_eb1', userId: 'u_eb2', at: Date.now(), body: '@ebkisi1 şuna bakar mısın <script>x()</script>' } }]));
+    ok(await K2.sync([{ c: 'comments', id: 'c_eb2', op: 'put', data: { issueId: 'i_eb1', userId: 'u_eb2', at: Date.now(), body: 'ikinci yorum' } }]));    // yorum tercihi kapalı
+    const cur = (await pool.query(`SELECT data FROM issues WHERE id='i_eb1'`)).rows[0].data;
+    ok(await K1.sync([{ c: 'issues', id: 'i_eb1', op: 'put', data: { ...cur, statusId: 'p_eb_s1' }, base: cur }]));   // raporlayıcının durum tercihi kapalı
+    assert.deepEqual((await pending('u_eb1')).map(x => x.kind), ['assigned', 'mention']);
+    assert.deepEqual(await pending('u_eb2'), []);
+    let r = await NM.flushNotifyMail(pool, { now: new Date() });                                // sessizlik süresi dolmadı
+    assert.equal(r.sent, 0); assert.equal(sends().length, 0);
+    r = await flush();
+    assert.equal(r.sent, 1);
+    assert.equal(sends().length, 1);
+    const m = decode(sends()[0]);
+    assert.equal(m.to, 'eb1@kisi.test');
+    assert.equal(m.subject, 'ÇevikPano: 2 yeni bildirim');
+    assert.match(m.head, /^Auto-Submitted: auto-generated$/m);
+    assert.match(m.head, /^From: =\?UTF-8\?B\?[^?]+\?= <bildirim@eb\.test>$/m);
+    assert.match(m.html, /Yazıcı &lt;b&gt;bozuk&lt;\/b&gt; &amp; &quot;acil&quot;/);
+    assert.ok(!m.html.includes('<script>') && !m.html.includes('<b>bozuk'));
+    assert.ok(m.html.includes('&lt;script&gt;x()&lt;/script&gt;'));
+    assert.ok(m.html.includes('href="https://pano.test/?is=EB-1"'));
+    assert.match(m.text, /işi size atadı/);
+    assert.match(m.text, /sizden bahsetti/);
+    assert.match(m.text, /https:\/\/pano\.test\/\?is=EB-1/);
+    assert.deepEqual((await queue('u_eb1')).filter(x => x.issue_id === 'i_eb1').map(x => x.status), ['sent', 'sent']);
+    assert.equal((await flush()).sent, 0);                                                     // tekrar gitmez
+    assert.equal(sends().length, 1);
+    /* Kendine atama: kuyruk yok. */
+    const c2 = (await pool.query(`SELECT data FROM issues WHERE id='i_eb1'`)).rows[0].data;
+    ok(await K2.sync([{ c: 'issues', id: 'i_eb1', op: 'put', data: { ...c2, assignee: 'u_eb2' }, base: c2 }]));
+    assert.deepEqual(await pending('u_eb2'), []);
+  });
+
+  test('tek olay: konu iş anahtarı + özet; özetteki satır sonu başlığa geçmez (enjeksiyon yok)', async () => {
+    const before = sends().length;
+    ok(await A.sync([issue('i_eb2', 'EB-2', { summary: 'Satır\r\nBcc: kotu@x.test', assignee: 'u_eb1' })]));
+    assert.equal((await flush()).sent, 1);
+    const m = decode(sends()[before]);
+    assert.equal(m.subject, '[EB-2] Size atandı: Satır Bcc: kotu@x.test');
+    assert.ok(!/^Bcc:/mi.test(m.head), m.head);
+    assert.throws(() => mail.buildAltMime({ from: 'a@b.test', to: 'c@d.test', subject: 'x', messageId: '<m@b.test>\r\nBcc: e@f.test', text: '', html: '' }), /Geçersiz e-posta başlığı/);
+    const acc = (await pool.query(`SELECT * FROM mail_accounts WHERE id='mb_ebg'`)).rows[0];
+    await assert.rejects(mail.sendSystemMail(pool, acc, { to: 'eb1@kisi.test\r\nBcc: kotu@x.test', subject: 'x', text: '', html: '' }), /Geçersiz/);
+    assert.equal(sends().length, before + 1);
+  });
+
+  test('erişim: işi göremeyen kişiye bahsetme kuyruğa girmez; projeden çıkarılınca bekleyen olay gitmez', async () => {
+    const before = sends().length;
+    ok(await K2.sync([{ c: 'comments', id: 'c_eb3', op: 'put', data: { issueId: 'i_eb1', userId: 'u_eb2', at: Date.now(), body: '@ebdis sen de bak' } }]));
+    assert.deepEqual(await queue('u_eb3'), []);
+    /* Elle eklenmiş (eski) olay da gönderimde denetlenir. */
+    await pool.query(`INSERT INTO mail_notify_queue (user_id, kind, issue_id, actor_id, created_at) VALUES ('u_eb3','mention','i_eb1','u_eb2', now() - interval '20 minutes')`);
+    ok(await A.sync([issue('i_eb3', 'EB-3', { assignee: 'u_eb1' })]));
+    assert.deepEqual((await pending('u_eb1')).map(x => x.kind), ['assigned']);
+    const p = (await pool.query(`SELECT data FROM projects WHERE id='p_eb'`)).rows[0].data;
+    const roles = { ...p.roles }; delete roles.u_eb1;
+    ok(await A.sync([{ c: 'projects', id: 'p_eb', op: 'put', data: { ...p, roles }, base: p }]));
+    const r = await flush();
+    assert.equal(r.sent, 0);
+    assert.equal(sends().length, before);
+    assert.deepEqual((await queue('u_eb3')).map(x => x.status), ['dropped']);
+    assert.deepEqual((await queue('u_eb1')).filter(x => x.issue_id === 'i_eb3').map(x => x.status), ['dropped']);
+    await addRoles(A, 'p_eb', { u_eb1: 'member' });
+  });
+
+  test('hız sınırı ve tercih: saatte 6 e-postadan sonra olaylar bekler; gönderici sınırı; tercih kapanınca bekleyen düşer; 24 saatten eski düşer', async () => {
+    await pool.query(`DELETE FROM mail_notify_sent`);
+    await pool.query(`INSERT INTO mail_notify_sent (user_id, kind, items, created_at) SELECT 'u_eb1', 'events', 1, now() FROM generate_series(1, 6)`);
+    ok(await A.sync([issue('i_eb4', 'EB-4', { assignee: 'u_eb1' })]));
+    let before = sends().length;
+    let r = await flush();
+    assert.equal(r.sent, 0); assert.equal(r.deferred, 1); assert.equal(sends().length, before);
+    assert.deepEqual((await pending('u_eb1')).map(x => x.issue_id), ['i_eb4']);
+    await pool.query(`DELETE FROM mail_notify_sent`);
+    NM.NOTIFY_LIMITS.senderHourly = 0;
+    try { r = await flush(); assert.equal(r.sent, 0); assert.equal(r.deferred, 1); } finally { NM.NOTIFY_LIMITS.senderHourly = 200; }
+    r = await flush();
+    assert.equal(r.sent, 1); assert.equal(sends().length, before + 1);
+    /* Tercih kapanınca bekleyen olay hemen düşer; kapalı tür kuyruğa girmez. */
+    ok(await A.sync([issue('i_eb5', 'EB-5', { assignee: 'u_eb1' })]));
+    assert.equal((await pending('u_eb1')).length, 1);
+    assert.equal((await prefs(K1, { assigned: false })).status, 200);
+    assert.deepEqual(await pending('u_eb1'), []);
+    ok(await A.sync([issue('i_eb6', 'EB-6', { assignee: 'u_eb1' })]));
+    assert.deepEqual(await pending('u_eb1'), []);
+    await prefs(K1, { assigned: true });
+    /* 24 saatten eski bekleyen olay gönderilmez. */
+    await pool.query(`INSERT INTO mail_notify_queue (user_id, kind, issue_id, created_at) VALUES ('u_eb1','assigned','i_eb4', now() - interval '25 hours')`);
+    before = sends().length;
+    r = await flush();
+    assert.equal(r.sent, 0); assert.ok(r.dropped >= 1); assert.equal(sends().length, before);
+  });
+
+  test('bitiş hatırlatması ve sabah özeti: iş günü 08:30 (İstanbul), günde bir; yalnız görülen, açık işler', async () => {
+    const d = new Date(Date.now() + 7 * 864e5); while (d.getUTCDay() !== 1) d.setUTCDate(d.getUTCDate() + 1);
+    const day = d.toISOString().slice(0, 10);
+    const add = n => { const x = new Date(day + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+    const MON = new Date(day + 'T06:00:00Z');                                                   // Pazartesi 09:00 İstanbul
+    assert.deepEqual(NM.istanbul(MON), { date: day, minutes: 540, wd: 1, workday: true });
+    assert.equal((await prefs(K1, { due: true, digest: true })).status, 200);
+    ok(await A.sync([
+      issue('i_ebd1', 'EB-11', { assignee: 'u_eb1', due: day }),
+      issue('i_ebd2', 'EB-12', { assignee: 'u_eb1', due: add(-2) }),
+      issue('i_ebd3', 'EB-13', { assignee: 'u_eb1', due: add(1) }),
+      issue('i_ebd4', 'EB-14', { assignee: 'u_eb1', due: add(-1), statusId: 'p_eb_s1' }),
+      issue('i_ebd5', 'EB-15', { assignee: 'u_eb1', due: add(-20) }),
+      issue('i_ebd6', 'EB-16', { assignee: 'u_eb2', due: day }),
+    ]));
+    /* Kişinin göremediği projede ona atanmış iş (eski veri): özete ve hatırlatmaya girmez. */
+    await pool.query(`INSERT INTO issues (id, data) VALUES ('i_ebx1', $1::jsonb)`,
+      [JSON.stringify({ projectId: 'p_ebx', key: 'EBX-1', summary: 'Gizli iş', statusId: 'p_ebx_s0', assignee: 'u_eb1', due: day })]);
+    await clearQueue();
+    await pool.query(`INSERT INTO notifications (user_id, kind, issue_id, actor_id, created_at) VALUES ('u_eb1','assigned','i_ebd3','u_eb2',$1)`, [new Date(MON - 3600e3)]);
+    await pool.query(`INSERT INTO notifications (user_id, kind, issue_id, actor_id, created_at) VALUES ('u_eb1','assigned','i_ebx1','u_eb2',$1)`, [new Date(MON - 3600e3)]);
+    NM.resetNotifyMail();
+    assert.equal((await NM.runDigest(pool, { now: new Date(MON - 2 * 864e5) })).skipped, true);        // cumartesi
+    assert.equal((await NM.runDigest(pool, { now: new Date(MON - 2 * 3600e3) })).skipped, true);       // 07:00
+    assert.equal((await NM.scanDue(pool, { now: new Date(MON - 2 * 3600e3) })).skipped, true);
+    let r = await NM.scanDue(pool, { now: MON });
+    assert.equal(r.queued, 2);
+    assert.deepEqual((await pending('u_eb1')).map(x => `${x.kind}:${x.issue_id}`).sort(), ['due_soon:i_ebd3', 'overdue:i_ebd2']);
+    NM.resetNotifyMail();
+    assert.equal((await NM.scanDue(pool, { now: MON })).queued, 0);                                    // aynı bitiş için bir kez
+    const before = sends().length;
+    r = await NM.runDigest(pool, { now: MON });
+    assert.equal(r.sent, 1);
+    const m = decode(sends()[before]);
+    assert.equal(m.to, 'eb1@kisi.test');
+    assert.match(m.subject, /^ÇevikPano sabah özeti — .+: 1 bugün, 2 geciken, 1 yeni$/);
+    for (const k of ['EB-11', 'EB-12', 'EB-15', 'EB-13']) assert.ok(m.text.includes(k), k);
+    for (const k of ['EB-14', 'EB-16', 'EBX-1', 'Gizli']) assert.ok(!m.text.includes(k) && !m.html.includes(k), k);
+    assert.equal((await NM.runDigest(pool, { now: new Date(+MON + 30 * 60e3) })).sent, 0);             // günde bir
+    assert.equal(sends().length, before + 1);                                                           // u_eb2'nin özeti kapalı
+    r = await NM.flushNotifyMail(pool, { now: new Date(+MON + 3 * 60e3) });
+    assert.equal(r.sent, 1);
+    const e = decode(sends()[before + 1]);
+    assert.equal(e.subject, 'ÇevikPano: 2 yeni bildirim');
+    assert.match(e.text, /Bitiş tarihi yaklaşıyor/); assert.match(e.text, /Bitiş tarihi geçti/);
+    /* Boş özet: e-posta gitmez, gün kapanır. */
+    await prefs(K2, { digest: true });
+    await pool.query(`UPDATE issues SET data = data || '{"statusId":"p_eb_s1"}'::jsonb WHERE id='i_ebd6'`);
+    r = await NM.runDigest(pool, { now: new Date(+MON + 60 * 60e3) });
+    assert.equal(r.sent, 0); assert.equal(r.empty, 1);
+    assert.equal((await pool.query(`SELECT sent FROM mail_notify_sent WHERE user_id='u_eb2' AND kind='digest'`)).rows[0].sent, false);
+    await prefs(K1, { due: false, digest: false }); await prefs(K2, { digest: false });
+  });
+
+  test('Outlook gönderici: Graph sendMail (HTML, tek alıcı); 401 → kutu "yeniden bağlanın", olay bekler', async () => {
+    ok200(await A.req('POST', '/api/mail/accounts/mb_ebm', { notifySender: true }));
+    NM.resetNotifyMail();
+    await clearQueue();
+    ok(await A.sync([issue('i_eb7', 'EB-7', { assignee: 'u_eb1' })]));
+    const before = sends().length;
+    assert.equal((await flush()).sent, 1);
+    const c = sends()[before];
+    assert.match(c.path, /graph\.microsoft\.com\/v1\.0\/me\/sendMail$/);
+    const b = JSON.parse(c.body);
+    assert.equal(b.saveToSentItems, false);
+    assert.equal(b.message.body.contentType, 'HTML');
+    assert.deepEqual(b.message.toRecipients, [{ emailAddress: { address: 'eb1@kisi.test' } }]);
+    assert.equal(b.message.subject, '[EB-7] Size atandı: İş EB-7');
+    graphStatus = 401;
+    try {
+      ok(await A.sync([issue('i_eb8', 'EB-8', { assignee: 'u_eb1' })]));
+      const r = await flush();
+      assert.equal(r.error, 'reconnect');
+      assert.equal((await pool.query(`SELECT status FROM mail_accounts WHERE id='mb_ebm'`)).rows[0].status, 'reconnect');
+      assert.deepEqual((await pending('u_eb1')).map(x => x.issue_id), ['i_eb8']);
+      assert.equal((await K1.req('GET', '/api/notify/prefs')).json.reason, 'nosender');
+    } finally { graphStatus = 202; }
+    await pool.query(`UPDATE mail_accounts SET status='ok', last_error=NULL WHERE id='mb_ebm'`);
+    assert.equal((await flush()).backoff, true);                                                // hata sonrası bekleme
+    NM.resetNotifyMail();
+    assert.equal((await flush()).sent, 1);
   });
 });

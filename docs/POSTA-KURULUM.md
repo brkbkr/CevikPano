@@ -171,6 +171,36 @@ E-postadan oluşan bir işin detayında, yorum kutusunun altında **E-postayla y
   ekleyin, sonra **Sistem → Posta kutuları**'nda ilgili kutu için **Gmail bağla / Outlook bağla** düğmesine yeniden basıp
   izinleri onaylayın (kutu, kuralları ve geçmiş iletileri korunarak yenilenir).
 
+### 3.6 E-posta bildirimleri ve sabah özeti
+Kişilere giden bildirim e-postaları (iş atandı, yorum, @bahsetme, durum değişti, bitiş yaklaşıyor / geçti) ve sabah özeti
+bağlı bir posta kutusundan gönderilir. Yeni bir ayar ya da program gerekmez.
+1. **Sistem → Posta kutuları**'nda bildirimlerin gideceği kutunun satırında **Bildirim gönderici**'yi işaretleyin
+   (en fazla bir kutu; başka kutu seçilince öncekinden kalkar). Kutunun gönderme izni olmalı (3.5).
+2. `.env` içinde `PUBLIC_URL` tanımlı olmalı (ör. `PUBLIC_URL=https://150-230-155-149.sslip.io`): e-postadaki
+   **İşi aç** bağlantısı bu adresle kurulur (`/?is=ANAHTAR`). Tanımlı değilse e-posta bağlantısız gider.
+3. Her kişi hesap menüsü → **Bildirimler**'den hangi olayları e-postayla alacağını ve **Sabah özeti**'ni seçer.
+   Varsayılan: atama ve @bahsetme açık, diğerleri ve sabah özeti kapalı. E-posta, kullanıcının hesabındaki adrese gider
+   (adres **Kullanıcılar** ekranında girilir; adresi olmayan kişiye gitmez).
+
+Nasıl çalışır:
+- `MAIL_ENABLED=true` değilse, sağlayıcı yapılandırılmamışsa ya da gönderici kutu seçilmemiş / yeniden bağlanmalıysa özellik
+  sessizce kapalıdır (uygulama içi zil bildirimleri her zaman sürer). Test ortamında `MAIL_ENABLED=false` kalırsa test
+  sitesinden kimseye e-posta gitmez.
+- **Toplama:** aynı kişiye kısa sürede gelen olaylar tek e-postada birleşir (son olaydan sonra 2 dk sessizlik ya da ilk
+  olaydan sonra en geç 10 dk).
+- **Hız sınırı:** kişi başına saatte en fazla 6 bildirim e-postası, gönderici kutudan saatte en fazla 200 e-posta. Sınır
+  dolunca olaylar bekler ve sonraki e-postada birleşir; 24 saatten eski bekleyen olay gönderilmez.
+- **Erişim:** gönderim anında kişinin işi hâlâ görebildiği denetlenir; projeden çıkarılan kişiye o işin e-postası gitmez.
+  E-postada yalnız iş anahtarı, özet, olay, yapan kişi ve (yorumda) en fazla 140 karakterlik özet bulunur.
+- **Bitiş hatırlatması:** iş günü 08:30'dan sonra, atanana; bitişi bir sonraki iş günü olan ve son 7 gün içinde geçmiş
+  açık işler için, aynı bitiş tarihine bir kez.
+- **Sabah özeti:** her iş günü (Pazartesi–Cuma; resmî tatiller dikkate alınmaz) 08:30 İstanbul saatinde: bugün bitecek,
+  geciken ve son 24 saatte atanan açık işler. Sunucu 08:30'da kapalıysa 12:00'ye kadar açıldığında gönderilir; boş özet gitmez.
+- **Zamanlayıcı:** sunucu içinde dakikada bir çalışan basit bir görevdir (`setInterval`). Uygulama tek süreç olarak
+  çalışır; birden çok süreç açılırsa veritabanı kilidi aynı anda yalnız birinin göndermesini sağlar.
+- Gönderici kutunun izni sona ererse kutu **Yeniden bağlanın** durumuna geçer, yöneticilere bildirim gelir ve
+  e-postalar yeniden bağlanana kadar bekler.
+
 ## Sık karşılaşılan durumlar
 
 | Ekranda görünen | Ne yapmalı |

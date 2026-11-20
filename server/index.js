@@ -3,6 +3,7 @@ import { bootstrap } from './store.js';
 import { createApp } from './app.js';
 import { startAutoBackup } from './backup.js';
 import { startMailPoller } from './mail.js';
+import { startNotifyMailer } from './notifymail.js';
 
 const port = Number(process.env.PORT || 3000);
 
@@ -22,6 +23,7 @@ async function main() {
   const app = createApp(pool);
   startAutoBackup(pool);
   startMailPoller(pool);
+  startNotifyMailer(pool);
   const server = app.listen(port, () => console.log(`[pano] http://localhost:${port} adresinde çalışıyor`));
   const stop = () => { server.close(() => pool.end().then(() => process.exit(0))); };
   process.on('SIGTERM', stop);
