@@ -5210,3 +5210,65 @@ describe('yetki ve silme güvenliği (O-1, D-1, D-2, D-3, çevrim içi)', { skip
     assert.equal((await onl(C.X)).issue, 'i_p_yg4');
   });
 });
+
+/* Engelli iş (PO önerisi 1): "Bitti'ye alırken uyar" proje ayarıdır (projects.data.blockWarn, yoksa açık).
+   Biçimi sunucuda denetlenir, değiştirmek "Proje ayarları" yetkisi ister. Uyarı sert engel değildir: açık
+   engelleyeni olan iş sunucuda Bitti'ye alınabilir (uyarı açıkken de). */
+describe('engelli iş: proje uyarı ayarı ve Bitti', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  const reasons = r => r.json.rejected.map(x => x.reason);
+  const ok = r => { assert.equal(r.status, 200, JSON.stringify(r.json)); assert.deepEqual(r.json.rejected, [], JSON.stringify(r.json.rejected)); return r; };
+  const row = async (table, id) => (await pool.query(`SELECT data FROM ${table} WHERE id=$1`, [id])).rows[0]?.data;
+  const putP = (p, data) => ({ c: 'projects', id: 'p_eng', op: 'put', data: { ...p, ...data }, base: p });
+  const S = (id, name, cat, ord) => ({ c: 'statuses', id, op: 'put', data: { projectId: 'p_eng', name, cat, wip: 0, ord } });
+  const I = (id, n, statusId) => ({ c: 'issues', id, op: 'put', data: { projectId: 'p_eng', key: 'ENG-' + n, summary: id, statusId } });
+  let A, M, V;
+  const newUser = async (id, username, role) => {
+    await A.sync([{ c: 'users', id, op: 'put', data: { username, name: username, role, active: true } }]);
+    const k = client(); await k.login(username, 'Start12345');
+    assert.equal((await k.req('POST', '/api/auth/password', { newPassword: 'EngYeni123456' })).status, 200);
+    return k;
+  };
+  before(async () => {
+    A = client(); await A.login('admin', 'test-admin-pw');
+    M = await newUser('u_eng_m', 'enguye', 'member');
+    V = await newUser('u_eng_v', 'engizci', 'viewer');
+    ok(await A.sync([{ c: 'projects', id: 'p_eng', op: 'put', data: { name: 'Engelli iş', key: 'ENG', counter: 2, workspaceId: 'ws1' } },
+      S('p_eng_s0', 'Yapılacak', 'todo', 0), S('p_eng_s1', 'Devam', 'inprogress', 1), S('p_eng_s2', 'Bitti', 'done', 2),
+      I('i_eng1', 1, 'p_eng_s0'), I('i_eng2', 2, 'p_eng_s0'),
+      { c: 'links', id: 'l_eng', op: 'put', data: { from: 'i_eng1', to: 'i_eng2', type: 'blocks' } }]));
+    await addRoles(A, 'p_eng', { u_eng_m: 'member', u_eng_v: 'viewer' });
+  });
+
+  test('blockWarn yalnız true/false; yönetici kapatır ve açar', async () => {
+    let p = await row('projects', 'p_eng');
+    assert.equal(p.blockWarn, undefined);                                 // yoksa açık sayılır (istemci)
+    for (const bad of ['hayir', 0, 1, {}, []])
+      assert.deepEqual(reasons(await A.sync([putP(p, { blockWarn: bad })])), ['Engelli iş uyarısı true ya da false olmalı'], String(bad));
+    ok(await A.sync([putP(p, { blockWarn: false })]));
+    p = await row('projects', 'p_eng'); assert.equal(p.blockWarn, false);
+    ok(await A.sync([putP(p, { blockWarn: true })]));
+    assert.equal((await row('projects', 'p_eng')).blockWarn, true);
+  });
+
+  test('ayarı değiştirmek "Proje ayarları" yetkisi ister (Üye yetkisizken ve İzleyici reddedilir)', async () => {
+    let p = await row('projects', 'p_eng');
+    assert.equal(reasons(await M.sync([putP(p, { blockWarn: false })])).length, 1);
+    assert.equal(reasons(await V.sync([putP(p, { blockWarn: false })])).length, 1);
+    assert.equal((await row('projects', 'p_eng')).blockWarn, true);
+    await setPerms(A, 'p_eng', { member: { 'project.settings': true } });
+    p = await row('projects', 'p_eng');
+    ok(await M.sync([putP(p, { blockWarn: false })]));
+    assert.equal((await row('projects', 'p_eng')).blockWarn, false);
+    p = await row('projects', 'p_eng');
+    assert.equal(reasons(await V.sync([putP(p, { blockWarn: true })])).length, 1);
+  });
+
+  test('sert engel yok: açık engelleyeni olan iş Bitti\'ye alınabilir (uyarı açıkken de)', async () => {
+    let p = await row('projects', 'p_eng');
+    ok(await A.sync([putP(p, { blockWarn: true })]));
+    assert.equal((await row('issues', 'i_eng1')).statusId, 'p_eng_s0');   // engelleyen açık
+    const cur = await row('issues', 'i_eng2');
+    ok(await M.sync([{ c: 'issues', id: 'i_eng2', op: 'put', data: { ...cur, statusId: 'p_eng_s2' }, base: cur }]));
+    assert.equal((await row('issues', 'i_eng2')).statusId, 'p_eng_s2');
+  });
+});

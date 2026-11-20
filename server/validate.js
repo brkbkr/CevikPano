@@ -145,6 +145,8 @@ const RULES = {
     [optKey(d.code, KEY_RE), 'Proje kodu geçersiz'],
     [d.workspaceId == null || d.workspaceId === '' || validId(d.workspaceId), 'Geçersiz çalışma alanı'],
     [optBool(d.archived), 'Arşiv bilgisi true ya da false olmalı'],
+    /* Engelli işi Bitti'ye alırken uyarı (istemci; yoksa açık). */
+    [optBool(d.blockWarn), 'Engelli iş uyarısı true ya da false olmalı'],
     [d.customerId == null || d.customerId === '' || validId(d.customerId), 'Geçersiz cari'],
     [d.type == null || d.type === '' || PROJECT_TYPES.includes(d.type), 'Geçersiz proje türü'],
     [d.template == null || d.template === '' || PROJECT_TEMPLATES.includes(d.template), 'Geçersiz şablon'],
