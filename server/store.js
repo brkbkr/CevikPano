@@ -323,6 +323,7 @@ async function applyRecord(c, ctx, ch) {
     if (ch.c === 'projects') await cascadeProjectDelete(c, ctx, ch.id);
     if (ch.c === 'workspaces') await checkWorkspaceDelete(c, ch.id);
     if (ch.c === 'sprints' && cur.state === 'active') await canManageSprint(c, ctx, cur.projectId);
+    if (ch.c === 'versions') await unlinkVersion(c, ctx, ch.id);
     if (ch.c === 'statuses') {
       await canConfigure(c, ctx, cur.projectId);
       await lockColumns(c, ctx, [cur.projectId]);
@@ -429,6 +430,7 @@ async function applyRecord(c, ctx, ch) {
     if (!ok) throw new HttpError(400, 'Kolon bulunamadı');
   }
   if (ch.c === 'issues') await checkRequester(c, data, cur, ctx.system);
+  if (ch.c === 'issues' && await checkIssueVersions(c, data, cur)) adjusted = true;
   if (ch.c === 'issues' && await ensureIssueKey(c, ctx, data, cur)) adjusted = true;
   if (ch.c === 'workspaces' && await enforceWsMembers(c, me, data, cur)) adjusted = true;
   if (ch.c === 'workspaces' && await enforceWsAdmins(c, me, data, cur)) adjusted = true;
@@ -458,6 +460,7 @@ async function applyRecord(c, ctx, ch) {
   if (ch.c === 'fields') await checkFieldKey(c, ch.id, data, cur);
   if (ch.c === 'links') await checkLinkEnds(c, ctx, data, cur, ctx.system);
   if (ch.c === 'reports') await checkReport(c, me, data, cur);
+  if (ch.c === 'versions') await checkVersion(c, ch.id, data, cur);
 
   const json = JSON.stringify(data);
   if (table && !cur && CREATE_ONCE.includes(ch.c)) {
@@ -692,7 +695,7 @@ async function checkProjectWorkspace(c, data, cur) {
 export const WS_ROLES = ['admin', 'member', 'viewer'];
 const WS_MAX_MEMBERS = 1000;
 export const WS_CREATE_FORBIDDEN = 'Çalışma alanını yalnızca yönetici açabilir';
-const WS_SCOPED = ['projects', 'statuses', 'sprints', 'issues', 'worklogs', 'comments', 'history', 'transitions', 'links', 'fields', 'workspaces'];
+const WS_SCOPED = ['projects', 'statuses', 'sprints', 'issues', 'worklogs', 'comments', 'history', 'transitions', 'links', 'fields', 'workspaces', 'versions'];
 const ISSUE_SCOPED = ['worklogs', 'comments', 'history', 'transitions'];
 export { wsOwner } from './perms.js';
 export const wsLegacy = ws => !Array.isArray(ws?.members) || ws.members.length === 0;
@@ -737,7 +740,7 @@ async function needPerm(c, ctx, p, ...keys) {
    Projeye bağlı tablolar projectId, işe bağlılar issueId, bağlantılar iki ucundan biri üzerinden süzülür.
    Proje bağımsız tablolar (users, customers, filters, genel fields/rules, settings, misc_records) olduğu gibi gider. */
 export const ACCESS_CH = '_access';
-const BY_PROJECT = ['statuses', 'sprints', 'issues', 'fields', 'rules'];
+const BY_PROJECT = ['statuses', 'sprints', 'issues', 'fields', 'rules', 'versions'];
 const BY_ISSUE = ['worklogs', 'comments', 'history', 'transitions'];
 const SCOPED_READ = ['workspaces', 'projects', ...BY_PROJECT, ...BY_ISSUE, 'links', 'reports'];
 /* Görünen alan ve proje kimlikleri. */
@@ -901,7 +904,8 @@ const onlyCounter = (a, b) => same({ ...a, counter: 0 }, { ...b, counter: 0 });
    hem yeni hâl (data) denetlenir: kayıt yetkisi olmayan projeye taşınamaz. early: kayda özgü kurallardan önce yalnız
    görme (projeyi göremeyene her yazmada aynı ileti). Çalışma alanı checkWorkspace'te, kolonlar canConfigure'da. */
 const ISSUE_PERMS = { comments: ['comment.write'], worklogs: ['worklog.own'], history: ['issue.edit', 'issue.create'],
-  transitions: ['issue.edit', 'issue.create'], links: ['issue.edit'], sprints: ['sprint.edit', 'sprint.manage'] };
+  transitions: ['issue.edit', 'issue.create'], links: ['issue.edit'], sprints: ['sprint.edit', 'sprint.manage'],
+  versions: ['project.settings'] };                 // sürümler (017): proje ayarları yetkisi (proje Yöneticisi her zaman)
 const recProj = async (c, col, d) => projById(c, ISSUE_SCOPED.includes(col) ? await issueProj(c, d.issueId)
   : col === 'links' ? await issueProj(c, d.from) : d.projectId);
 async function checkScope(c, ctx, col, cur, data, early = false) {
@@ -948,7 +952,7 @@ async function checkScope(c, ctx, col, cur, data, early = false) {
 export const PARENT_MISSING = 'Bağlı kayıt bulunamadı';
 const PARENT_REF = { statuses: ['projectId'], sprints: ['projectId'], issues: ['projectId'], fields: ['projectId'],
   rules: ['projectId'], worklogs: ['issueId'], comments: ['issueId'], history: ['issueId'], transitions: ['issueId'],
-  links: ['from', 'to'] };
+  links: ['from', 'to'], versions: ['projectId'] };
 const SELF_PARENT_CHECK = ['history', 'comments', 'links'];
 async function checkParent(c, ctx, col, data, cur) {
   const keys = PARENT_REF[col];
@@ -1227,6 +1231,56 @@ async function checkReport(c, me, data, cur) {
    çakışamaz. Farklı projelerde aynı anahtar serbest (raporda tek boyutta birleşir). 005'in gizlediği eski alan
    (hidden, bind yok) sayılmaz. Yeni kayıtta ya da anahtar değişince denetlenir; aynı anahtara eşzamanlı yazmalar
    danışma kilidiyle sıralanır. Hazır alan (bind) projede bir kez: fields_project_bind_uq (008) yedek kısıttır. */
+/* ---- sürümler / teslim paketleri (017) ----
+   Sürüm projeye bağlıdır (okuma süzmesi BY_PROJECT; yazma projede "Proje adı ve ayarları": checkScope → ISSUE_PERMS).
+   Projesi sonradan değişmez; adı projede tekildir (Türkçe küçük harf, boşluk sadeleştirilmiş: kolon adıyla aynı kural).
+   İşin sürümleri issues.data.versionIds: yeni eklenen kimlik işin projesinde var olan, arşivlenmemiş bir sürüm olmalı.
+   İş başka projeye taşınınca eski projenin sürümleri sessizce düşer. Sürüm silinince işlerdeki bağı kalkar. */
+const VERSION_LOCK = 727317;
+export const VERSION_MAX_PER_PROJECT = 500;
+export const VERSION_NAME_TAKEN = 'Bu projede bu adla bir sürüm zaten var';
+export const VERSION_MISSING = 'Sürüm bulunamadı';
+export const VERSION_ARCHIVED = 'Arşivlenmiş sürüme iş eklenemez';
+async function checkVersion(c, id, data, cur) {
+  if (cur && cur.projectId !== data.projectId) throw new HttpError(400, 'Sürümün projesi değiştirilemez');
+  if (cur && colName(cur.name) === colName(data.name)) return;
+  await c.query('SELECT pg_advisory_xact_lock($1, hashtext($2))', [VERSION_LOCK, data.projectId]);
+  const rows = (await c.query('SELECT id, name FROM versions WHERE project_id=$1 AND id<>$2', [data.projectId, id])).rows;
+  if (rows.some(r => colName(r.name) === colName(data.name))) throw new HttpError(409, VERSION_NAME_TAKEN);
+  if (!cur && rows.length >= VERSION_MAX_PER_PROJECT) throw new HttpError(409, `Bir projede en fazla ${VERSION_MAX_PER_PROJECT} sürüm olabilir`);
+}
+async function checkIssueVersions(c, data, cur) {
+  const list = Array.isArray(data.versionIds) ? data.versionIds : [];
+  const moved = !!cur && cur.projectId !== data.projectId;
+  const prev = new Set(!cur || moved || !Array.isArray(cur.versionIds) ? [] : cur.versionIds);
+  const added = list.filter(x => !prev.has(x));
+  if (!added.length) return false;
+  /* FOR SHARE: sürüm aynı anda silinirse biri bekler (silme, işi gördükten sonra bağı kaldırır). */
+  const st = new Map((await c.query('SELECT id, state FROM versions WHERE id = ANY($1) AND project_id = $2 FOR SHARE',
+    [added, data.projectId])).rows.map(r => [r.id, r.state]));
+  if (moved) {
+    const keep = list.filter(x => !added.includes(x) || st.has(x));
+    if (keep.length === list.length) return false;
+    data.versionIds = keep;
+    return true;
+  }
+  if (added.some(x => !st.has(x))) throw new HttpError(400, VERSION_MISSING);
+  if (added.some(x => st.get(x) === 'archived')) throw new HttpError(400, VERSION_ARCHIVED);
+  return false;
+}
+/* Silinen sürüm işlerin versionIds dizisinden çıkar; değişen işler akışa ve adjusted'a düşer. */
+async function unlinkVersion(c, ctx, id) {
+  const { me, batch } = ctx;
+  const rows = (await c.query(`UPDATE issues SET data = jsonb_set(data, '{versionIds}', coalesce((SELECT jsonb_agg(e.x ORDER BY e.o)
+      FROM jsonb_array_elements(data->'versionIds') WITH ORDINALITY e(x, o) WHERE e.x <> to_jsonb($1::text)), '[]'::jsonb)),
+      version = version + 1, updated_at = now(), updated_by = $2
+    WHERE jsonb_typeof(data->'versionIds') = 'array' AND data->'versionIds' ? $1 RETURNING id`, [id, me.id])).rows;
+  for (const r of rows) {
+    await logChange(c, 'issues', r.id, 'put', me.id, batch);
+    if (!ctx.adjusted.some(x => x.c === 'issues' && x.id === r.id)) ctx.adjusted.push({ c: 'issues', id: r.id });
+  }
+}
+
 const FIELD_KEY_LOCK = 727278;
 export const FIELD_KEY_TAKEN = 'Bu anahtarla bir alan zaten var';
 export const FIELD_BIND_TAKEN = 'Bu projede bu hazır alan zaten var';
@@ -1445,7 +1499,7 @@ async function cascadeIssueDelete(c, ctx, id) {
 /* Proje silinince bağlı kayıtlar (işler ve onların yorum, süre, geçmiş, geçiş ve bağlantıları; kolonlar, sprintler,
    projeye özel alanlar ve kurallar) aynı batch'le çöp kutusuna gider: proje ile birlikte geri yüklenir, istemci ne
    gönderirse göndersin (ham API, yarım silme) yetim kayıt kalmaz (O-1). Yetki proje silme yetkisidir (checkScope). */
-const PROJECT_CHILDREN = ['statuses', 'sprints', 'fields', 'rules'];
+const PROJECT_CHILDREN = ['statuses', 'sprints', 'fields', 'rules', 'versions'];
 async function cascadeProjectDelete(c, ctx, pid) {
   await lockColumns(c, ctx, [pid]);
   const ids = (await c.query('SELECT id FROM issues WHERE project_id=$1 ORDER BY id FOR UPDATE', [pid])).rows.map(r => r.id);

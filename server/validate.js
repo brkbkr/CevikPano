@@ -138,6 +138,16 @@ const reportCfgOk = g => plainObj(g) && Object.keys(g).every(k => REPORT_CFG_KEY
   && realDate(g.from) && realDate(g.to)
   && (g.f == null || (plainObj(g.f) && Object.entries(g.f).every(([k, v]) => REPORT_F_KEYS.has(k) && str(v, 200))));
 
+/* Sürümler (017). Yeni koleksiyon, eski verisi yok: her yazmada sıkı; bilinmeyen anahtar reddedilir. Durum: planlanan,
+   yayınlandı, arşiv. İşin sürümleri issues.data.versionIds (tekil kimlikler, en çok VERSION_MAX_PER_ISSUE). */
+export const VERSION_NAME_MAX = 60;
+export const VERSION_DESC_MAX = 1000;
+export const VERSION_STATES = ['planned', 'released', 'archived'];
+export const VERSION_MAX_PER_ISSUE = 50;
+const VERSION_KEYS = new Set(['id', 'projectId', 'name', 'desc', 'start', 'due', 'state', 'releasedAt', 'createdAt', 'updatedAt']);
+export const versionIdsOk = v => v == null || (Array.isArray(v) && v.length <= VERSION_MAX_PER_ISSUE && v.every(validId)
+  && new Set(v).size === v.length);
+
 const RULES = {
   projects: (d, opts) => [
     [str(d.name, 200) && d.name.trim(), 'Proje adı gerekli'],
@@ -222,6 +232,7 @@ const RULES = {
     [!changed(d, opts, 'cf') || cfOk(d.cf), 'Özel alan değerleri geçersiz (en fazla 200 alan; değer metin, sayı ya da evet/hayır)'],
     [!changed(d, opts, 'billable') || optStr(d.billable, 100), 'Faturalama değeri en fazla 100 karakter'],
     [!changed(d, opts, 'billType') || optStr(d.billType, 100), 'Fatura türü değeri en fazla 100 karakter'],
+    [!changed(d, opts, 'versionIds') || versionIdsOk(d.versionIds), `Sürümler en fazla ${VERSION_MAX_PER_ISSUE} tekil sürüm kimliği olmalı`],
   ],
   /* Değer serbesttir (zorunluluk yok, eski değerler korunur): seçenek listesine uyum zorlanmaz. */
   fields: (d, opts) => {
@@ -262,6 +273,16 @@ const RULES = {
     [reportCfgOk(d.cfg), 'Rapor ayarı geçersiz (boyut, ölçü, grafik, dönem ya da süzgeç)'],
     [d.tpl == null || (typeof d.tpl === 'string' && /^[a-z0-9_]{1,30}$/.test(d.tpl)), 'Hazır rapor kimliği geçersiz'],
     [optTime(d.createdAt) && optTime(d.updatedAt), 'Rapor zamanı geçersiz'],
+  ],
+  versions: d => [
+    [Object.keys(d).every(k => VERSION_KEYS.has(k)), 'Sürüm kaydında bilinmeyen alan var'],
+    [validId(d.projectId), 'Sürümün projesi yok'],
+    [typeof d.name === 'string' && d.name.trim().length >= 1 && d.name.length <= VERSION_NAME_MAX, `Sürüm adı gerekli (en fazla ${VERSION_NAME_MAX} karakter)`],
+    [optStr(d.desc, VERSION_DESC_MAX), `Açıklama en fazla ${VERSION_DESC_MAX} karakter`],
+    [realDate(d.start) && realDate(d.due) && realDate(d.releasedAt), 'Tarih YYYY-AA-GG biçiminde geçerli bir gün olmalı'],
+    [!d.start || !d.due || String(d.due) >= String(d.start), 'Teslim tarihi başlangıçtan önce olamaz'],
+    [VERSION_STATES.includes(d.state), 'Sürüm durumu planlanan, yayınlandı ya da arşiv olmalı'],
+    [optTime(d.createdAt) && optTime(d.updatedAt), 'Sürüm zamanı geçersiz'],
   ],
   worklogs: d => [
     [str(d.issueId, 200), 'Süre kaydının işi yok'],

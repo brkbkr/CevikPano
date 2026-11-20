@@ -16,8 +16,8 @@ const WSN = `Gezinme ${RUN} ${XSS}`;
 const M = 'u_nvm' + RUN, V = 'u_nvv' + RUN, D = 'u_nvd' + RUN, WS = 'ws_nv' + RUN, PX = 'p_nv' + RUN;
 const WS2 = 'ws_nv2' + RUN, P6 = [1, 2, 3, 4, 5, 6].map(n => `p_nv${RUN}_${n}`);      // A2: 6 projeli alan
 const PXN = `Gezinme Proje ${RUN} <b>kalın</b>`;
-const ORDER = ['board', 'backlog', 'plan', 'roadmap', 'timesheet', 'effort', 'reports', 'search', 'admin'];
-const LABELS = ['Pano', 'İş listesi', 'Zaman planı', 'Yol haritası', 'Zaman çizelgesi', 'Efor raporu', 'Raporlar', 'Arama', 'Proje ayarları'];
+const ORDER = ['board', 'backlog', 'plan', 'roadmap', 'versions', 'timesheet', 'effort', 'reports', 'search', 'admin'];
+const LABELS = ['Pano', 'İş listesi', 'Zaman planı', 'Yol haritası', 'Sürümler', 'Zaman çizelgesi', 'Efor raporu', 'Raporlar', 'Arama', 'Proje ayarları'];
 
 (async () => {
   const b = await chromium.launch();
@@ -85,7 +85,7 @@ const LABELS = ['Pano', 'İş listesi', 'Zaman planı', 'Yol haritası', 'Zaman 
       lab: document.getElementById('view').getAttribute('aria-labelledby'), bar: !document.getElementById('tabbar').hidden,
       under: document.getElementById('tabbar').compareDocumentPosition(document.getElementById('toolrow')) === Node.DOCUMENT_POSITION_FOLLOWING };
   });
-  ok('9 project tabs in order with labels', JSON.stringify(t9.vs) === JSON.stringify(ORDER) && JSON.stringify(t9.ls) === JSON.stringify(LABELS), JSON.stringify(t9));
+  ok('10 project tabs in order with labels', JSON.stringify(t9.vs) === JSON.stringify(ORDER) && JSON.stringify(t9.ls) === JSON.stringify(LABELS), JSON.stringify(t9));
   ok('tablist/tab roles, roving tabindex, tabpanel, toolrow under tabs', t9.role === 'tablist' && t9.tab0.join() === 'board' && t9.panel === 'tabpanel'
     && t9.lab === 'tab-board' && t9.bar && t9.under && await sel(A) === 'board', JSON.stringify(t9));
 
@@ -105,7 +105,7 @@ const LABELS = ['Pano', 'İş listesi', 'Zaman planı', 'Yol haritası', 'Zaman 
 
   // 4) Epik kapalı: Yol haritası sekmesi yok, #roadmap → Pano
   await epic(A, false); await hash(A, 'board');
-  ok('epic off: no roadmap tab', !(await tabs(A)).includes('roadmap') && (await tabs(A)).length === 8, JSON.stringify(await tabs(A)));
+  ok('epic off: no roadmap tab', !(await tabs(A)).includes('roadmap') && (await tabs(A)).length === 9, JSON.stringify(await tabs(A)));
   await hash(A, 'roadmap');
   ok('epic off: #roadmap falls back to Pano', await A.evaluate(() => DB.ui.view === 'board' && location.hash === '#board') && await sel(A) === 'board');
 
@@ -251,7 +251,7 @@ const LABELS = ['Pano', 'İş listesi', 'Zaman planı', 'Yol haritası', 'Zaman 
       out: !!document.querySelector('#acctMenu [data-act="logout"]'), pw: !!document.querySelector('#acctMenu [data-act="pw"]') }));
     await p.keyboard.press('Escape');
     ok(`${n}: tabs ${adm ? 'with' : 'without'} Proje ayarları, menu role "${rl}", Sistem ${adm ? 'shown' : 'hidden'}`,
-      tb.includes('admin') === adm && tb.length === (adm ? 8 : 7) && mm.role === rl && mm.sys === adm && mm.out && mm.pw, JSON.stringify([tb, mm]));
+      tb.includes('admin') === adm && tb.length === (adm ? 9 : 8) && mm.role === rl && mm.sys === adm && mm.out && mm.pw, JSON.stringify([tb, mm]));
     /* Ctrl+K paletinde "Git" ekranları viewAllowed ile süzülür: yetkisiz Kullanıcılar / Sistem / Proje ayarları yok */
     await p.evaluate(() => document.activeElement?.blur()); await p.keyboard.press('Control+k'); await sleep(250);
     const pg = await p.evaluate(() => [...document.querySelectorAll('#pl_r .row')].filter(r => r.querySelector('.k')?.textContent === 'Git').map(r => r.querySelector('.sum').textContent));
