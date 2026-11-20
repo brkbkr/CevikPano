@@ -3269,6 +3269,19 @@ button.pf-card:hover{background:var(--surface2);border-color:var(--line)}
   .pm-add .pm-pick{flex-basis:100%}
   .pm-add .pm-rsel{flex:1}
 }
+/* İş akışı geçiş kuralları (gk) */
+.gk-rule{border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-bottom:8px}
+.gk-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.gk-h svg{width:15px;height:15px;color:var(--ink3);flex:none}
+.gk-to{font-size:13px}
+.gk-c{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.gk-ro{font-size:11.5px;color:var(--ink3);margin-top:6px}
+.gk-cbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px;margin-bottom:6px}
+.gk-cb{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);border-radius:6px;padding:7px 9px;cursor:pointer;font-size:12.5px}
+.gk-cb input{margin-top:2px;width:auto}
+.gk-cb b{font-weight:600;display:block}
+.gk-cb small{display:block;color:var(--ink3);font-size:11px}
+.gk-err{color:var(--id-late,#c0392b);font-size:12px;min-height:16px;margin-top:6px}
 </style>
 </head>
 <body>
@@ -5262,9 +5275,11 @@ function openModal(html, cls = '') {
 function closeModal() { if (closeSub()) return; closeQuick(false); ID_ED = null; ID_CEDIT = null; $('#scrim').classList.remove('on'); $('#scrim').innerHTML = ''; OPEN_ISSUE = null; if (RERENDER) setTimeout(tryRerender, 0); }
 
 /* ---- durum değişimi tek kapıdan ---- */
-/* o.rules === false: otomasyon kuralları çalışmaz (kolon silmede toplu taşıma, #12). */
+/* o.rules === false: otomasyon kuralları çalışmaz (kolon silmede toplu taşıma, #12). o.gate === false: geçiş kuralı
+   denetlenmez (kolon silmede toplu taşıma ya da çağıran önceden denetledi). Geçiş kuralına takılırsa uyarır, false döner. */
 function setStatus(i, sid, o = {}) {
-  if (i.statusId === sid) return;
+  if (i.statusId === sid) return true;
+  if (o.gate !== false && gateBlocked(i, sid)) return false;
   const from = stat(i.statusId), to = stat(sid);
   logHist(i, 'Durum', from.name, to.name);
   i.statusId = sid;
@@ -5274,6 +5289,7 @@ function setStatus(i, sid, o = {}) {
   if (par) logHist(par, 'Alt iş', '', `${i.key} ${i.summary || ''}`.trim(), { kind: 'done', key: i.key });
   recordTransition(i, from.id, sid);
   if (o.rules !== false) runRules(i, 'status');
+  return true;
 }
 
 /* ============================ İŞ DETAYI (görev 6, docs/tasarim/kart-detay) ============================
@@ -5849,7 +5865,7 @@ const ID_LABEL = { statusId: 'Durum', assignee: 'Atanan', reporter: 'Raporlayan'
   sprintId: 'Sprint', epicId: 'Epik', parentId: 'Üst iş', due: 'Bitiş', start: 'Başlangıç', estimate: 'Tahmin', remainingEst: 'Kalan tahmin', billable: 'Faturalama', billType: 'Fatura türü', customerId: 'Cari' };
 function idSet(i, f, v) {
   if (!i || !canEdit()) return false;
-  if (f === 'statusId') { if (i.statusId === v || !stat(v)) return false; delete i.doneFrom; setStatus(i, v); }
+  if (f === 'statusId') { if (i.statusId === v || !stat(v) || gateBlocked(i, v)) return false; delete i.doneFrom; setStatus(i, v, { gate: false }); }
   else if (f === 'priority') { if (!setPriority(i, +v)) return false; }
   else if (f === 'assignee') { if (!setAssignee(i, v || null)) return false; }
   else if (f === 'requester') {
@@ -5913,7 +5929,8 @@ function propMenu(kind, btn) {
   const usersList = (cur, pool) => q => { const k = qmKey(q).trim(), hit = t => !k || qmKey(t).includes(k);
     return pool.filter(u => hit(u.name)).map(u => pmOpt(u.id, cur, `<span class="c-av" style="background:${safeColor(u.color)}">${esc(u.ini || '?')}</span>`, esc(u.name))).join('') || '<div class="qm-empty">Eşleşen kişi yok</div>'; };
   const M = {
-    status: () => ({ title: 'Durum', list: () => statsOf(i.projectId).map(s => pmOpt(s.id, i.statusId, `<span class="cat-dot ${esc(s.cat)}"></span>`, esc(s.name))).join(''),
+    status: () => ({ title: 'Durum', list: () => statsOf(i.projectId).map(s => pmOpt(s.id, i.statusId, `<span class="cat-dot ${esc(s.cat)}"></span>`, esc(s.name),
+        esc(gateCheck(i, s.id)?.need || ''))).join(''),
       pick: v => after(idSet(i, 'statusId', v)) }),
     pri: () => ({ kind: 'pri', title: 'Öncelik', list: () => qmPriList(i), pick: v => after(idSet(i, 'priority', +v)) }),
     as: () => ({ kind: 'as', title: 'Atanan kişi', search: issueUsers(i).length > 8, list: q => qmAsList(i, q), pick: v => after(idSet(i, 'assignee', v || null)) }),
@@ -6988,8 +7005,9 @@ function wire() {
     e.preventDefault();
     const i = issue(DRAG); if (!i) return;
     if (z.dataset.drop === 'status') {
+      if (gateBlocked(i, z.dataset.status)) { DRAG = null; return render(); }
       i.rank = dropIndexRank(z, e.clientY, '.card');
-      setStatus(i, z.dataset.status);
+      setStatus(i, z.dataset.status, { gate: false });
       const act = activeSprint();
       if (act && AGILE() && !i.sprintId && DB.board.scope !== 'all') histSet(i, 'sprintId', act.id);
     } else {
@@ -7449,6 +7467,188 @@ function runRules(i, trigger, ctx = {}) {
 }
 
 /* ============================================================
+   İŞ AKIŞI GEÇİŞ KURALLARI (gk, Jira "conditions/validators")
+   Proje ayarları → İş akışı. p.gates: [{ id, cat | statusId, worklog?, assignee?, fields?: ['bind:billType', 'cf:<id>'],
+   subsDone?, noBlockers?, roles?: ['admin', 'member'] }]. Kural yoksa (varsayılan) geçiş serbest. Asıl kural sunucuda
+   (store.js checkGates, aynı iletiler); burada yalnız erken ve anlaşılır uyarı. Kategori kuralı kategoriye girişte işler,
+   kolon kuralı her girişte. Otomasyonun "Durumu değiştir" eylemi de bu kurallara uyar; kolon silmedeki toplu taşıma muaf.
+   ============================================================ */
+const GATE_CAT_L = { todo: 'Yapılacak', inprogress: 'Devam ediyor', done: 'Bitti' };
+const GATE_ROLE_L = { admin: 'Yönetici', member: 'Üye', viewer: 'İzleyici' };
+const GATE_TOAST = { warn: true, ms: 7000 };
+const GATE_MAX = 30;
+/* "Bitti" → "Bitti'ye", "İnceleniyor" → "İnceleniyor'a"; harfle bitmeyen ad → "\"X1\" kolonuna" (sunucuyla aynı). */
+function gateTarget(name) {
+  const s = String(name ?? '').trim().slice(0, 60);
+  const low = s.toLocaleLowerCase('tr'), V = 'aeıioöuü';
+  const v = [...low].reverse().find(ch => V.includes(ch));
+  if (!s || !/\p{L}$/u.test(s) || !v) return `"${s || 'Bu'}" kolonuna`;
+  return `${s}'${V.includes(low.slice(-1)) ? 'y' : ''}${'aıou'.includes(v) ? 'a' : 'e'}`;
+}
+const gateAsk = (name, type) => `${String(name).trim().slice(0, 60)} ${['select', 'user', 'cari'].includes(type) ? 'seçin'
+  : type === 'checkbox' ? 'işaretleyin' : 'girin'}`;
+const gateFilled = v => v != null && v !== false && !(typeof v === 'string' && !v.trim());
+const gatesOf = p => (Array.isArray(p?.gates) ? p.gates.filter(g => g && typeof g === 'object' && !Array.isArray(g)) : []);
+/* Alan başvurusunun etkin tanımı; alan silinmiş/kapalıysa null (koşul yok sayılır, sunucuyla aynı). */
+function gateField(pid, ref) {
+  if (typeof ref !== 'string') return null;
+  if (ref.startsWith('bind:')) {
+    const b = ref.slice(5);
+    if (!Object.hasOwn(FIELD_PRESETS, b) || !bindOn(pid, b)) return null;
+    return { ref, name: bindField(pid, b).name, type: b === 'customerId' ? 'cari' : 'select', val: i => b === 'customerId' ? customerIdOf(i) : i[b] };
+  }
+  if (!ref.startsWith('cf:')) return null;
+  const f = (DB.fields || []).find(x => x && x.id === ref.slice(3));
+  if (!liveField(f) || (f.projectId && f.projectId !== pid)) return null;
+  return { ref, name: f.name, type: f.type, val: i => i.cf?.[f.id] };
+}
+/* Kuralda seçilebilen alanlar: projede açık hazır alanlar + projenin ve genel özel alanlar. */
+const gateFieldChoices = pid => [...BINDS.map(b => gateField(pid, 'bind:' + b)),
+  ...liveFields().filter(f => !f.projectId || f.projectId === pid).map(f => gateField(pid, 'cf:' + f.id))].filter(Boolean);
+/* Geçiş engeli: null ya da { msg, need } (need: hedef adı olmadan eksikler). done: aynı işlemde bitecek alt işler. */
+function gateCheck(i, toId, done = null) {
+  const to = DB.statuses.find(s => s.id === toId);
+  if (!i || !to || toId === i.statusId) return null;
+  const p = DB.projects.find(x => x.id === i.projectId), from = DB.statuses.find(s => s.id === i.statusId);
+  const hit = gatesOf(p).filter(g => g.statusId === toId || (g.cat && g.cat === to.cat && from?.cat !== to.cat));
+  if (!hit.length) return null;
+  const target = gateTarget(to.name);
+  const allow = hit.filter(g => Array.isArray(g.roles));
+  if (allow.length) {
+    const r = projRole(CU(), p);
+    if (r !== 'admin' && !allow.every(g => g.roles.includes(r))) {
+      const need = `yalnız ${['admin', ...['member', 'viewer'].filter(x => allow.every(g => g.roles.includes(x)))].map(x => GATE_ROLE_L[x]).join(' ve ')} rolündekiler taşıyabilir`;
+      return { msg: `${target} ${need}`, need: need[0].toLocaleUpperCase('tr') + need.slice(1) };
+    }
+  }
+  const any = k => hit.some(g => g[k] === true), items = [];
+  const isDone = k => (done && done.has(k.id)) || DB.statuses.find(s => s.id === k.statusId)?.cat === 'done';
+  if (any('worklog') && !DB.worklogs.some(w => w.issueId === i.id && Number(w.hours) > 0)) items.push('süre kaydı girin');
+  if (any('assignee') && !i.assignee) items.push('atanan seçin');
+  for (const ref of new Set(hit.flatMap(g => Array.isArray(g.fields) ? g.fields : []))) {
+    const f = gateField(p.id, ref);
+    if (f && !gateFilled(f.val(i))) items.push(gateAsk(f.name, f.type));
+  }
+  if (any('subsDone')) {
+    const n = DB.issues.filter(k => k.parentId === i.id && k.id !== i.id && !isDone(k)).length;
+    if (n) items.push(`alt işleri bitirin (${n} açık)`);
+  }
+  if (any('noBlockers')) {
+    const ids = new Set(DB.links.filter(l => l.type === 'blocks' && l.to === i.id && l.from !== i.id).map(l => l.from));
+    const n = [...ids].map(issue).filter(k => k && !isDone(k)).length;
+    if (n) items.push(`engelleyen işleri kapatın (${n} açık)`);
+  }
+  if (!items.length) return null;
+  const need = items.join(', ');
+  return { msg: `${target} geçmek için: ${need}`, need: 'Önce: ' + need };
+}
+/* Engel varsa uyarır ve true döner (kart yerinde kalır). */
+function gateBlocked(i, toId, done) {
+  const g = gateCheck(i, toId, done);
+  if (g) toast(g.msg, GATE_TOAST);
+  return !!g;
+}
+
+/* ---- Proje ayarları → İş akışı → Geçiş kuralları ---- */
+function gateTargetLabel(g) {
+  if (g.cat) return { name: GATE_CAT_L[g.cat] || g.cat, kind: 'kategori' };
+  const s = DB.statuses.find(x => x.id === g.statusId);
+  return { name: s ? s.name : '(silinmiş kolon)', kind: 'kolon', missing: !s };
+}
+function gateChips(g, pid) {
+  const out = [];
+  if (g.worklog) out.push('Süre kaydı girilmiş');
+  if (g.assignee) out.push('Atanan dolu');
+  for (const ref of g.fields || []) { const f = gateField(pid, ref); out.push(f ? f.name + ' dolu' : '(kaldırılmış alan)'); }
+  if (g.subsDone) out.push('Tüm alt işler bitmiş');
+  if (g.noBlockers) out.push('Engelleyen açık iş yok');
+  if (Array.isArray(g.roles)) out.push('Yalnız ' + ['admin', ...g.roles.filter(r => r !== 'admin')].map(r => GATE_ROLE_L[r] || r).join(' ve '));
+  return out;
+}
+function gatesPanel(pr) {
+  if (!pr) return '';
+  const gs = gatesOf(pr), ed = canDesign(pr);
+  return `<div class="panel" id="gkPanel"><h3>Geçiş kuralları</h3>
+    <div class="sub">Bir kolona ya da kategoriye geçmeden önce sağlanması gereken koşullar. Koşul sağlanmazsa kart taşınmaz ve eksikler gösterilir.
+      Kural yoksa geçişler serbesttir. Otomasyonun durum değiştirmesi de bu kurallara uyar.</div>
+    ${gs.map(g => { const t = gateTargetLabel(g); return `<div class="gk-rule" data-gk="${esc(g.id)}">
+      <div class="gk-h">${ic('lock')}<span class="gk-to"><b>${esc(t.name)}</b>${t.kind === 'kategori' ? ' kategorisine' : ' kolonuna'} geçmek için</span>
+        <span class="chip ${t.missing ? 'cat-todo' : 'lbl'}">${t.kind}</span><span class="spacer"></span>
+        ${ed ? `<button class="btn sm" data-gkedit="${esc(g.id)}">Düzenle</button><button class="btn sm danger" data-gkdel="${esc(g.id)}">Sil</button>` : ''}</div>
+      <div class="gk-c">${gateChips(g, pr.id).map(x => `<span class="chip pt">${esc(x)}</span>`).join(' ')}</div></div>`; }).join('')
+      || '<div class="empty">Geçiş kuralı yok — kartlar her kolona serbestçe taşınır.</div>'}
+    ${ed ? `<button class="btn" id="gkAdd" ${gs.length >= GATE_MAX ? `disabled title="Bir projede en fazla ${GATE_MAX} geçiş kuralı olabilir"` : ''}>+ Geçiş kuralı ekle</button>`
+      : '<div class="gk-ro">Geçiş kurallarını "Proje adı ve ayarları" yetkisi olanlar değiştirir.</div>'}
+  </div>`;
+}
+function wireGates() {
+  const pr = P(); if (!pr || !$('#gkPanel')) return;
+  const add = $('#gkAdd'); if (add) add.onclick = () => gateForm(pr.id);
+  $$('[data-gkedit]').forEach(b => b.onclick = () => gateForm(pr.id, b.dataset.gkedit));
+  $$('[data-gkdel]').forEach(b => b.onclick = () => {
+    if (!canDesign(pr)) return toast(PERM_DENY('project.settings'));
+    const g = gatesOf(pr).find(x => x.id === b.dataset.gkdel); if (!g) return;
+    if (!confirm(`"${gateTargetLabel(g).name}" geçiş kuralı silinsin mi?`)) return;
+    pr.gates = gatesOf(pr).filter(x => x.id !== g.id);
+    save(); render(); toast('Geçiş kuralı silindi');
+  });
+}
+function gateForm(pid, id) {
+  const pr = DB.projects.find(p => p.id === pid);
+  if (!pr || !canDesign(pr)) return toast(PERM_DENY('project.settings'));
+  const g = id ? gatesOf(pr).find(x => x.id === id) : null;
+  const tv = g ? (g.cat ? 'cat:' + g.cat : 'st:' + g.statusId) : 'cat:done';
+  const used = new Set(gatesOf(pr).filter(x => x.id !== id).map(x => x.cat ? 'cat:' + x.cat : 'st:' + x.statusId));
+  const opt = (v, l) => `<option value="${esc(v)}" ${tv === v ? 'selected' : ''} ${used.has(v) ? 'disabled' : ''}>${esc(l)}${used.has(v) ? ' (kuralı var)' : ''}</option>`;
+  const fields = gateFieldChoices(pid), sel = new Set(g?.fields || []);
+  const roles = Array.isArray(g?.roles) ? (g.roles.includes('member') ? 'admin,member' : 'admin') : '';
+  const cb = (k, l, d) => `<label class="gk-cb"><input type="checkbox" id="gk_${k}" ${g?.[k] ? 'checked' : ''}><span><b>${l}</b><small>${d}</small></span></label>`;
+  openModal(`<div class="m-h"><b>${g ? 'Geçiş kuralını düzenle' : 'Geçiş kuralı'}</b><button class="x" data-close>×</button></div>
+    <div style="padding:16px 18px" id="gkForm">
+      <div class="form-row"><label class="field" for="gk_to">Hangi geçiş</label>
+        <select class="inp" id="gk_to"><optgroup label="Kategoriye geçiş (o kategorideki tüm kolonlar)">
+          ${CATS.map(([v, l]) => opt('cat:' + v, l)).join('')}</optgroup>
+          <optgroup label="Kolona geçiş">${stats().map(s => opt('st:' + s.id, s.name)).join('')}</optgroup></select></div>
+      <label class="field">Koşullar</label>
+      <div class="gk-cbs">
+        ${cb('worklog', 'Süre kaydı girilmiş olmalı', 'İşte en az bir süre kaydı')}
+        ${cb('assignee', 'Atanan dolu olmalı', 'İş birine atanmış')}
+        ${cb('subsDone', 'Tüm alt işler bitmiş olmalı', 'Alt işlerin hepsi Bitti kategorisinde')}
+        ${cb('noBlockers', 'Engelleyen açık iş olmamalı', '"Engelliyor" bağlantısıyla bağlı işler bitmiş')}
+      </div>
+      <label class="field">Dolu olması gereken alanlar</label>
+      <div class="gk-cbs" id="gk_fields">${fields.map(f => `<label class="gk-cb"><input type="checkbox" data-gkf="${esc(f.ref)}" ${sel.has(f.ref) ? 'checked' : ''}><span><b>${esc(f.name)}</b></span></label>`).join('')
+        || '<div class="muted" style="font-size:12px">Bu projede alan yok (Alanlar sekmesinden eklenir).</div>'}</div>
+      <div class="form-row" style="margin-top:10px"><label class="field" for="gk_roles">Kim taşıyabilir</label>
+        <select class="inp" id="gk_roles">
+          <option value="" ${roles === '' ? 'selected' : ''}>İş düzenleme yetkisi olan herkes</option>
+          <option value="admin" ${roles === 'admin' ? 'selected' : ''}>Yalnız Yönetici</option>
+          <option value="admin,member" ${roles === 'admin,member' ? 'selected' : ''}>Yönetici ve Üye</option></select></div>
+      <div class="gk-err" id="gk_err" role="alert"></div>
+    </div>
+    <div class="m-f"><button class="btn" data-close>Vazgeç</button><button class="btn pri" id="gk_ok">Kaydet</button></div>`);
+  $('#gk_ok').onclick = () => {
+    const p = DB.projects.find(x => x.id === pid);
+    if (!p || !canDesign(p)) return toast(PERM_DENY('project.settings'));
+    const to = $('#gk_to').value, [kind, ...rest] = to.split(':'), tid = rest.join(':');
+    const o = { id: g?.id || uid('gk') };
+    if (kind === 'cat') o.cat = tid; else o.statusId = tid;
+    for (const k of ['worklog', 'assignee', 'subsDone', 'noBlockers']) if ($('#gk_' + k).checked) o[k] = true;
+    const fs = $$('[data-gkf]').filter(x => x.checked).map(x => x.dataset.gkf);
+    if (fs.length) o.fields = fs;
+    if ($('#gk_roles').value) o.roles = $('#gk_roles').value.split(',');
+    const err = msg => { $('#gk_err').textContent = msg; };
+    if (!tid) return err('Hangi geçiş için olduğunu seçin');
+    if (gatesOf(p).some(x => x.id !== o.id && (x.cat ? 'cat:' + x.cat : 'st:' + x.statusId) === to)) return err('Bu geçiş için zaten bir kural var; onu düzenleyin');
+    if (!o.worklog && !o.assignee && !o.subsDone && !o.noBlockers && !o.fields && !o.roles) return err('En az bir koşul seçin');
+    const list = gatesOf(p).slice(), k = list.findIndex(x => x.id === o.id);
+    if (k >= 0) list[k] = o; else list.push(o);
+    p.gates = list;
+    closeModal(); save(); render(); toast('Geçiş kuralı kaydedildi');
+  };
+}
+
+/* ============================================================
    PROJE YETKİLERİ (yetki-v2, docs/tasarim/yetkiler)
    Yetkiler sekmesi: projenin kişileri ve rolleri + rol yetki tablosu (projeye özel, seyrek: yalnız sistem varsayılanından
    farklı hücreler p.perms'te). Yalnız etkin proje Yöneticisi görür/değiştirir; asıl kural sunucuda (store.js
@@ -7605,7 +7805,7 @@ function adminTabs() {
   const pr = P();
   return [['workflow', 'İş akışı'], ['types', 'İş tipleri'], ['fields', 'Alanlar'], ['perms', 'Yetkiler'], ['rules', 'Otomasyon'], ['people', 'Modüller & genel']]
     .filter(([v]) => v === 'perms' ? isProjAdmin(pr)
-      : isAdmin() || (!!pr && (v === 'workflow' ? (canEditCols(pr) || isProjAdmin(pr)) : v === 'fields' && canFields(pr))));
+      : isAdmin() || (!!pr && (v === 'workflow' ? (canEditCols(pr) || isProjAdmin(pr) || canDesign(pr)) : v === 'fields' && canFields(pr))));
 }
 function toolbarAdmin() {
   return `<div class="seg" id="adminTabs">${adminTabs().map(([v, l]) =>
@@ -7617,6 +7817,8 @@ function renderAdmin() {
   const tab = adminTab();
   if (tab === 'workflow') {
     const ss = stats(), pr = P(), nDone = ss.filter(s => s.cat === 'done').length;
+    /* Yalnız "Proje adı ve ayarları" yetkisi olan (kolon yetkisi yok): yalnız geçiş kuralları. */
+    if (!isAdmin() && !canEditCols(pr) && !isProjAdmin(pr)) return gatesPanel(pr);
     /* Proje türü ve kolonlar (#12): tür burada da görünür, değişiklik aynı pencereyle. */
     return `<div class="pt-set">
       <div class="r"><div class="tx"><div class="l">Proje türü</div><div class="d">Menüyü, panoyu ve sprint ekranlarını belirler.</div></div>
@@ -7658,7 +7860,8 @@ function renderAdmin() {
       ${isAdmin() ? `<div class="sec">Yeni projelerin varsayılan akışı</div>
       <div id="defFlow"></div>
       <button class="btn sm" id="saveDefFlow" style="margin-top:6px">Varsayılanı kaydet</button>` : ''}
-    </div>`;
+    </div>
+    ${gatesPanel(pr)}`;
   }
 
   if (tab === 'types') return renderTypes();
@@ -7741,6 +7944,7 @@ function wireSearch() {
 
 function wireAdmin() {
   wirePerms();
+  wireGates();
   const at = $('#adminTabs');
   if (at) at.onclick = e => { const b = e.target.closest('[data-a]');
     if (b) { DB.ui.adminTab = b.dataset.a; PF = null; save(); render(); } };
@@ -8340,9 +8544,14 @@ function wireBulk() {
   go.onclick = () => {
     const st = $('#bk_st').value, as = $('#bk_as').value, sp = $('#bk_sp')?.value || '',
           pr = $('#bk_pr').value, lb = $('#bk_lb').value.trim();
-    let n = 0;
+    let n = 0, gk = 0, gkMsg = '';
+    const bill = $('#bk_bill')?.value, bt = $('#bk_bt')?.value;
     [...SEL].map(issue).filter(Boolean).forEach(i => {
-      if (st) setStatus(i, st);
+      /* Geçiş kuralı, bu toplu düzenlemenin yazacağı atanan ve faturalama değerleriyle denetlenir. */
+      const pv = { ...i, ...(as ? { assignee: as === '__none' ? null : as } : {}), ...(bill ? { billable: bill } : {}), ...(bt ? { billType: bt } : {}) };
+      const gm = st ? gateCheck(pv, st) : null;
+      if (gm) { gk++; gkMsg ||= `${i.key}: ${gm.msg}`; }
+      else if (st) setStatus(i, st, { gate: false });
       if (as) setAssignee(i, as === '__none' ? null : as);
       if (sp) histSet(i, 'sprintId', sp === '__none' ? null : sp);
       if (pr) setPriority(i, +pr);
@@ -8354,7 +8563,9 @@ function wireBulk() {
       if (lb) labelAdd(i, lb);
       n++;
     });
-    SEL.clear(); save(); render(); toast(n + ' iş güncellendi');
+    SEL.clear(); save(); render();
+    if (gk) toast(`${n} iş güncellendi; ${gk} işin durumu geçiş kuralı nedeniyle değişmedi. ${gkMsg}`, GATE_TOAST);
+    else toast(n + ' iş güncellendi');
   };
 }
 
@@ -10434,7 +10645,8 @@ function homeAdvance(id, to) {
   if (!nx || nx.id !== to || !DB.statuses.some(s => s.id === to)) {
     toast('Durumlar değişti, yeniden deneyin', { warn: true }); return render(); }
   const was = i.statusId, me = i.assignee || null, near = homeNeighbors(i.id);
-  setStatus(i, nx.id); save(); render();
+  if (!setStatus(i, nx.id)) return;
+  save(); render();
   const now = i.assignee || null, items = [{ id: i.id, f: 'statusId', was, now: i.statusId }];
   /* Otomasyon başkasına atadıysa iş yine listeden düşer: durum önce, atanan sonra geri yazılır. */
   if (now !== me) { items.push({ id: i.id, f: 'assignee', was: me, now });
@@ -10466,9 +10678,10 @@ function homeUndo(msg, items) {
     const head = items[0], i0 = issue(head.id);
     if (!canEdit() || !i0 || (i0[head.f] || null) !== (head.now || null))
       return toast(`${i0 ? i0.key : 'İş'} bu arada değişti, geri alınamadı.`, { warn: true });
+    let blocked = false;
     items.forEach(x => { const i = issue(x.id); if (!i || (i[x.f] || null) !== (x.now || null)) return;
-      if (x.f === 'statusId') { setStatus(i, x.was); if (x.df) delete i.doneFrom; } else setAssignee(i, x.was); });
-    save(); render(); toast(i0.key + ' geri alındı');
+      if (x.f === 'statusId') { if (!setStatus(i, x.was)) { blocked = true; return; } if (x.df) delete i.doneFrom; } else setAssignee(i, x.was); });
+    save(); render(); if (!blocked) toast(i0.key + ' geri alındı');
   } });
 }
 function wireHome() {
@@ -12392,7 +12605,7 @@ function colDelete(id, to) {
   if (s.cat === 'done' && cols.filter(c => c.cat === 'done').length < 2) { toast(LAST_DONE); return false; }
   const moved = DB.issues.filter(i => i.statusId === id);
   if (moved.length && !cols.some(c => c.id === to && c.id !== id)) { toast('Hedef kolon seçin'); return false; }
-  moved.forEach(i => setStatus(i, to, { rules: false }));
+  moved.forEach(i => setStatus(i, to, { rules: false, gate: false }));   // geçiş kuralı muaf (sunucu: store.js checkGates)
   DB.issues.forEach(i => { if (i.doneFrom === id) delete i.doneFrom; });
   if (DB.ui.qaOpen === id) DB.ui.qaOpen = null;
   DB.statuses = DB.statuses.filter(x => x.id !== id);
@@ -13747,13 +13960,16 @@ function completeIssue(id, undo = false) {
   const ds = doneStatus(i.projectId);
   if (!ds) return toast('Bu projede "Bitti" kategorisinde durum yok');
   if (stat(i.statusId).cat === 'done') return;
+  /* Geçiş kuralı (gk): kendi kuralına takılmayan alt işler de biter; "alt işler bitmiş olmalı" bunları bitmiş sayar. */
+  const kids = kidsOf(i.id).filter(k => stat(k.statusId).cat !== 'done' && !gateCheck(k, ds.id));
+  if (gateBlocked(i, ds.id, new Set(kids.map(k => k.id)))) return;
   const prev = [{ id: i.id, f: 'statusId', was: i.statusId, now: ds.id, df: true }], as0 = i.assignee || null;
   i.doneFrom = i.statusId;
-  setStatus(i, ds.id);
+  setStatus(i, ds.id, { gate: false });
   prev[0].now = i.statusId;                               // otomasyon durumu değiştirmiş olabilir
   if ((i.assignee || null) !== as0) prev.push({ id: i.id, f: 'assignee', was: as0, now: i.assignee || null });
-  kidsOf(i.id).forEach(k => { if (stat(k.statusId).cat !== 'done') {
-    prev.push({ id: k.id, f: 'statusId', was: k.statusId, now: ds.id, df: true }); k.doneFrom = k.statusId; setStatus(k, ds.id); } });
+  kids.forEach(k => { if (stat(k.statusId).cat !== 'done') {
+    prev.push({ id: k.id, f: 'statusId', was: k.statusId, now: ds.id, df: true }); k.doneFrom = k.statusId; setStatus(k, ds.id, { gate: false }); } });
   const near = undo ? homeNeighbors(i.id) : [];
   save(); render();
   if (!undo) return toast(i.key + ' tamamlandı');
@@ -13765,8 +13981,9 @@ function reopenIssue(id) {
   const first = statsOf(i.projectId)[0];
   const back = doneFromOk(i) || first?.id;
   if (!back) return;
+  if (gateBlocked(i, back)) return;
   delete i.doneFrom;
-  setStatus(i, back);
+  setStatus(i, back, { gate: false });
   save(); render(); toast(i.key + ' yeniden açıldı');
 }
 /* Bir kolonun kartları: tamamlananlar, tamamlandığı kolonun altında kalır. */

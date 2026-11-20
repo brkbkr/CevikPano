@@ -138,6 +138,38 @@ const reportCfgOk = g => plainObj(g) && Object.keys(g).every(k => REPORT_CFG_KEY
   && realDate(g.from) && realDate(g.to)
   && (g.f == null || (plainObj(g.f) && Object.entries(g.f).every(([k, v]) => REPORT_F_KEYS.has(k) && str(v, 200))));
 
+/* İş akışı geçiş kuralları (gk): projects.data.gates — [{ id, cat | statusId, worklog?, assignee?, fields?, subsDone?,
+   noBlockers?, roles? }]. Yeni alan (eski verisi yok): değişince sıkı, bilinmeyen anahtar reddedilir. Hedef bir kolon
+   (statusId) ya da bir kategori (cat); alan başvurusu hazır alan (bind:billable) ya da özel alan (cf:<alan kimliği>).
+   Olmayan kolona/alana başvuru reddedilmez (kolon/alan sonradan silinebilir): değerlendirmede yok sayılır (store.js). */
+export const GATE_MAX = 30;
+export const GATE_FIELDS_MAX = 20;
+export const GATE_CATS = ['todo', 'inprogress', 'done'];
+const GATE_KEYS = new Set(['id', 'cat', 'statusId', 'worklog', 'assignee', 'fields', 'subsDone', 'noBlockers', 'roles']);
+const GATE_FLAGS = ['worklog', 'assignee', 'subsDone', 'noBlockers'];
+export const GATE_FIELD_RE = /^(bind:(billable|billType|customerId)|cf:[A-Za-z0-9_.:-]{1,190})$/;
+export function gatesError(v) {
+  if (!Array.isArray(v)) return 'Geçiş kuralları liste olmalı';
+  if (v.length > GATE_MAX) return `Bir projede en fazla ${GATE_MAX} geçiş kuralı olabilir`;
+  const ids = new Set();
+  for (const g of v) {
+    if (!g || typeof g !== 'object' || Array.isArray(g) || !Object.keys(g).every(k => GATE_KEYS.has(k))) return 'Geçiş kuralı geçersiz';
+    if (!validId(g.id) || ids.has(g.id)) return 'Geçiş kuralının kimliği geçersiz';
+    ids.add(g.id);
+    if ((g.cat != null) === (g.statusId != null)) return 'Geçiş kuralının hedefi bir kolon ya da bir kategori olmalı';
+    if (g.cat != null && !GATE_CATS.includes(g.cat)) return 'Geçiş kuralının kategorisi geçersiz';
+    if (g.statusId != null && !validId(g.statusId)) return 'Geçiş kuralının kolonu geçersiz';
+    if (!GATE_FLAGS.every(k => g[k] == null || typeof g[k] === 'boolean')) return 'Geçiş koşulları açık (true) ya da kapalı (false) olmalı';
+    if (g.fields != null && !(Array.isArray(g.fields) && g.fields.length <= GATE_FIELDS_MAX
+        && g.fields.every(f => typeof f === 'string' && GATE_FIELD_RE.test(f)) && new Set(g.fields).size === g.fields.length))
+      return `Zorunlu alan listesi geçersiz (en fazla ${GATE_FIELDS_MAX} tekil alan)`;
+    if (g.roles != null && !(Array.isArray(g.roles) && g.roles.length >= 1 && g.roles.every(r => PROJECT_ROLES.includes(r))
+        && new Set(g.roles).size === g.roles.length)) return 'Geçirebilen roller geçersiz (admin, member, viewer)';
+    if (!GATE_FLAGS.some(k => g[k] === true) && !g.fields?.length && !g.roles) return 'Geçiş kuralında en az bir koşul olmalı';
+  }
+  return null;
+}
+
 const RULES = {
   projects: (d, opts) => [
     [str(d.name, 200) && d.name.trim(), 'Proje adı gerekli'],
@@ -157,6 +189,7 @@ const RULES = {
     [d.ownerId == null || validId(d.ownerId), 'Proje sahibi geçersiz'],
     [!changed(d, opts, 'members') || d.members == null || (Array.isArray(d.members) && d.members.length <= MAX_PROJECT_ROLES && d.members.every(validId)), 'Proje üyeleri geçersiz'],
     [d.perms == null || !permsError(d.perms), d.perms == null ? '' : permsError(d.perms) || ''],
+    [!changed(d, opts, 'gates') || d.gates == null || !gatesError(d.gates), changed(d, opts, 'gates') && d.gates != null ? gatesError(d.gates) || '' : ''],
   ],
   /* Cariler (#11). İletilerde değer YOK: kişisel veri (T.C. kimlik no, e-posta) günlüğe/yanıta düşmesin. */
   customers: (d, opts) => [
