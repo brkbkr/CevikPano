@@ -1,5 +1,6 @@
 /* Uygulama içi bildirimler. Kayıt yazılırken aynı işlemde üretilir. */
 import { visibleProjectIds, userSeesProject } from './store.js';
+import { watchersOf } from './perms.js';
 
 async function add(c, userId, kind, issueId, actorId, meta = {}) {
   if (!userId || userId === actorId) return;
@@ -15,16 +16,26 @@ async function add(c, userId, kind, issueId, actorId, meta = {}) {
     [userId, kind, issueId, actorId, JSON.stringify(meta)]);
 }
 
-/* Atama ve durum bildirimi de yalnız işin projesini görebilen kişiye (projeden çıkarılan raporlayıcıya üretilmez). */
+/* Atama ve durum bildirimi de yalnız işin projesini görebilen kişiye (projeden çıkarılan raporlayıcıya üretilmez).
+   İşi izle: durum, atanan, öncelik ve bitiş değişikliği izleyicilere (watchersOf: dizisi olmayan eski işte raporlayan +
+   atanan) gider; yeni atanan "sana atadı" bildirimini alır, ayrıca "atanan değişti" almaz. Kendi değişikliği için yok. */
 export async function notifyForIssue(c, me, data, cur) {
   const sees = async u => u !== me.id && await userSeesProject(c, u, data.projectId);
   if (data.assignee && (!cur || cur.assignee !== data.assignee) && await sees(data.assignee))
     await add(c, data.assignee, 'assigned', data.id, me.id);
-  if (cur && cur.statusId !== data.statusId && data.statusId) {
+  if (!cur) return;
+  const ws = watchersOf(data);
+  const to = async (kind, meta, skip) => { for (const u of ws) if (u !== skip && await sees(u)) await add(c, u, kind, data.id, me.id, meta); };
+  if (cur.statusId !== data.statusId && data.statusId) {
     const st = (await c.query('SELECT name FROM statuses WHERE id=$1', [data.statusId])).rows[0];
-    const to = new Set([data.reporter, data.assignee].filter(Boolean));
-    for (const u of to) if (await sees(u)) await add(c, u, 'status', data.id, me.id, { status: st?.name || '' });
+    await to('status', { status: st?.name || '' });
   }
+  if ((cur.assignee || null) !== (data.assignee || null)) {
+    const nm = data.assignee ? (await c.query('SELECT name FROM users WHERE id=$1', [data.assignee])).rows[0]?.name : '';
+    await to('reassigned', { to: String(nm || '').slice(0, 100) }, data.assignee);
+  }
+  if ((cur.priority ?? null) !== (data.priority ?? null)) await to('priority', { priority: data.priority ?? null });
+  if ((cur.due || '') !== (data.due || '')) await to('due', { due: String(data.due || '').slice(0, 10) });
 }
 
 export async function notifyForComment(c, me, data) {
@@ -39,7 +50,7 @@ export async function notifyForComment(c, me, data) {
   /* Yalnız işin alanına erişimi olan kişi bildirim alır (alandan çıkarılan / hiç erişimi olmayan @bahsetme almaz). */
   const sees = async u => u !== me.id && await userSeesProject(c, u, issue.projectId);
   for (const u of mentioned) if (await sees(u)) await add(c, u, 'mention', issue.id, me.id, { excerpt });
-  for (const u of new Set([issue.assignee, issue.reporter].filter(Boolean)))
+  for (const u of watchersOf(issue))
     if (!mentioned.has(u) && await sees(u)) await add(c, u, 'comment', issue.id, me.id, { excerpt });
 }
 

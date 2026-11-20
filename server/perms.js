@@ -118,3 +118,19 @@ export function mergePerms(base, mine, theirs) {
   }
   return out;
 }
+
+/* İşi izle: izleyiciler işin data.watchers dizisinde (kişi kimlikleri). Dizisi olmayan eski işte izleyiciler raporlayan +
+   atanan (eski bildirim alıcılarıyla aynı). İstemcideki watchersOf ile birebir aynı. */
+export const WATCHERS_MAX = 200;
+export function watchersOf(d) {
+  const src = Array.isArray(d?.watchers) ? d.watchers : [d?.reporter, d?.assignee];
+  return [...new Set(src.filter(x => typeof x === 'string' && x))];
+}
+/* Küme düzeyinde üç yönlü birleştirme: istemcinin (base → mine) eklediği/çıkardığı kişiler güncel listeye (theirs)
+   uygulanır; iki kişi aynı anda izlemeye başlarsa ikisi de kalır. */
+export function mergeList(base, mine, theirs) {
+  const B = new Set(base), M = new Set(mine);
+  const out = theirs.filter(x => !(B.has(x) && !M.has(x))), seen = new Set(out);
+  for (const x of mine) if (!B.has(x) && !seen.has(x)) { out.push(x); seen.add(x); }
+  return out;
+}

@@ -4,6 +4,7 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createPool, migrate, MISC_COLLECTIONS } from '../server/db.js';
+import { watchersOf } from '../server/perms.js';
 import { bootstrap, REPORT_WS_FORBIDDEN } from '../server/store.js';
 import { createApp } from '../server/app.js';
 
@@ -341,7 +342,8 @@ t('doğrulama: bozuk kayıt reddedilir', async () => {
 t('öncelik: sayısal metin sayıya çevrilir, geçersiz değer Orta (3) olur, 1–5 korunur', async () => {
   const a = client(); await a.login('admin', 'test-admin-pw');
   const mk = (id, n, priority) => ({ c: 'issues', id, op: 'put',
-    data: { projectId: 'p1', key: 'GEN-' + (n + 120), summary: 'öncelik ' + id, statusId: 'p1_s0', ...(priority === undefined ? {} : { priority }) } });
+    /* reporter: istemci gibi açan kişi (işi izle: açan raporlayansa izleyici dizisi yazılmaz, kayıt düzeltilmez) */
+    data: { projectId: 'p1', key: 'GEN-' + (n + 120), summary: 'öncelik ' + id, statusId: 'p1_s0', reporter: 'u_admin', ...(priority === undefined ? {} : { priority }) } });
   const r = await a.sync([
     mk('i_pr_txt', 80, '2'), mk('i_pr_txt2', 81, ' 4 '), mk('i_pr_big', 82, 9), mk('i_pr_zero', 83, 0),
     mk('i_pr_frac', 84, 2.5), mk('i_pr_word', 85, 'Acil'), mk('i_pr_empty', 86, ''), mk('i_pr_obj', 87, { x: 1 }),
@@ -5208,5 +5210,191 @@ describe('yetki ve silme güvenliği (O-1, D-1, D-2, D-3, çevrim içi)', { skip
     assert.equal((await onl(C.A)).issue, 'i_p_yg4');
     await addRoles(C.A, 'p_yg4', { u_yg_x: 'viewer' });
     assert.equal((await onl(C.X)).issue, 'i_p_yg4');
+  });
+});
+
+describe('işi izle (izleyiciler ve bildirimleri)', { skip: !URL && 'TEST_DATABASE_URL yok' }, () => {
+  const ok = r => { assert.equal(r.status, 200, JSON.stringify(r.json)); assert.deepEqual(r.json.rejected, [], JSON.stringify(r.json)); return r; };
+  const reasons = r => r.json.rejected.map(x => x.reason);
+  const rej = (r, msg) => { assert.equal(r.status, 200); assert.deepEqual(reasons(r), [msg], JSON.stringify(r.json)); };
+  const put = (c, id, data, base) => ({ c, id, op: 'put', data, ...(base ? { base } : {}) });
+  const row = async (table, id) => (await pool.query(`SELECT data FROM ${table} WHERE id=$1`, [id])).rows[0]?.data;
+  const FORBID = 'Başka kişileri izleyici olarak yalnızca proje yöneticisi ekleyip çıkarabilir';
+  const NOACC = 'İzleyici olarak eklenen kişinin bu projede erişimi yok';
+  const C = {};
+  const newUser = async (id, username, role = 'member') => {
+    ok(await C.A.sync([put('users', id, { username, name: 'İzl ' + username, role, active: true })]));
+    const k = client(); await k.login(username, 'Start12345');
+    assert.equal((await k.req('POST', '/api/auth/password', { newPassword: 'IzleSifre123' })).status, 200);
+    return k;
+  };
+  const n = async (u, kind, iid = 'i_iz1') => Number((await pool.query(
+    'SELECT count(*) n FROM notifications WHERE user_id=$1 AND issue_id=$2 AND kind=$3', [u, iid, kind])).rows[0].n);
+  const sorted = a => [...a].sort();
+  /* Kendi izleme durumunu değiştir (istemcideki watchToggle gibi: yalnız watchers alanı). */
+  const toggle = async (k, uid, iid, on) => {
+    const i = await row('issues', iid), w = Array.isArray(i.watchers) ? i.watchers : [i.reporter, i.assignee].filter(Boolean);
+    return k.sync([put('issues', iid, { ...i, watchers: on ? [...new Set([...w, uid])] : w.filter(x => x !== uid) }, i)]);
+  };
+
+  before(async () => {
+    if (!URL) return;
+    C.A = client(); await C.A.login('admin', 'test-admin-pw');
+    C.Y = await newUser('u_iz_y', 'izyon'); C.M = await newUser('u_iz_m', 'izuye'); C.M2 = await newUser('u_iz_m2', 'izuye2');
+    C.M3 = await newUser('u_iz_m3', 'izuye3'); C.V = await newUser('u_iz_v', 'izizl'); C.X = await newUser('u_iz_x', 'izyok');
+    ok(await C.A.sync([put('projects', 'p_iz', { name: 'İzleme', key: 'IZL', counter: 0, workspaceId: 'ws1' })]));
+    ok(await C.A.sync([put('statuses', 'p_iz_s0', { projectId: 'p_iz', name: 'Yapılacak', cat: 'todo', ord: 0 }),
+      put('statuses', 'p_iz_s1', { projectId: 'p_iz', name: 'Devam', cat: 'inprogress', ord: 1 }),
+      put('statuses', 'p_iz_s2', { projectId: 'p_iz', name: 'Bitti', cat: 'done', ord: 2 })]));
+    await addRoles(C.A, 'p_iz', { u_iz_y: 'admin', u_iz_m: 'member', u_iz_m2: 'member', u_iz_m3: 'member', u_iz_v: 'viewer' });
+  });
+
+  test('işi açan ve atanan kendiliğinden izler; diziyi göndermeyen istemci izleyicileri silmez', async () => {
+    /* raporlayan (açan) + atanan zaten eski kuralla izler: dizi yazılmaz, kayıt düzeltilmez */
+    const r = ok(await C.M.sync([put('issues', 'i_iz1', { projectId: 'p_iz', statusId: 'p_iz_s0', summary: 'İzlenen iş',
+      reporter: 'u_iz_m', assignee: 'u_iz_m2', priority: 3 })]));
+    assert.equal((await row('issues', 'i_iz1')).watchers, undefined, JSON.stringify(r.json));
+    assert.deepEqual(sorted(watchersOf(await row('issues', 'i_iz1'))), ['u_iz_m', 'u_iz_m2']);
+    assert.equal(await n('u_iz_m2', 'assigned'), 1);
+    /* açan raporlayan değilse o da izler (dizi yazılır) */
+    const r0 = ok(await C.Y.sync([put('issues', 'i_iz0', { projectId: 'p_iz', statusId: 'p_iz_s0', summary: 'Başkası adına',
+      reporter: 'u_iz_m', assignee: 'u_iz_m3' })]));
+    assert.ok(r0.json.adjusted.some(x => x.c === 'issues' && x.id === 'i_iz0'));
+    assert.deepEqual(sorted((await row('issues', 'i_iz0')).watchers), ['u_iz_m', 'u_iz_m3', 'u_iz_y']);
+    /* izleyici dizisi ilk kez kendini ekleyen/bırakanla yazılır */
+    ok(await toggle(C.M3, 'u_iz_m3', 'i_iz1', true));
+    ok(await toggle(C.M3, 'u_iz_m3', 'i_iz1', false));
+    assert.deepEqual(sorted((await row('issues', 'i_iz1')).watchers), ['u_iz_m', 'u_iz_m2']);
+    /* eski istemci: watchers alanı olmadan tüm kaydı gönderir */
+    const i = await row('issues', 'i_iz1'), { watchers: _w, ...old } = i;
+    ok(await C.M.sync([put('issues', 'i_iz1', { ...old, summary: 'İzlenen iş (2)' })]));
+    assert.deepEqual(sorted((await row('issues', 'i_iz1')).watchers), ['u_iz_m', 'u_iz_m2']);
+  });
+
+  test('kişi kendini ekler/çıkarır (İzleyici rolü de); başka alanı aynı anda değiştiremez', async () => {
+    ok(await toggle(C.V, 'u_iz_v', 'i_iz1', true));
+    assert.ok((await row('issues', 'i_iz1')).watchers.includes('u_iz_v'));
+    const i = await row('issues', 'i_iz1');
+    rej(await C.V.sync([put('issues', 'i_iz1', { ...i, summary: 'İzleyici değiştirdi', watchers: i.watchers.filter(x => x !== 'u_iz_v') }, i)]),
+      'Bu projede "İş düzenleme" yetkiniz yok');
+    ok(await toggle(C.V, 'u_iz_v', 'i_iz1', false));
+    assert.ok(!(await row('issues', 'i_iz1')).watchers.includes('u_iz_v'));
+    /* projeye erişimi olmayan kendini de ekleyemez */
+    rej(await toggle(C.X, 'u_iz_x', 'i_iz1', true), NO_PROJECT);
+  });
+
+  test('başkasını eklemek/çıkarmak yalnız proje Yöneticisi; eklenen projede rolü olan aktif kişi olmalı', async () => {
+    let i = await row('issues', 'i_iz1');
+    rej(await C.M.sync([put('issues', 'i_iz1', { ...i, watchers: [...i.watchers, 'u_iz_v'] }, i)]), FORBID);
+    rej(await C.M.sync([put('issues', 'i_iz1', { ...i, watchers: i.watchers.filter(x => x !== 'u_iz_m2') }, i)]), FORBID);
+    rej(await C.Y.sync([put('issues', 'i_iz1', { ...i, watchers: [...i.watchers, 'u_iz_x'] }, i)]), NOACC);
+    rej(await C.A.sync([put('issues', 'i_iz1', { ...i, watchers: [...i.watchers, 'u_iz_x'] }, i)]), NOACC);
+    rej(await C.A.sync([put('issues', 'i_iz1', { ...i, watchers: [...i.watchers, 'u_yok_kimse'] }, i)]), NOACC);
+    rej(await C.Y.sync([put('issues', 'i_iz1', { ...i, watchers: [...i.watchers, 'u_iz_v', 'u_iz_v'] })]),
+      'İzleyiciler geçersiz (tekil kişi kimlikleri, en fazla 200)');
+    /* çok uzun liste birleştirmeye girmeden reddedilir (en fazla 200) */
+    const huge = Array.from({ length: 5000 }, (_, k) => 'u_h' + k);
+    const t0 = Date.now();
+    rej(await C.Y.sync([put('issues', 'i_iz1', { ...i, watchers: huge }, { ...i, summary: 'eski' })]), 'İzleyiciler geçersiz (tekil kişi kimlikleri, en fazla 200)');
+    assert.ok(Date.now() - t0 < 3000);
+    ok(await C.Y.sync([put('issues', 'i_iz1', { ...i, watchers: [...i.watchers, 'u_iz_v'] }, i)]));
+    assert.ok((await row('issues', 'i_iz1')).watchers.includes('u_iz_v'));
+    i = await row('issues', 'i_iz1');
+    ok(await C.Y.sync([put('issues', 'i_iz1', { ...i, watchers: i.watchers.filter(x => x !== 'u_iz_m2') }, i)]));
+    i = await row('issues', 'i_iz1');
+    ok(await C.Y.sync([put('issues', 'i_iz1', { ...i, watchers: [...i.watchers, 'u_iz_m2'] }, i)]));
+    /* Üye, atamayı değiştirirken yeni atananı izleyici olarak gönderebilir (kendiliğinden izler) */
+    i = await row('issues', 'i_iz1');
+    ok(await C.M.sync([put('issues', 'i_iz1', { ...i, assignee: 'u_iz_m3', watchers: [...i.watchers, 'u_iz_m3'] }, i)]));
+    i = await row('issues', 'i_iz1');
+    ok(await C.M.sync([put('issues', 'i_iz1', { ...i, assignee: 'u_iz_m2' }, i)]));
+    assert.deepEqual(sorted((await row('issues', 'i_iz1')).watchers), ['u_iz_m', 'u_iz_m2', 'u_iz_m3', 'u_iz_v']);
+  });
+
+  test('aynı anda iki kişi izlemeye başlar/bırakırsa ikisinin değişikliği de kalır', async () => {
+    const i = await row('issues', 'i_iz1'), w = i.watchers;
+    ok(await C.Y.sync([put('issues', 'i_iz1', { ...i, watchers: [...w, 'u_iz_y'] }, i)]));
+    ok(await C.V.sync([put('issues', 'i_iz1', { ...i, watchers: w.filter(x => x !== 'u_iz_v') }, i)]));
+    const now = (await row('issues', 'i_iz1')).watchers;
+    assert.ok(now.includes('u_iz_y') && !now.includes('u_iz_v'), JSON.stringify(now));
+    ok(await toggle(C.V, 'u_iz_v', 'i_iz1', true));
+  });
+
+  test('izleyiciler durum, atanan, öncelik ve bitiş değişikliğinde bildirim alır; yapan almaz', async () => {
+    await pool.query(`DELETE FROM notifications WHERE issue_id='i_iz1'`);
+    let i = await row('issues', 'i_iz1');                  // izleyenler: m, m2 (atanan), m3, v, y
+    ok(await C.M.sync([put('issues', 'i_iz1', { ...i, statusId: 'p_iz_s1' }, i)]));
+    for (const u of ['u_iz_m2', 'u_iz_m3', 'u_iz_v', 'u_iz_y']) assert.equal(await n(u, 'status'), 1, u);
+    assert.equal(await n('u_iz_m', 'status'), 0);
+    assert.equal(await n('u_iz_x', 'status'), 0);
+    i = await row('issues', 'i_iz1');
+    ok(await C.M.sync([put('issues', 'i_iz1', { ...i, priority: 1, due: '2026-12-31' }, i)]));
+    assert.equal(await n('u_iz_v', 'priority'), 1);
+    assert.equal(await n('u_iz_v', 'due'), 1);
+    assert.equal(await n('u_iz_m', 'priority'), 0);
+    const dm = (await pool.query(`SELECT meta FROM notifications WHERE user_id='u_iz_v' AND issue_id='i_iz1' AND kind='due'`)).rows[0].meta;
+    assert.equal(dm.due, '2026-12-31');
+    /* atanan değişti: yeni atanan "sana atadı", eski atanan ve diğer izleyiciler "atananı değiştirdi" */
+    i = await row('issues', 'i_iz1');
+    ok(await C.M.sync([put('issues', 'i_iz1', { ...i, assignee: 'u_iz_m3' }, i)]));
+    assert.equal(await n('u_iz_m3', 'assigned'), 1);
+    assert.equal(await n('u_iz_m3', 'reassigned'), 0);
+    assert.equal(await n('u_iz_m2', 'reassigned'), 1);
+    assert.equal(await n('u_iz_v', 'reassigned'), 1);
+    const rm = (await pool.query(`SELECT meta FROM notifications WHERE user_id='u_iz_v' AND kind='reassigned' AND issue_id='i_iz1'`)).rows[0].meta;
+    assert.equal(rm.to, 'İzl izuye3');
+    assert.ok((await row('issues', 'i_iz1')).watchers.includes('u_iz_m2'), 'eski atanan izlemeye devam eder');
+    /* bildirim listesinde tür */
+    const list = (await C.V.req('GET', '/api/notifications')).json.items.filter(x => x.issue_id === 'i_iz1').map(x => x.kind);
+    assert.deepEqual(sorted(list), ['due', 'priority', 'reassigned', 'status']);
+  });
+
+  test('yorum yapan izler; yorum bildirimi izleyicilere; bırakan ve erişimi kalmayan almaz', async () => {
+    await pool.query(`DELETE FROM notifications WHERE issue_id='i_iz1'`);
+    ok(await toggle(C.M3, 'u_iz_m3', 'i_iz1', false));      // atanan izlemeyi bırakabilir
+    ok(await toggle(C.Y, 'u_iz_y', 'i_iz1', false));
+    let r = ok(await C.Y.sync([put('comments', 'c_iz1', { issueId: 'i_iz1', userId: 'u_iz_y', body: 'Merhaba' })]));
+    assert.ok(r.json.adjusted.some(x => x.c === 'issues' && x.id === 'i_iz1'));
+    assert.ok((await row('issues', 'i_iz1')).watchers.includes('u_iz_y'), 'yorum yapan izler');
+    assert.equal(await n('u_iz_v', 'comment'), 1);
+    assert.equal(await n('u_iz_m2', 'comment'), 1);
+    assert.equal(await n('u_iz_m3', 'comment'), 0);           // bıraktı
+    assert.equal(await n('u_iz_y', 'comment'), 0);            // kendisi
+    /* İzleyici projeden çıkarılınca listede kalsa da bildirim almaz */
+    const p = await row('projects', 'p_iz'); const { u_iz_v: _v, ...roles } = p.roles;
+    ok(await C.A.sync([put('projects', 'p_iz', { ...p, roles }, p)]));
+    r = ok(await C.M.sync([put('comments', 'c_iz2', { issueId: 'i_iz1', userId: 'u_iz_m', body: 'İkinci' })]));
+    assert.equal(await n('u_iz_v', 'comment'), 1);
+    const i = await row('issues', 'i_iz1');
+    ok(await C.M.sync([put('issues', 'i_iz1', { ...i, statusId: 'p_iz_s0' }, i)]));
+    assert.equal(await n('u_iz_v', 'status'), 0);
+    assert.equal(await n('u_iz_y', 'status'), 1);
+    await addRoles(C.A, 'p_iz', { u_iz_v: 'viewer' });
+  });
+
+  test('kendiliğinden izleme: erişimi olmayan yeni raporlayan izleyici olmaz', async () => {
+    const i = await row('issues', 'i_iz0');
+    ok(await C.M.sync([put('issues', 'i_iz0', { ...i, reporter: 'u_iz_x' }, i)]));
+    assert.ok(!(await row('issues', 'i_iz0')).watchers.includes('u_iz_x'));
+    const j = await row('issues', 'i_iz0');
+    ok(await C.M.sync([put('issues', 'i_iz0', { ...j, reporter: 'u_iz_v' }, j)]));
+    assert.ok((await row('issues', 'i_iz0')).watchers.includes('u_iz_v'), 'erişimi olan yeni raporlayan izler');
+  });
+
+  test('izleyici dizisi olmayan eski iş: raporlayan + atanan izler; kendini ekleyen onları düşürmez', async () => {
+    await pool.query(`INSERT INTO issues (id, data) VALUES ('i_iz_old', $1::jsonb)`, [JSON.stringify({ id: 'i_iz_old',
+      projectId: 'p_iz', key: 'IZL-90', summary: 'Eski iş', statusId: 'p_iz_s0', reporter: 'u_iz_m', assignee: 'u_iz_m2' })]);
+    ok(await C.Y.sync([put('comments', 'c_iz_old', { issueId: 'i_iz_old', userId: 'u_iz_y', body: 'Eski işe yorum' })]));
+    assert.equal(await n('u_iz_m', 'comment', 'i_iz_old'), 1);
+    assert.equal(await n('u_iz_m2', 'comment', 'i_iz_old'), 1);
+    assert.deepEqual(sorted((await row('issues', 'i_iz_old')).watchers), ['u_iz_m', 'u_iz_m2', 'u_iz_y']);
+    await pool.query(`UPDATE issues SET data = data - 'watchers' WHERE id='i_iz_old'`);
+    ok(await toggle(C.V, 'u_iz_v', 'i_iz_old', true));
+    assert.deepEqual(sorted((await row('issues', 'i_iz_old')).watchers), ['u_iz_m', 'u_iz_m2', 'u_iz_v']);
+    /* düzenleme izleyicileri kendiliğinden yazmaz (yalnız açma, atama ve yorum) */
+    await pool.query(`UPDATE issues SET data = data - 'watchers' WHERE id='i_iz_old'`);
+    const i = await row('issues', 'i_iz_old');
+    ok(await C.M.sync([put('issues', 'i_iz_old', { ...i, summary: 'Eski iş (2)' }, i)]));
+    assert.equal((await row('issues', 'i_iz_old')).watchers, undefined);
   });
 });

@@ -4,7 +4,7 @@ import { TABLES, PREF_KEYS, IGNORED_KEYS, MISC_COLLECTIONS, tx, tableOf, reserve
 import { HttpError, cj, same, merge3, isAdminRole } from './util.js';
 import { validate, PROJECT_TYPES, normalizePriority, normalizeArchived, normalizeCustomer, normalizeHistory, validId, validateCfg, validateNavDefault, validatePerms, validateModules, stripBadKeys, HIST_TEXT_MAX } from './validate.js';
 import { notifyForIssue, notifyForComment } from './notify.js';
-import { PERM_LABEL, projRole, roleCan, isWsAdmin, wsAdminIds, wsHasNoAdmin, wsOwner, mergeMap, mergePerms } from './perms.js';
+import { PERM_LABEL, projRole, roleCan, isWsAdmin, wsAdminIds, wsHasNoAdmin, wsOwner, mergeMap, mergePerms, watchersOf, mergeList, WATCHERS_MAX } from './perms.js';
 
 export { HttpError };
 
@@ -365,6 +365,10 @@ async function applyRecord(c, ctx, ch) {
       data.roles = mergeMap(ch.base.roles, mine.roles, cur.roles);
     if (ch.c === 'projects' && mine.perms && typeof mine.perms === 'object' && !Array.isArray(mine.perms))
       data.perms = mergePerms(ch.base.perms, mine.perms, cur.perms);
+    /* İzleyiciler kişi düzeyinde birleşir: iki kişi aynı anda izlemeye başlar/bırakırsa ikisinin değişikliği de kalır. */
+    if (ch.c === 'issues' && Array.isArray(mine.watchers) && !same(ch.base.watchers ?? null, mine.watchers)
+        && mine.watchers.length <= WATCHERS_MAX && mine.watchers.every(x => typeof x === 'string'))
+      data.watchers = mergeList(watchersOf(ch.base), mine.watchers, watchersOf(cur));
     adjusted = true;
   }
   if (ch.c === 'projects' && cur) {                 // iş sayacı geri gitmesin
@@ -372,6 +376,7 @@ async function applyRecord(c, ctx, ch) {
     if (n !== data.counter) { data.counter = n; adjusted = true; }
   }
   if (ch.c === 'issues' && normalizePriority(data)) adjusted = true;
+  if (ch.c === 'issues' && keepWatchers(data, cur)) adjusted = true;
   /* Sprint planı (başlatmadaki anlık görüntü) bir kez yazılır: alanı göndermeyen (eski) istemci onu silemez. */
   if (ch.c === 'sprints' && cur?.plan != null && data.plan === undefined) { data.plan = cur.plan; adjusted = true; }
   if ((ch.c === 'projects' || ch.c === 'workspaces') && normalizeArchived(data)) adjusted = true;
@@ -434,6 +439,8 @@ async function applyRecord(c, ctx, ch) {
   if (ch.c === 'workspaces' && await enforceWsAdmins(c, me, data, cur)) adjusted = true;
   if (cur && same(cur, data)) { if (adjusted) ctx.adjusted.push({ c: ch.c, id: ch.id }); return false; }
   if (!ctx.system) await checkScope(c, ctx, ch.c, cur, data);
+  if (ch.c === 'issues') await checkWatchers(c, ctx, data, cur);
+  if (ch.c === 'issues' && await autoWatchIssue(c, ctx, data, cur)) adjusted = true;
   if (ch.c === 'workspaces') await checkWorkspace(c, me, ch.id, data, cur);
   if (ch.c === 'projects') await checkProjectRoles(c, data, cur);
   if (ch.c === 'projects') await checkProjectWorkspace(c, data, cur);
@@ -490,8 +497,83 @@ async function applyRecord(c, ctx, ch) {
 
   if (ch.c === 'issues') { ctx.touchedIssues.add(ch.id); await notifyForIssue(c, me, data, cur); }
   if (ch.c === '_settings') ctx.sysPerms = undefined;
-  if (ch.c === 'comments' && !cur) await notifyForComment(c, me, data);
+  if (ch.c === 'comments' && !cur) { await autoWatchComment(c, ctx, data.issueId); await notifyForComment(c, me, data); }
   return true;
+}
+
+/* ---- işi izle (izleyiciler) ----
+   İzleyiciler işin data.watchers dizisinde; dizisi olmayan eski işte raporlayan + atanan (perms.js watchersOf).
+   Kişi kendini ekler/çıkarır (işi görmesi yeter: İzleyici rolü de izler); başkasını eklemek/çıkarmak proje Yöneticisi ve
+   üstünde. Eklenen kişi aktif olmalı ve projede rolü olmalı. Sunucu kendiliğinden ekler: işi açan, yeni atanan, yeni
+   raporlayan ve yorum yapan (sistem kullanıcısı hariç); kişi sonra bırakabilir. */
+export const WATCH_FORBIDDEN = 'Başka kişileri izleyici olarak yalnızca proje yöneticisi ekleyip çıkarabilir';
+export const WATCHER_NO_ACCESS = 'İzleyici olarak eklenen kişinin bu projede erişimi yok';
+/* Diziyi göndermeyen (eski) istemci izleyicileri silmez. */
+function keepWatchers(data, cur) {
+  if (!Array.isArray(cur?.watchers) || Array.isArray(data.watchers)) return false;
+  data.watchers = cur.watchers;
+  return true;
+}
+const watchDiff = (data, cur) => {
+  const before = cur ? watchersOf(cur) : [], after = Array.isArray(data.watchers) ? data.watchers : before;
+  return { added: after.filter(x => !before.includes(x)), removed: before.filter(x => !after.includes(x)) };
+};
+/* Yalnız izleyicileri değişen ve değişiklik yalnız yazanın kendisi olan güncelleme (iş düzenleme yetkisi gerekmez). */
+function selfWatchOnly(cur, data, me) {
+  if (!cur || !data || !Array.isArray(data.watchers)) return false;
+  const { watchers: _a, ...x } = cur, { watchers: _b, ...y } = data;
+  if (!same(x, y)) return false;
+  const { added, removed } = watchDiff(data, cur);
+  return [...added, ...removed].every(u => u === me.id);
+}
+async function checkWatchers(c, ctx, data, cur) {
+  if (!Array.isArray(data.watchers)) return;
+  const { me } = ctx, { added, removed } = watchDiff(data, cur);
+  if (!added.length && !removed.length) return;
+  const p = await projById(c, data.projectId);
+  /* Yeni atanan ve yeni raporlayan kendiliğinden izler: istemci de ekleyebilir. */
+  const auto = u => u === me.id || autoWatchers(data, cur).includes(u);
+  if (!ctx.system && !isAdminRole(me.role) && [...added.filter(u => !auto(u)), ...removed.filter(u => u !== me.id)].length
+      && (await roleIn(c, me, p)) !== 'admin') throw new HttpError(403, WATCH_FORBIDDEN);
+  for (const id of added) {
+    if (!(await canWatch(c, id, p))) throw new HttpError(400, WATCHER_NO_ACCESS);
+  }
+}
+/* Kendiliğinden izleme yazanın kendisi için: posta (sistem yolu) ve yönetici olmayan sistem kullanıcısı izlemez. */
+const selfAuto = ctx => !ctx.system && !(ctx.me.system && !isAdminRole(ctx.me.role));
+const autoWatchers = (data, cur) => ['assignee', 'reporter']
+  .filter(k => validId(data[k]) && data[k] !== (cur?.[k] ?? null)).map(k => data[k]);
+/* Kendiliğinden eklenen de projede rolü olan aktif kişi olmalı (ör. erişimi olmayan raporlayan eklenmez); liste en çok
+   WATCHERS_MAX kişi. */
+async function canWatch(c, id, p) {
+  const u = (await c.query('SELECT id, role, active, system FROM users WHERE id=$1 AND active', [id])).rows[0];
+  return !!u && !(u.system && !isAdminRole(u.role)) && !!p && !!(await roleIn(c, u, p));
+}
+async function autoWatchIssue(c, ctx, data, cur) {
+  const add = autoWatchers(data, cur);
+  if (!cur && selfAuto(ctx)) add.unshift(ctx.me.id);
+  /* Dizisi olmayan işte başlangıç listesi eski kural (raporlayan + atanan; yeni işte raporlayan da izler). */
+  const w = Array.isArray(data.watchers) ? data.watchers : watchersOf(cur ?? data);
+  const cand = add.filter((u, k) => !w.includes(u) && add.indexOf(u) === k);
+  if (!cand.length) return false;
+  const p = await projById(c, data.projectId), more = [];
+  for (const u of cand) if (w.length + more.length < WATCHERS_MAX && await canWatch(c, u, p)) more.push(u);
+  if (!more.length) return false;
+  data.watchers = [...w, ...more];
+  return true;
+}
+/* Yorum yapan işi izler (işin kaydı sunucuda güncellenir; istemci değişiklik akışından alır). */
+async function autoWatchComment(c, ctx, iid) {
+  const { me } = ctx;
+  if (!selfAuto(ctx) || typeof iid !== 'string') return;
+  const d = (await c.query('SELECT data FROM issues WHERE id=$1 FOR UPDATE', [iid])).rows[0]?.data;
+  if (!d) return;
+  const w = watchersOf(d);
+  if (w.includes(me.id) || w.length >= WATCHERS_MAX) return;
+  await c.query('UPDATE issues SET data=$2::jsonb, version=version+1, updated_at=now(), updated_by=$3 WHERE id=$1',
+    [iid, JSON.stringify({ ...d, watchers: [...w, me.id] }), me.id]);
+  await logChange(c, 'issues', iid, 'put', me.id, ctx.batch);
+  if (!ctx.adjusted.some(x => x.c === 'issues' && x.id === iid)) ctx.adjusted.push({ c: 'issues', id: iid });
 }
 
 /* ---- proje türü ve kolonlar (#12) ----
@@ -932,6 +1014,8 @@ async function checkScope(c, ctx, col, cur, data, early = false) {
   if (col === 'issues') {
     if (cur && !data) return needPerm(c, ctx, await projById(c, cur.projectId), 'issue.delete');
     if (!cur) return needPerm(c, ctx, await projById(c, data.projectId), 'issue.create');
+    /* Yalnız kendini izleyici ekleyen/çıkaran: işi görmesi yeter (izleme kuralları checkWatchers'ta). */
+    if (selfWatchOnly(cur, data, me)) { if (!(await roleIn(c, me, await projById(c, cur.projectId)))) throw new HttpError(403, NO_ACCESS); return; }
     await needPerm(c, ctx, await projById(c, cur.projectId), 'issue.edit');
     if (data.projectId !== cur.projectId) await needPerm(c, ctx, await projById(c, data.projectId), 'issue.create');
     return;
