@@ -1515,6 +1515,14 @@ button.c-av::after{content:"";position:absolute;inset:-6px}
 .mb-addr{overflow-wrap:anywhere}
 .chip.mb-bad{background:#FEE2E2;color:#991B1B;border-color:#FCA5A5}
 .mb-rules tr.is-off td{opacity:.6}
+.np-row{display:flex;gap:9px;align-items:flex-start;padding:6px 0;font-size:13px;cursor:pointer}
+.np-row input{margin-top:2px;width:auto;flex:none}
+.np-row b{font-weight:500}
+.np-d{display:block;font-size:11.5px;color:var(--ink3);margin-top:1px}
+.np-h{font-size:11.5px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em;margin:12px 0 2px}
+.np-note{font-size:11.5px;color:var(--ink3);margin-top:12px;line-height:1.5}
+.mb-ns{display:inline-flex;gap:6px;align-items:center;font-size:12.5px;white-space:nowrap;cursor:pointer}
+.mb-ns input{width:auto}
 .mb-kvkk{display:flex;gap:8px;font-size:11.5px;color:var(--ink3);margin-top:10px;line-height:1.5}
 .mb-kvkk svg.i{width:15px;height:15px;flex:none;margin-top:1px}
 
@@ -6763,6 +6771,7 @@ function acctOpen() {
         <span class="nv-role ${isAdmin() ? '' : 'neu'} ${sup ? 'sup' : ''}">${ic(isAdmin() ? 'shield' : canEdit() ? 'users' : 'eye')}${esc(rl)}</span></div></div>
     <button type="button" class="nv-mi" role="menuitem" data-act="pw">${ic('key')}Parolamı değiştir</button>
     <button type="button" class="nv-mi" role="menuitemcheckbox" aria-checked="${isDark()}" data-act="theme">${ic('moon')}Koyu tema<span class="nv-sw" aria-hidden="true"></span></button>
+    <button type="button" class="nv-mi" role="menuitem" data-acct="notif">${ic('mail')}Bildirimler</button>
     <button type="button" class="nv-mi" role="menuitem" data-acct="keys">${ic('keyboard')}Klavye kısayolları<kbd>?</kbd></button>
     ${viewAllowed('system') ? `<button type="button" class="nv-mi" role="menuitem" data-v="system">${ic('system')}Sistem</button>` : ''}
     <div class="nv-mhr" role="separator"></div>
@@ -6776,6 +6785,7 @@ function acctOpen() {
     const it = e.target.closest('.nv-mi'); if (!it) return;
     acctClose(false);
     if (it.dataset.acct === 'keys') { e.stopPropagation(); shortcutHelp(); }
+    if (it.dataset.acct === 'notif') { e.stopPropagation(); notifPrefsForm(); }
   });
   m.querySelector('.nv-mi')?.focus();
 }
@@ -9735,6 +9745,56 @@ async function logout() {
   try { await flushAll(); } catch (e) { }
   try { await API.post('/api/auth/logout'); } catch (e) { }
   location.reload();
+}
+
+/* ---- E-posta bildirim tercihleri (hesap menüsü → Bildirimler) ----
+   Tercihler sunucuda (user_prefs.notif, /api/notify/prefs); DB'ye girmez. Gönderim, görme denetimi ve hız sınırı sunucuda. */
+const NOTIF_OPTS = [
+  ['assigned', 'Bana bir iş atandığında'],
+  ['comment', 'İşime (atandığım ya da açtığım) yorum yazıldığında'],
+  ['mention', 'Bir yorumda benden bahsedildiğinde (@kullanıcı adı)'],
+  ['status', 'İşimin durumu değiştiğinde'],
+  ['due', 'İşimin bitiş tarihi yaklaştığında ya da geçtiğinde'],
+];
+const NOTIF_REASON = {
+  off: 'E-posta bildirimleri bu sunucuda kapalı. Tercihleriniz kaydedilir; özellik açılınca bunlara göre e-posta alırsınız.',
+  nosender: 'Sistem yöneticisi henüz bildirim gönderecek bir posta kutusu seçmedi. Tercihleriniz kaydedilir; kutu seçilince e-posta almaya başlarsınız.',
+  noemail: 'Hesabınızda e-posta adresi tanımlı değil; sistem yöneticisinden ekletin. O zamana kadar e-posta gitmez.',
+};
+async function notifPrefsForm() {
+  openModal(`<div class="m-h"><b id="npTitle">Bildirimler</b><button class="x" data-close aria-label="Kapat">×</button></div>
+    <div id="npBody" style="padding:16px 18px"><div class="empty">Yükleniyor…</div></div>
+    <div class="m-f"><button class="btn" data-close>Vazgeç</button><button class="btn pri" id="np_ok" disabled>Kaydet</button></div>`, 'narrow np-dlg');
+  const dlg = $('#scrim .modal'); dlg.setAttribute('role', 'dialog'); dlg.setAttribute('aria-labelledby', 'npTitle');
+  let v;
+  try { v = await API.get('/api/notify/prefs'); }
+  catch (e) { const b = $('#npBody'); if (b) b.innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+  const b = $('#npBody'); if (!b) return;                 // pencere bu arada kapandı
+  const cb = (k, t, d = '') => `<label class="np-row"><input type="checkbox" data-np="${k}" ${v.prefs?.[k] ? 'checked' : ''}>
+      <span><b>${esc(t)}</b>${d ? `<span class="np-d">${esc(d)}</span>` : ''}</span></label>`;
+  b.innerHTML = `${v.available
+      ? `<div class="ws-info np-ok" role="status">${ic('mail')}<span>E-postalar <b>${esc(v.email)}</b> adresine gider. Kısa sürede gelen bildirimler tek e-postada birleştirilir.</span></div>`
+      : `<div class="ws-info np-off" role="status">${ic('info')}<span>${esc(NOTIF_REASON[v.reason] || NOTIF_REASON.off)}</span></div>`}
+    <div class="np-h">E-postayla almak istediklerim</div>
+    ${NOTIF_OPTS.map(([k, t]) => cb(k, t)).join('')}
+    <div class="np-h">Sabah özeti</div>
+    ${cb('digest', 'Sabah özeti', 'Her iş günü 08:30: bugün bitecek, geciken ve yeni atanan işlerim')}
+    <div class="np-note">Yalnız erişebildiğiniz işler için e-posta gelir. Uygulama içi bildirimler (zil) her zaman açıktır.</div>`;
+  $('#np_ok').disabled = false;
+  $('#np_ok').onclick = async () => {
+    const body = {}; b.querySelectorAll('[data-np]').forEach(x => { body[x.dataset.np] = x.checked; });
+    $('#np_ok').disabled = true;
+    try { await API.post('/api/notify/prefs', body); closeModal(); toast('Bildirim tercihleri kaydedildi'); }
+    catch (e) { $('#np_ok').disabled = false; toast(e.message); }
+  };
+}
+/* E-postadaki bağlantı: /?is=ANAHTAR → işi aç (erişim yoksa iş istemciye hiç gelmez: "bulunamadı"). */
+function issueLinkReturn() {
+  const q = new URLSearchParams(location.search), k = q.get('is');
+  if (k == null) return;
+  try { history.replaceState(null, '', location.pathname + location.hash); } catch (_) { }
+  const i = DB.issues.find(x => x.key === k);
+  if (i) openIssue(i.id); else toast('İş bulunamadı ya da bu işe erişiminiz yok');
 }
 
 
@@ -14646,6 +14706,8 @@ function renderMailBody() {
         <option value="">Seçilmedi</option>${tps.map(p => `<option value="${esc(p.id)}" ${p.id === a.defaultProjectId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}
         ${a.defaultProjectId && !tps.some(p => p.id === a.defaultProjectId) ? `<option value="${esc(a.defaultProjectId)}" selected>Bulunamayan proje</option>` : ''}</select></td>
       <td>${mailWhen(a.lastPollAt)}</td><td>${st}</td>
+      <td><label class="mb-ns"><input type="checkbox" data-mbnotify="${esc(a.id)}" ${a.notifySender ? 'checked' : ''}
+        aria-label="Bildirim gönderici: ${esc(a.address)}"> Bildirim gönderici</label></td>
       <td class="mb-err">${a.lastError ? esc(a.lastError) : '<span class="mb-dim">—</span>'}</td>
       <td style="white-space:nowrap;text-align:right">
         ${re ? `<button type="button" class="btn sm pri" data-mbconnect="${esc(a.provider)}" ${M.providers[a.provider] ? '' : 'disabled'}>Yeniden bağlan</button>`
@@ -14670,8 +14732,9 @@ function renderMailBody() {
       : !M.polling ? `<div class="ws-info" role="status">${ic('info')}<span>Bu sunucuda e-posta çekme kapalı (<span class="k">MAIL_ENABLED</span>). Kutular bağlanabilir ama yeni ileti alınmaz.</span></div>` : ''}
     <div class="mb-acts">${btn('google', 'Gmail bağla', 'pri')}${btn('microsoft', 'Outlook bağla')}</div>
     ${M.accounts.length ? `<div class="tswrap" style="border:none"><table class="ts list mb-tbl" aria-label="Posta kutuları"><thead><tr><th class="who">Adres</th><th>Sağlayıcı</th>
-      <th>Varsayılan proje</th><th>Son çekme</th><th>Durum</th><th>Son hata</th><th></th></tr></thead><tbody>${accRows}</tbody></table></div>`
+      <th>Varsayılan proje</th><th>Son çekme</th><th>Durum</th><th>Bildirimler</th><th>Son hata</th><th></th></tr></thead><tbody>${accRows}</tbody></table></div>`
       : `<div class="empty">Bağlı posta kutusu yok.</div>`}
+    ${mailNotifyInfo(M)}
     <div class="mb-kvkk">${ic('info')}<span>Aydınlatma: yalnız bağlantıdan sonra gelen kutusuna düşen iletiler okunur; ham ileti ve ekler saklanmaz, yalnız konu,
       gönderen ve düz metin gövde işe yazılır. Bağlantıyı kesince erişim anahtarları silinir.</span></div>
     <h3 style="margin-top:22px">Yönlendirme kuralları</h3>
@@ -14679,6 +14742,15 @@ function renderMailBody() {
     ${M.rules.length ? `<div class="tswrap" style="border:none"><table class="ts list mb-rules" aria-label="Yönlendirme kuralları"><thead><tr><th class="who">Sıra</th><th>Koşullar</th>
       <th>Hedef proje</th><th>Atanan</th><th>Durum</th><th></th></tr></thead><tbody>${rules}</tbody></table></div>` : '<div class="empty">Kural yok. Tüm iletiler varsayılan projeye düşer.</div>'}
     <button type="button" class="btn" id="mbAddRule">+ Kural ekle</button>`;
+}
+/* Bildirim gönderici kutu (en fazla bir; sunucu tekil tutar): kişilere giden e-posta bildirimleri ve sabah özeti. */
+function mailNotifyInfo(M) {
+  const s = M.accounts.find(a => a.notifySender);
+  const t = !M.polling ? 'E-posta bildirimleri bu sunucuda kapalı (<span class="k">MAIL_ENABLED</span>); gönderici seçilse de e-posta gitmez.'
+    : !s ? 'E-posta bildirimleri kapalı. Kişilere bildirim ve sabah özeti göndermek için bir kutuda <b>Bildirim gönderici</b> seçin.'
+    : s.status !== 'ok' || !s.active ? `Bildirim gönderici <b>${esc(s.address)}</b> çalışmıyor (${s.active ? 'yeniden bağlanın' : 'durduruldu'}); bildirim e-postası gitmez.`
+    : `Kişilere giden e-posta bildirimleri ve sabah özeti <b>${esc(s.address)}</b> kutusundan gönderilir. Kişi, hangi bildirimleri alacağını hesap menüsü → Bildirimler'den seçer.`;
+  return `<div class="mb-kvkk mb-notify" role="status">${ic('mail')}<span>${t}</span></div>`;
 }
 async function saveMailRules(list) {
   try { MAIL.rules = await API.post('/api/mail/rules', { rules: list }); toast('Kurallar kaydedildi'); }
@@ -14728,6 +14800,13 @@ async function loadMail(el) {
   el.querySelectorAll('[data-mbproj]').forEach(s => s.onchange = async () => {
     try { await API.post('/api/mail/accounts/' + encodeURIComponent(s.dataset.mbproj), { defaultProjectId: s.value || null }); toast('Varsayılan proje kaydedildi'); }
     catch (e) { toast(e.message); loadSystem(); }
+  });
+  el.querySelectorAll('[data-mbnotify]').forEach(s => s.onchange = async () => {
+    s.disabled = true;
+    try { await API.post('/api/mail/accounts/' + encodeURIComponent(s.dataset.mbnotify), { notifySender: s.checked });
+      toast(s.checked ? 'Bildirimler bu kutudan gönderilecek' : 'Bildirim gönderici kaldırıldı'); }
+    catch (e) { toast(e.message); }
+    loadSystem();
   });
   el.querySelectorAll('[data-mbpoll]').forEach(b => b.onclick = async () => {
     b.disabled = true;
@@ -14809,6 +14888,7 @@ async function enterApp(useHash, fromLogin) {
   if (useHash && hashView()) DB.ui.view = hashView();
   mailReturn();
   startApp(false);
+  issueLinkReturn();
   save();
   renderFileBar();
   startPolling(); poll();

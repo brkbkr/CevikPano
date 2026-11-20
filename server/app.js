@@ -7,6 +7,7 @@ import { listNotifications, unreadCount, markRead } from './notify.js';
 import { createSnapshot, listSnapshots, getSnapshot, replaceAll, listTrash, restoreTrash, activity } from './backup.js';
 import { isAdminRole } from './util.js';
 import { mailRoutes } from './mail.js';
+import { notifyMailRoutes } from './notifymail.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(here, '..', 'public');
@@ -98,6 +99,8 @@ export function createApp(pool) {
   app.get('/api/notifications', requireUser, async (req, res) => {
     res.json({ items: await listNotifications(pool, req.user), unread: await unreadCount(pool, req.user.id) });
   });
+  /* E-posta bildirim tercihleri (hesap menüsü → Bildirimler): kişi yalnız kendi tercihini okur/yazar. */
+  notifyMailRoutes(app, pool, requireUser);
   app.post('/api/notifications/read', requireUser, async (req, res) => {
     await markRead(pool, req.user.id, req.body?.ids === 'all' ? 'all' : req.body?.ids);
     res.json({ unread: await unreadCount(pool, req.user.id) });

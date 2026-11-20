@@ -1,5 +1,6 @@
 /* Uygulama içi bildirimler. Kayıt yazılırken aynı işlemde üretilir. */
 import { visibleProjectIds, userSeesProject } from './store.js';
+import { enqueueNotifyMail } from './notifymail.js';
 
 async function add(c, userId, kind, issueId, actorId, meta = {}) {
   if (!userId || userId === actorId) return;
@@ -13,6 +14,8 @@ async function add(c, userId, kind, issueId, actorId, meta = {}) {
   if (dup.rowCount) return;
   await c.query(`INSERT INTO notifications (user_id, kind, issue_id, actor_id, meta) VALUES ($1,$2,$3,$4,$5::jsonb)`,
     [userId, kind, issueId, actorId, JSON.stringify(meta)]);
+  /* E-posta: kişinin tercihi açıksa ve gönderici kutu varsa kuyruğa (notifymail.js; aynı işlemde, geri alınırsa gitmez). */
+  await enqueueNotifyMail(c, userId, kind, issueId, actorId, meta);
 }
 
 /* Atama ve durum bildirimi de yalnız işin projesini görebilen kişiye (projeden çıkarılan raporlayıcıya üretilmez). */
