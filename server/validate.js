@@ -1,5 +1,5 @@
 import { HttpError } from './util.js';
-import { PROJECT_ROLES, MAX_PROJECT_ROLES, permsError } from './perms.js';
+import { PROJECT_ROLES, MAX_PROJECT_ROLES, permsError, WATCHERS_MAX } from './perms.js';
 
 /* Kayıt doğrulama. Eski verilerle uyum için gevşek tutuldu: yalnızca verinin
    bütünlüğünü bozacak hataları reddeder. */
@@ -215,6 +215,10 @@ const RULES = {
     [d.color == null || d.color === '' || (typeof d.color === 'string' && HEX_RE.test(d.color)), 'Renk #RRGGBB biçiminde olmalı'],
     [d.labels == null || (Array.isArray(d.labels) && d.labels.length <= 50 && d.labels.every(l => typeof l === 'string' && l.length <= 100)),
       'Etiketler en fazla 50 metin olmalı (her biri en fazla 100 karakter)'],
+    /* İzleyiciler (işi izle): yok ya da tekil kişi kimlikleri; yalnız değişince denetlenir (eski kayıt korunur). */
+    [!changed(d, opts, 'watchers') || d.watchers == null || (Array.isArray(d.watchers) && d.watchers.length <= WATCHERS_MAX
+      && d.watchers.every(validId) && new Set(d.watchers).size === d.watchers.length),
+      `İzleyiciler geçersiz (tekil kişi kimlikleri, en fazla ${WATCHERS_MAX})`],
     /* Talep eden (görev 12): yok/null ya da cari kimliği + o carinin yetkili kişi kimliği. */
     [d.requester == null || (typeof d.requester === 'object' && !Array.isArray(d.requester)
       && validId(d.requester.customerId) && validId(d.requester.contactId)), 'Talep eden geçersiz'],

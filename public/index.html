@@ -1198,6 +1198,10 @@ button.c-av::after{content:"";position:absolute;inset:-6px}
 .hm-c{container:hm / inline-size}
 
 /* proje süzgeci */
+.hm-tabs{display:inline-flex;margin-bottom:14px}
+.hm-tabs button{display:inline-flex;align-items:center;gap:7px;min-height:32px}
+.hm-tabs button svg.i{width:15px;height:15px}
+.hm-tabs .n{font-variant-numeric:tabular-nums;font-size:11.5px;color:var(--meta);font-weight:650}
 .hm-filter{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:14px}
 .hm-filter .lbl{font-size:12px;font-weight:600;color:var(--meta);margin-right:4px;background:none}
 .hm-pf{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line2);
@@ -2396,6 +2400,17 @@ button.cu-prj:hover{background:var(--surface2)}
 .id-stbtn.ro{cursor:default}
 .id-hb{display:inline-flex;align-items:center;gap:6px;min-height:36px}
 .id-hb svg.i{width:16px;height:16px}
+/* İşi izle: başlıktaki göz düğmesi ve izleyenler menüsü */
+.id-watch .num{font-variant-numeric:tabular-nums;font-size:12px;font-weight:650;color:var(--meta)}
+.id-watch.on{color:var(--accent-d);border-color:color-mix(in srgb,var(--accent) 40%,var(--line2));background:color-mix(in srgb,var(--accent) 8%,var(--surface))}
+.id-watch.on svg.i,.id-watch.on .num{color:var(--accent)}
+.qm.wlist{width:290px}
+.qm-wrow{display:flex;align-items:center;gap:9px;min-height:36px;padding:2px 2px 2px 8px;font-size:13px}
+.qm-wrow .qm-l{white-space:nowrap}
+.qm-wrow .qm-sub{display:inline;margin-left:6px}
+.qm-wrow .qm-x{width:32px;min-height:32px;padding:0;justify-content:center;color:var(--meta)}
+.qm-wrow .qm-x:hover{color:var(--danger,#C0392B)}
+.qm-opt .qm-plus{display:inline-flex;color:var(--meta)}
 .id-ib{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:9px;border:1px solid transparent;background:none;color:var(--ink2);flex-shrink:0}
 .id-ib:hover{background:var(--surface2);border-color:var(--line)}
 .id-ib svg.i{width:18px;height:18px}
@@ -4261,6 +4276,8 @@ function setAssignee(i, id) {
   id = id || null;
   if ((i.assignee || null) === id) return false;
   logHist(i, 'Atanan', user(i.assignee)?.name || '—', user(id)?.name || '—');
+  /* İşi izle: yeni atanan izler, eski atanan izlemeye devam eder (sunucu da aynısını yapar). */
+  i.watchers = [...new Set([...watchersOf(i), ...(id ? [id] : [])])];
   i.assignee = id;
   runRules(i, 'assigned');
   return true;
@@ -5592,6 +5609,69 @@ function idStale(i) {
   box.hidden = cur === ed.start;
 }
 
+/* ---- işi izle (izleyiciler) ----
+   İzleyiciler i.watchers (kişi kimlikleri); dizisi olmayan eski işte raporlayan + atanan (sunucudaki perms.js watchersOf
+   ile aynı). Kişi kendini ekler/çıkarır (işi görmesi yeter); başkasını eklemek/çıkarmak proje Yöneticisinde. Kural ve
+   bildirimler sunucuda (store.js checkWatchers, notify.js); buradaki denetim yalnız kullanıcı deneyimi içindir. */
+function watchersOf(i) {
+  const src = Array.isArray(i?.watchers) ? i.watchers : [i?.reporter, i?.assignee];
+  return [...new Set(src.filter(x => typeof x === 'string' && x))];
+}
+/* Ekranda gösterilen izleyiciler: bilinen gerçek kişiler (posta sistemi kullanıcısı değil; realUser). */
+const watchShown = i => watchersOf(i).filter(id => realUser(user(id)));
+const isWatching = (i, id = CU()?.id) => !!id && watchersOf(i).includes(id);
+/* Yalnız izleyici listesi değişir (geçmiş ve son değişiklik zamanı yazılmaz). */
+function watchSet(i, id, on) {
+  if (!i || !id) return false;
+  const w = watchersOf(i);
+  if (on === w.includes(id)) return false;
+  i.watchers = on ? [...w, id] : w.filter(x => x !== id);
+  save(); RERENDER = true;
+  return true;
+}
+function watchBtn(i) {
+  const n = watchShown(i).length, on = isWatching(i);
+  return `<button type="button" class="btn id-hb id-watch${on ? ' on' : ''}" id="idWatch" aria-haspopup="menu" aria-pressed="${on}"
+    aria-label="İzleyenler: ${n} kişi${on ? ', izliyorsun' : ''}" title="${on ? 'İzliyorsun · izleyenler' : 'İzle · izleyenler'}">${ic('eye')}<span class="lbl">${on ? 'İzleniyor' : 'İzle'}</span><span class="num">${n}</span></button>`;
+}
+function watchRefresh(i) { const b = document.getElementById('idWatch'); if (b && i) b.outerHTML = watchBtn(i); }
+function watchMenu(btn) {
+  const i = curIssue(); if (!i || !CU()) return;
+  const me = CU().id, pr = projOfI(i), adm = isProjAdmin(pr);
+  const av = u => `<span class="c-av" style="background:${safeColor(u.color)}">${esc(u.ini || '?')}</span>`;
+  const list = q => {
+    const cur = watchersOf(i), on = cur.includes(me), shown = watchShown(i), k = qmKey(q).trim();
+    const self = `<button type="button" class="qm-opt" role="menuitem" data-qv="me">${ic(on ? 'hidden' : 'eye')}<span class="qm-l">${on ? 'İzlemeyi bırak' : 'İzle'}
+      <span class="qm-sub">${on ? 'Bu işin bildirimlerini artık almazsın' : 'Yorum, durum, atama, öncelik ve bitiş değişikliklerinde bildirim alırsın'}</span></span></button>`;
+    const rows = shown.map(id => { const u = user(id);
+      return `<div class="qm-wrow" data-wid="${esc(id)}">${av(u)}<span class="qm-l">${esc(u.name)}${id === me ? '<span class="qm-sub">sen</span>' : ''}</span>
+        ${adm || id === me ? `<button type="button" class="qm-opt qm-x" role="menuitem" data-qv="rm:${esc(id)}" aria-label="İzleyenlerden çıkar: ${esc(u.name)}" title="Çıkar">${ic('x')}</button>` : ''}</div>`; }).join('')
+      || '<div class="qm-empty">Bu işi izleyen yok</div>';
+    let add = '';
+    if (adm) {
+      const cand = DB.users.filter(u => u.active !== false && realUser(u) && !cur.includes(u.id) && projRole(u, pr) !== null && (!k || qmKey(u.name).includes(k)));
+      add = `<hr><div class="qm-h">Kişi ekle</div>${cand.slice(0, 8).map(u => `<button type="button" class="qm-opt" role="menuitem" data-qv="add:${esc(u.id)}" aria-label="İzleyen ekle: ${esc(u.name)}">
+        ${av(u)}<span class="qm-l">${esc(u.name)}</span><span class="qm-plus">${ic('plus')}</span></button>`).join('')
+        || `<div class="qm-empty">${k ? 'Eşleşen kişi yok' : 'Projede eklenecek kişi kalmadı'}</div>`}`;
+    }
+    return `${self}<hr><div class="qm-h">İzleyenler · ${shown.length}</div>${rows}${add}`;
+  };
+  pmOpen({ btn, sel: '#idWatch', id: i.id, kind: 'wlist', title: 'İşi izle', sub: `${i.key} · ${i.summary}`, search: adm, right: true, list,
+    pick: v => {
+      const it = issue(i.id); if (!it) return;
+      if (v === 'me') {
+        const on = !isWatching(it);
+        if (watchSet(it, me, on)) toast(on ? 'Bu işi izliyorsun' : 'İzlemeyi bıraktın');
+        return watchRefresh(it);
+      }
+      const k = v.indexOf(':'), op = v.slice(0, k), id = v.slice(k + 1);
+      if (op === 'rm' && (adm || id === me)) watchSet(it, id, false);
+      else if (op === 'add' && adm && user(id)) watchSet(it, id, true);
+      watchRefresh(it);
+      setTimeout(() => { const b = document.getElementById('idWatch'); if (b && OPEN_ISSUE === it.id) watchMenu(b); }, 0);
+    } });
+}
+
 /* ---- parçalar ---- */
 function issueHead(i) {
   const s = stat(i.statusId), pr = projOfI(i), ed = canEdit();
@@ -5599,7 +5679,7 @@ function issueHead(i) {
   return `<nav class="id-crumb" aria-label="Konum"><span class="id-proj">${esc(pr?.name || '')}</span>${ic('chevr')}${tIcon(i.type)}
       <button type="button" class="id-key" data-copykey aria-label="Anahtarı kopyala: ${esc(i.key)}" title="Anahtarı kopyala">${esc(i.key)}${ic('copy')}</button></nav>
     <span id="watchers"></span>
-    <div class="id-hact">
+    <div class="id-hact">${watchBtn(i)}
       ${ed ? `<button type="button" class="id-stbtn ${esc(s.cat)}" data-f="statusId" data-pm="status" aria-haspopup="menu" aria-label="Durum: ${esc(s.name)}">${st}${ic('down')}</button>`
         : `<span class="id-stbtn ro ${esc(s.cat)}">${st}</span>`}
       ${ed ? `<button type="button" class="btn id-hb" id="logHere">${ic('timeplus')}<span class="lbl">Süre kaydet</span></button>
@@ -6018,6 +6098,7 @@ function idClick(e) {
   const t = e.target, i = curIssue(); if (!i) return;
   const hit = s => t.closest(s);
   let b;
+  if ((b = hit('#idWatch'))) { e.preventDefault(); e.stopPropagation(); return watchMenu(b); }
   if ((b = hit('[data-pm]'))) { e.preventDefault(); e.stopPropagation(); return propMenu(b.dataset.pm, b); }
   if ((b = hit('[data-ie]')) && !hit('input,textarea')) { e.stopPropagation(); return inlineEdit(b.dataset.ie); }
   if ((b = hit('[data-stale]'))) { e.stopPropagation(); if (b.dataset.stale === 'save') { ID_ED.force = true; idCommit(true); } else idCancel(); return; }
@@ -6051,7 +6132,8 @@ function idCmtAdd() {
   const v = el.value.trim(); if (!v) return el.focus();
   DB.comments.push({ id: uid('c'), issueId: i.id, userId: CU().id, at: Date.now(), body: v });
   logHist(i, 'Yorum', '', v, { kind: 'add' });
-  ID_DRAFT.cmt = ''; ID_DRAFT.open = false; save(); refreshIssue(['act']);
+  if (!isWatching(i)) i.watchers = [...watchersOf(i), CU().id];   // yorum yapan izler (sunucu da yazar)
+  ID_DRAFT.cmt = ''; ID_DRAFT.open = false; save(); refreshIssue(['act']); watchRefresh(i);
 }
 function idCmtSave(id) {
   const c = DB.comments.find(x => x.id === id); if (!c || !canOwn(c.userId)) return;
@@ -10278,15 +10360,17 @@ const nextStatus = i => { const l = statsOf(i.projectId), k = l.findIndex(s => s
   return k >= 0 && k < l.length - 1 ? l[k + 1] : null; };
 
 /* Saf hesap (DOM yok): kapsam, gruplar, engelleyenler, özet. proj görünmüyorsa '' (Tümü) sayılır.
-   ws (#22): seçili çalışma alanı; yoksa/arşivliyse '' (Tümü). proj seçili alanda değilse '' sayılır. */
-function homeBuckets(meId, proj, today, ws = '') {
+   ws (#22): seçili çalışma alanı; yoksa/arşivliyse '' (Tümü). proj seçili alanda değilse '' sayılır.
+   mode: 'mine' bana atanan açık işler (epik hariç), 'watch' izlediğim açık işler (İzlediklerim, tüm tipler). */
+function homeBuckets(meId, proj, today, ws = '', mode = 'mine') {
   const week = homeWeek(today), sun = week[6];
   const byId = new Map(DB.issues.map(i => [i.id, i]));
   const sts = new Map(DB.statuses.map(s => [s.id, s]));
   const projs = new Map(DB.projects.map(p => [p.id, p]));
   const cat = i => sts.get(i.statusId)?.cat || 'todo';   // silinmiş durum stat() gibi "todo"
   const visible = p => !!p && !p.archived && canSeeProject(p) && !wsArchived(wsOf(p));
-  const all = DB.issues.filter(i => i.assignee === meId && i.type !== 'epic' && cat(i) !== 'done' && visible(projs.get(i.projectId)));
+  const mine = mode === 'watch' ? i => watchersOf(i).includes(meId) : i => i.assignee === meId && i.type !== 'epic';
+  const all = DB.issues.filter(i => mine(i) && cat(i) !== 'done' && visible(projs.get(i.projectId)));
   /* Engelleme: links {from, to, type:'blocks'} — from açıkken to Beklemede. */
   const blocker = new Map();
   for (const l of DB.links || []) {
@@ -10357,9 +10441,17 @@ function homeRow(i, c) {
   </div>`;
 }
 
+/* Benim işlerim sekmeleri: Bana atananlar / İzlediklerim (işi izle). */
+const homeTab = () => DB.ui.homeTab === 'watch' ? 'watch' : 'mine';
+function homeTabs(me, today, B, tab) {
+  const other = homeBuckets(me.id, '', today, '', tab === 'watch' ? 'mine' : 'watch').all.length;
+  const n = { mine: tab === 'mine' ? B.all.length : other, watch: tab === 'watch' ? B.all.length : other };
+  const b = (k, icn, t) => `<button type="button" role="tab" class="${tab === k ? 'on' : ''}" data-hmtab="${k}" aria-selected="${tab === k}">${ic(icn)}${t}<span class="n">${n[k]}</span></button>`;
+  return `<div class="seg hm-tabs" role="tablist" aria-label="İş listesi">${b('mine', 'users', 'Bana atananlar')}${b('watch', 'eye', 'İzlediklerim')}</div>`;
+}
 function renderHome() {
-  const me = CU(), today = iso(new Date()), edit = canEdit();
-  const B = homeBuckets(me.id, DB.ui.homeProj || '', today, DB.ui.homeWs || '');
+  const me = CU(), today = iso(new Date()), edit = canEdit(), tab = homeTab(), W = tab === 'watch';
+  const B = homeBuckets(me.id, DB.ui.homeProj || '', today, DB.ui.homeWs || '', tab);
   /* kayıtlı süzgeç artık görünmüyor (arşiv, üyelik, silme): Tümü'ye kalıcı düş, proje geri gelince kendiliğinden dönmesin */
   if (DB.ui.homeProj && !B.proj) { DB.ui.homeProj = ''; save(); }
   if (DB.ui.homeWs && !B.ws) { DB.ui.homeWs = ''; save(); }
@@ -10387,7 +10479,7 @@ function renderHome() {
   const sum = `<div class="hm-sum">
     <div class="hm-stat"><span class="hm-stat-ic">${ic('layers')}</span><div class="hm-stat-b">
       <div class="hm-stat-l">Açık iş</div><div class="hm-stat-v" data-hmsum="open">${B.list.length}</div>
-      <div class="hm-stat-s">${B.nProj ? `${B.nProj} projede` : 'Atanmış açık iş yok'}</div></div></div>
+      <div class="hm-stat-s">${B.nProj ? `${B.nProj} projede` : W ? 'İzlenen açık iş yok' : 'Atanmış açık iş yok'}</div></div></div>
     <div class="hm-stat ${nLate ? 'is-late' : 'is-zero'}"><span class="hm-stat-ic">${ic(nLate ? 'alert' : 'checkc')}</span><div class="hm-stat-b">
       <div class="hm-stat-l">Gecikmiş</div><div class="hm-stat-v" data-hmsum="late">${nLate}</div>
       <div class="hm-stat-s">${nLate ? `en eskisi ${B.lateMax} iş günü` : 'Gecikmiş iş yok'}</div></div></div>
@@ -10410,19 +10502,22 @@ function renderHome() {
   };
 
   let body;
-  if (!B.all.length) body = `<div class="hm-empty"><span class="hm-empty-ic">${ic('inbox')}</span>
+  if (!B.all.length && W) body = `<div class="hm-empty" data-hmempty="watch"><span class="hm-empty-ic">${ic('eye')}</span>
+      <h3>İzlediğin açık iş yok</h3><p>Bir işi izlemek için iş ayrıntısında <b>İzle</b> düğmesine bas. Açtığın, sana atanan ve yorum yaptığın işleri kendiliğinden izlersin.</p>
+      <div class="acts"><button type="button" class="btn" data-hmtab="mine">Bana atananlara dön</button></div></div>`;
+  else if (!B.all.length) body = `<div class="hm-empty"><span class="hm-empty-ic">${ic('inbox')}</span>
       <h3>Sana atanmış açık iş yok</h3><p>${edit ? 'Yeni bir iş oluşturabilir ya da projelere göz atıp kendine iş alabilirsin.' : 'Projelere göz atabilirsin.'}</p>
       <div class="acts">${edit ? `<button type="button" class="btn pri" id="hmNew">${ic('plus')}İş oluştur</button>` : ''}
         <button type="button" class="btn" data-v="projects">${ic('folder')}Projelere git</button></div></div>`;
   else if (!B.list.length) body = `<div class="hm-empty"><span class="hm-empty-ic">${ic('filter')}</span>
-      ${B.proj ? `<h3>Bu projede sana atanmış açık iş yok</h3><p>Süzgeç: <b>${esc(pname(B.proj))}</b>. Diğer projelerde ${B.all.length} açık işin var.</p>`
-        : `<h3>Bu çalışma alanında sana atanmış açık iş yok</h3><p>Süzgeç: <b>${esc(wsById(B.ws)?.name || '')}</b>. Diğer alanlarda ${B.all.length} açık işin var.</p>`}
+      ${B.proj ? `<h3>Bu projede ${W ? 'izlediğin' : 'sana atanmış'} açık iş yok</h3><p>Süzgeç: <b>${esc(pname(B.proj))}</b>. Diğer projelerde ${B.all.length} açık ${W ? 'izlediğin iş' : 'işin'} var.</p>`
+        : `<h3>Bu çalışma alanında ${W ? 'izlediğin' : 'sana atanmış'} açık iş yok</h3><p>Süzgeç: <b>${esc(wsById(B.ws)?.name || '')}</b>. Diğer alanlarda ${B.all.length} açık ${W ? 'izlediğin iş' : 'işin'} var.</p>`}
       <div class="acts"><button type="button" class="btn" data-hmproj="" data-hmall>Tüm projeleri göster</button></div></div>`;
   else body = HM_GROUPS.map(grp).join('');
 
   return `<div class="hm-c" id="hmHome">
     ${edit ? '' : `<div class="hm-ro-note">${ic('eye')}İzleyici olarak görüntülüyorsun; işleri değiştiremezsin.</div>`}
-    ${filter}${sum}${body}</div>`;
+    ${homeTabs(me, today, B, tab)}${filter}${sum}${body}</div>`;
 }
 
 /* İlerlet: işin projesinin durum sırasında bir sonraki. Sprint/rank ataması yok (panodaki sürüklemeden farkı). */
@@ -10473,6 +10568,7 @@ function homeUndo(msg, items) {
 }
 function wireHome() {
   if (DB.ui.view !== 'home') return;
+  $$('[data-hmtab]').forEach(b => b.onclick = () => { DB.ui.homeTab = b.dataset.hmtab === 'watch' ? 'watch' : 'mine'; save(); render(); });
   $$('[data-hmproj]').forEach(b => b.onclick = () => { DB.ui.homeProj = b.dataset.hmproj; if (b.hasAttribute('data-hmall')) DB.ui.homeWs = ''; save(); render(); });
   $$('[data-hmws]').forEach(b => b.onclick = () => { DB.ui.homeWs = b.dataset.hmws; DB.ui.homeProj = ''; save(); render(); });
   $$('[data-hmmore]').forEach(b => b.onclick = () => { HM_MORE.add(b.dataset.hmmore); render(); });
@@ -14373,6 +14469,11 @@ const NK = {
   comment:  n => `<b>${esc(n.actor_name || 'Biri')}</b> yorum yaptı`,
   mention:  n => `<b>${esc(n.actor_name || 'Biri')}</b> senden bahsetti`,
   status:   n => `<b>${esc(n.actor_name || 'Biri')}</b> durumu <b>${esc(n.meta?.status || '')}</b> yaptı`,
+  reassigned: n => n.meta?.to ? `<b>${esc(n.actor_name || 'Biri')}</b> izlediğin işi <b>${esc(n.meta.to)}</b> kişisine atadı`
+    : `<b>${esc(n.actor_name || 'Biri')}</b> izlediğin işin atamasını kaldırdı`,
+  priority: n => `<b>${esc(n.actor_name || 'Biri')}</b> önceliği <b>${esc(priName(n.meta?.priority))}</b> yaptı`,
+  due:      n => n.meta?.due ? `<b>${esc(n.actor_name || 'Biri')}</b> bitiş tarihini <b>${esc(fmtDLong(n.meta.due))}</b> yaptı`
+    : `<b>${esc(n.actor_name || 'Biri')}</b> bitiş tarihini kaldırdı`,
   mail:     n => `Posta kutusu <b>${esc(n.meta?.address || '')}</b> yeniden bağlanmalı`,
 };
 function ago(t) {
@@ -14403,7 +14504,7 @@ async function openNotifications() {
         ${n.issue_key ? `<span class="ni"><span class="k">${esc(n.issue_key)}</span> ${esc(n.summary || '')}</span>` : n.kind === 'mail' ? '<span class="ni">Sistem → Posta kutuları</span>' : '<span class="ni">Silinmiş iş</span>'}
         ${n.meta?.excerpt ? `<span class="nx">“${esc(n.meta.excerpt)}”</span>` : ''}
         <span class="nw">${ago(n.created_at)}</span></span>
-    </button>`).join('') : '<div class="empty">Henüz bildirimin yok. Sana iş atandığında, işlerine yorum yapıldığında ya da @kullanıcıadı ile senden bahsedildiğinde burada görünür.</div>';
+    </button>`).join('') : '<div class="empty">Henüz bildirimin yok. Sana iş atandığında, izlediğin işlere yorum yapıldığında ya da durumu, ataması, önceliği veya bitişi değiştiğinde, @kullanıcıadı ile senden bahsedildiğinde burada görünür.</div>';
   el.querySelectorAll('.notif').forEach(b => b.onclick = async () => {
     API.post('/api/notifications/read', { ids: [b.dataset.nid] }).then(r => setUnread(r.unread)).catch(() => {});
     el.remove();
