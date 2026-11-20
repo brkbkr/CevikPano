@@ -14,7 +14,7 @@ let F = 0; const ok = (n, c, x = '') => { if (!c) F++; console.log((c ? 'PASS ' 
   ok('users view opens', (await A.textContent('#title')).includes('Kullanıcılar'));
   const rows = await A.$$eval('tr.urow', r => r.length); ok('lists users', rows >= 5, String(rows));
   await A.screenshot({ path: SS + 'list.png' });
-  /* Alan + rol seçimi (22b): üyeli iki alan; kişi yalnız birine Üye olarak eklenir. */
+  /* yetki-v2: iki alan ve birer proje; kişi kullanıcı penceresinden yalnız birinin projesine Üye olarak eklenir. */
   await A.evaluate(() => {
     const me = SESSION;
     DB.workspaces.push({ id: 'ws_ku1', name: 'KU Alan 1', color: '#2563EB', description: '', archived: false, members: [{ userId: me, role: 'admin' }] },
@@ -29,10 +29,10 @@ let F = 0; const ok = (n, c, x = '') => { if (!c) F++; console.log((c ? 'PASS ' 
   await A.fill('#ue_n', 'Zeynep Kaya'); await A.fill('#ue_e', 'zeynep@firma.com'); await A.fill('#ue_t', 'Proje Yöneticisi');
   ok('username auto', (await A.inputValue('#ue_u')) === 'zeynep');
   await A.check('input[name="ue_r"][value="member"]');
-  ok('user form: workspace + role selects instead of project checkboxes', await A.evaluate(() => !document.querySelector('[data-up]')
-    && document.querySelector('[data-uws="ws_ku1"]') && document.querySelector('[data-uws="ws1"]')?.value === '__all'
-    && [...document.querySelector('[data-uws="ws_ku1"]').options].map(o => o.value).join() === ',admin,member,viewer'));
-  await A.selectOption('[data-uws="ws_ku1"]', 'member');
+  ok('user form: workspace admin checkboxes + project role selects', await A.evaluate(() => !document.querySelector('[data-up]')
+    && document.querySelector('[data-uwsa="ws_ku1"]')?.checked === false && document.querySelector('[data-uproj="p_ku1"]')?.value === ''
+    && [...document.querySelector('[data-uproj="p_ku1"]').options].map(o => o.value).join() === ',admin,member,viewer'));
+  await A.selectOption('[data-uproj="p_ku1"]', 'member');
   await A.screenshot({ path: SS + 'new.png' });
   await A.click('#ue_ok'); await sleep(2500);
   const pw = await A.evaluate(() => document.querySelector('.pwline code')?.textContent);
@@ -40,9 +40,10 @@ let F = 0; const ok = (n, c, x = '') => { if (!c) F++; console.log((c ? 'PASS ' 
   await A.screenshot({ path: SS + 'cred.png' });
   await A.click('[data-close]'); await sleep(300);
   const z = await A.evaluate(async () => { const u = DB.users.find(x => x.username === 'zeynep');
-    const srv = (await API.get('/api/state')).data.workspaces, m = id => srv.find(w => w.id === id)?.members?.find(x => x.userId === u.id)?.role || null;
-    return u && { email: u.email, title: u.title, role: u.role, ws1: m('ws_ku1'), ws2: m('ws_ku2'), gen: srv.find(w => w.id === 'ws1')?.members?.length || 0 }; });
-  ok('user saved with profile & workspace roles', z && z.email === 'zeynep@firma.com' && z.role === 'member' && z.ws1 === 'member' && !z.ws2 && z.gen === 0, JSON.stringify(z));
+    const st = (await API.get('/api/state')).data, r = id => st.projects.find(p => p.id === id)?.roles?.[u.id] || null;
+    return u && { email: u.email, title: u.title, role: u.role, p1: r('p_ku1'), p2: r('p_ku2'), gen: st.projects.filter(p => p.roles && p.roles[u.id]).length,
+      adm: st.workspaces.some(w => (w.admins || []).includes(u.id)) }; });
+  ok('user saved with profile & project role (no automatic project membership)', z && z.email === 'zeynep@firma.com' && z.role === 'member' && z.p1 === 'member' && !z.p2 && z.gen === 1 && !z.adm, JSON.stringify(z));
   // yeni kullanıcı girişi
   const Z = await mk('zeynep'); await login(Z, 'zeynep', pw);
   ok('new user forced to set password', await Z.isVisible('#fp_a'));

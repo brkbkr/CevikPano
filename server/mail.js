@@ -121,7 +121,7 @@ export async function oauthStart(pool, me, provider, origin) {
   return `${AUTH_URL(provider)}?${q}`;
 }
 
-const EMAIL_RE = /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[^\s@<>()",;:]+$/;
+const EMAIL_RE = /^[^\s\0-\x1f\x7f@<>()",;:]+@[^\s\0-\x1f\x7f@<>()",;:]+\.[^\s\0-\x1f\x7f@<>()",;:]+$/;
 export class OAuthFail extends Error { constructor(reason) { super(reason); this.reason = reason; } }
 
 /* Dönüş: state doğrula (tek kullanım, 10 dk, aynı yönetici, aynı sağlayıcı) → kod + PKCE ile jeton → adres. */
@@ -610,14 +610,33 @@ export function startMailPoller(pool, log = console.log) {
    gövde base64 ile kodlanır. Yetki: işe Üye ya da Yönetici rolüyle erişen (izleyici 403, erişimi olmayan 404). */
 export const RECONNECT_MSG = 'Posta kutusunu yeniden bağlayın (Sistem → Posta kutuları): gönderme izni yok ya da bağlantının süresi doldu';
 export const REPLY_BODY_MAX = 10000;
-export const REPLY_RATE = { max: 10, windowMs: 60e3 };
-const replyHits = new Map();                     // kullanıcı → son gönderim zamanları (bellekte)
-export function resetReplyLimit() { replyHits.clear(); }
-function takeReplySlot(uid) {
-  const now = Date.now(), l = (replyHits.get(uid) || []).filter(t => now - t < REPLY_RATE.windowMs);
-  if (l.length >= REPLY_RATE.max) { replyHits.set(uid, l); throw new HttpError(429, 'Çok fazla e-posta yanıtı; bir dakika sonra yeniden deneyin'); }
-  l.push(now); replyHits.set(uid, l);
+/* Hız sınırları (bellekte): kullanıcı başına dakikada 10; ayrıca posta kutusu başına saatte 100 ve iş başına saatte 20
+   (çok hesapla toplam gönderim sınırsız olmasın). Üçü birlikte denetlenir; biri doluysa hiçbirine yazılmaz. */
+export const REPLY_LIMITS = {
+  user: { max: 10, windowMs: 60e3, msg: 'Çok fazla e-posta yanıtı; bir dakika sonra yeniden deneyin' },
+  account: { max: 100, windowMs: 3600e3, msg: 'Bu posta kutusundan saatlik e-posta yanıtı sınırına ulaşıldı; daha sonra yeniden deneyin' },
+  issue: { max: 20, windowMs: 3600e3, msg: 'Bu işe saatlik e-posta yanıtı sınırına ulaşıldı; daha sonra yeniden deneyin' },
+};
+export const REPLY_RATE = REPLY_LIMITS.user;
+const replyHits = new Map();                     // 'u:'/'a:'/'i:' + kimlik → son gönderim zamanları
+export function resetReplyLimit() { replyHits.clear(); replyIdem.clear(); }
+function takeReplySlot(uid, accId, issueId) {
+  const now = Date.now();
+  if (replyHits.size > 5000) for (const [k, l] of replyHits) if (!l.some(t => now - t < 3600e3)) replyHits.delete(k);
+  const slots = [['u:' + uid, REPLY_LIMITS.user], ['a:' + accId, REPLY_LIMITS.account], ['i:' + issueId, REPLY_LIMITS.issue]]
+    .map(([k, lim]) => [k, lim, (replyHits.get(k) || []).filter(t => now - t < lim.windowMs)]);
+  for (const [k, lim, l] of slots) if (l.length >= lim.max) { replyHits.set(k, l); throw new HttpError(429, lim.msg); }
+  for (const [k, , l] of slots) { l.push(now); replyHits.set(k, l); }
 }
+/* Çift gönderim önleme: istemci her taslak için bir istek kimliği (requestId) üretir; sunucu 15 dk saklar.
+   Aynı kimlikle gelen ikinci istek e-posta göndermez: gönderim sürüyorsa 409, gitmişse ilk sonucu (duplicate) döner.
+   Gönderim başarısızsa kimlik silinir (yeniden denenebilir); gönderim başarılı olup kayıt adımı hata verse de kimlik kalır. */
+export const REPLY_IDEM_MS = 15 * 60e3;
+export const REPLY_PENDING_MSG = 'Bu yanıt zaten gönderiliyor; birkaç saniye sonra yeniden deneyin';
+const replyIdem = new Map();                     // kullanıcı|iş|requestId → { at, sig, state: 'pending'|'sent', result }
+const REQ_ID_RE = /^[A-Za-z0-9_-]{16,64}$/;
+/* Sağlayıcı ileti kimliği yol parçası olarak kullanılır: '/', '\\', '..' ya da denetim karakteri içeren kimlik kullanılmaz. */
+const validPid = v => (typeof v === 'string' && v.length > 0 && v.length <= 300 && !/[\/\\\0-\x1f\x7f]/.test(v) && !v.includes('..') ? v : '');
 const CRLF = /[\r\n\u2028\u2029]/;
 function assertHeader(name, v) {
   const s = String(v ?? '');
@@ -648,17 +667,19 @@ export function buildMime({ from, to, subject, messageId, inReplyTo, references,
 async function replyContext(pool, me, issueId) {
   const acc0 = await issueAccess(pool, me, issueId);
   if (!acc0) throw new HttpError(404, 'İş bulunamadı');
-  if (!acc0.write) throw new HttpError(403, 'Bu işe e-postayla yanıt için Üye ya da Yönetici rolü gerekli');
+  if (!acc0.write) throw new HttpError(403, 'Bu projede "Yorum yazma" yetkiniz yok (e-postayla yanıt yorum ekler)');
   if (!pollingEnabled()) return { reason: mailConfigured() ? 'E-posta kapalı (sunucuda MAIL_ENABLED=true değil)' : NOT_CONFIGURED, issue: acc0.data };
-  const src = (await pool.query(`SELECT * FROM mail_messages WHERE issue_id=$1 AND direction='in' AND from_addr IS NOT NULL
-    ORDER BY (comment_id IS NULL) DESC, id LIMIT 1`, [issueId])).rows[0];
+  /* Alıcı yalnız işi oluşturan özgün ileti (comment_id IS NULL) ve işin kaynağı e-postaysa; sonradan "[ANAHTAR]" konusuyla
+     zincire eklenen dış iletiler alıcı belirleyemez. */
+  const src = acc0.data?.source?.kind === 'email' ? (await pool.query(`SELECT * FROM mail_messages WHERE issue_id=$1 AND direction='in'
+    AND from_addr IS NOT NULL AND comment_id IS NULL ORDER BY id LIMIT 1`, [issueId])).rows[0] : null;
   if (!src) return { reason: 'Bu iş bir e-postadan oluşmadı', issue: acc0.data };
   const acc = src.account_id ? (await pool.query('SELECT * FROM mail_accounts WHERE id=$1', [src.account_id])).rows[0] : null;
   if (!acc || !acc.active) return { reason: 'İletinin geldiği posta kutusu bağlı değil', issue: acc0.data };
   if (acc.status !== 'ok') return { reason: RECONNECT_MSG, issue: acc0.data };
   if (!providerConfigured(acc.provider)) return { reason: NOT_CONFIGURED, issue: acc0.data };
   const to = String(src.from_addr || '').trim().toLowerCase();
-  if (!EMAIL_RE.test(to) || to.length > 200 || CRLF.test(to)) return { reason: 'Talep edenin e-posta adresi geçersiz', issue: acc0.data };
+  if (!EMAIL_RE.test(to) || to.length > 200 || CRLF.test(to) || /[\0-\x1f\x7f]/.test(to)) return { reason: 'Talep edenin e-posta adresi geçersiz', issue: acc0.data };
   return { issue: acc0.data, src, acc, to };
 }
 
@@ -668,7 +689,13 @@ export async function replyInfo(pool, me, issueId) {
   return { available: true, to: x.to, subject: replySubject(x.src.subject || x.issue.summary, x.issue.key), provider: x.acc.provider };
 }
 
-const REPLY_FIELDS = new Set(['body']);
+const REPLY_FIELDS = new Set(['body', 'requestId']);
+async function markReconnect(pool, acc) {
+  const u = await pool.query(`UPDATE mail_accounts SET status='reconnect',
+    last_error='Yeniden bağlanın: gönderme izni yok ya da bağlantının süresi doldu', updated_at=now()
+    WHERE id=$1 AND status='ok' RETURNING id`, [acc.id]);
+  if (u.rowCount) await notifyReconnect(pool, acc);
+}
 export async function sendReply(pool, me, issueId, b) {
   if (!b || typeof b !== 'object' || Array.isArray(b)) throw new HttpError(400, 'Geçersiz istek');
   if (Object.keys(b).some(k => !REPLY_FIELDS.has(k))) throw new HttpError(400, 'Alıcı, konu ve başlıklar sunucuda belirlenir; yalnız ileti metni gönderilir');
@@ -676,10 +703,37 @@ export async function sendReply(pool, me, issueId, b) {
   if (!text) throw new HttpError(400, 'Yanıt metni gerekli');
   if (text.length > REPLY_BODY_MAX) throw new HttpError(400, `Yanıt en fazla ${REPLY_BODY_MAX.toLocaleString('tr-TR')} karakter`);
   if (/\0/.test(text)) throw new HttpError(400, 'Yanıt metni geçersiz karakter içeriyor');
+  if (b.requestId !== undefined && (typeof b.requestId !== 'string' || !REQ_ID_RE.test(b.requestId))) throw new HttpError(400, 'Geçersiz istek kimliği');
+  /* Denetim ile "gönderiliyor" kaydı arasında await yok: eşzamanlı aynı kimlikli iki istekten yalnız biri geçer. */
+  let ik = null;
+  if (b.requestId) {
+    const now = Date.now();
+    for (const [k, v] of replyIdem) if (now - v.at > REPLY_IDEM_MS) replyIdem.delete(k);
+    ik = `${me.id}|${issueId}|${b.requestId}`;
+    const prev = replyIdem.get(ik);
+    if (prev) {
+      if (prev.sig !== text) throw new HttpError(409, 'Bu istek kimliği başka bir metinle kullanıldı');
+      if (prev.state !== 'sent') throw new HttpError(409, REPLY_PENDING_MSG);
+      return { ...prev.result, duplicate: true };
+    }
+    if (replyIdem.size >= 10000) replyIdem.delete(replyIdem.keys().next().value);
+    replyIdem.set(ik, { at: now, sig: text, state: 'pending', result: null });
+  }
+  let out;
+  try { out = await deliverReply(pool, me, issueId, text); }
+  catch (e) { if (ik) replyIdem.delete(ik); throw e; }
+  const result = { ok: true, to: out.to, subject: out.subject, commentId: out.cid, recorded: false };
+  if (ik) replyIdem.set(ik, { at: Date.now(), sig: text, state: 'sent', result });
+  result.recorded = await recordReply(pool, me, issueId, text, out);
+  return result;
+}
+
+async function deliverReply(pool, me, issueId, text) {
   const x = await replyContext(pool, me, issueId);
   if (x.reason) throw new HttpError(409, x.reason);
   const { src, acc, to, issue } = x;
-  takeReplySlot(me.id);
+  takeReplySlot(me.id, acc.id, issueId);
+  const srcPid = validPid(src.provider_msg_id);
   const domain = String(acc.address).split('@')[1] || 'cevikpano.invalid';
   let subject = replySubject(src.subject || issue.summary, issue.key);
   const parent = validMid(src.message_id) && !/@cevikpano\.invalid>$/.test(src.message_id) ? src.message_id : '';
@@ -688,10 +742,10 @@ export async function sendReply(pool, me, issueId, b) {
     const token = await accessToken(pool, acc);
     if (acc.provider === 'google') {
       let threadId = src.thread_id || '', refs = [];
-      if (src.provider_msg_id) {
+      if (srcPid) {
         try {
           const q = new URLSearchParams([['format', 'metadata'], ...['Subject', 'Message-ID', 'References'].map(h => ['metadataHeaders', h])]);
-          const m = await call(`${GMAIL}/messages/${encodeURIComponent(src.provider_msg_id)}?${q}`, { token });
+          const m = await call(`${GMAIL}/messages/${encodeURIComponent(srcPid)}?${q}`, { token });
           const p = parseGmail(m);
           threadId = threadId || p.threadId;
           refs = p.references.map(validMid).filter(Boolean);
@@ -706,16 +760,19 @@ export async function sendReply(pool, me, issueId, b) {
       /* Graph: createReply zinciri (In-Reply-To/References) sağlayıcı kurar; kimlik taşınmışsa internetMessageId ile bulunur. */
       const create = id => call(`${GRAPH}/me/messages/${encodeURIComponent(id)}/createReply`, { method: 'POST', token, json: {} });
       let draft;
-      try { draft = await create(src.provider_msg_id || '-'); }
+      try {
+        if (!srcPid) throw new ProviderError(404, 'Geçersiz ileti kimliği');
+        draft = await create(srcPid);
+      }
       catch (e) {
         if (!(e instanceof ProviderError && (e.status === 404 || e.status === 400)) || !parent) throw e;
         const f = `internetMessageId eq '${parent.replace(/'/g, "''")}'`;
         const l = await call(`${GRAPH}/me/messages?$select=id&$top=1&$filter=${encodeURIComponent(f)}`, { token });
-        const id = l.value?.[0]?.id;
+        const id = validPid(l.value?.[0]?.id);
         if (!id) throw new HttpError(409, 'Özgün ileti posta kutusunda bulunamadı (silinmiş ya da taşınmış olabilir)');
-        draft = await create(String(id));
+        draft = await create(id);
       }
-      if (!draft?.id) throw new ProviderError(502, 'Taslak oluşturulamadı');
+      if (!validPid(draft?.id)) throw new ProviderError(502, 'Taslak oluşturulamadı');
       const did = encodeURIComponent(String(draft.id));
       try {
         await call(`${GRAPH}/me/messages/${did}`, { method: 'PATCH', token, json: {
@@ -731,14 +788,21 @@ export async function sendReply(pool, me, issueId, b) {
     }
   } catch (e) {
     if (e instanceof HttpError) throw e;
-    if (e instanceof ReconnectError || (e instanceof ProviderError && (e.status === 401 || e.status === 403))) throw new HttpError(409, RECONNECT_MSG);
+    if (e instanceof ReconnectError || (e instanceof ProviderError && (e.status === 401 || e.status === 403))) {
+      await markReconnect(pool, acc).catch(() => {});
+      throw new HttpError(409, RECONNECT_MSG);
+    }
     if (e instanceof ProviderError && e.status === 404) throw new HttpError(409, 'Özgün ileti posta kutusunda bulunamadı (silinmiş ya da taşınmış olabilir)');
     console.error('[posta] yanıt gönderilemedi:', e instanceof ProviderError ? e.status : 'iç hata');
     throw new HttpError(424, e instanceof ProviderError && e.status === 429
       ? 'E-posta sağlayıcısı istek sınırına ulaştı; biraz sonra yeniden deneyin' : 'E-posta gönderilemedi (sağlayıcı hatası); biraz sonra yeniden deneyin');
   }
-  /* Kayıt: giden ileti (yanıt gelirse aynı işe bağlanır), yorum + geçmiş (gönderen kullanıcı adına). */
-  const cid = 'c_' + randomUUID().replace(/-/g, '').slice(0, 16), now = Date.now();
+  return { to, subject, sentMid, providerId, acc, src, cid: 'c_' + randomUUID().replace(/-/g, '').slice(0, 16) };
+}
+
+/* Kayıt: giden ileti (yanıt gelirse aynı işe bağlanır), yorum + geçmiş (gönderen kullanıcı adına). */
+async function recordReply(pool, me, issueId, text, { to, subject, sentMid, providerId, acc, src, cid }) {
+  const now = Date.now();
   await pool.query(`INSERT INTO mail_messages (message_id, account_id, provider_msg_id, issue_id, comment_id, direction, from_addr, received_at, subject, thread_id)
     VALUES ($1,$2,$3,$4,$5,'out',$6,now(),$7,$8) ON CONFLICT (message_id) DO NOTHING`,
     [sentMid.slice(0, 300), acc.id, providerId, issueId, cid, String(acc.address).slice(0, 200), subject.slice(0, 500), src.thread_id || null]);
@@ -747,7 +811,7 @@ export async function sendReply(pool, me, issueId, b) {
       body: `✉ E-postayla yanıtlandı (${to}):\n\n${text}`, source: { kind: 'email', dir: 'out', to } } },
     { c: 'history', id: hid(), op: 'put', data: { issueId, userId: me.id, at: now, field: 'E-posta', from: '', to: `${to} · ${subject}`, kind: 'reply' } },
   ]);
-  return { ok: true, to, subject, commentId: cid, recorded: !res.rejected?.length };
+  return !res.rejected?.length;
 }
 
 /* ---- yönetici uçları ---- */

@@ -58,7 +58,7 @@ const XSS = '<img src=x onerror="window.__xss=1">';
       { c: 'users', id: T, op: 'put', data: { username: 'hm' + R, name: 'Hm Üye ' + R, role: 'member', active: true, ini: 'HÜ', color: '#0F766E', capacity: 20 } },
       { c: 'users', id: V, op: 'put', data: { username: 'hmv' + R, name: 'Hm İzleyici ' + R, role: 'viewer', active: true, ini: 'Hİ', color: '#64748B' } },
     ] });
-    ['p1', 'p2'].forEach(pid => { const p = DB.projects.find(x => x.id === pid); p.members = [...new Set([...(p.members || []), T, V])]; });
+    ['p1', 'p2'].forEach(pid => { const p = DB.projects.find(x => x.id === pid); p.roles = { ...(p.roles || {}), [T]: 'member', [V]: 'viewer' }; p.members = [...new Set([...(p.members || []), T, V])]; });
     DB.projects.push({ id: PB, key: 'HB' + R.toUpperCase(), code: 'HB' + R.toUpperCase(), name: `HM-B ${R} ${XSS}`, lead: T, counter: 0, members: [T, 'u3', V], archived: false });
     DB.projects.push({ id: PA, key: 'HA' + R.toUpperCase(), code: 'HA' + R.toUpperCase(), name: `HM-A ${R}`, lead: T, counter: 0, members: [T, ME.id], archived: true });
     [['Açık', 'todo'], ['Kapandı', 'done'], ['Sonra', 'inprogress']].forEach(([n, c], k) => DB.statuses.push({ id: `${PB}_s${k}`, projectId: PB, name: n, cat: c, wip: 0, ord: k }));
@@ -249,7 +249,8 @@ const XSS = '<img src=x onerror="window.__xss=1">';
   // 11) hızlı atama: işin projesinin üyeleri (H2); başkasına atanınca düşer + Geri al
   await M.click(`[data-qas="${ID('bAs')}"]`); await sleep(300);
   const opts = await M.evaluate(() => [...document.querySelectorAll('.qm .qm-opt')].map(o => o.dataset.qv).sort());
-  ok('assignee menu = issue project members', JSON.stringify(opts) === JSON.stringify(['', T, 'u3', V].sort()), opts.join());
+  /* yetki-v2: atanabilir = projede iş düzenleme yetkili kişi (İzleyici V listede yok) */
+  ok('assignee menu = issue project members', JSON.stringify(opts) === JSON.stringify(['', T, 'u3'].sort()), opts.join());
   const fAs = await nextFocus(M, ID('bAs'), '[data-qas]');
   await M.click('.qm [data-qv="u3"]'); await sleep(300);
   const t4 = await toastInfo(M);
@@ -361,9 +362,12 @@ const XSS = '<img src=x onerror="window.__xss=1">';
     pj: !!document.querySelector('.hm-empty [data-v="projects"]'), note: document.querySelector('.hm-ro-note')?.textContent.trim() }));
   ok('viewer empty state: only Projelere git', ve.h === 'Sana atanmış açık iş yok' && !ve.nw && ve.pj, JSON.stringify(ve));
   ok('viewer note shown', ve.note === 'İzleyici olarak görüntülüyorsun; işleri değiştiremezsin.', ve.note);
-  await A.evaluate(([id, V]) => { const pr = DB.projects.find(x => x.id === 'p1');
+  /* yetki-v2: İzleyici'ye yeni atama yapılamaz; Üye iken atanıp İzleyici'ye düşen kişinin ataması kalır. */
+  await A.evaluate(([id, V]) => { const pr = DB.projects.find(x => x.id === 'p1'); pr.roles = { ...pr.roles, [V]: 'member' }; save();
     DB.issues.push({ id, projectId: 'p1', key: `${pr.key}-${++pr.counter}`, type: 'task', summary: 'HM izleyici işi', statusId: statsOf('p1')[1].id,
       assignee: V, reporter: ME.id, priority: 2, labels: [], cf: {}, created: Date.now(), updatedAt: Date.now(), rank: 1, start: '', due: '' }); save(); }, [ID('vi'), V]);
+  await sleep(1200);
+  await A.evaluate(V => { const pr = DB.projects.find(x => x.id === 'p1'); pr.roles = { ...pr.roles, [V]: 'viewer' }; save(); }, V);
   const tV = await waitFor(Vp, id => !!document.querySelector(`[data-hmrow="${id}"]`), ID('vi'), 7000);
   const vv = await Vp.evaluate(() => ({ rows: document.querySelectorAll('[data-hmrow]').length,
     btn: document.querySelectorAll('#view .hm-tick, #view [data-hmadv], #view [data-hmlog], #view button[data-qpri], #view button[data-qas], #view [data-complete]').length,
