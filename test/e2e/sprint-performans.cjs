@@ -39,7 +39,8 @@ const S0N = KEY + ' Sprint 0 ' + XSS, S1N = KEY + ' Sprint 1';
   const palRun = async (p, name) => { await p.evaluate(() => document.activeElement?.blur()); await p.keyboard.press('Control+k'); await sleep(250);
     await p.fill('#pl_q', name); await p.keyboard.press('Enter'); await sleep(500); };
   const perfRow = (p, sid) => p.evaluate(sid => { const r = document.querySelector(`#spPerf [data-spf="${sid}"]`);
-    return r ? [...r.cells].map(c => c.firstChild?.textContent?.trim() ?? '').concat([r.textContent.includes('plan verisi yok') ? 'NA' : '']) : null; }, sid);
+    return r ? [...r.cells].map((c, k) => { const m = c.firstChild?.textContent?.trim() ?? '', sm = c.querySelector('small')?.textContent.trim();
+      return k && sm ? m + '|' + sm : m; }).concat([r.textContent.includes('plan verisi yok') ? 'NA' : '']) : null; }, sid);
 
   const A = await mk('admin'); await login(A, 'admin', 'admin12345');
   const MU = 'spfuye' + RUN, MID = 'u_spf' + RUN, WSID = 'ws_spf' + RUN;
@@ -74,8 +75,11 @@ const S0N = KEY + ' Sprint 0 ' + XSS, S1N = KEY + ' Sprint 1';
   /* ===== 1) eski sprint: plan verisi yok, geçmişten tahmin ===== */
   await go(A, 'reports');
   const r0 = await perfRow(A, PID + '_sp0');
-  ok('old sprint: "plan verisi yok", ~2 planned, 1 added, 2 done, 1 moved, %67', JSON.stringify(r0) === JSON.stringify(['', '~2', '1', '2', '1', '%67', 'NA'])
-    || (r0 && r0[1] === '~2' && r0[2] === '1' && r0[3] === '2' && r0[4] === '1' && r0[5] === '%67' && r0[6] === 'NA'), JSON.stringify(r0));
+  /* plan ~2 (i1 3p + i2 5p) · planlanandan biten 1 (i1 3p) · oran %50 iş / %38 puan · eklenen 1 (i3 2p) · eklenip biten 1 · taşınan 1 */
+  ok('old sprint: "plan verisi yok", ~2 planned, 1 plan-done, %50 / %38, 1 added, 1 added-done, 1 moved',
+    JSON.stringify(r0 && r0.slice(1)) === JSON.stringify(['~2|8 puan', '1|3 puan', '%50|%38 puan', '1|2 puan', '1|2 puan', '1', 'NA']), JSON.stringify(r0));
+  ok('old sprint: active-sprint strip uses same (~) logic', await A.evaluate(sid => document.createRange().createContextualFragment(spPlanLine(sprint(sid)))
+    .textContent.replace(/\s+/g, ' ').trim(), PID + '_sp0') === 'Planlanan ~2 iş · 8 puan Biten 1/~2 planlanan · %50 Sonradan eklenen 1 · biten 1');
   ok('sprint name escaped in report (no XSS)', await A.evaluate(() => !window.__xss && !document.querySelector('#spPerf img')
     && document.querySelector('#spPerf .spf-tbl')?.textContent.includes('onerror')));
 
@@ -87,15 +91,16 @@ const S0N = KEY + ' Sprint 0 ' + XSS, S1N = KEY + ' Sprint 1';
   ok('start saves plan snapshot on server (2 issues, 5 points, ids)', plan && plan.count === 2 && plan.points === 5
     && JSON.stringify(plan.ids.slice().sort()) === JSON.stringify([PID + '_i4', PID + '_i5']) && plan.at > 0, JSON.stringify(plan));
 
-  /* sonradan ekleme + bir planlananı bitirme → aktif sprintte canlı özet */
+  /* sonradan ekleme (i6, bitti) + bir planlananı bitirme (i4) → aktif sprintte canlı özet */
   await A.evaluate(pid => { const i = issue(pid + '_i6'); i.sprintId = pid + '_sp1'; logHist(i, 'Sprint', 'Backlog', sprint(pid + '_sp1').name);
-    issue(pid + '_i4').statusId = pid + '_s2'; save(); }, PID); await sleep(1200);
+    i.statusId = pid + '_s2'; issue(pid + '_i4').statusId = pid + '_s2'; save(); }, PID); await sleep(1200);
   await go(A, 'sprint');
   const line = await A.evaluate(() => document.querySelector('[data-spplan]')?.textContent.replace(/\s+/g, ' ').trim());
-  ok('active sprint: live "planned vs done so far"', /Planlanan 2 iş · 5 puan · \+1 eklendi/.test(line || '') && /Biten 1\/2 planlanan/.test(line || ''), line);
+  ok('active sprint: planned vs plan-done (%50), added + added-done separate', line === 'Planlanan 2 iş · 5 puan Biten 1/2 planlanan · %50 Sonradan eklenen 1 · biten 1', line);
   await go(A, 'reports');
-  const live = await A.evaluate(() => [...document.querySelectorAll('#spPerf [data-spflive] b')].map(b => b.textContent));
-  ok('reports: live summary of active sprint (2 / 1 / +1 / %33)', JSON.stringify(live) === JSON.stringify(['2', '1', '+1', '%33']), JSON.stringify(live));
+  const live = await A.evaluate(() => [...document.querySelectorAll('#spPerf [data-spflive] b')].map(b => b.textContent)
+    .concat(document.querySelector('#spPerf [data-spflive] + .sub')?.textContent.includes('3/5 planlanan puan biten') ? 'pts' : ''));
+  ok('reports: live summary of active sprint (2 / 1 / %50 / +1 / 1, 3/5 puan)', JSON.stringify(live) === JSON.stringify(['2', '1', '%50', '+1', '1', 'pts']), JSON.stringify(live));
 
   /* ===== 3) sunucu: plan alanı değişmez (alan Üyesi ve sistem yöneticisi) ===== */
   const M = await mk('member'); await login(M, MU, 'Baslangic123');
@@ -119,7 +124,16 @@ const S0N = KEY + ' Sprint 0 ' + XSS, S1N = KEY + ' Sprint 1';
   await A.click('.sp-dest [data-dest=""]'); await A.click('#doComplete'); await sleep(1500);
   await go(A, 'reports');
   const r1 = await perfRow(A, PID + '_sp1');
-  ok('closed sprint row: planned 2, added 1, done 1, moved 2, %33, plan present', r1 && r1[1] === '2' && r1[2] === '1' && r1[3] === '1' && r1[4] === '2' && r1[5] === '%33' && r1[6] === '', JSON.stringify(r1));
+  /* plan 2 (5p) · planlanandan biten 1 (i4 3p) · %50 / %60 puan · eklenen 1 (i6 1p) · eklenip biten 1 · taşınan 1 (i5) */
+  ok('closed sprint row: plan 2, plan-done 1, %50 / %60, added 1, added-done 1, moved 1, plan present',
+    JSON.stringify(r1 && r1.slice(1)) === JSON.stringify(['2|5 puan', '1|3 puan', '%50|%60 puan', '1|1 puan', '1|1 puan', '1', '']), JSON.stringify(r1));
+  const segs = await A.evaluate(() => [...document.querySelectorAll('#spPerf svg[role=img] rect[data-bar]')].map(r => r.dataset.bar + ':' + r.getAttribute('fill')));
+  const SEG = ['plan:var(--line2)', 'added:url(#spfHA)', 'planDone:var(--accent)', 'addedDone:url(#spfHD)'];
+  ok('chart: 4 distinguishable segments per sprint (colour + hatch pattern)', JSON.stringify(segs) === JSON.stringify([...SEG, ...SEG])
+    && await A.evaluate(() => !!document.querySelector('#spPerf pattern#spfHA') && !!document.querySelector('#spPerf pattern#spfHD')), JSON.stringify(segs));
+  ok('chart legend + bar labels', await A.evaluate(() => [...document.querySelectorAll('#spPerf svg[role=img] text')].map(t => t.textContent).filter(t => t.includes('/')).join(','))
+    === '1/2 +1/1,1/2 +1/1' && await A.evaluate(() => ['Planlanan', 'Planlanandan biten', 'Sonradan eklenen', 'Sonradan eklenip biten']
+      .every(n => document.getElementById('spPerf').textContent.includes(n))));
   const ch = await A.evaluate(() => ({ svg: !!document.querySelector('#spPerf svg[role=img]'), bars: document.querySelectorAll('#spPerf svg rect').length,
     rows: document.querySelectorAll('#spPerf [data-spf]').length, first: document.querySelector('#spPerf [data-spf]')?.dataset.spf, live: !!document.querySelector('[data-spflive]') }));
   ok('chart (SVG bars) + newest sprint first, no live block without active sprint', ch.svg && ch.bars >= 4 && ch.rows === 2 && ch.first === PID + '_sp1' && !ch.live, JSON.stringify(ch));
